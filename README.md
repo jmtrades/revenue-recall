@@ -89,9 +89,32 @@ board, analytics — works unchanged because it only ever talks to the interface
 Append an `IndustryTemplate` to `INDUSTRIES` in `src/lib/industries/index.ts`.
 You get terminology, a default pipeline, and custom fields with no other changes.
 
+## Going live with Supabase
+
+Three secrets are needed (none are derivable for you): the **anon key** and
+**service-role key** (Supabase dashboard → Settings → API) and your **database
+password** (the one in the Postgres connection string). The project URL is
+already derived from the ref.
+
+```bash
+# 1. Put the three secrets into .env.local (NEXT_PUBLIC_SUPABASE_ANON_KEY,
+#    SUPABASE_SERVICE_ROLE_KEY, and the password inside SUPABASE_DB_URL).
+
+# 2. Apply the schema (psql) — or paste supabase/schema.sql into the SQL editor:
+npm run db:migrate
+
+# 3. Run the app and seed one org with demo data:
+npm run dev
+npm run db:bootstrap          # POSTs /api/admin/bootstrap with ADMIN_TOKEN
+```
+
+The registry auto-switches to the Supabase provider once the env vars are set —
+no code changes. `db:bootstrap` is one-time per org.
+
 ## Deploy
 
 Deployable to Vercel as a standard Next.js app. Set the env vars from
-`.env.example` in your Vercel project. To back the built-in CRM with a database,
-run `supabase/migrations/0001_init.sql` against a Supabase project and set the
-`SUPABASE_*` vars.
+`.env.example` in your Vercel project. To back the CRM with a database, run the
+migrations in `supabase/migrations/` (see *Going live with Supabase*) and set
+the `SUPABASE_*` vars.
+

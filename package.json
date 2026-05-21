@@ -8,7 +8,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "bash scripts/db-migrate.sh",
+    "db:bootstrap": "bash scripts/db-bootstrap.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.97.1",
