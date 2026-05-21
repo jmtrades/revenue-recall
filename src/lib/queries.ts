@@ -3,7 +3,7 @@ import { getConfig } from "@/lib/config";
 import { getIndustry } from "@/lib/industries";
 import { computeMetrics, type PipelineMetrics } from "@/lib/analytics";
 import { buildRecallQueue, summarizeRecall, type RecallItem, type RecallSummary } from "@/lib/recall/engine";
-import type { Contact, Opportunity, Pipeline } from "@/lib/crm/types";
+import type { Activity, Contact, Opportunity, Pipeline, Stage, User } from "@/lib/crm/types";
 
 /** Everything the dashboard needs in one round trip. */
 export interface Overview {
@@ -44,19 +44,22 @@ export interface BoardData {
   pipeline: Pipeline;
   opportunities: Opportunity[];
   contacts: Map<string, Contact>;
+  owners: Map<string, string>;
 }
 
 export async function getBoard(): Promise<BoardData> {
   const provider = getProvider();
-  const [pipelines, opportunities, contacts] = await Promise.all([
+  const [pipelines, opportunities, contacts, users] = await Promise.all([
     provider.listPipelines(),
     provider.listOpportunities(),
     provider.listContacts(),
+    provider.listUsers(),
   ]);
   return {
     pipeline: pipelines[0],
     opportunities,
     contacts: new Map(contacts.map((c) => [c.id, c])),
+    owners: new Map(users.map((u) => [u.id, u.name])),
   };
 }
 
@@ -77,10 +80,248 @@ export async function getRecallQueue(): Promise<{ items: RecallItem[]; summary: 
   };
 }
 
-export async function getLeads(): Promise<{ contacts: Contact[]; opps: Map<string, Opportunity> }> {
+export async function getLeads(): Promise<{ contacts: Contact[]; opps: Map<string, Opportunity>; owners: Map<string, User> }> {
   const provider = getProvider();
-  const [contacts, opportunities] = await Promise.all([provider.listContacts(), provider.listOpportunities()]);
+  const [contacts, opportunities, users] = await Promise.all([
+    provider.listContacts(),
+    provider.listOpportunities(),
+    provider.listUsers(),
+  ]);
   const byContact = new Map<string, Opportunity>();
   for (const o of opportunities) if (!byContact.has(o.contactId)) byContact.set(o.contactId, o);
-  return { contacts, opps: byContact };
+  return { contacts, opps: byContact, owners: new Map(users.map((u) => [u.id, u])) };
+}
+
+export async function getTeamAndPipeline(): Promise<{ users: User[]; pipeline: Pipeline }> {
+  const provider = getProvider();
+  const [users, pipelines] = await Promise.all([provider.listUsers(), provider.listPipelines()]);
+  return { users, pipeline: pipelines[0] };
+}
+
+export interface LeadRow {
+  id: string;
+  name: string;
+  company: string;
+  email: string;
+  phone: string;
+  owner: string;
+  value: number | null;
+  currency: string;
+  stage: string;
+}
+
+export async function getLeadRows(): Promise<{ rows: LeadRow[]; owners: string[]; valueLabel: string }> {
+  const provider = getProvider();
+  const [contacts, opps, users, pipelines] = await Promise.all([
+    provider.listContacts(),
+    provider.listOpportunities(),
+    provider.listUsers(),
+    provider.listPipelines(),
+  ]);
+  const userById = new Map(users.map((u) => [u.id, u.name]));
+  const stageById = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s.label]));
+  const oppByContact = new Map<string, Opportunity>();
+  for (const o of opps) if (!oppByContact.has(o.contactId)) oppByContact.set(o.contactId, o);
+
+  const rows: LeadRow[] = contacts.map((c) => {
+    const opp = oppByContact.get(c.id);
+    return {
+      id: c.id,
+      name: c.name,
+      company: c.company ?? "",
+      email: c.points.find((p) => p.channel === "email")?.value ?? "",
+      phone: c.points.find((p) => p.channel === "phone")?.value ?? "",
+      owner: opp?.ownerId ? userById.get(opp.ownerId) ?? "—" : "—",
+      value: opp?.value ?? null,
+      currency: opp?.currency ?? "USD",
+      stage: opp ? stageById.get(opp.stageId) ?? "—" : "—",
+    };
+  });
+
+  return {
+    rows,
+    owners: [...new Set(rows.map((r) => r.owner).filter((o) => o !== "—"))].sort(),
+    valueLabel: getIndustry(getConfig().industryId).terminology.value,
+  };
+}
+
+export interface FeedEntry {
+  activity: Activity;
+  contactName?: string;
+  dealTitle?: string;
+}
+
+export async function getActivityFeed(limit = 12): Promise<FeedEntry[]> {
+  const provider = getProvider();
+  const [activities, contacts, opps] = await Promise.all([
+    provider.listRecentActivities(limit),
+    provider.listContacts(),
+    provider.listOpportunities(),
+  ]);
+  const cById = new Map(contacts.map((c) => [c.id, c]));
+  const oById = new Map(opps.map((o) => [o.id, o]));
+  return activities.map((a) => ({
+    activity: a,
+    contactName: a.contactId ? cById.get(a.contactId)?.name : undefined,
+    dealTitle: a.opportunityId ? oById.get(a.opportunityId)?.title : undefined,
+  }));
+}
+
+export interface TaskItem {
+  id: string;
+  title: string;
+  dealId: string;
+  contactName?: string;
+  channel: "call" | "email" | "sms";
+  dueInDays: number;
+  priority: "high" | "medium" | "low";
+  note: string;
+}
+
+export async function getTasks(): Promise<TaskItem[]> {
+  const provider = getProvider();
+  const [pipelines, opps, contacts] = await Promise.all([
+    provider.listPipelines(),
+    provider.listOpportunities(),
+    provider.listContacts(),
+  ]);
+  const cById = new Map(contacts.map((c) => [c.id, c]));
+  const recall = buildRecallQueue(opps, pipelines);
+  return recall.slice(0, 25).map((r) => {
+    const opp = opps.find((o) => o.id === r.opportunityId);
+    return {
+      id: `t_${r.opportunityId}`,
+      title: r.title,
+      dealId: r.opportunityId,
+      contactName: opp ? cById.get(opp.contactId)?.name : undefined,
+      channel: r.channel,
+      dueInDays: r.score >= 75 ? 0 : r.score >= 50 ? 1 : 3,
+      priority: r.score >= 75 ? "high" : r.score >= 50 ? "medium" : "low",
+      note: r.recommendation,
+    };
+  });
+}
+
+export interface DealDetail {
+  opp: Opportunity;
+  contact: Contact | null;
+  owner: User | null;
+  pipeline: Pipeline;
+  stage: Stage | undefined;
+  activities: Activity[];
+  fields: { key: string; label: string }[];
+}
+
+export async function getDealDetail(id: string): Promise<DealDetail | null> {
+  const provider = getProvider();
+  const opp = await provider.getOpportunity(id);
+  if (!opp) return null;
+  const [pipelines, users, activities, contact] = await Promise.all([
+    provider.listPipelines(),
+    provider.listUsers(),
+    provider.listActivities(id),
+    provider.getContact(opp.contactId),
+  ]);
+  const pipeline = pipelines.find((p) => p.id === opp.pipelineId) ?? pipelines[0];
+  const stage = pipeline.stages.find((s) => s.id === opp.stageId);
+  const industry = getIndustry(getConfig().industryId);
+  return {
+    opp,
+    contact,
+    owner: users.find((u) => u.id === opp.ownerId) ?? null,
+    pipeline,
+    stage,
+    activities,
+    fields: industry.fields.map((f) => ({ key: f.key, label: f.label })),
+  };
+}
+
+export interface ContactDetail {
+  contact: Contact;
+  deals: Opportunity[];
+  activities: Activity[];
+}
+
+export async function getContactDetail(id: string): Promise<ContactDetail | null> {
+  const provider = getProvider();
+  const contact = await provider.getContact(id);
+  if (!contact) return null;
+  const opps = await provider.listOpportunities();
+  const deals = opps.filter((o) => o.contactId === id);
+  const activityLists = await Promise.all(deals.map((d) => provider.listActivities(d.id)));
+  const activities = activityLists.flat().sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1));
+  return { contact, deals, activities };
+}
+
+export interface Reports {
+  currency: string;
+  metrics: PipelineMetrics;
+  funnel: { label: string; value: number; count: number }[];
+  sources: { label: string; value: number; color: string }[];
+  monthlyWon: { label: string; value: number }[];
+  leaderboard: { name: string; won: number; value: number; openValue: number }[];
+}
+
+const PALETTE = ["#5b8cff", "#34d399", "#fbbf24", "#f87171", "#a78bfa", "#22d3ee", "#fb923c", "#94a3b8"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+export async function getReports(): Promise<Reports> {
+  const provider = getProvider();
+  const [pipelines, opps, users] = await Promise.all([
+    provider.listPipelines(),
+    provider.listOpportunities(),
+    provider.listUsers(),
+  ]);
+  const pipeline = pipelines[0];
+  const metrics = computeMetrics(opps, pipeline);
+
+  const funnel = pipeline.stages
+    .filter((s) => s.type !== "lost")
+    .map((s) => {
+      const bucket = metrics.buckets.find((b) => b.stage.id === s.id);
+      return { label: s.label, value: bucket?.value ?? 0, count: bucket?.count ?? 0 };
+    });
+
+  const sourceMap = new Map<string, number>();
+  for (const o of opps) sourceMap.set(o.source ?? "Unknown", (sourceMap.get(o.source ?? "Unknown") ?? 0) + 1);
+  const sources = [...sourceMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([label, value], i) => ({ label, value, color: PALETTE[i % PALETTE.length] }));
+
+  const wonByMonth = new Map<string, number>();
+  for (const o of opps) {
+    if (!o.closedAt) continue;
+    const stage = pipeline.stages.find((s) => s.id === o.stageId);
+    if (stage?.type !== "won") continue;
+    const d = new Date(o.closedAt);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    wonByMonth.set(key, (wonByMonth.get(key) ?? 0) + o.value);
+  }
+  const monthlyWon: { label: string; value: number }[] = [];
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    monthlyWon.push({ label: MONTHS[d.getMonth()], value: Math.round(wonByMonth.get(`${d.getFullYear()}-${d.getMonth()}`) ?? 0) });
+  }
+
+  const board = new Map<string, { won: number; value: number; openValue: number }>();
+  for (const u of users) board.set(u.id, { won: 0, value: 0, openValue: 0 });
+  for (const o of opps) {
+    if (!o.ownerId) continue;
+    const row = board.get(o.ownerId);
+    if (!row) continue;
+    const stage = pipeline.stages.find((s) => s.id === o.stageId);
+    if (stage?.type === "won") {
+      row.won += 1;
+      row.value += o.value;
+    } else if (stage?.type === "open") {
+      row.openValue += o.value;
+    }
+  }
+  const leaderboard = users
+    .map((u) => ({ name: u.name, ...board.get(u.id)! }))
+    .sort((a, b) => b.value - a.value);
+
+  return { currency: metrics.currency, metrics, funnel, sources, monthlyWon, leaderboard };
 }

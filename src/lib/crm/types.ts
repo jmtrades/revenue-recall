@@ -131,5 +131,7 @@ export interface CrmProvider {
   moveOpportunity(id: Id, stageId: Id): Promise<Opportunity>;
 
   listActivities(opportunityId: Id): Promise<Activity[]>;
+  /** Most recent activities across the whole org, newest first. */
+  listRecentActivities(limit: number): Promise<Activity[]>;
   logActivity(input: Omit<Activity, "id">): Promise<Activity>;
 }

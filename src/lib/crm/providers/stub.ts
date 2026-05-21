@@ -27,6 +27,7 @@ export function makeStub(id: string, label: string): CrmProvider {
     getOpportunity: async () => notReady(),
     moveOpportunity: async () => notReady(),
     listActivities: async () => notReady(),
+    listRecentActivities: async () => notReady(),
     logActivity: async () => notReady(),
   };
 }

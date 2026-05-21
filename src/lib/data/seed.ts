@@ -122,16 +122,30 @@ export function seedDataset(industryId: string): Dataset {
       tags: [],
     });
 
-    activities.push({
-      id: `a_${oid}`,
-      opportunityId: oid,
-      contactId: cid,
-      kind: pick(["call", "email", "meeting", "note"]) as Activity["kind"],
-      summary: "Initial outreach and discovery",
-      occurredAt: daysAgo(lastActivityDays),
-      direction: "outbound",
-      ownerId: users[0].id,
-    });
+    // A short, realistic activity history per deal (newest = lastActivityDays).
+    const historyLen = 1 + Math.floor(rand() * 4);
+    const SUMMARIES: Record<string, string[]> = {
+      call: ["Discovery call — mapped needs and timeline", "Left voicemail, no answer", "Great call, strong interest", "Quick check-in call"],
+      email: ["Sent intro + overview", "Shared pricing and next steps", "Followed up after no reply", "Sent proposal for review"],
+      sms: ["Texted to confirm availability", "Sent a quick nudge", "Confirmed appointment by text"],
+      meeting: ["Demo / walkthrough completed", "In-person meeting", "Stakeholder review meeting"],
+      note: ["Logged context from referral", "Noted budget and decision process", "Competitor mentioned"],
+    };
+    let touch = lastActivityDays;
+    for (let h = 0; h < historyLen; h++) {
+      const kind = pick(["call", "email", "sms", "meeting", "note"]) as Activity["kind"];
+      activities.push({
+        id: `a_${oid}_${h}`,
+        opportunityId: oid,
+        contactId: cid,
+        kind,
+        summary: pick(SUMMARIES[kind] ?? ["Activity logged"]),
+        occurredAt: daysAgo(touch),
+        direction: kind === "note" ? undefined : rand() > 0.4 ? "outbound" : "inbound",
+        ownerId: opportunities[opportunities.length - 1].ownerId,
+      });
+      touch += 2 + Math.floor(rand() * 9);
+    }
   }
 
   return { users, pipelines: [pipeline], contacts, opportunities, activities };

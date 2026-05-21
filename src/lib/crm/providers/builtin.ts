@@ -104,6 +104,13 @@ export class BuiltinProvider implements CrmProvider {
       .sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1));
   }
 
+  async listRecentActivities(limit: number): Promise<Activity[]> {
+    return db()
+      .activities.slice()
+      .sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1))
+      .slice(0, limit);
+  }
+
   async logActivity(input: Omit<Activity, "id">): Promise<Activity> {
     const d = db();
     const activity: Activity = { ...input, id: `a_${Date.now()}` };

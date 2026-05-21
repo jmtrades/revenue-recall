@@ -155,6 +155,19 @@ export class CloseProvider implements CrmProvider {
     }));
   }
 
+  async listRecentActivities(limit: number): Promise<Activity[]> {
+    const data = await this.req<{ data: { id: string; _type: string; date_created: string; note?: string; opportunity_id?: string }[] }>(
+      `/activity/?_limit=${limit}`,
+    );
+    return data.data.map((a) => ({
+      id: a.id,
+      opportunityId: a.opportunity_id,
+      kind: (a._type as Activity["kind"]) ?? "note",
+      summary: a.note ?? a._type,
+      occurredAt: a.date_created,
+    }));
+  }
+
   async logActivity(): Promise<Activity> {
     throw new Error("Close write operations are not enabled in this build.");
   }

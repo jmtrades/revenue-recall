@@ -73,3 +73,7 @@ export const SEQUENCES: Sequence[] = [
 export function sequencesFor(industryId: string): Sequence[] {
   return SEQUENCES.filter((s) => s.industries.includes("*") || s.industries.includes(industryId));
 }
+
+export function getSequence(id: string): Sequence | undefined {
+  return SEQUENCES.find((s) => s.id === id);
+}

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getConfig } from "@/lib/config";
 import { sequencesFor } from "@/lib/sequences";
 import { PageHeader, ChannelBadge } from "@/components/ui";
@@ -16,7 +17,7 @@ export default function SequencesPage() {
           <section key={seq.id} className="card">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="font-semibold text-white">{seq.name}</h2>
+                <Link href={`/sequences/${seq.id}`} className="font-semibold text-white hover:underline">{seq.name}</Link>
                 <p className="mt-1 text-sm text-muted">{seq.goal}</p>
               </div>
               <span className="pill bg-surface-2 text-muted">{seq.steps.length} steps</span>

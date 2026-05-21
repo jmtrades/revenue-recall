@@ -1,77 +1,124 @@
 import Link from "next/link";
-import { getOverview } from "@/lib/queries";
+import { getOverview, getActivityFeed, getReports } from "@/lib/queries";
+import { getConfig } from "@/lib/config";
 import { compactMoney, money, pct, relativeDays } from "@/lib/format";
-import { PageHeader, Stat, ReasonBadge, ScoreDot } from "@/components/ui";
+import { PageHeader, Stat, ReasonBadge, ScoreDot, Card, Avatar, ActivityIcon, Button } from "@/components/ui";
+import { Funnel, ProgressRing, BarChart, Sparkline } from "@/components/charts";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
-  const o = await getOverview();
-  const m = o.metrics;
-  const topRecall = o.recall.slice(0, 5);
+function timeAgo(iso: string): string {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  return relativeDays(days);
+}
 
-  const maxBucket = Math.max(1, ...m.buckets.filter((b) => b.stage.type === "open").map((b) => b.value));
+export default async function DashboardPage() {
+  const [o, feed, reports] = await Promise.all([getOverview(), getActivityFeed(8), getReports()]);
+  const m = o.metrics;
+  const cfg = getConfig();
+  const wonThisMonth = reports.monthlyWon[reports.monthlyWon.length - 1]?.value ?? 0;
+  const attainment = cfg.monthlyQuota > 0 ? wonThisMonth / cfg.monthlyQuota : 0;
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
-        title="Dashboard"
+        title={`Welcome back`}
         subtitle={`${o.industryLabel} · connected to ${o.providerLabel}`}
+        action={<Button href="/recall" variant="primary">↺ Work the recall queue</Button>}
       />
 
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Open Pipeline" value={money(m.openValue, m.currency)} hint={`${m.openCount} open ${o.terminology.opportunity.toLowerCase()}s`} />
         <Stat label="Weighted Forecast" value={money(m.weightedForecast, m.currency)} hint="probability-adjusted" />
         <Stat label="Recoverable Revenue" value={money(o.recallSummary.totalRecoverable, m.currency)} hint={`${o.recallSummary.itemCount} at-risk deals`} tone="warn" />
         <Stat label="Win Rate" value={pct(m.winRate)} hint={`${m.wonCount} won · ${m.lostCount} lost`} tone="success" />
       </section>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <section className="card lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-semibold text-white">Pipeline by stage</h2>
-            <Link href="/pipeline" className="text-sm text-brand hover:underline">Open board →</Link>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card title="Revenue trend" className="lg:col-span-2" action={<Link href="/reports" className="text-sm text-brand hover:underline">Reports →</Link>}>
+          <div className="mb-4 flex items-end gap-3">
+            <div>
+              <div className="text-2xl font-semibold text-white">{money(wonThisMonth, m.currency)}</div>
+              <div className="text-xs text-muted">won this month</div>
+            </div>
+            <div className="mb-1 ml-auto">
+              <Sparkline data={reports.monthlyWon.map((x) => x.value)} width={200} height={44} />
+            </div>
           </div>
-          <div className="space-y-3">
-            {m.buckets
-              .filter((b) => b.stage.type === "open")
-              .map((b) => (
-                <div key={b.stage.id} className="flex items-center gap-3">
-                  <span className="w-32 shrink-0 truncate text-sm text-muted">{b.stage.label}</span>
-                  <div className="h-6 flex-1 overflow-hidden rounded bg-surface-2">
-                    <div className="h-full rounded bg-brand/70" style={{ width: `${(b.value / maxBucket) * 100}%` }} />
-                  </div>
-                  <span className="w-24 shrink-0 text-right text-sm tabular-nums text-white">{compactMoney(b.value, m.currency)}</span>
-                  <span className="w-10 shrink-0 text-right text-xs tabular-nums text-muted">{b.count}</span>
-                </div>
-              ))}
-          </div>
-        </section>
+          <BarChart data={reports.monthlyWon.map((x) => ({ label: x.label, value: x.value }))} height={150} />
+        </Card>
 
-        <section className="card">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-semibold text-white">Recall this week</h2>
-            <Link href="/recall" className="text-sm text-brand hover:underline">All →</Link>
+        <Card title="Monthly goal">
+          <div className="flex flex-col items-center gap-3 py-2">
+            <ProgressRing value={attainment} size={120} thickness={11} color={attainment >= 1 ? "#34d399" : "#5b8cff"} />
+            <div className="text-center">
+              <div className="text-sm text-white">{money(wonThisMonth, m.currency)} <span className="text-muted">/ {compactMoney(cfg.monthlyQuota, m.currency)}</span></div>
+              <div className="text-xs text-muted">{attainment >= 1 ? "Goal reached 🎉" : `${money(Math.max(0, cfg.monthlyQuota - wonThisMonth), m.currency)} to go`}</div>
+            </div>
           </div>
-          {topRecall.length === 0 ? (
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card title="Pipeline funnel" className="lg:col-span-2" action={<Link href="/pipeline" className="text-sm text-brand hover:underline">Board →</Link>}>
+          <Funnel stages={reports.funnel} />
+        </Card>
+
+        <Card title="Recall this week" action={<Link href="/recall" className="text-sm text-brand hover:underline">All →</Link>}>
+          {o.recall.length === 0 ? (
             <p className="text-sm text-muted">Nothing slipping — your pipeline is well tended.</p>
           ) : (
             <ul className="space-y-3">
-              {topRecall.map((r) => (
-                <li key={r.opportunityId} className="rounded-lg border border-border bg-surface-2 p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-sm text-white">{r.title}</span>
-                    <ScoreDot score={r.score} />
-                  </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <ReasonBadge reason={r.reason} />
-                    <span className="text-xs text-muted">{money(r.weightedValue, r.currency)} · {relativeDays(r.daysSinceActivity)}</span>
-                  </div>
+              {o.recall.slice(0, 4).map((r) => (
+                <li key={r.opportunityId}>
+                  <Link href={`/deals/${r.opportunityId}`} className="block rounded-lg border border-border bg-surface-2 p-3 transition hover:border-brand/50">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm text-white">{r.title}</span>
+                      <ScoreDot score={r.score} />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <ReasonBadge reason={r.reason} />
+                      <span className="text-xs text-muted">{money(r.weightedValue, r.currency)} · {relativeDays(r.daysSinceActivity)}</span>
+                    </div>
+                  </Link>
                 </li>
               ))}
             </ul>
           )}
-        </section>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card title="Recent activity" className="lg:col-span-2">
+          <ul className="space-y-1">
+            {feed.map((f) => (
+              <li key={f.activity.id} className="flex items-center gap-3 rounded-lg px-1 py-2 hover:bg-surface-2/50">
+                <ActivityIcon kind={f.activity.kind} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-white">{f.activity.summary}</p>
+                  <p className="truncate text-xs text-muted">{f.contactName ?? f.dealTitle ?? ""}</p>
+                </div>
+                <span className="shrink-0 text-xs text-muted">{timeAgo(f.activity.occurredAt)}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+
+        <Card title="Leaderboard">
+          <ul className="space-y-3">
+            {reports.leaderboard.map((row, i) => (
+              <li key={row.name} className="flex items-center gap-3">
+                <span className="w-4 text-center text-sm font-semibold text-muted">{i + 1}</span>
+                <Avatar name={row.name} size={30} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-white">{row.name}</p>
+                  <p className="text-xs text-muted">{row.won} won</p>
+                </div>
+                <span className="text-sm tabular-nums text-white">{compactMoney(row.value, m.currency)}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
       </div>
     </div>
   );

@@ -10,6 +10,8 @@ export interface AppConfig {
   /** Which CRM provider to use: builtin | close | hubspot | salesforce | pipedrive. */
   providerId: string;
   orgName: string;
+  /** Monthly revenue quota, used for goal attainment. */
+  monthlyQuota: number;
 }
 
 export function getConfig(): AppConfig {
@@ -17,5 +19,6 @@ export function getConfig(): AppConfig {
     industryId: process.env.NEXT_PUBLIC_INDUSTRY ?? "real_estate",
     providerId: process.env.CRM_PROVIDER ?? "builtin",
     orgName: process.env.NEXT_PUBLIC_ORG_NAME ?? "Your Company",
+    monthlyQuota: Number(process.env.NEXT_PUBLIC_MONTHLY_QUOTA ?? 250000),
   };
 }
