@@ -18,7 +18,7 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
 
   function next() {
     if (step < steps.length - 1) setStep(step + 1);
-    else router.push("/");
+    else router.push("/dashboard");
   }
 
   return (

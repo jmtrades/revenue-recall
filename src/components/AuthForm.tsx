@@ -12,7 +12,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
     e.preventDefault();
     setBusy(true);
     // Auth is wired at launch; for now we proceed into the product.
-    router.push(mode === "signup" ? "/onboarding" : "/");
+    router.push(mode === "signup" ? "/onboarding" : "/dashboard");
   }
 
   return (
@@ -23,7 +23,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       <button type="submit" disabled={busy} className="w-full rounded-lg bg-brand px-3 py-2.5 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
         {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
       </button>
-      <button type="button" onClick={() => router.push(mode === "signup" ? "/onboarding" : "/")} className="w-full rounded-lg border border-border px-3 py-2.5 text-sm text-white transition hover:bg-surface-2">
+      <button type="button" onClick={() => router.push(mode === "signup" ? "/onboarding" : "/dashboard")} className="w-full rounded-lg border border-border px-3 py-2.5 text-sm text-white transition hover:bg-surface-2">
         Continue with Google
       </button>
       <p className="pt-1 text-center text-[11px] text-muted">Authentication connects to your provider at launch.</p>

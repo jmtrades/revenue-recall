@@ -6,10 +6,34 @@
   color-scheme: dark;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 html,
 body {
   background-color: #0b0e14;
   color: #e7eaf0;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Refined scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2a3346 transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #232b3d;
+  border-radius: 8px;
+  border: 2px solid #0b0e14;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #2f3a52;
 }
 
 @layer components {
@@ -30,5 +54,61 @@ body {
   }
   .nav-link-active {
     @apply bg-surface-2 text-white;
+  }
+}
+
+@layer utilities {
+  /* Brand gradient text */
+  .gradient-text {
+    background-image: linear-gradient(100deg, #fff 10%, #9cc0ff 50%, #5b8cff 90%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* Ambient hero glow */
+  .hero-glow {
+    background:
+      radial-gradient(60% 50% at 50% 0%, rgba(91, 140, 255, 0.18) 0%, transparent 70%),
+      radial-gradient(40% 40% at 80% 10%, rgba(52, 211, 153, 0.1) 0%, transparent 70%);
+  }
+  .ring-glow {
+    box-shadow: 0 0 0 1px rgba(91, 140, 255, 0.25), 0 20px 60px -20px rgba(91, 140, 255, 0.45);
+  }
+  .surface-grid {
+    background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+}
+
+/* Entrance animations */
+@keyframes rr-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: rr-fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes rr-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.animate-float {
+  animation: rr-float 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-float {
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto;
   }
 }

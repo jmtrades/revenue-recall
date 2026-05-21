@@ -7,7 +7,7 @@ export const NAV_GROUPS: { heading: string; items: { href: string; label: string
   {
     heading: "Sell",
     items: [
-      { href: "/", label: "Dashboard", icon: "◧" },
+      { href: "/dashboard", label: "Dashboard", icon: "◧" },
       { href: "/recall", label: "Revenue Recall", icon: "↺" },
       { href: "/pipeline", label: "Pipeline", icon: "▤" },
       { href: "/leads", label: "Leads", icon: "☷" },
@@ -48,7 +48,7 @@ export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
           <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted/70">{group.heading}</p>
           <div className="flex flex-col gap-0.5">
             {group.items.map((item) => {
-              const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+              const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
               return (
                 <Link key={item.href} href={item.href} onClick={onNavigate} className={`nav-link ${active ? "nav-link-active" : ""}`}>
                   <span className="w-4 text-center text-base leading-none">{item.icon}</span>

@@ -6,9 +6,14 @@ export default function NotFound() {
       <div>
         <div className="text-5xl font-semibold text-muted/50">404</div>
         <p className="mt-3 text-lg text-white">We couldn&apos;t find that.</p>
-        <Link href="/" className="mt-4 inline-block rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand/90">
-          Back to dashboard
-        </Link>
+        <div className="mt-4 flex justify-center gap-3">
+          <Link href="/dashboard" className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand/90">
+            Go to dashboard
+          </Link>
+          <Link href="/" className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-white hover:bg-surface-2">
+            Home
+          </Link>
+        </div>
       </div>
     </div>
   );

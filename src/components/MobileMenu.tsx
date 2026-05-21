@@ -15,7 +15,7 @@ export function MobileMenu({ orgName }: { orgName: string }) {
         <div className="fixed inset-0 z-50 flex" onClick={() => setOpen(false)}>
           <div className="absolute inset-0 bg-black/50" />
           <aside className="relative flex w-64 flex-col border-r border-border bg-surface px-3 py-5" onClick={(e) => e.stopPropagation()}>
-            <Link href="/" onClick={() => setOpen(false)} className="px-3 pb-6">
+            <Link href="/dashboard" onClick={() => setOpen(false)} className="px-3 pb-6">
               <div className="flex items-center gap-2">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand text-sm font-bold text-white">RR</span>
                 <span className="text-sm font-semibold text-white">Revenue Recall</span>
