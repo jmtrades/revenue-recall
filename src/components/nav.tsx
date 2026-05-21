@@ -18,6 +18,7 @@ export const NAV_GROUPS: { heading: string; items: { href: string; label: string
     items: [
       { href: "/tasks", label: "Tasks", icon: "✓" },
       { href: "/inbox", label: "Inbox", icon: "✉" },
+      { href: "/dialer", label: "Power Dialer", icon: "☎" },
       { href: "/calendar", label: "Calendar", icon: "▦" },
     ],
   },

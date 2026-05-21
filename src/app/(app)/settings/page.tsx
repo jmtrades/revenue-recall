@@ -1,7 +1,8 @@
 import { getConfig } from "@/lib/config";
 import { INDUSTRIES, getIndustry } from "@/lib/industries";
-import { listIntegrations } from "@/lib/crm/registry";
+import { listIntegrations, getProvider } from "@/lib/crm/registry";
 import { isAiConfigured } from "@/lib/ai/client";
+import { channelStatus } from "@/lib/comms";
 import { getTeamAndPipeline } from "@/lib/queries";
 import { money, pct } from "@/lib/format";
 import { PageHeader, Card, Avatar, InfoRow } from "@/components/ui";
@@ -21,7 +22,7 @@ export default async function SettingsPage() {
       <InfoRow label="Industry">{active.label}</InfoRow>
       <InfoRow label="Currency">{active.currency}</InfoRow>
       <InfoRow label="Monthly quota">{money(cfg.monthlyQuota, active.currency)}</InfoRow>
-      <InfoRow label="Active CRM">{cfg.providerId}</InfoRow>
+      <InfoRow label="Active CRM">{getProvider().info().label}</InfoRow>
       <InfoRow label="AI assistant">
         <span className={`pill ${isAiConfigured() ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>
           {isAiConfigured() ? "Connected" : "Template fallback"}
@@ -113,6 +114,31 @@ export default async function SettingsPage() {
     </Card>
   );
 
+  const channels = channelStatus();
+  const channelsTab = (
+    <Card>
+      <p className="mb-3 text-sm text-muted">
+        How outbound email, SMS, and calls are delivered. Until a provider is configured, messages are recorded to the
+        timeline so every flow works end-to-end. Configure via env (Resend/SendGrid for email, Twilio for SMS &amp; voice).
+      </p>
+      <ul className="divide-y divide-border">
+        {([
+          ["Email", channels.email],
+          ["SMS", channels.sms],
+          ["Voice / Calls", channels.voice],
+        ] as const).map(([label, c]) => (
+          <li key={label} className="flex items-center justify-between py-3">
+            <div>
+              <span className="text-sm font-medium text-white">{label}</span>
+              <div className="mt-1 text-xs text-muted">Provider: {c.provider}</div>
+            </div>
+            <span className={`pill ${c.live ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>{c.live ? "Live" : "Logging only"}</span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+
   const notifFlags = [
     { label: "New lead assigned to me", on: true },
     { label: "Deal flagged by Revenue Recall", on: true },
@@ -197,6 +223,7 @@ export default async function SettingsPage() {
           { id: "industry", label: "Industry", content: industryTab },
           { id: "pipeline", label: "Pipeline", content: pipelineTab },
           { id: "integrations", label: "Integrations", content: integrationsTab },
+          { id: "channels", label: "Channels", content: channelsTab },
           { id: "team", label: "Team", content: teamTab },
           { id: "fields", label: "Fields", content: fieldsTab },
           { id: "notifications", label: "Notifications", content: notificationsTab },

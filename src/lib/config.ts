@@ -17,7 +17,9 @@ export interface AppConfig {
 export function getConfig(): AppConfig {
   return {
     industryId: process.env.NEXT_PUBLIC_INDUSTRY ?? "real_estate",
-    providerId: process.env.CRM_PROVIDER ?? "builtin",
+    // "auto" → Supabase when configured, else the built-in store. Override with
+    // an explicit provider id (builtin | supabase | close | …).
+    providerId: process.env.CRM_PROVIDER ?? "auto",
     orgName: process.env.NEXT_PUBLIC_ORG_NAME ?? "Your Company",
     monthlyQuota: Number(process.env.NEXT_PUBLIC_MONTHLY_QUOTA ?? 250000),
   };

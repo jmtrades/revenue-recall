@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { InboxThread } from "@/lib/queries";
 import { Avatar } from "@/components/ui";
@@ -18,6 +19,27 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
   const shown = filter === "unread" ? threads.filter((t) => t.unread) : threads;
   const active = threads.find((t) => t.contactId === activeId) ?? shown[0];
   const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const router = useRouter();
+
+  async function send() {
+    if (!active || !draft.trim()) return;
+    setSending(true);
+    try {
+      const channel = active.channel === "sms" ? "sms" : "email";
+      const res = await fetch("/api/messages/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel, contactId: active.contactId, body: draft }),
+      });
+      if (res.ok) {
+        setDraft("");
+        router.refresh();
+      }
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <div className="grid h-[calc(100vh-12rem)] grid-cols-1 gap-4 md:grid-cols-[320px_1fr]">
@@ -87,9 +109,9 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
                   placeholder="Type a reply…"
                   className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand"
                 />
-                <button onClick={() => setDraft("")} disabled={!draft.trim()} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">Send</button>
+                <button onClick={send} disabled={sending || !draft.trim()} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{sending ? "Sending…" : "Send"}</button>
               </div>
-              <p className="mt-1.5 text-[11px] text-muted">Sending is wired to your email/SMS provider at launch.</p>
+              <p className="mt-1.5 text-[11px] text-muted">Delivered via your email/SMS provider when configured — otherwise logged to the timeline.</p>
             </div>
           </>
         )}

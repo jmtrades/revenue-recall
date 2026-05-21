@@ -92,6 +92,49 @@ export async function getLeads(): Promise<{ contacts: Contact[]; opps: Map<strin
   return { contacts, opps: byContact, owners: new Map(users.map((u) => [u.id, u])) };
 }
 
+export interface CallQueueItem {
+  dealId: string;
+  contactId: string;
+  contactName: string;
+  company: string;
+  phone: string;
+  title: string;
+  reason: string;
+  score: number;
+  recommendation: string;
+}
+
+export async function getCallQueue(): Promise<CallQueueItem[]> {
+  const provider = getProvider();
+  const [pipelines, opps, contacts] = await Promise.all([
+    provider.listPipelines(),
+    provider.listOpportunities(),
+    provider.listContacts(),
+  ]);
+  const cById = new Map(contacts.map((c) => [c.id, c]));
+  const recall = buildRecallQueue(opps, pipelines);
+  const items: CallQueueItem[] = [];
+  for (const r of recall) {
+    const opp = opps.find((o) => o.id === r.opportunityId);
+    if (!opp) continue;
+    const contact = cById.get(opp.contactId);
+    const phone = contact?.points.find((p) => p.channel === "phone")?.value;
+    if (!contact || !phone) continue;
+    items.push({
+      dealId: r.opportunityId,
+      contactId: contact.id,
+      contactName: contact.name,
+      company: contact.company ?? "",
+      phone,
+      title: r.title,
+      reason: r.reason,
+      score: r.score,
+      recommendation: r.recommendation,
+    });
+  }
+  return items.slice(0, 40);
+}
+
 export async function getTeamAndPipeline(): Promise<{ users: User[]; pipeline: Pipeline }> {
   const provider = getProvider();
   const [users, pipelines] = await Promise.all([provider.listUsers(), provider.listPipelines()]);

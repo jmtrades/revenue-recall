@@ -32,8 +32,10 @@ to `.env.local` to change industry, org name, or connect a CRM.
 
 ```
 src/lib/crm/types.ts        Universal domain model + CrmProvider interface
-src/lib/crm/providers/      builtin · close · stub (hubspot/salesforce/pipedrive)
-src/lib/crm/registry.ts     Resolves the active provider; safe fallback to builtin
+src/lib/crm/providers/      builtin · supabase (full DB) · close · stub (hubspot/sf/pipedrive)
+src/lib/crm/registry.ts     Resolves the active provider; auto-selects Supabase when configured
+src/lib/supabase/           Row types, tenant resolution, bootstrap (seed a fresh org)
+src/lib/comms.ts            Email/SMS/voice — Resend·SendGrid·Twilio adapters + logging fallback
 src/lib/industries/         Industry templates (pipelines, terms, fields)
 src/lib/recall/engine.ts    Revenue Recall scoring + recommendations
 src/lib/analytics.ts        Pipeline metrics & weighted forecast
@@ -57,15 +59,24 @@ supabase/migrations/        Org-scoped Postgres schema (RLS) for the built-in CR
 - **Revenue Recall** — ranked at-risk queue with reason filters, next-best-action, and one-click AI draft.
 - **Pipeline** — drag-and-drop kanban; **Deal** & **Contact** detail with timelines and inline logging.
 - **Leads** — searchable directory. **Tasks** — prioritized next actions.
-- **Inbox** — unified email/SMS/call threads. **Calendar** — month grid + agenda.
+- **Power Dialer** — work the highest-value calls back-to-back: AI call prep (talk track), click-to-call, and AI post-call summary that sets the outcome/sentiment and auto-logs to the timeline.
+- **Inbox** — unified email/SMS/call threads with real send (logs to timeline until a provider is configured). **Calendar** — month grid + agenda.
 - **Sequences**, **Templates**, **Automations** — engagement tooling per industry.
 - **Reports** & **Forecast** — funnel, sources, leaderboard, commit/best-case/weighted.
 - **Settings** — general, industry, pipeline, integrations, team, fields, notifications, import, billing.
 - Global ⌘K search, quick-create, notifications, responsive mobile nav.
 
-> Data currently runs on the seeded in-memory store so every surface works with
-> zero setup. Persistence (Supabase) and external CRMs wire in behind the
-> existing `CrmProvider` interface without UI changes.
+> Every surface works with zero setup on the seeded in-memory store. The real
+> backends are fully built behind their interfaces — set env vars to go live,
+> no code changes:
+>
+> - **Database:** set `SUPABASE_*`, run `supabase/migrations/*`, then
+>   `POST /api/admin/bootstrap` (Bearer `ADMIN_TOKEN`) to seed an org. The app
+>   auto-switches to the multi-tenant Supabase provider.
+> - **Email/SMS/Voice:** set `RESEND_API_KEY`/`SENDGRID_API_KEY` and/or
+>   `TWILIO_*` and sends/calls go live; otherwise they log to the timeline.
+> - **AI:** set `ANTHROPIC_API_KEY` for live drafting, briefs, and call
+>   summaries; otherwise high-quality templates.
 
 ### Adding a CRM
 
