@@ -1,6 +1,7 @@
 import { getConfig } from "@/lib/config";
 import { INDUSTRIES, getIndustry } from "@/lib/industries";
 import { listIntegrations } from "@/lib/crm/registry";
+import { isAiConfigured } from "@/lib/ai/client";
 import { getTeamAndPipeline } from "@/lib/queries";
 import { money, pct } from "@/lib/format";
 import { PageHeader, Card, Avatar, InfoRow } from "@/components/ui";
@@ -21,6 +22,11 @@ export default async function SettingsPage() {
       <InfoRow label="Currency">{active.currency}</InfoRow>
       <InfoRow label="Monthly quota">{money(cfg.monthlyQuota, active.currency)}</InfoRow>
       <InfoRow label="Active CRM">{cfg.providerId}</InfoRow>
+      <InfoRow label="AI assistant">
+        <span className={`pill ${isAiConfigured() ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>
+          {isAiConfigured() ? "Connected" : "Template fallback"}
+        </span>
+      </InfoRow>
       <p className="mt-4 text-xs text-muted">
         These are configured via environment variables (<code className="text-brand">NEXT_PUBLIC_ORG_NAME</code>,{" "}
         <code className="text-brand">NEXT_PUBLIC_INDUSTRY</code>, <code className="text-brand">NEXT_PUBLIC_MONTHLY_QUOTA</code>,{" "}

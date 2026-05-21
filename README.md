@@ -39,6 +39,7 @@ src/lib/recall/engine.ts    Revenue Recall scoring + recommendations
 src/lib/analytics.ts        Pipeline metrics & weighted forecast
 src/lib/queries.ts          Server-side data facade for the UI
 src/lib/sequences.ts        Multi-channel outreach cadences
+src/lib/ai/                 AI execution layer (Claude): draft + deal brief, template fallback
 src/lib/automations.ts      Trigger → action automation rules
 src/lib/templates.ts        Email & SMS template library (merge tokens)
 src/components/charts.tsx   Dependency-free SVG charts
@@ -52,7 +53,8 @@ supabase/migrations/        Org-scoped Postgres schema (RLS) for the built-in CR
 ## Surfaces
 
 - **Dashboard** — KPIs, revenue trend, goal ring, funnel, recall highlights, activity feed, leaderboard.
-- **Revenue Recall** — ranked at-risk queue with reason filters and next-best-action.
+- **AI execution layer** — Claude drafts personalized email/SMS/call outreach per deal and generates strategic deal briefs (situation, next step, talking points, risk). On the deal page and inline in the recall queue. Falls back to high-quality templates with no API key; set `ANTHROPIC_API_KEY` to go live.
+- **Revenue Recall** — ranked at-risk queue with reason filters, next-best-action, and one-click AI draft.
 - **Pipeline** — drag-and-drop kanban; **Deal** & **Contact** detail with timelines and inline logging.
 - **Leads** — searchable directory. **Tasks** — prioritized next actions.
 - **Inbox** — unified email/SMS/call threads. **Calendar** — month grid + agenda.

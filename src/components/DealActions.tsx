@@ -17,8 +17,32 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
   const [, startTransition] = useTransition();
   const [kind, setKind] = useState<(typeof KINDS)[number]["id"]>("note");
   const [summary, setSummary] = useState("");
+  const [subject, setSubject] = useState("");
   const [busy, setBusy] = useState(false);
+  const [drafting, setDrafting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const canDraft = kind === "email" || kind === "sms" || kind === "call";
+
+  async function draft() {
+    setDrafting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/ai/draft`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealId, channel: kind }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? "Draft failed");
+      setSummary(body.body);
+      setSubject(body.subject ?? "");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Draft failed");
+    } finally {
+      setDrafting(false);
+    }
+  }
 
   async function move(stageId: string) {
     setError(null);
@@ -68,7 +92,18 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
       </div>
 
       <div>
-        <label className="stat-label">Log activity</label>
+        <div className="flex items-center justify-between">
+          <label className="stat-label">Log activity</label>
+          {canDraft && (
+            <button
+              onClick={draft}
+              disabled={drafting}
+              className="inline-flex items-center gap-1 rounded-lg border border-brand/40 bg-brand-soft/30 px-2 py-0.5 text-xs font-medium text-brand transition hover:bg-brand-soft/50 disabled:opacity-50"
+            >
+              {drafting ? "Drafting…" : "✨ Draft with AI"}
+            </button>
+          )}
+        </div>
         <div className="mt-1 flex flex-wrap gap-1">
           {KINDS.map((k) => (
             <button
@@ -80,11 +115,19 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
             </button>
           ))}
         </div>
+        {kind === "email" && subject && (
+          <input
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder="Subject"
+            className="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand"
+          />
+        )}
         <textarea
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
-          placeholder="What happened?"
-          rows={3}
+          placeholder="What happened? Or click ✨ Draft with AI."
+          rows={4}
           className="mt-2 w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand"
         />
         <button

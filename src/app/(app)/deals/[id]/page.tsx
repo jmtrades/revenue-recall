@@ -5,6 +5,7 @@ import { getProvider } from "@/lib/crm/registry";
 import { money, relativeDays } from "@/lib/format";
 import { Card, Avatar, InfoRow, ActivityIcon, EmptyState } from "@/components/ui";
 import { DealActions } from "@/components/DealActions";
+import { AiBrief } from "@/components/AiBrief";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +77,8 @@ export default async function DealPage({ params }: { params: { id: string } }) {
         </div>
 
         <div className="space-y-6">
+          <AiBrief dealId={opp.id} />
+
           <Card>
             <DealActions dealId={opp.id} stages={pipeline.stages} currentStageId={opp.stageId} canWrite={canWrite} />
           </Card>
