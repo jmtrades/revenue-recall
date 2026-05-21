@@ -107,6 +107,61 @@ export default async function SettingsPage() {
     </Card>
   );
 
+  const notifFlags = [
+    { label: "New lead assigned to me", on: true },
+    { label: "Deal flagged by Revenue Recall", on: true },
+    { label: "Deal stage changes", on: false },
+    { label: "Daily pipeline digest (email)", on: true },
+    { label: "Task reminders", on: true },
+  ];
+  const notificationsTab = (
+    <Card>
+      <ul className="divide-y divide-border">
+        {notifFlags.map((n) => (
+          <li key={n.label} className="flex items-center justify-between py-3">
+            <span className="text-sm text-white">{n.label}</span>
+            <span className={`relative h-6 w-11 rounded-full ${n.on ? "bg-success" : "bg-surface-2"}`}>
+              <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white ${n.on ? "left-[22px]" : "left-0.5"}`} />
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-3 text-xs text-muted">Delivery channels connect at launch.</p>
+    </Card>
+  );
+
+  const billingTab = (
+    <Card>
+      <div className="rounded-lg border border-brand/40 bg-brand-soft/20 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-white">Growth plan</p>
+            <p className="text-xs text-muted">Unlimited pipelines, automations, and recall.</p>
+          </div>
+          <span className="pill bg-brand text-white">Current</span>
+        </div>
+      </div>
+      <div className="mt-2">
+        <InfoRow label="Seats">{users.length} active</InfoRow>
+        <InfoRow label="Billing cycle">Monthly</InfoRow>
+        <InfoRow label="Next invoice">—</InfoRow>
+      </div>
+      <p className="mt-3 text-xs text-muted">Billing is handled by your payment provider at launch.</p>
+    </Card>
+  );
+
+  const importTab = (
+    <Card>
+      <p className="text-sm text-muted">No CRM yet? Import contacts and deals from a CSV to get started instantly.</p>
+      <div className="mt-4 grid place-items-center rounded-xl border border-dashed border-border py-10 text-center">
+        <div className="text-3xl text-muted/60">⬆</div>
+        <p className="mt-2 text-sm text-white">Drop a CSV here or click to upload</p>
+        <p className="mt-1 text-xs text-muted">Columns: name, email, phone, company, value, stage</p>
+      </div>
+      <p className="mt-3 text-xs text-muted">CSV mapping &amp; sync run once a database is connected.</p>
+    </Card>
+  );
+
   const fieldsTab = (
     <Card>
       {active.fields.length === 0 ? (
@@ -138,6 +193,9 @@ export default async function SettingsPage() {
           { id: "integrations", label: "Integrations", content: integrationsTab },
           { id: "team", label: "Team", content: teamTab },
           { id: "fields", label: "Fields", content: fieldsTab },
+          { id: "notifications", label: "Notifications", content: notificationsTab },
+          { id: "import", label: "Import", content: importTab },
+          { id: "billing", label: "Billing", content: billingTab },
         ]}
       />
     </div>

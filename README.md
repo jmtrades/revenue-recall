@@ -39,9 +39,31 @@ src/lib/recall/engine.ts    Revenue Recall scoring + recommendations
 src/lib/analytics.ts        Pipeline metrics & weighted forecast
 src/lib/queries.ts          Server-side data facade for the UI
 src/lib/sequences.ts        Multi-channel outreach cadences
-src/app/                    Dashboard · Recall · Pipeline · Leads · Sequences · Settings
+src/lib/automations.ts      Trigger → action automation rules
+src/lib/templates.ts        Email & SMS template library (merge tokens)
+src/components/charts.tsx   Dependency-free SVG charts
+src/app/(app)/              Authenticated shell + product pages
+src/app/(auth)/             Login / signup (chrome-free layout)
+src/app/onboarding/         First-run setup wizard
+src/app/api/                Route handlers (create, move, log, search, meta, notifications)
 supabase/migrations/        Org-scoped Postgres schema (RLS) for the built-in CRM
 ```
+
+## Surfaces
+
+- **Dashboard** — KPIs, revenue trend, goal ring, funnel, recall highlights, activity feed, leaderboard.
+- **Revenue Recall** — ranked at-risk queue with reason filters and next-best-action.
+- **Pipeline** — drag-and-drop kanban; **Deal** & **Contact** detail with timelines and inline logging.
+- **Leads** — searchable directory. **Tasks** — prioritized next actions.
+- **Inbox** — unified email/SMS/call threads. **Calendar** — month grid + agenda.
+- **Sequences**, **Templates**, **Automations** — engagement tooling per industry.
+- **Reports** & **Forecast** — funnel, sources, leaderboard, commit/best-case/weighted.
+- **Settings** — general, industry, pipeline, integrations, team, fields, notifications, import, billing.
+- Global ⌘K search, quick-create, notifications, responsive mobile nav.
+
+> Data currently runs on the seeded in-memory store so every surface works with
+> zero setup. Persistence (Supabase) and external CRMs wire in behind the
+> existing `CrmProvider` interface without UI changes.
 
 ### Adding a CRM
 

@@ -253,6 +253,146 @@ export async function getContactDetail(id: string): Promise<ContactDetail | null
   return { contact, deals, activities };
 }
 
+export interface InboxMessage {
+  id: string;
+  channel: string;
+  direction: "inbound" | "outbound";
+  body: string;
+  at: string;
+}
+
+export interface InboxThread {
+  contactId: string;
+  contactName: string;
+  company: string;
+  channel: string;
+  lastAt: string;
+  snippet: string;
+  unread: boolean;
+  messages: InboxMessage[];
+}
+
+export async function getInbox(): Promise<InboxThread[]> {
+  const provider = getProvider();
+  const [contacts, opps] = await Promise.all([provider.listContacts(), provider.listOpportunities()]);
+  const cById = new Map(contacts.map((c) => [c.id, c]));
+  const oppsByContact = new Map<string, string>();
+  for (const o of opps) if (!oppsByContact.has(o.contactId)) oppsByContact.set(o.contactId, o.id);
+
+  const threads: InboxThread[] = [];
+  for (const [contactId, oppId] of oppsByContact) {
+    const contact = cById.get(contactId);
+    if (!contact) continue;
+    const acts = (await provider.listActivities(oppId)).filter((a) => ["email", "sms", "call", "note"].includes(a.kind));
+    if (acts.length === 0) continue;
+    const messages: InboxMessage[] = acts
+      .slice()
+      .reverse()
+      .map((a) => ({ id: a.id, channel: a.kind, direction: a.direction ?? "outbound", body: a.summary, at: a.occurredAt }));
+    const last = acts[0];
+    threads.push({
+      contactId,
+      contactName: contact.name,
+      company: contact.company ?? "",
+      channel: last.kind,
+      lastAt: last.occurredAt,
+      snippet: last.summary,
+      unread: last.direction === "inbound",
+      messages,
+    });
+  }
+  return threads.sort((a, b) => (a.lastAt < b.lastAt ? 1 : -1)).slice(0, 20);
+}
+
+export interface CalendarEvent {
+  date: string;
+  title: string;
+  type: "close" | "task" | "meeting";
+  dealId?: string;
+}
+
+export async function getCalendar(): Promise<{ events: CalendarEvent[] }> {
+  const provider = getProvider();
+  const [pipelines, opps] = await Promise.all([provider.listPipelines(), provider.listOpportunities()]);
+  const stageById = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
+  const events: CalendarEvent[] = [];
+  const now = Date.now();
+  const horizon = now + 45 * 86400000;
+
+  for (const o of opps) {
+    const stage = stageById.get(o.stageId);
+    if (stage?.type !== "open") continue;
+    if (o.expectedCloseAt) {
+      const t = new Date(o.expectedCloseAt).getTime();
+      if (t >= now && t <= horizon) events.push({ date: o.expectedCloseAt, title: `Target close · ${o.title}`, type: "close", dealId: o.id });
+    }
+  }
+
+  const recall = buildRecallQueue(opps, pipelines).slice(0, 12);
+  recall.forEach((r, i) => {
+    const d = new Date(now + (r.score >= 75 ? 0 : r.score >= 50 ? 1 : 3 + (i % 5)) * 86400000);
+    events.push({ date: d.toISOString(), title: `Follow up · ${r.title}`, type: "task", dealId: r.opportunityId });
+  });
+
+  events.sort((a, b) => (a.date < b.date ? -1 : 1));
+  return { events };
+}
+
+export interface Forecast {
+  currency: string;
+  quota: number;
+  commit: number;
+  bestCase: number;
+  pipeline: number;
+  weighted: number;
+  categories: { label: string; value: number; count: number; color: string }[];
+  byStage: { label: string; value: number; weighted: number; count: number }[];
+}
+
+export async function getForecast(): Promise<Forecast> {
+  const provider = getProvider();
+  const [pipelines, opps] = await Promise.all([provider.listPipelines(), provider.listOpportunities()]);
+  const pipeline = pipelines[0];
+  const stageById = new Map(pipeline.stages.map((s) => [s.id, s]));
+  const currency = getIndustry(getConfig().industryId).currency;
+
+  let commit = 0;
+  let bestCase = 0;
+  let pipelineVal = 0;
+  let weighted = 0;
+  const open = opps.filter((o) => stageById.get(o.stageId)?.type === "open");
+  for (const o of open) {
+    const p = stageById.get(o.stageId)!.probability;
+    weighted += o.value * p;
+    if (p >= 0.8) commit += o.value;
+    else if (p >= 0.5) bestCase += o.value;
+    else pipelineVal += o.value;
+  }
+
+  const byStage = pipeline.stages
+    .filter((s) => s.type === "open")
+    .map((s) => {
+      const items = open.filter((o) => o.stageId === s.id);
+      const value = items.reduce((sum, o) => sum + o.value, 0);
+      return { label: s.label, value, weighted: Math.round(value * s.probability), count: items.length };
+    });
+
+  return {
+    currency,
+    quota: getConfig().monthlyQuota,
+    commit: Math.round(commit),
+    bestCase: Math.round(bestCase),
+    pipeline: Math.round(pipelineVal),
+    weighted: Math.round(weighted),
+    categories: [
+      { label: "Commit (≥80%)", value: Math.round(commit), count: open.filter((o) => stageById.get(o.stageId)!.probability >= 0.8).length, color: "#34d399" },
+      { label: "Best case (50–79%)", value: Math.round(bestCase), count: open.filter((o) => { const p = stageById.get(o.stageId)!.probability; return p >= 0.5 && p < 0.8; }).length, color: "#5b8cff" },
+      { label: "Pipeline (<50%)", value: Math.round(pipelineVal), count: open.filter((o) => stageById.get(o.stageId)!.probability < 0.5).length, color: "#8a93a6" },
+    ],
+    byStage,
+  };
+}
+
 export interface Reports {
   currency: string;
   metrics: PipelineMetrics;

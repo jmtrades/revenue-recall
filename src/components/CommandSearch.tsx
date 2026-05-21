@@ -56,11 +56,11 @@ export function CommandSearch() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex w-72 items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-muted transition hover:border-brand/50"
+        className="flex w-44 items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-muted transition hover:border-brand/50 sm:w-72"
       >
         <span>⌕</span>
-        <span className="flex-1 text-left">Search contacts, deals…</span>
-        <kbd className="rounded border border-border px-1.5 text-[10px]">⌘K</kbd>
+        <span className="flex-1 truncate text-left">Search…</span>
+        <kbd className="hidden rounded border border-border px-1.5 text-[10px] sm:inline">⌘K</kbd>
       </button>
 
       {open && (

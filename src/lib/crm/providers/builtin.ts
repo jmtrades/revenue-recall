@@ -3,6 +3,7 @@ import type {
   Contact,
   CrmProvider,
   Id,
+  NewOpportunity,
   Opportunity,
   OpportunityFilter,
   Pipeline,
@@ -69,6 +70,12 @@ export class BuiltinProvider implements CrmProvider {
     return db().contacts.find((c) => c.id === id) ?? null;
   }
 
+  async createContact(input: Omit<Contact, "id">): Promise<Contact> {
+    const contact: Contact = { ...input, id: `c_new_${Date.now()}` };
+    db().contacts.unshift(contact);
+    return contact;
+  }
+
   async listOpportunities(filter?: OpportunityFilter): Promise<Opportunity[]> {
     const d = db();
     return d.opportunities.filter((o) => matches(o, filter, d.pipelines));
@@ -76,6 +83,20 @@ export class BuiltinProvider implements CrmProvider {
 
   async getOpportunity(id: Id): Promise<Opportunity | null> {
     return db().opportunities.find((o) => o.id === id) ?? null;
+  }
+
+  async createOpportunity(input: NewOpportunity): Promise<Opportunity> {
+    const now = new Date().toISOString();
+    const opp: Opportunity = {
+      ...input,
+      id: `o_new_${Date.now()}`,
+      createdAt: now,
+      updatedAt: now,
+      lastActivityAt: now,
+      tags: [],
+    };
+    db().opportunities.unshift(opp);
+    return opp;
   }
 
   async moveOpportunity(id: Id, stageId: Id): Promise<Opportunity> {

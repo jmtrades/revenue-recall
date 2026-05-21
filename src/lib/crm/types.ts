@@ -105,6 +105,18 @@ export interface ProviderInfo {
   ready: boolean;
 }
 
+export interface NewOpportunity {
+  title: string;
+  pipelineId: Id;
+  stageId: Id;
+  value: number;
+  currency: string;
+  contactId: Id;
+  ownerId?: Id;
+  source?: string;
+  expectedCloseAt?: IsoDate;
+}
+
 export interface OpportunityFilter {
   pipelineId?: Id;
   stageType?: Stage["type"];
@@ -125,9 +137,11 @@ export interface CrmProvider {
 
   listContacts(): Promise<Contact[]>;
   getContact(id: Id): Promise<Contact | null>;
+  createContact(input: Omit<Contact, "id">): Promise<Contact>;
 
   listOpportunities(filter?: OpportunityFilter): Promise<Opportunity[]>;
   getOpportunity(id: Id): Promise<Opportunity | null>;
+  createOpportunity(input: NewOpportunity): Promise<Opportunity>;
   moveOpportunity(id: Id, stageId: Id): Promise<Opportunity>;
 
   listActivities(opportunityId: Id): Promise<Activity[]>;

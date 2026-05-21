@@ -138,6 +138,14 @@ export class CloseProvider implements CrmProvider {
     return all.find((o) => o.id === id) ?? null;
   }
 
+  async createContact(): Promise<never> {
+    throw new Error("Close write operations are not enabled in this build.");
+  }
+
+  async createOpportunity(): Promise<never> {
+    throw new Error("Close write operations are not enabled in this build.");
+  }
+
   async moveOpportunity(): Promise<Opportunity> {
     throw new Error("Close write operations require a configured webhook/OAuth flow — not enabled in this build.");
   }
