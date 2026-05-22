@@ -18,6 +18,27 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Crisp headings + tighter tracking, the way premium SaaS sites set type. */
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+}
+
+::selection {
+  background: rgba(91, 140, 255, 0.3);
+  color: #fff;
+}
+
+/* Visible, accessible focus rings on interactive elements. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #5b8cff;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 /* Refined scrollbars */
 * {
   scrollbar-width: thin;

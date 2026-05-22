@@ -52,6 +52,15 @@ const PRICING = [
   { name: "Scale", price: "Custom", cadence: "", blurb: "For multi-team orgs and brokerages.", cta: "Talk to us", href: "/signup", features: ["Everything in Growth", "SSO & RBAC", "Dedicated success", "Custom integrations", "Security review"], featured: false },
 ];
 
+const FAQ = [
+  { q: "Do I need a CRM to use this?", a: "No. Revenue Recall ships with a built-in CRM, so you can start in minutes with nothing. Already on Salesforce, HubSpot, Close, or Pipedrive? It plugs in and works on top." },
+  { q: "Will the AI sound like a robot?", a: "No — that's the point. You teach it your voice in one step (describe yourself or paste a few of your real messages), and every email, text, and call script reads like you wrote it." },
+  { q: "Is it really autonomous?", a: "As autonomous as you want. Run tasks manually, set them on a schedule, or let the AI work your pipeline end-to-end. Review mode drafts everything for one-click approval; autonomous mode sends and logs on its own." },
+  { q: "What does it cost to start?", a: "Nothing. The Starter plan is free, with no credit card. Upgrade to Growth when the recovered revenue more than pays for it." },
+  { q: "Which industries does it support?", a: "Real estate, mortgage, insurance, SaaS, agencies, automotive, home services, and more — with pipelines, terminology, and playbooks tuned to each. Plus a universal template for anything else." },
+  { q: "How fast can I be live?", a: "Two minutes. Sign up, pick your industry, and your pipeline, sequences, and AI are ready — your data and recall queue populate immediately." },
+];
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen">
@@ -77,7 +86,18 @@ export default function LandingPage() {
                 See the live demo →
               </Link>
             </div>
-            <p className="mt-5 text-sm text-muted">Works with Salesforce, HubSpot, Close, Pipedrive — or no CRM at all.</p>
+            <p className="mt-3 text-xs text-muted">Free to start · No credit card · Live in 2 minutes</p>
+            <div className="mt-6 flex items-center gap-4">
+              <div className="flex -space-x-2">
+                {["AC", "JN", "SP", "TR", "MK"].map((i, n) => (
+                  <span key={i} className="grid h-8 w-8 place-items-center rounded-full border-2 border-bg text-[10px] font-semibold text-white" style={{ background: ["#5b8cff", "#34d399", "#fbbf24", "#a78bfa", "#fb923c"][n] }}>{i}</span>
+                ))}
+              </div>
+              <div className="text-sm">
+                <span className="text-warn">★★★★★</span>
+                <span className="ml-2 text-muted">Loved by sales teams across 8 industries</span>
+              </div>
+            </div>
           </div>
           <div className="animate-fade-up [animation-delay:120ms]">
             <HeroPreview />
@@ -94,6 +114,18 @@ export default function LandingPage() {
               <p className="mt-1 text-sm text-muted">{m.label}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Integrations / works-with bar */}
+      <section className="border-b border-border">
+        <div className="mx-auto max-w-6xl px-5 py-8">
+          <p className="text-center text-xs font-semibold uppercase tracking-wider text-muted">Plugs into the stack you already use — or works with none</p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm font-medium text-muted/80">
+            {["Salesforce", "HubSpot", "Close", "Pipedrive", "Gmail", "Outlook", "Twilio", "Slack"].map((n) => (
+              <span key={n} className="transition hover:text-white">{n}</span>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -122,6 +154,28 @@ export default function LandingPage() {
               <p className="mt-2 text-sm leading-relaxed text-muted">{f.body}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Before / after */}
+      <section className="mx-auto max-w-5xl px-5 py-16">
+        <div className="grid gap-5 md:grid-cols-2">
+          <div className="rounded-2xl border border-border bg-surface p-7">
+            <p className="text-sm font-semibold uppercase tracking-wider text-muted">The old way</p>
+            <ul className="mt-4 space-y-3 text-sm text-muted">
+              {["Deals quietly go cold while reps chase what's loud", "Hours lost to CRM data entry no one wants to do", "Generic, robotic outreach that gets ignored", "Follow-ups slip through the cracks", "You find out a deal died weeks too late"].map((t) => (
+                <li key={t} className="flex gap-2"><span className="text-danger">✕</span> {t}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-brand/40 bg-surface p-7 ring-glow">
+            <p className="text-sm font-semibold uppercase tracking-wider text-brand">With Revenue Recall</p>
+            <ul className="mt-4 space-y-3 text-sm text-white">
+              {["Every slipping deal surfaced and ranked by recoverable revenue", "The record writes itself — AI logs the work automatically", "Outreach in your exact voice, indistinguishable from you", "Autopilot follows up so nothing is ever dropped", "You act before deals go cold, not after"].map((t) => (
+                <li key={t} className="flex gap-2"><span className="text-success">✓</span> {t}</li>
+              ))}
+            </ul>
+          </div>
         </div>
       </section>
 
@@ -167,12 +221,31 @@ export default function LandingPage() {
           <div className="grid gap-5 md:grid-cols-3">
             {TESTIMONIALS.map((t) => (
               <figure key={t.role} className="rounded-2xl border border-border bg-surface p-6">
-                <div className="text-2xl leading-none text-brand">&ldquo;</div>
-                <blockquote className="mt-2 text-sm leading-relaxed text-white">{t.quote}</blockquote>
+                <div className="text-sm text-warn">★★★★★</div>
+                <blockquote className="mt-3 text-sm leading-relaxed text-white">“{t.quote}”</blockquote>
                 <figcaption className="mt-4 text-xs text-muted">{t.role}</figcaption>
               </figure>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="mx-auto max-w-3xl px-5 py-20">
+        <div className="text-center">
+          <p className="text-sm font-semibold uppercase tracking-wider text-brand">FAQ</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Questions, answered</h2>
+        </div>
+        <div className="mt-10 space-y-3">
+          {FAQ.map((f) => (
+            <details key={f.q} className="group rounded-xl border border-border bg-surface p-5 [&_summary]:cursor-pointer">
+              <summary className="flex items-center justify-between text-sm font-medium text-white marker:content-['']">
+                {f.q}
+                <span className="text-muted transition group-open:rotate-45">+</span>
+              </summary>
+              <p className="mt-3 text-sm leading-relaxed text-muted">{f.a}</p>
+            </details>
+          ))}
         </div>
       </section>
 
@@ -218,6 +291,7 @@ export default function LandingPage() {
               <Link href="/signup" className="rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand/90">Start free</Link>
               <Link href="/dashboard" className="rounded-xl border border-border bg-surface/60 px-6 py-3 text-sm font-semibold text-white transition hover:bg-surface-2">Explore the demo</Link>
             </div>
+            <p className="mt-4 text-xs text-muted">Free forever to start · No credit card · Cancel anytime</p>
           </div>
         </div>
       </section>
