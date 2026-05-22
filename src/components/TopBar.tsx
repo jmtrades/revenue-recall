@@ -2,9 +2,9 @@ import { CommandSearch } from "@/components/CommandSearch";
 import { QuickCreate } from "@/components/QuickCreate";
 import { Notifications } from "@/components/Notifications";
 import { MobileMenu } from "@/components/MobileMenu";
-import { Avatar } from "@/components/ui";
+import { UserMenu } from "@/components/UserMenu";
 
-export function TopBar({ userName, orgName }: { userName: string; orgName: string }) {
+export function TopBar({ userName, userEmail, signedIn, orgName }: { userName: string; userEmail?: string; signedIn: boolean; orgName: string }) {
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-bg/80 px-4 py-3 backdrop-blur sm:px-8">
       <div className="flex items-center gap-3">
@@ -14,10 +14,7 @@ export function TopBar({ userName, orgName }: { userName: string; orgName: strin
       <div className="flex items-center gap-2 sm:gap-3">
         <QuickCreate />
         <Notifications />
-        <div className="hidden items-center gap-2 rounded-lg border border-border px-2 py-1 sm:flex">
-          <Avatar name={userName} size={26} />
-          <span className="text-sm text-white">{userName}</span>
-        </div>
+        <UserMenu name={userName} email={userEmail} signedIn={signedIn} />
       </div>
     </header>
   );

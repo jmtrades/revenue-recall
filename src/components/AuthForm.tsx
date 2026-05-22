@@ -1,32 +1,46 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useFormState, useFormStatus } from "react-dom";
+import { signIn, signUp, type AuthState } from "@/app/(auth)/actions";
+import { getBrowserSupabase } from "@/lib/supabase/browser";
 
-export function AuthForm({ mode }: { mode: "login" | "signup" }) {
-  const router = useRouter();
-  const [busy, setBusy] = useState(false);
-  const input = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-brand";
+const input = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-brand";
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    // Auth is wired at launch; for now we proceed into the product.
-    router.push(mode === "signup" ? "/onboarding" : "/dashboard");
+function Submit({ label }: { label: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" disabled={pending} className="w-full rounded-lg bg-brand px-3 py-2.5 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
+      {pending ? "Please wait…" : label}
+    </button>
+  );
+}
+
+export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: string }) {
+  const [state, formAction] = useFormState<AuthState, FormData>(mode === "signup" ? signUp : signIn, {});
+
+  async function google() {
+    const sb = getBrowserSupabase();
+    await sb.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(next ?? "/dashboard")}` },
+    });
   }
 
   return (
-    <form onSubmit={submit} className="mt-6 space-y-3">
-      {mode === "signup" && <input className={input} placeholder="Full name" required />}
-      <input className={input} type="email" placeholder="Work email" required />
-      <input className={input} type="password" placeholder="Password" required />
-      <button type="submit" disabled={busy} className="w-full rounded-lg bg-brand px-3 py-2.5 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
-        {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
-      </button>
-      <button type="button" onClick={() => router.push(mode === "signup" ? "/onboarding" : "/dashboard")} className="w-full rounded-lg border border-border px-3 py-2.5 text-sm text-white transition hover:bg-surface-2">
+    <form action={formAction} className="mt-6 space-y-3">
+      {mode === "signup" && <input name="name" className={input} placeholder="Full name" autoComplete="name" required />}
+      <input name="email" type="email" className={input} placeholder="Work email" autoComplete="email" required />
+      <input name="password" type="password" className={input} placeholder="Password" autoComplete={mode === "signup" ? "new-password" : "current-password"} required minLength={mode === "signup" ? 8 : undefined} />
+      {next && <input type="hidden" name="next" value={next} />}
+
+      {state?.error && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">{state.error}</p>}
+      {state?.message && <p className="rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-xs text-success">{state.message}</p>}
+
+      <Submit label={mode === "signup" ? "Create account" : "Sign in"} />
+      <button type="button" onClick={google} className="w-full rounded-lg border border-border px-3 py-2.5 text-sm text-white transition hover:bg-surface-2">
         Continue with Google
       </button>
-      <p className="pt-1 text-center text-[11px] text-muted">Authentication connects to your provider at launch.</p>
+      <p className="pt-1 text-center text-[11px] text-muted">By continuing you agree to our Terms and Privacy Policy.</p>
     </form>
   );
 }

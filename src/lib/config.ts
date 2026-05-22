@@ -12,6 +12,8 @@ export interface AppConfig {
   orgName: string;
   /** Monthly revenue quota, used for goal attainment. */
   monthlyQuota: number;
+  /** When true, app routes require a signed-in user (multi-tenant mode). */
+  authRequired: boolean;
 }
 
 export function getConfig(): AppConfig {
@@ -22,5 +24,6 @@ export function getConfig(): AppConfig {
     providerId: process.env.CRM_PROVIDER ?? "auto",
     orgName: process.env.NEXT_PUBLIC_ORG_NAME ?? "Your Company",
     monthlyQuota: Number(process.env.NEXT_PUBLIC_MONTHLY_QUOTA ?? 250000),
+    authRequired: process.env.NEXT_PUBLIC_AUTH_REQUIRED === "true",
   };
 }

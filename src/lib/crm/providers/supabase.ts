@@ -14,6 +14,8 @@ import type {
 } from "@/lib/crm/types";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { getActiveOrgId } from "@/lib/supabase/tenant";
+import { getSessionUser } from "@/lib/auth";
+import { ensureOrgForUser } from "@/lib/supabase/provision";
 import type {
   ActivityRow,
   ContactRow,
@@ -41,10 +43,14 @@ export class SupabaseProvider implements CrmProvider {
 
   private orgId(): Promise<string> {
     if (!this.orgIdPromise) {
-      this.orgIdPromise = getActiveOrgId(this.client).then((id) => {
-        if (!id) throw new Error("No org found — run the bootstrap to initialize the database.");
+      this.orgIdPromise = (async () => {
+        // Multi-tenant: a signed-in user resolves to (and provisions) their own
+        // org. Demo / single-tenant: fall back to DEFAULT_ORG_ID or first org.
+        const user = await getSessionUser();
+        const id = user ? await ensureOrgForUser(user) : await getActiveOrgId(this.client);
+        if (!id) throw new Error("No org found — sign in or run the bootstrap to initialize the database.");
         return id;
-      });
+      })();
     }
     return this.orgIdPromise;
   }

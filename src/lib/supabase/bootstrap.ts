@@ -16,7 +16,12 @@ export interface BootstrapResult {
  *
  * Idempotency is the caller's concern — run once per org.
  */
-export async function bootstrapOrg(opts?: { industryId?: string; demo?: boolean; orgName?: string }): Promise<BootstrapResult> {
+export async function bootstrapOrg(opts?: {
+  industryId?: string;
+  demo?: boolean;
+  orgName?: string;
+  member?: { authUserId?: string; name?: string; email?: string; role?: string };
+}): Promise<BootstrapResult> {
   const client = getSupabase();
   if (!client) throw new Error("Supabase is not configured");
 
@@ -63,7 +68,13 @@ export async function bootstrapOrg(opts?: { industryId?: string; demo?: boolean;
   // 3. Default member
   const { data: member, error: memberErr } = await client
     .from("members")
-    .insert({ org_id: orgId, name: "You", role: "owner" })
+    .insert({
+      org_id: orgId,
+      name: opts?.member?.name ?? "You",
+      email: opts?.member?.email ?? null,
+      role: opts?.member?.role ?? "owner",
+      auth_user_id: opts?.member?.authUserId ?? null,
+    })
     .select("id")
     .single();
   if (memberErr) throw new Error(`member: ${memberErr.message}`);

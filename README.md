@@ -116,6 +116,22 @@ npm run db:bootstrap          # POSTs /api/admin/bootstrap with ADMIN_TOKEN
 The registry auto-switches to the Supabase provider once the env vars are set —
 no code changes. `db:bootstrap` is one-time per org.
 
+## Authentication & multi-tenancy
+
+Auth is **off by default** (public demo on a shared org). To enable real
+multi-tenant mode, set `NEXT_PUBLIC_AUTH_REQUIRED=true`:
+
+- Supabase Auth (email/password + Google OAuth) via `@supabase/ssr`; middleware
+  refreshes sessions and gates app routes.
+- On first sign-in, each user is auto-provisioned a clean org (pipeline +
+  stages + owner member, linked via `members.auth_user_id`) — the provider
+  resolves every request to the signed-in user's org.
+- With auth off, the app uses the service-role key + `DEFAULT_ORG_ID` (or the
+  first org) so the demo and single-tenant deploys work with zero login.
+
+Server hardening: security headers, `/api/health` probe, error boundary, and
+`robots`/`sitemap` for SEO.
+
 ## Deploy
 
 Deployable to Vercel as a standard Next.js app. Set the env vars from

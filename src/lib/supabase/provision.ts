@@ -1,0 +1,35 @@
+import { cache } from "react";
+import { getSupabase } from "@/lib/supabase/client";
+import { bootstrapOrg } from "@/lib/supabase/bootstrap";
+import type { SessionUser } from "@/lib/auth";
+
+function workspaceName(email: string): string {
+  const domain = email.split("@")[1]?.split(".")[0] ?? "";
+  if (!domain) return "My Workspace";
+  return domain.charAt(0).toUpperCase() + domain.slice(1);
+}
+
+/**
+ * Ensure the signed-in user belongs to an org, creating one (clean, no demo
+ * data) on first sign-in. Wrapped in React cache() so the many provider calls
+ * in a single request dedupe to one promise — preventing duplicate-org races.
+ */
+export const ensureOrgForUser = cache(async (user: SessionUser): Promise<string | null> => {
+  const client = getSupabase();
+  if (!client) return null;
+
+  const { data } = await client
+    .from("members")
+    .select("org_id")
+    .eq("auth_user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (data?.org_id) return data.org_id as string;
+
+  const res = await bootstrapOrg({
+    demo: false,
+    orgName: workspaceName(user.email),
+    member: { authUserId: user.id, name: user.name, email: user.email, role: "owner" },
+  });
+  return res.orgId;
+});
