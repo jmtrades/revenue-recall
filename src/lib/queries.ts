@@ -1,5 +1,6 @@
 import { getProvider } from "@/lib/crm/registry";
 import { getConfig } from "@/lib/config";
+import { getOrgSettings } from "@/lib/org";
 import { getIndustry } from "@/lib/industries";
 import { computeMetrics, type PipelineMetrics } from "@/lib/analytics";
 import { buildRecallQueue, summarizeRecall, type RecallItem, type RecallSummary } from "@/lib/recall/engine";
@@ -394,10 +395,10 @@ export interface Forecast {
 
 export async function getForecast(): Promise<Forecast> {
   const provider = getProvider();
-  const [pipelines, opps] = await Promise.all([provider.listPipelines(), provider.listOpportunities()]);
+  const [pipelines, opps, org] = await Promise.all([provider.listPipelines(), provider.listOpportunities(), getOrgSettings()]);
   const pipeline = pipelines[0];
   const stageById = new Map(pipeline.stages.map((s) => [s.id, s]));
-  const currency = getIndustry(getConfig().industryId).currency;
+  const currency = org.currency;
 
   let commit = 0;
   let bestCase = 0;
@@ -422,7 +423,7 @@ export async function getForecast(): Promise<Forecast> {
 
   return {
     currency,
-    quota: getConfig().monthlyQuota,
+    quota: org.monthlyQuota,
     commit: Math.round(commit),
     bestCase: Math.round(bestCase),
     pipeline: Math.round(pipelineVal),

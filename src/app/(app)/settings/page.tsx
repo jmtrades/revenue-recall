@@ -4,35 +4,35 @@ import { listIntegrations, getProvider } from "@/lib/crm/registry";
 import { isAiConfigured } from "@/lib/ai/client";
 import { channelStatus } from "@/lib/comms";
 import { getTeamAndPipeline } from "@/lib/queries";
-import { money, pct } from "@/lib/format";
+import { getOrgSettings } from "@/lib/org";
+import { pct } from "@/lib/format";
 import { PageHeader, Card, Avatar, InfoRow } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
+import { OrgSettingsForm } from "@/components/OrgSettingsForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const cfg = getConfig();
-  const active = getIndustry(cfg.industryId);
+  const org = await getOrgSettings();
+  const active = getIndustry(org.industryId);
   const integrations = listIntegrations();
   const { users, pipeline } = await getTeamAndPipeline();
 
   const general = (
     <Card>
-      <InfoRow label="Organization">{cfg.orgName}</InfoRow>
-      <InfoRow label="Industry">{active.label}</InfoRow>
-      <InfoRow label="Currency">{active.currency}</InfoRow>
-      <InfoRow label="Monthly quota">{money(cfg.monthlyQuota, active.currency)}</InfoRow>
-      <InfoRow label="Active CRM">{getProvider().info().label}</InfoRow>
-      <InfoRow label="AI assistant">
-        <span className={`pill ${isAiConfigured() ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>
-          {isAiConfigured() ? "Connected" : "Template fallback"}
-        </span>
-      </InfoRow>
-      <p className="mt-4 text-xs text-muted">
-        These are configured via environment variables (<code className="text-brand">NEXT_PUBLIC_ORG_NAME</code>,{" "}
-        <code className="text-brand">NEXT_PUBLIC_INDUSTRY</code>, <code className="text-brand">NEXT_PUBLIC_MONTHLY_QUOTA</code>,{" "}
-        <code className="text-brand">CRM_PROVIDER</code>). Editable in-app once a database is wired.
-      </p>
+      <OrgSettingsForm initialName={org.name} initialQuota={org.monthlyQuota} persisted={org.persisted} />
+      <div className="mt-5 border-t border-border pt-4">
+        <InfoRow label="Industry">{active.label}</InfoRow>
+        <InfoRow label="Currency">{org.currency}</InfoRow>
+        <InfoRow label="Active CRM">{getProvider().info().label}</InfoRow>
+        <InfoRow label="AI assistant">
+          <span className={`pill ${isAiConfigured() ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>
+            {isAiConfigured() ? "Connected" : "Template fallback"}
+          </span>
+        </InfoRow>
+        <InfoRow label="Storage">{org.persisted ? "Database" : "In-memory / env"}</InfoRow>
+      </div>
     </Card>
   );
 

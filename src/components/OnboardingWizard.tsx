@@ -16,9 +16,25 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
   const steps = ["Industry", "Workspace", "Team"];
   const input = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-brand";
 
-  function next() {
-    if (step < steps.length - 1) setStep(step + 1);
-    else router.push("/dashboard");
+  const [finishing, setFinishing] = useState(false);
+
+  async function next() {
+    if (step < steps.length - 1) {
+      setStep(step + 1);
+      return;
+    }
+    setFinishing(true);
+    // Persist what we can (name + goal); ignored gracefully if no DB.
+    try {
+      await fetch("/api/org", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: org || undefined, monthlyQuota: Number(quota) || undefined }),
+      });
+    } catch {
+      /* non-blocking */
+    }
+    router.push("/dashboard");
   }
 
   return (
@@ -87,8 +103,8 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
         <button onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0} className="rounded-lg px-3 py-2 text-sm text-muted hover:text-white disabled:opacity-0">
           ← Back
         </button>
-        <button onClick={next} className="rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white transition hover:bg-brand/90">
-          {step === steps.length - 1 ? "Finish & enter →" : "Continue"}
+        <button onClick={next} disabled={finishing} className="rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
+          {step === steps.length - 1 ? (finishing ? "Setting up…" : "Finish & enter →") : "Continue"}
         </button>
       </div>
       <p className="mt-3 text-center text-[11px] text-muted">Your selections persist once a database is connected.</p>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getOverview, getActivityFeed, getReports } from "@/lib/queries";
-import { getConfig } from "@/lib/config";
+import { getOrgSettings } from "@/lib/org";
 import { compactMoney, money, pct, relativeDays } from "@/lib/format";
 import { PageHeader, Stat, ReasonBadge, ScoreDot, Card, Avatar, ActivityIcon, Button } from "@/components/ui";
 import { Funnel, ProgressRing, BarChart, Sparkline } from "@/components/charts";
@@ -13,11 +13,10 @@ function timeAgo(iso: string): string {
 }
 
 export default async function DashboardPage() {
-  const [o, feed, reports] = await Promise.all([getOverview(), getActivityFeed(8), getReports()]);
+  const [o, feed, reports, org] = await Promise.all([getOverview(), getActivityFeed(8), getReports(), getOrgSettings()]);
   const m = o.metrics;
-  const cfg = getConfig();
   const wonThisMonth = reports.monthlyWon[reports.monthlyWon.length - 1]?.value ?? 0;
-  const attainment = cfg.monthlyQuota > 0 ? wonThisMonth / cfg.monthlyQuota : 0;
+  const attainment = org.monthlyQuota > 0 ? wonThisMonth / org.monthlyQuota : 0;
 
   return (
     <div className="space-y-6">
@@ -52,8 +51,8 @@ export default async function DashboardPage() {
           <div className="flex flex-col items-center gap-3 py-2">
             <ProgressRing value={attainment} size={120} thickness={11} color={attainment >= 1 ? "#34d399" : "#5b8cff"} />
             <div className="text-center">
-              <div className="text-sm text-white">{money(wonThisMonth, m.currency)} <span className="text-muted">/ {compactMoney(cfg.monthlyQuota, m.currency)}</span></div>
-              <div className="text-xs text-muted">{attainment >= 1 ? "Goal reached 🎉" : `${money(Math.max(0, cfg.monthlyQuota - wonThisMonth), m.currency)} to go`}</div>
+              <div className="text-sm text-white">{money(wonThisMonth, m.currency)} <span className="text-muted">/ {compactMoney(org.monthlyQuota, m.currency)}</span></div>
+              <div className="text-xs text-muted">{attainment >= 1 ? "Goal reached 🎉" : `${money(Math.max(0, org.monthlyQuota - wonThisMonth), m.currency)} to go`}</div>
             </div>
           </div>
         </Card>
