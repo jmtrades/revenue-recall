@@ -1,5 +1,6 @@
 import { getProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
+import { getActiveVoice } from "@/lib/voice";
 import { getIndustry } from "@/lib/industries";
 import { buildRecallQueue } from "@/lib/recall/engine";
 import { draftMessage } from "@/lib/ai/draft";
@@ -58,11 +59,12 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
   const provider = getProvider();
 
   try {
-    const [pipelines, opps, contacts, org] = await Promise.all([
+    const [pipelines, opps, contacts, org, voice] = await Promise.all([
       provider.listPipelines(),
       provider.listOpportunities(),
       provider.listContacts(),
       getOrgSettings(),
+      getActiveVoice(),
     ]);
     const contactById = new Map<string, Contact>(contacts.map((c) => [c.id, c]));
     const industry = getIndustry(org.industryId);
@@ -107,6 +109,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
         daysSinceContact: t.days ?? daysSince(t.opp.lastActivityAt),
         history,
         instruction: task.goal,
+        voice,
       });
 
       const to =

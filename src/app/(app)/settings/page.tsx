@@ -5,17 +5,21 @@ import { isAiConfigured } from "@/lib/ai/client";
 import { channelStatus } from "@/lib/comms";
 import { getTeamAndPipeline } from "@/lib/queries";
 import { getOrgSettings } from "@/lib/org";
+import { getActiveVoice } from "@/lib/voice";
 import { pct } from "@/lib/format";
 import { PageHeader, Card, Avatar, InfoRow } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
 import { OrgSettingsForm } from "@/components/OrgSettingsForm";
+import { VoiceStudio } from "@/components/VoiceStudio";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const cfg = getConfig();
   const org = await getOrgSettings();
+  const voice = await getActiveVoice();
   const active = getIndustry(org.industryId);
+  const voiceTab = <VoiceStudio initial={voice} persisted={org.persisted} />;
   const integrations = listIntegrations();
   const { users, pipeline } = await getTeamAndPipeline();
 
@@ -220,6 +224,7 @@ export default async function SettingsPage() {
       <Tabs
         tabs={[
           { id: "general", label: "General", content: general },
+          { id: "voice", label: "Voice", content: voiceTab },
           { id: "industry", label: "Industry", content: industryTab },
           { id: "pipeline", label: "Pipeline", content: pipelineTab },
           { id: "integrations", label: "Integrations", content: integrationsTab },

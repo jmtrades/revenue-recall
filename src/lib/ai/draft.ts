@@ -16,6 +16,8 @@ export interface DraftInput {
   repName?: string;
   /** Optional extra instruction from a user-defined Autopilot task. */
   instruction?: string;
+  /** The rep's distilled writing voice + sign-off, so messages sound like them. */
+  voice?: { senderName?: string; profile?: string; signature?: string };
 }
 
 export interface DraftResult {
@@ -24,15 +26,17 @@ export interface DraftResult {
   source: "ai" | "template";
 }
 
-const SYSTEM = `You are an elite B2B/B2C sales copywriter embedded in a sales platform.
-You write outreach that gets replies: concise, specific, human, and respectful of the prospect's time.
+const SYSTEM = `You ghostwrite outreach AS a specific human sales rep. The message must read as if that person typed it themselves on their phone — never like an AI, an assistant, a bot, or a template.
 
-Rules:
-- Match the channel. Email: a short subject + 60-110 word body. SMS: under 320 characters, no subject. Call: a 4-6 bullet talk track (put it in the body, no subject).
-- Personalize from the supplied context (name, company, stage, what's happened). Never invent facts not given.
-- One clear call to action. No hype, no jargon, no "I hope this email finds you well".
-- For re-engagement (cold/lost deals): acknowledge time has passed, lead with a fresh reason or low-friction ask, give an easy out.
-- Warm, confident, peer-to-peer tone. Use the rep's first name to sign off if provided.
+Hard rules:
+- You are the rep, a real person. Never reveal or imply AI involvement. No "as an AI", no disclaimers, no robotic scaffolding.
+- When a VOICE PROFILE is provided, match it precisely — tone, rhythm, greetings, sign-off, quirks, emoji habits. The result should be indistinguishable from that person's own writing.
+- Sound like a busy human who actually knows this prospect: specific, brief, a little informal. Vary your phrasing — never formulaic.
+- Match the channel. Email: short subject + 50-110 word body. SMS: under 320 chars, no subject, conversational. Call: a 4-6 bullet talk track in the body, no subject.
+- Personalize from the supplied context only. Never invent facts. One clear, low-friction call to action.
+- Banned: "I hope this email finds you well", "I wanted to reach out", "circling back" clichés, corporate jargon, hype, exclamation overload.
+- Re-engagement: acknowledge time has passed like a human would, lead with a genuine reason or easy ask, give a graceful out.
+- Sign off in the rep's voice using their signature/name when provided.
 Return only the requested JSON.`;
 
 const SCHEMA = {
@@ -47,7 +51,7 @@ const SCHEMA = {
 
 function fallback(input: DraftInput): DraftResult {
   const first = input.contactName.split(" ")[0] || input.contactName;
-  const rep = input.repName ?? "";
+  const rep = input.voice?.signature || input.voice?.senderName || input.repName || "";
   const cold = (input.daysSinceContact ?? 0) >= 14 || input.recallReason === "lost_winnable";
 
   if (input.channel === "sms") {
@@ -84,10 +88,10 @@ export async function draftMessage(input: DraftInput): Promise<DraftResult> {
 Industry: ${input.industryLabel}
 Prospect: ${input.contactName}${input.company ? ` at ${input.company}` : ""}
 Deal: "${input.dealTitle}" — ${input.valueLabel} ${input.value} ${input.currency}, currently at stage "${input.stageLabel}"
-${input.recallReason ? `Recall reason: ${input.recallReason}\n` : ""}${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.repName ? `Rep (sign-off): ${input.repName}\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).join("\n- ")}` : "No prior activity logged."}
-${input.instruction ? `\nFollow this specific instruction from the rep:\n"""${input.instruction}"""` : ""}
+${input.recallReason ? `Recall reason: ${input.recallReason}\n` : ""}${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.voice?.senderName || input.repName ? `You are: ${input.voice?.senderName ?? input.repName}\n` : ""}${input.voice?.signature ? `Sign off as: ${input.voice.signature}\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).join("\n- ")}` : "No prior activity logged."}
+${input.voice?.profile ? `\nWrite in THIS person's voice — match it exactly so it sounds like them, not an AI:\n"""${input.voice.profile}"""` : ""}${input.instruction ? `\nAlso follow this instruction for this message:\n"""${input.instruction}"""` : ""}
 
-Write the ${input.channel} message now.`;
+Write the ${input.channel} message now, as this human.`;
 
   try {
     const out = await completeJson<{ subject?: string; body: string }>({

@@ -4,6 +4,7 @@ import { getDealDetail } from "@/lib/queries";
 import { getConfig } from "@/lib/config";
 import { getIndustry } from "@/lib/industries";
 import { draftMessage } from "@/lib/ai/draft";
+import { getActiveVoice } from "@/lib/voice";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -26,7 +27,9 @@ export async function POST(req: Request) {
   if (!detail) return NextResponse.json({ error: "Deal not found" }, { status: 404 });
 
   const industry = getIndustry(getConfig().industryId);
+  const voice = await getActiveVoice();
   const result = await draftMessage({
+    voice,
     channel: parsed.data.channel,
     contactName: detail.contact?.name ?? detail.opp.title,
     company: detail.contact?.company,
