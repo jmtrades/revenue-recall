@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { cache } from "@/lib/cache";
 import { getSupabase } from "@/lib/supabase/client";
 import { getSessionUser } from "@/lib/auth";
 import { ensureOrgForUser } from "@/lib/supabase/provision";

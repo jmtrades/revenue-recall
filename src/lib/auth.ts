@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { cache } from "@/lib/cache";
 import { getServerSupabase } from "@/lib/supabase/server";
 
 export interface SessionUser {

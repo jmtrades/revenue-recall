@@ -14,6 +14,8 @@ export interface DraftInput {
   daysSinceContact?: number;
   history?: string[];
   repName?: string;
+  /** Optional extra instruction from a user-defined Autopilot task. */
+  instruction?: string;
 }
 
 export interface DraftResult {
@@ -83,6 +85,7 @@ Industry: ${input.industryLabel}
 Prospect: ${input.contactName}${input.company ? ` at ${input.company}` : ""}
 Deal: "${input.dealTitle}" — ${input.valueLabel} ${input.value} ${input.currency}, currently at stage "${input.stageLabel}"
 ${input.recallReason ? `Recall reason: ${input.recallReason}\n` : ""}${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.repName ? `Rep (sign-off): ${input.repName}\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).join("\n- ")}` : "No prior activity logged."}
+${input.instruction ? `\nFollow this specific instruction from the rep:\n"""${input.instruction}"""` : ""}
 
 Write the ${input.channel} message now.`;
 

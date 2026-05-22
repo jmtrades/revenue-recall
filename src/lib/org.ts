@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { cache } from "@/lib/cache";
 import { getSupabase } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getConfig } from "@/lib/config";

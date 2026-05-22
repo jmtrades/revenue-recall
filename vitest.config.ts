@@ -3,7 +3,10 @@ import path from "path";
 
 export default defineConfig({
   resolve: {
-    alias: { "@": path.resolve(__dirname, "src") },
+    alias: {
+      "@": path.resolve(__dirname, "src"),
+      "next/headers": path.resolve(__dirname, "tests/stubs/next-headers.ts"),
+    },
   },
   test: {
     environment: "node",

@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { cache } from "@/lib/cache";
 import { getSupabase } from "@/lib/supabase/client";
 import { bootstrapOrg } from "@/lib/supabase/bootstrap";
 import type { SessionUser } from "@/lib/auth";
