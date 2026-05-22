@@ -108,6 +108,11 @@ npm run dev
 npm run db:bootstrap          # POSTs /api/admin/bootstrap with ADMIN_TOKEN
 ```
 
+> **Network can't reach Postgres (ports 5432/6543 firewalled)?** Apply the schema
+> over HTTPS via the Management API with a personal access token (`sbp_…`):
+> `curl -X POST https://api.supabase.com/v1/projects/<ref>/database/query -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data "{\"query\": $(jq -Rs . < supabase/schema.sql)}"`
+> Then `db:bootstrap` (which uses the REST API over 443) seeds the org.
+
 The registry auto-switches to the Supabase provider once the env vars are set —
 no code changes. `db:bootstrap` is one-time per org.
 

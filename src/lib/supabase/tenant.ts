@@ -20,10 +20,10 @@ export async function getActiveOrgId(client: SupabaseClient, authUserId?: string
     if (data?.org_id) return data.org_id as string;
   }
 
-  if (cached !== undefined) return cached;
+  if (cached) return cached;
   const { data } = await client.from("orgs").select("id").order("created_at", { ascending: true }).limit(1).maybeSingle();
-  cached = (data?.id as string) ?? null;
-  return cached;
+  if (data?.id) cached = data.id as string;
+  return (data?.id as string) ?? null;
 }
 
 export function clearOrgCache() {
