@@ -36,6 +36,21 @@ export interface AgentAction {
   value?: number;
 }
 
+export interface OutboxItem {
+  id: string;
+  runId?: string;
+  taskId?: string;
+  dealId?: string;
+  contactId?: string;
+  channel: "email" | "sms";
+  subject?: string;
+  body: string;
+  status: "pending" | "sent" | "dismissed";
+  source: "ai" | "template";
+  createdAt: string;
+  sentAt?: string;
+}
+
 export interface AgentRun {
   id: string;
   taskId: string;

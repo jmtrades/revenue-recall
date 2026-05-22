@@ -34,6 +34,7 @@ export function AgentsView({
   const [channel, setChannel] = useState("email");
   const [autonomy, setAutonomy] = useState("review");
   const [scope, setScope] = useState("recall_queue");
+  const [trigger, setTrigger] = useState("manual");
   const [creating, setCreating] = useState(false);
 
   const input = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand";
@@ -45,7 +46,7 @@ export function AgentsView({
       const res = await fetch("/api/agent/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, goal, channel, autonomy, scope }),
+        body: JSON.stringify({ name, goal, channel, autonomy, scope, trigger }),
       });
       const b = await res.json();
       if (!res.ok) throw new Error(b.error ?? "Failed");
@@ -104,10 +105,18 @@ export function AgentsView({
                 <option value="none">Recommendation only</option>
               </select>
             </div>
-            <select className={input} value={autonomy} onChange={(e) => setAutonomy(e.target.value)}>
-              <option value="review">Review — draft for me to approve</option>
-              <option value="auto">Autonomous — send automatically</option>
-            </select>
+            <div className="grid grid-cols-2 gap-2">
+              <select className={input} value={autonomy} onChange={(e) => setAutonomy(e.target.value)}>
+                <option value="review">Review — I approve</option>
+                <option value="auto">Autonomous — send</option>
+              </select>
+              <select className={input} value={trigger} onChange={(e) => setTrigger(e.target.value)}>
+                <option value="manual">Run manually</option>
+                <option value="daily">Daily (auto)</option>
+                <option value="on_idle_deal">When a deal goes idle</option>
+                <option value="on_new_lead">When a lead is created</option>
+              </select>
+            </div>
             <button onClick={create} disabled={creating || !name.trim() || !goal.trim()} className="w-full rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
               {creating ? "Creating…" : "Create task"}
             </button>

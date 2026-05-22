@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { createTask } from "@/lib/agent/store";
+import { createTask, listOutbox } from "@/lib/agent/store";
 import { runTask } from "@/lib/agent/engine";
 
 // No AI key + no Supabase env → template drafting + in-memory store (built-in CRM).
@@ -24,6 +24,15 @@ describe("autopilot engine", () => {
     expect(run.actions.every((a) => a.result === "drafted")).toBe(true);
     expect(run.actions.every((a) => a.source === "template")).toBe(true);
     expect(run.summary).toMatch(/prepared/);
+  });
+
+  it("queues review-mode email drafts to the approval inbox with full bodies", async () => {
+    const task = await createTask({ name: "Approve me", goal: "Re-engage.", scope: "recall_queue", channel: "email", autonomy: "review" });
+    const run = await runTask(task);
+    const pending = await listOutbox("pending");
+    const fromRun = pending.filter((p) => p.runId === run.id);
+    expect(fromRun.length).toBe(run.itemsProcessed);
+    expect(fromRun.every((p) => p.body.length > 0 && p.status === "pending")).toBe(true);
   });
 
   it("produces recommendation-only actions for the 'none' channel", async () => {

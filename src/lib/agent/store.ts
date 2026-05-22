@@ -1,7 +1,7 @@
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getActiveOrgId } from "@/lib/supabase/tenant";
-import type { AgentRun, AgentTask, NewAgentTask } from "@/lib/agent/types";
+import type { AgentRun, AgentTask, NewAgentTask, OutboxItem } from "@/lib/agent/types";
 
 /**
  * Persistence for Autopilot tasks + the run ledger. Uses Supabase when
@@ -17,6 +17,24 @@ async function orgId(): Promise<string> {
 // ---- in-memory fallback (demo) ----
 const memTasks: AgentTask[] = [];
 const memRuns: AgentRun[] = [];
+const memOutbox: OutboxItem[] = [];
+
+function mapOutbox(r: Record<string, unknown>): OutboxItem {
+  return {
+    id: r.id as string,
+    runId: (r.run_id as string) ?? undefined,
+    taskId: (r.task_id as string) ?? undefined,
+    dealId: (r.deal_id as string) ?? undefined,
+    contactId: (r.contact_id as string) ?? undefined,
+    channel: r.channel as OutboxItem["channel"],
+    subject: (r.subject as string) ?? undefined,
+    body: r.body as string,
+    status: r.status as OutboxItem["status"],
+    source: r.source as OutboxItem["source"],
+    createdAt: r.created_at as string,
+    sentAt: (r.sent_at as string) ?? undefined,
+  };
+}
 
 function mapTask(r: Record<string, unknown>): AgentTask {
   return {
@@ -141,4 +159,62 @@ export async function listRuns(taskId?: string, limit = 25): Promise<AgentRun[]>
   const { data, error } = await q.order("started_at", { ascending: false }).limit(limit);
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapRun);
+}
+
+export async function createOutboxItem(item: Omit<OutboxItem, "id" | "status" | "createdAt">): Promise<OutboxItem> {
+  if (!isSupabaseConfigured()) {
+    const o: OutboxItem = { ...item, id: `ob_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, status: "pending", createdAt: new Date().toISOString() };
+    memOutbox.unshift(o);
+    return o;
+  }
+  const client = getSupabase()!;
+  const { data, error } = await client
+    .from("agent_outbox")
+    .insert({
+      org_id: await orgId(),
+      run_id: item.runId ?? null,
+      task_id: item.taskId ?? null,
+      deal_id: item.dealId ?? null,
+      contact_id: item.contactId ?? null,
+      channel: item.channel,
+      subject: item.subject ?? null,
+      body: item.body,
+      source: item.source,
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return mapOutbox(data);
+}
+
+export async function listOutbox(status: OutboxItem["status"] = "pending", limit = 100): Promise<OutboxItem[]> {
+  if (!isSupabaseConfigured()) return memOutbox.filter((o) => o.status === status).slice(0, limit);
+  const client = getSupabase()!;
+  const { data, error } = await client.from("agent_outbox").select("*").eq("org_id", await orgId()).eq("status", status).order("created_at", { ascending: false }).limit(limit);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(mapOutbox);
+}
+
+export async function getOutboxItem(id: string): Promise<OutboxItem | null> {
+  if (!isSupabaseConfigured()) return memOutbox.find((o) => o.id === id) ?? null;
+  const client = getSupabase()!;
+  const { data } = await client.from("agent_outbox").select("*").eq("org_id", await orgId()).eq("id", id).maybeSingle();
+  return data ? mapOutbox(data) : null;
+}
+
+export async function setOutboxStatus(id: string, status: OutboxItem["status"]): Promise<void> {
+  const sentAt = status === "sent" ? new Date().toISOString() : null;
+  if (!isSupabaseConfigured()) {
+    const o = memOutbox.find((x) => x.id === id);
+    if (o) { o.status = status; if (sentAt) o.sentAt = sentAt; }
+    return;
+  }
+  await getSupabase()!.from("agent_outbox").update({ status, sent_at: sentAt }).eq("org_id", await orgId()).eq("id", id);
+}
+
+export async function countPendingOutbox(): Promise<number> {
+  if (!isSupabaseConfigured()) return memOutbox.filter((o) => o.status === "pending").length;
+  const client = getSupabase()!;
+  const { count } = await client.from("agent_outbox").select("id", { count: "exact", head: true }).eq("org_id", await orgId()).eq("status", "pending");
+  return count ?? 0;
 }

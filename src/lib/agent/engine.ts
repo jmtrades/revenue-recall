@@ -6,7 +6,7 @@ import { draftMessage } from "@/lib/ai/draft";
 import { isAiConfigured } from "@/lib/ai/client";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { compactMoney } from "@/lib/format";
-import { createRun, touchTask } from "@/lib/agent/store";
+import { createRun, createOutboxItem, touchTask } from "@/lib/agent/store";
 import type { AgentAction, AgentRun, AgentTask } from "@/lib/agent/types";
 import type { Contact, Opportunity, Pipeline } from "@/lib/crm/types";
 
@@ -69,6 +69,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
     const targets = await resolveTargets(task, pipelines, opps);
 
     const actions: AgentAction[] = [];
+    const pending: { dealId: string; contactId: string; channel: "email" | "sms"; subject?: string; body: string; source: "ai" | "template" }[] = [];
     let recoverable = 0;
     let sent = 0;
     let drafted = 0;
@@ -137,6 +138,11 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
       }
       if (result === "drafted" || result === "queued") drafted += 1;
 
+      // Review-mode email/SMS drafts become approval-inbox items.
+      if (result === "drafted" && (task.channel === "email" || task.channel === "sms")) {
+        pending.push({ dealId: t.opp.id, contactId: t.opp.contactId, channel: task.channel, subject: draft.subject, body: draft.body, source: draft.source });
+      }
+
       actions.push({
         type: task.channel,
         dealId: t.opp.id,
@@ -154,7 +160,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
         ? "No matching deals to work right now."
         : `Worked ${targets.length} deal${targets.length === 1 ? "" : "s"} · ${verb}${recoverable > 0 ? ` · ${compactMoney(recoverable, "USD")} recoverable` : ""}.`;
 
-    return createRun({
+    const run = await createRun({
       taskId: task.id,
       status: "completed",
       summary,
@@ -164,10 +170,12 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
       ai: isAiConfigured(),
       startedAt,
       finishedAt: new Date().toISOString(),
-    }).then(async (run) => {
-      await touchTask(task.id);
-      return run;
     });
+    for (const p of pending) {
+      await createOutboxItem({ runId: run.id, taskId: task.id, ...p });
+    }
+    await touchTask(task.id);
+    return run;
   } catch (err) {
     return createRun({
       taskId: task.id,

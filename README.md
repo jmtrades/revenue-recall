@@ -55,7 +55,8 @@ supabase/migrations/        Org-scoped Postgres schema (RLS) for the built-in CR
 ## Surfaces
 
 - **Dashboard** — KPIs, revenue trend, goal ring, funnel, recall highlights, activity feed, leaderboard.
-- **Autopilot** — users describe a task in plain English ("re-engage cold deals and offer a call"); an AI agent works each matching deal (drafts in review mode, or sends + logs in autonomous mode) and records every action to an immutable run/outcome ledger. Custom scope (recall queue / all open / a stage), channel, and autonomy per task.
+- **Autopilot** — users describe a task in plain English ("re-engage cold deals and offer a call"); an AI agent works each matching deal (drafts in review mode, or sends + logs in autonomous mode) and records every action to an immutable run/outcome ledger. Custom scope (recall queue / all open / a stage), channel, autonomy, and **trigger** (manual / daily / on-idle / on-new-lead) per task. Scheduled tasks run via `/api/agent/cron` (Vercel Cron in `vercel.json`, protected by `CRON_SECRET`).
+- **Approvals inbox** — review-mode AI drafts queue here; approve to send (+ auto-log) or dismiss, one click each.
 - **AI execution layer** — Claude drafts personalized email/SMS/call outreach per deal and generates strategic deal briefs (situation, next step, talking points, risk). On the deal page and inline in the recall queue. Falls back to high-quality templates with no API key; set `ANTHROPIC_API_KEY` to go live.
 - **Revenue Recall** — ranked at-risk queue with reason filters, next-best-action, and one-click AI draft.
 - **Pipeline** — drag-and-drop kanban; **Deal** & **Contact** detail with timelines and inline logging.
