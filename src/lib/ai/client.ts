@@ -1,4 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { consumeAiAction } from "@/lib/billing/usage";
+
+/** Thrown when an org has exhausted its AI actions and credits. Callers fall
+ *  back to deterministic templates, so the product degrades gracefully. */
+export class AiQuotaError extends Error {
+  constructor() {
+    super("AI action quota exhausted");
+    this.name = "AiQuotaError";
+  }
+}
 
 /**
  * Anthropic client factory. Returns null when no API key is configured, so the
@@ -44,6 +54,13 @@ export async function completeJson<T>(opts: {
 }): Promise<T> {
   const client = getAnthropic();
   if (!client) throw new Error("AI not configured");
+
+  // Meter every paid model call at this single chokepoint, so no path (drafts,
+  // briefs, summaries, voice distillation, autopilot, inbound auto-reply) can
+  // bypass the plan quota. On exhaustion we throw; callers fall back to free
+  // templates. This is what keeps inference cost from ever outrunning revenue.
+  const gate = await consumeAiAction();
+  if (!gate.ok) throw new AiQuotaError();
 
   // Built untyped: output_config / adaptive thinking are current API fields
   // that may post-date the installed SDK's static types.

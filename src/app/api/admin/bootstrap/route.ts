@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { bootstrapOrg } from "@/lib/supabase/bootstrap";
+import { authorizeSecret } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -20,9 +21,7 @@ export async function POST(req: Request) {
   if (!isSupabaseConfigured()) {
     return NextResponse.json({ error: "Supabase is not configured" }, { status: 409 });
   }
-  const adminToken = process.env.ADMIN_TOKEN;
-  const auth = req.headers.get("authorization") ?? "";
-  if (!adminToken || auth !== `Bearer ${adminToken}`) {
+  if (!authorizeSecret(req, process.env.ADMIN_TOKEN)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

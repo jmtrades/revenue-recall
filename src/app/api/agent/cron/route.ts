@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { listTasks } from "@/lib/agent/store";
 import { runTask } from "@/lib/agent/engine";
+import { authorizeSecret } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -11,10 +12,8 @@ export const maxDuration = 300;
  * Vercel's cron header.
  */
 function authorized(req: Request): boolean {
-  const secret = process.env.CRON_SECRET;
   if (req.headers.get("x-vercel-cron")) return true; // Vercel-signed cron invocation
-  if (secret && req.headers.get("authorization") === `Bearer ${secret}`) return true;
-  return false;
+  return authorizeSecret(req, process.env.CRON_SECRET);
 }
 
 export async function POST(req: Request) {

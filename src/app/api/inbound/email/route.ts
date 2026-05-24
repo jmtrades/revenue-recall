@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { handleInbound } from "@/lib/inbound";
+import { authorizeSecret } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -12,11 +13,11 @@ const Body = z.object({
 });
 
 /** Generic inbound-email webhook (JSON). Point your email provider's inbound
- *  parse / forwarding webhook here. Token-gated via ?token=INBOUND_TOKEN. */
+ *  parse / forwarding webhook here. Authorize with INBOUND_TOKEN via an
+ *  `Authorization: Bearer` header (preferred) or `?token=`. */
 export async function POST(req: Request) {
-  const url = new URL(req.url);
   const token = process.env.INBOUND_TOKEN;
-  if (token && url.searchParams.get("token") !== token) {
+  if (token && !authorizeSecret(req, token)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const parsed = Body.safeParse(await req.json().catch(() => null));

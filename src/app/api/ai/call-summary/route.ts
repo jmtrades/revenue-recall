@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDealDetail } from "@/lib/queries";
 import { summarizeCall } from "@/lib/ai/callSummary";
-import { gateAiAction } from "@/lib/billing/gate";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -16,8 +15,6 @@ export async function POST(req: Request) {
   const detail = await getDealDetail(parsed.data.dealId);
   if (!detail) return NextResponse.json({ error: "Deal not found" }, { status: 404 });
 
-  const gated = await gateAiAction();
-  if (gated) return gated;
 
   const result = await summarizeCall({
     contactName: detail.contact?.name ?? detail.opp.title,
