@@ -28,7 +28,7 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
 
   return (
     <form action={formAction} className="mt-6 space-y-3">
-      {mode === "signup" && <input name="name" className={input} placeholder="Full name" autoComplete="name" required />}
+      {mode === "signup" && <input name="name" className={input} placeholder="Full name (optional)" autoComplete="name" />}
       <input name="email" type="email" className={input} placeholder="Work email" autoComplete="email" required />
       <input name="password" type="password" className={input} placeholder="Password" autoComplete={mode === "signup" ? "new-password" : "current-password"} required minLength={mode === "signup" ? 8 : undefined} />
       {next && <input type="hidden" name="next" value={next} />}

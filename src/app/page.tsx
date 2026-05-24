@@ -76,7 +76,7 @@ export default function LandingPage() {
               Recover the revenue <span className="gradient-text">you&apos;re about to lose.</span>
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
-              Revenue Recall finds the deals going cold in <em>any</em> CRM — or none — drafts the outreach with AI, and helps you close the loop. Built for every industry.
+              Most lost revenue never goes to a competitor — it just goes quiet. Revenue Recall ranks every deal slipping away, drafts the outreach in your voice, and closes the loop. Any CRM, or none.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link href="/signup" className="rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand/90">

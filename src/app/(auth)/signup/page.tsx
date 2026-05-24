@@ -7,9 +7,13 @@ export default function SignupPage() {
   return (
     <div>
       <h2 className="text-2xl font-semibold text-white">Create your account</h2>
-      <p className="mt-1 text-sm text-muted">Start recovering revenue in minutes.</p>
+      <p className="mt-1 text-sm text-muted">Free forever to start · No credit card · Live in 2 minutes.</p>
       <AuthForm mode="signup" />
-      <p className="mt-6 text-center text-sm text-muted">
+      <p className="mt-4 text-center text-sm text-muted">
+        Just looking?{" "}
+        <Link href="/dashboard" className="text-brand hover:underline">Explore the live demo →</Link>
+      </p>
+      <p className="mt-2 text-center text-sm text-muted">
         Already have an account?{" "}
         <Link href="/login" className="text-brand hover:underline">Sign in</Link>
       </p>
