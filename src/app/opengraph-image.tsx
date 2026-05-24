@@ -5,6 +5,15 @@ export const alt = "Revenue Recall — recover the revenue you're about to lose"
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
+function Bullet({ label }: { label: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ display: "flex", width: 12, height: 12, borderRadius: 12, background: "#5b8cff" }} />
+      <span style={{ display: "flex" }}>{label}</span>
+    </div>
+  );
+}
+
 export default function OpengraphImage() {
   return new ImageResponse(
     (
@@ -15,8 +24,7 @@ export default function OpengraphImage() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          background:
-            "radial-gradient(1000px 500px at 78% -10%, rgba(91,140,255,0.28), transparent), #0b0e14",
+          backgroundImage: "linear-gradient(135deg, #0b0e14 0%, #121722 55%, #1a2440 100%)",
           padding: "72px",
           fontFamily: "sans-serif",
         }}
@@ -38,7 +46,7 @@ export default function OpengraphImage() {
           >
             RR
           </div>
-          <div style={{ color: "#fff", fontSize: 30, fontWeight: 600 }}>
+          <div style={{ display: "flex", color: "#fff", fontSize: 30, fontWeight: 600 }}>
             Revenue Recall
           </div>
         </div>
@@ -50,16 +58,14 @@ export default function OpengraphImage() {
               color: "#9cc0ff",
               fontSize: 26,
               fontWeight: 600,
-              letterSpacing: 1,
-              textTransform: "uppercase",
+              letterSpacing: 2,
             }}
           >
-            The universal sales OS
+            THE UNIVERSAL SALES OS
           </div>
           <div
             style={{
               display: "flex",
-              flexWrap: "wrap",
               color: "#fff",
               fontSize: 76,
               fontWeight: 700,
@@ -75,18 +81,18 @@ export default function OpengraphImage() {
               color: "#8a93a6",
               fontSize: 30,
               lineHeight: 1.35,
-              maxWidth: 900,
+              maxWidth: 920,
             }}
           >
-            Finds the deals going cold in any CRM — or none — drafts the outreach
-            with AI, and closes the loop.
+            Ranks every deal slipping away, drafts the outreach in your voice, and
+            closes the loop. Any CRM, or none.
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 28, color: "#8a93a6", fontSize: 24 }}>
-          <span style={{ display: "flex" }}>↺ Revenue Recall engine</span>
-          <span style={{ display: "flex" }}>⚡ Autopilot</span>
-          <span style={{ display: "flex" }}>◎ Every industry</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 40, color: "#8a93a6", fontSize: 24 }}>
+          <Bullet label="Revenue Recall engine" />
+          <Bullet label="Autopilot" />
+          <Bullet label="Every industry" />
         </div>
       </div>
     ),
