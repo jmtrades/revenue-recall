@@ -12,6 +12,7 @@ export function MarketingNav() {
           <a href="#features" className="transition hover:text-white">Features</a>
           <a href="#how" className="transition hover:text-white">How it works</a>
           <a href="#industries" className="transition hover:text-white">Industries</a>
+          <a href="#roi" className="transition hover:text-white">ROI</a>
           <a href="#pricing" className="transition hover:text-white">Pricing</a>
         </nav>
         <div className="flex items-center gap-2">

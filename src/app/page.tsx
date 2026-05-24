@@ -3,6 +3,7 @@ import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { Footer } from "@/components/marketing/Footer";
 import { HeroPreview } from "@/components/marketing/HeroPreview";
 import { PricingPlans } from "@/components/marketing/PricingPlans";
+import { RoiCalculator } from "@/components/marketing/RoiCalculator";
 import { ExitIntent } from "@/components/marketing/ExitIntent";
 import { INDUSTRIES } from "@/lib/industries";
 
@@ -244,6 +245,9 @@ export default function LandingPage() {
           ))}
         </div>
       </section>
+
+      {/* ROI calculator */}
+      <RoiCalculator />
 
       {/* Pricing */}
       <PricingPlans />

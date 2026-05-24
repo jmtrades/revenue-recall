@@ -29,8 +29,8 @@ const PLANS: Plan[] = [
   },
   {
     name: "Growth",
-    monthly: 49,
-    annual: 39,
+    monthly: 79,
+    annual: 63,
     unit: "/user/mo",
     blurb: "For teams recovering serious revenue.",
     cta: "Start free trial",
@@ -68,6 +68,9 @@ export function PricingPlans() {
         <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
           Start free. Scale when it pays for itself.
         </h2>
+        <p className="mt-4 text-muted">
+          One recovered deal usually covers a year of seats. Comparable sales tools start at $100+/user/mo.
+        </p>
       </div>
 
       <div className="mt-8 flex items-center justify-center gap-3">
@@ -107,9 +110,14 @@ export function PricingPlans() {
               <div className="mt-5 flex items-end gap-1">
                 <span className="text-4xl font-semibold text-white">{price}</span>
                 <span className="mb-1 text-sm text-muted">{p.unit}</span>
+                {!isCustom && p.monthly! > 0 && annual && (
+                  <span className="mb-1 text-sm text-muted line-through">${p.monthly}</span>
+                )}
               </div>
-              <p className="mt-1 h-4 text-xs text-muted">
-                {!isCustom && p.monthly! > 0 && annual ? "billed annually" : " "}
+              <p className="mt-1 h-4 text-xs text-success">
+                {!isCustom && p.monthly! > 0 && annual
+                  ? `billed annually · save $${(p.monthly! - p.annual!) * 12}/user/yr`
+                  : " "}
               </p>
               <Link
                 href={p.href}
@@ -128,6 +136,10 @@ export function PricingPlans() {
           );
         })}
       </div>
+
+      <p className="mt-8 text-center text-sm text-muted">
+        No credit card to start · Cancel anytime · Your data stays yours
+      </p>
     </section>
   );
 }
