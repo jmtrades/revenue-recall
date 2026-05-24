@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { AnnouncementBar } from "@/components/marketing/AnnouncementBar";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { Footer } from "@/components/marketing/Footer";
 import { HeroPreview } from "@/components/marketing/HeroPreview";
 import { PricingPlans } from "@/components/marketing/PricingPlans";
 import { RoiCalculator } from "@/components/marketing/RoiCalculator";
 import { ExitIntent } from "@/components/marketing/ExitIntent";
+import { StickyCta } from "@/components/marketing/StickyCta";
 import { INDUSTRIES } from "@/lib/industries";
 
 const DESCRIPTION =
@@ -21,6 +23,8 @@ export const metadata = {
   },
   twitter: { card: "summary_large_image", title: "Revenue Recall", description: DESCRIPTION },
 };
+
+const HERO_CHIPS = ["No credit card", "Live in 2 minutes", "Works with any CRM — or none"];
 
 const FEATURES = [
   { icon: "↺", title: "Revenue Recall engine", body: "Automatically scores every deal going cold, stalled, or marked lost-but-winnable — and tells a rep the single best next action, ranked by recoverable revenue." },
@@ -53,7 +57,8 @@ const FAQ = [
   { q: "Do I need a CRM to use this?", a: "No. Revenue Recall ships with a built-in CRM, so you can start in minutes with nothing. Already on Salesforce, HubSpot, Close, or Pipedrive? It plugs in and works on top." },
   { q: "Will the AI sound like a robot?", a: "No — that's the point. You teach it your voice in one step (describe yourself or paste a few of your real messages), and every email, text, and call script reads like you wrote it." },
   { q: "Is it really autonomous?", a: "As autonomous as you want. Run tasks manually, set them on a schedule, or let the AI work your pipeline end-to-end. Review mode drafts everything for one-click approval; autonomous mode sends and logs on its own." },
-  { q: "What does it cost to start?", a: "Nothing. The Starter plan is free, with no credit card. Upgrade to Growth when the recovered revenue more than pays for it." },
+  { q: "How does pricing work?", a: "Per seat, monthly or annual (save 20%). Each paid seat includes a monthly pool of AI actions — Growth 1,000, Scale 5,000. Calls and SMS are billed as usage credits at near cost, and you can top up AI credits anytime. Starter is free, no credit card." },
+  { q: "What counts as an AI action?", a: "Anything the AI does for you: drafting an email or text, prepping a call, or summarizing an outcome. Starter includes 50/mo so you can try it; paid plans include thousands per seat, with credits available beyond that." },
   { q: "Which industries does it support?", a: "Real estate, mortgage, insurance, SaaS, agencies, automotive, home services, and more — with pipelines, terminology, and playbooks tuned to each. Plus a universal template for anything else." },
   { q: "How fast can I be live?", a: "Two minutes. Sign up, pick your industry, and your pipeline, sequences, and AI are ready — your data and recall queue populate immediately." },
 ];
@@ -61,6 +66,7 @@ const FAQ = [
 export default function LandingPage() {
   return (
     <div className="min-h-screen">
+      <AnnouncementBar />
       <MarketingNav />
 
       {/* Hero */}
@@ -83,7 +89,13 @@ export default function LandingPage() {
                 See the live demo →
               </Link>
             </div>
-            <p className="mt-3 text-xs text-muted">Free to start · No credit card · Live in 2 minutes</p>
+            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">
+              {HERO_CHIPS.map((c) => (
+                <span key={c} className="flex items-center gap-1.5">
+                  <span className="text-success">✓</span> {c}
+                </span>
+              ))}
+            </div>
             <div className="mt-6 flex items-center gap-4">
               <div className="flex -space-x-2">
                 {["AC", "JN", "SP", "TR", "MK"].map((i, n) => (
@@ -128,7 +140,7 @@ export default function LandingPage() {
 
       {/* Problem → Solution */}
       <section className="mx-auto max-w-3xl px-5 py-20 text-center">
-        <p className="text-sm font-semibold uppercase tracking-wider text-brand">The leak no one's plugging</p>
+        <p className="text-sm font-semibold uppercase tracking-wider text-brand">The leak no one&apos;s plugging</p>
         <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
           Most revenue isn&apos;t lost to competitors. It&apos;s lost to silence.
         </h2>
@@ -195,6 +207,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ROI calculator */}
+      <RoiCalculator />
+
       {/* Industries */}
       <section id="industries" className="mx-auto max-w-6xl px-5 py-20">
         <div className="mx-auto max-w-2xl text-center">
@@ -227,6 +242,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Pricing */}
+      <PricingPlans />
+
       {/* FAQ */}
       <section className="mx-auto max-w-3xl px-5 py-20">
         <div className="text-center">
@@ -246,12 +264,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ROI calculator */}
-      <RoiCalculator />
-
-      {/* Pricing */}
-      <PricingPlans />
-
       {/* Final CTA */}
       <section className="mx-auto max-w-6xl px-5 pb-24">
         <div className="hero-glow relative overflow-hidden rounded-3xl border border-border bg-surface px-8 py-16 text-center">
@@ -270,6 +282,7 @@ export default function LandingPage() {
 
       <Footer />
       <ExitIntent />
+      <StickyCta />
     </div>
   );
 }

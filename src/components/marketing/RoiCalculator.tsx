@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 // Growth per-seat monthly price used to frame ROI against plan cost.
-const GROWTH_SEAT = 79;
+const GROWTH_SEAT = 99;
 
 const money = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(

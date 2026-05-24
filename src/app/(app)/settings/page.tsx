@@ -179,12 +179,12 @@ export default async function SettingsPage() {
       </div>
       <div className="mt-2">
         <InfoRow label="Seats">{users.length} active</InfoRow>
-        <InfoRow label="Price per seat">$79/user/mo</InfoRow>
+        <InfoRow label="Price per seat">$99/user/mo</InfoRow>
         <InfoRow label="Billing cycle">Monthly</InfoRow>
-        <InfoRow label="Estimated next invoice">${(users.length * 79).toLocaleString()}/mo</InfoRow>
+        <InfoRow label="Estimated next invoice">${(users.length * 99).toLocaleString()}/mo</InfoRow>
       </div>
       <p className="mt-3 text-xs text-muted">
-        Save 20% on annual billing ($63/user/mo). Billing is handled by your payment provider at launch.
+        Save 20% on annual billing ($79/user/mo). Billing is handled by your payment provider at launch.
       </p>
     </Card>
   );
