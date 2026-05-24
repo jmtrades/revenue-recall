@@ -11,6 +11,8 @@ import { PageHeader, Card, Avatar, InfoRow } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
 import { OrgSettingsForm } from "@/components/OrgSettingsForm";
 import { VoiceStudio } from "@/components/VoiceStudio";
+import { BillingActions } from "@/components/BillingActions";
+import { getUsageSnapshot } from "@/lib/billing/usage";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +24,7 @@ export default async function SettingsPage() {
   const voiceTab = <VoiceStudio initial={voice} persisted={org.persisted} />;
   const integrations = listIntegrations();
   const { users, pipeline } = await getTeamAndPipeline();
+  const usage = await getUsageSnapshot();
 
   const general = (
     <Card>
@@ -166,25 +169,34 @@ export default async function SettingsPage() {
     </Card>
   );
 
+  const planName = usage?.plan ?? "Starter";
+  const aiUsed = usage?.used ?? 0;
+  const aiIncluded = usage?.included ?? 50;
+  const aiPct = aiIncluded > 0 ? Math.min(100, Math.round((aiUsed / aiIncluded) * 100)) : 0;
+
   const billingTab = (
     <Card>
       <div className="rounded-lg border border-brand/40 bg-brand-soft/20 p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-white">Growth plan</p>
-            <p className="text-xs text-muted">Unlimited pipelines, automations, and recall.</p>
+            <p className="text-sm font-medium text-white">{planName} plan</p>
+            <p className="text-xs text-muted">Pipelines, automations, recall, and metered AI.</p>
           </div>
           <span className="pill bg-brand text-white">Current</span>
         </div>
       </div>
       <div className="mt-2">
         <InfoRow label="Seats">{users.length} active</InfoRow>
-        <InfoRow label="Price per seat">$99/user/mo</InfoRow>
+        <InfoRow label="AI actions this month">{aiUsed.toLocaleString()} / {aiIncluded.toLocaleString()}</InfoRow>
+        {usage && usage.credits > 0 && <InfoRow label="AI credits">{usage.credits.toLocaleString()}</InfoRow>}
         <InfoRow label="Billing cycle">Monthly</InfoRow>
-        <InfoRow label="Estimated next invoice">${(users.length * 99).toLocaleString()}/mo</InfoRow>
       </div>
-      <p className="mt-3 text-xs text-muted">
-        Save 20% on annual billing ($79/user/mo). Billing is handled by your payment provider at launch.
+      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-surface-2">
+        <div className={`h-full rounded-full ${aiPct >= 100 ? "bg-danger" : aiPct >= 80 ? "bg-warn" : "bg-brand"}`} style={{ width: `${aiPct}%` }} />
+      </div>
+      <BillingActions />
+      <p className="mt-4 text-xs text-muted">
+        Calls &amp; SMS are billed as usage credits at near cost. AI actions beyond your plan are available as credits.
       </p>
     </Card>
   );

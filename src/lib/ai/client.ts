@@ -19,9 +19,14 @@ export function isAiConfigured(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY);
 }
 
-/** Default to the most capable model; operators may pin a faster one via env. */
-export function aiModel(): string {
-  return process.env.ANTHROPIC_MODEL ?? "claude-opus-4-7";
+/**
+ * Default model. Haiku keeps per-action inference cost low enough to hold
+ * 90%+ gross margin on metered plans; the system prompt is cached on every
+ * call (see completeJson). Operators can pin a different model via env, and
+ * individual call sites can request a stronger one for quality-critical work.
+ */
+export function aiModel(override?: string): string {
+  return override ?? process.env.ANTHROPIC_MODEL ?? "claude-haiku-4-5-20251001";
 }
 
 /**
@@ -35,6 +40,7 @@ export async function completeJson<T>(opts: {
   schema: Record<string, unknown>;
   maxTokens?: number;
   think?: boolean;
+  model?: string;
 }): Promise<T> {
   const client = getAnthropic();
   if (!client) throw new Error("AI not configured");
@@ -42,7 +48,7 @@ export async function completeJson<T>(opts: {
   // Built untyped: output_config / adaptive thinking are current API fields
   // that may post-date the installed SDK's static types.
   const params: Record<string, unknown> = {
-    model: aiModel(),
+    model: aiModel(opts.model),
     max_tokens: opts.maxTokens ?? 1500,
     system: [{ type: "text", text: opts.system, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: opts.user }],

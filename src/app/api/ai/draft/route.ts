@@ -5,6 +5,7 @@ import { getConfig } from "@/lib/config";
 import { getIndustry } from "@/lib/industries";
 import { draftMessage } from "@/lib/ai/draft";
 import { getActiveVoice } from "@/lib/voice";
+import { gateAiAction } from "@/lib/billing/gate";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -25,6 +26,9 @@ export async function POST(req: Request) {
 
   const detail = await getDealDetail(parsed.data.dealId);
   if (!detail) return NextResponse.json({ error: "Deal not found" }, { status: 404 });
+
+  const gated = await gateAiAction();
+  if (gated) return gated;
 
   const industry = getIndustry(getConfig().industryId);
   const voice = await getActiveVoice();

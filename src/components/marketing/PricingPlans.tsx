@@ -40,7 +40,7 @@ const PLANS: Plan[] = [
       "Connect any CRM — or use ours",
       "Live AI drafting + call briefs",
       "Power Dialer + email/SMS",
-      "1,000 AI actions / user / mo",
+      "800 AI actions / user / mo",
       "Automations & unlimited pipelines",
     ],
     featured: true,
@@ -55,7 +55,7 @@ const PLANS: Plan[] = [
     href: "/signup",
     features: [
       "Everything in Growth",
-      "5,000 AI actions / user / mo",
+      "2,000 AI actions / user / mo",
       "SSO & RBAC",
       "Advanced automations",
       "Priority support",
