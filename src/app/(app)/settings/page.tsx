@@ -12,6 +12,7 @@ import { Tabs } from "@/components/Tabs";
 import { OrgSettingsForm } from "@/components/OrgSettingsForm";
 import { VoiceStudio } from "@/components/VoiceStudio";
 import { BillingActions } from "@/components/BillingActions";
+import { CsvImport } from "@/components/CsvImport";
 import { getUsageSnapshot } from "@/lib/billing/usage";
 
 export const dynamic = "force-dynamic";
@@ -213,13 +214,13 @@ export default async function SettingsPage() {
 
   const importTab = (
     <Card>
-      <p className="text-sm text-muted">No CRM yet? Import contacts and deals from a CSV to get started instantly.</p>
-      <div className="mt-4 grid place-items-center rounded-xl border border-dashed border-border py-10 text-center">
-        <div className="text-3xl text-muted/60">⬆</div>
-        <p className="mt-2 text-sm text-white">Drop a CSV here or click to upload</p>
-        <p className="mt-1 text-xs text-muted">Columns: name, email, phone, company, value, stage</p>
+      <p className="text-sm text-muted">No CRM yet? Import your contacts from a CSV to get started instantly.</p>
+      <div className="mt-4">
+        <CsvImport />
       </div>
-      <p className="mt-3 text-xs text-muted">CSV mapping &amp; sync run once a database is connected.</p>
+      <p className="mt-3 text-xs text-muted">
+        Contacts are added to your active workspace ({getProvider().info().label}). Deals import is coming next.
+      </p>
     </Card>
   );
 
