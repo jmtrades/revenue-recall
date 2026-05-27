@@ -40,7 +40,11 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
       <button type="button" onClick={google} className="w-full rounded-lg border border-border px-3 py-2.5 text-sm text-white transition hover:bg-surface-2">
         Continue with Google
       </button>
-      <p className="pt-1 text-center text-[11px] text-muted">By continuing you agree to our Terms and Privacy Policy.</p>
+      <p className="pt-1 text-center text-[11px] text-muted">
+        By continuing you agree to our{" "}
+        <a href="/terms" className="text-brand hover:underline">Terms</a> and{" "}
+        <a href="/privacy" className="text-brand hover:underline">Privacy Policy</a>.
+      </p>
     </form>
   );
 }

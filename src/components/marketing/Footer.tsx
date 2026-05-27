@@ -57,9 +57,8 @@ export function Footer() {
         <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 text-xs text-muted sm:flex-row">
           <span>© {new Date().getFullYear()} Revenue Recall. All rights reserved.</span>
           <span className="flex gap-5">
-            <a href="#" className="transition hover:text-white">Privacy</a>
-            <a href="#" className="transition hover:text-white">Terms</a>
-            <a href="#" className="transition hover:text-white">Security</a>
+            <Link href="/privacy" className="transition hover:text-white">Privacy</Link>
+            <Link href="/terms" className="transition hover:text-white">Terms</Link>
           </span>
         </div>
       </div>

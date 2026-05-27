@@ -4,6 +4,7 @@ import { getDealDetail } from "@/lib/queries";
 import { getConfig } from "@/lib/config";
 import { getIndustry } from "@/lib/industries";
 import { summarizeDeal } from "@/lib/ai/brief";
+import { limited } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -16,6 +17,9 @@ function daysSince(iso?: string): number | undefined {
 }
 
 export async function POST(req: Request) {
+  const rl = limited(req, "ai", 20, 60_000);
+  if (rl) return rl;
+
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "dealId required" }, { status: 400 });
 

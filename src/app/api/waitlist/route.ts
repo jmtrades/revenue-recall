@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase/client";
+import { limited } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: Request) {
+  const rl = limited(req, "waitlist", 10, 60_000);
+  if (rl) return rl;
+
   let email = "";
   let source = "";
   try {

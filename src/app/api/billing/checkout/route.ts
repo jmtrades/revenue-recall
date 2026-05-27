@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getSupabase } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { createSubscriptionCheckout, priceIdFor, stripeConfigured } from "@/lib/billing/stripe";
+import { limited } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,8 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  const rl = limited(req, "billing", 10, 60_000);
+  if (rl) return rl;
   if (!stripeConfigured()) {
     return NextResponse.json({ error: "Billing is not configured yet." }, { status: 503 });
   }
