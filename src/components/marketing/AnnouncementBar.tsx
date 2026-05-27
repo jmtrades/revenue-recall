@@ -3,7 +3,7 @@ import Link from "next/link";
 export function AnnouncementBar() {
   return (
     <Link
-      href="#roi"
+      href="/#roi"
       className="group block border-b border-border/60 bg-brand-soft/30 transition hover:bg-brand-soft/50"
     >
       <div className="mx-auto flex max-w-6xl items-center justify-center gap-2 px-5 py-2 text-xs sm:text-sm">
