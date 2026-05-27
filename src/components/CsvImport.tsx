@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 
-type Row = { name: string; email?: string; phone?: string; company?: string; title?: string };
+type Row = { name: string; email?: string; phone?: string; company?: string; title?: string; value?: string };
 
 /** Minimal CSV line parser that respects quoted fields and escaped quotes. */
 function parseLine(line: string): string[] {
@@ -28,7 +28,7 @@ function parseLine(line: string): string[] {
   return out;
 }
 
-const FIELDS = ["name", "email", "phone", "company", "title"] as const;
+const FIELDS = ["name", "email", "phone", "company", "title", "value"] as const;
 
 function parseCsv(text: string): Row[] {
   const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
@@ -50,6 +50,7 @@ function parseCsv(text: string): Row[] {
       phone: get("phone") || undefined,
       company: get("company") || undefined,
       title: get("title") || undefined,
+      value: get("value") || undefined,
     });
   }
   return rows;
@@ -85,8 +86,9 @@ export function CsvImport() {
       setStatus("done");
       setMessage(
         `Imported ${data.created} contact${data.created === 1 ? "" : "s"}` +
+          (data.deals ? ` and ${data.deals} deal${data.deals === 1 ? "" : "s"}` : "") +
           (data.failed ? ` · ${data.failed} skipped` : "") +
-          ". Refresh Contacts to see them.",
+          ". Refresh to see them.",
       );
     } catch {
       setStatus("error");
@@ -106,7 +108,7 @@ export function CsvImport() {
         <span className="mt-2 text-sm text-white">
           {status === "working" ? "Importing…" : "Click to upload a CSV"}
         </span>
-        <span className="mt-1 text-xs text-muted">Columns: name, email, phone, company, title</span>
+        <span className="mt-1 text-xs text-muted">Columns: name, email, phone, company, title, value</span>
       </button>
       <input
         ref={inputRef}

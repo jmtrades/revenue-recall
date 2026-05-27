@@ -2,6 +2,20 @@
 
 import { redirect } from "next/navigation";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { sendEmail } from "@/lib/comms";
+
+async function sendWelcome(email: string, name: string): Promise<void> {
+  const first = name?.split(" ")[0] || "there";
+  try {
+    await sendEmail(
+      email,
+      "Welcome to Revenue Recall",
+      `Hi ${first},\n\nYour Revenue Recall workspace is ready. Three quick steps to value:\n\n1. Pick your industry and connect a CRM — or start fresh with the built-in one.\n2. Open the Revenue Recall queue to see the deals quietly going cold.\n3. Let the AI draft the outreach in your voice and close the loop.\n\nNeed a hand? Just reply to this email.\n\n— The Revenue Recall team`,
+    );
+  } catch {
+    /* never block signup on a welcome email */
+  }
+}
 
 export interface AuthState {
   error?: string;
@@ -38,6 +52,8 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
     options: { data: { name } },
   });
   if (error) return { error: error.message };
+
+  await sendWelcome(email, name);
 
   // If the project requires email confirmation, there's no session yet.
   if (!data.session) {

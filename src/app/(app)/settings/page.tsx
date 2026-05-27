@@ -214,12 +214,12 @@ export default async function SettingsPage() {
 
   const importTab = (
     <Card>
-      <p className="text-sm text-muted">No CRM yet? Import your contacts from a CSV to get started instantly.</p>
+      <p className="text-sm text-muted">No CRM yet? Import your contacts and deals from a CSV to get started instantly.</p>
       <div className="mt-4">
         <CsvImport />
       </div>
       <p className="mt-3 text-xs text-muted">
-        Contacts are added to your active workspace ({getProvider().info().label}). Deals import is coming next.
+        Added to your active workspace ({getProvider().info().label}). A numeric <code>value</code> column creates an open deal per contact.
       </p>
     </Card>
   );
