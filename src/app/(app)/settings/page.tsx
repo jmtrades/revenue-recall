@@ -25,6 +25,9 @@ export default async function SettingsPage() {
   const integrations = listIntegrations();
   const { users, pipeline } = await getTeamAndPipeline();
   const usage = await getUsageSnapshot();
+  const activeProvider = getProvider().info();
+  const explicit = cfg.providerId !== "auto";
+  const providerFellBack = explicit && cfg.providerId !== activeProvider.id;
 
   const general = (
     <Card>
@@ -32,7 +35,14 @@ export default async function SettingsPage() {
       <div className="mt-5 border-t border-border pt-4">
         <InfoRow label="Industry">{active.label}</InfoRow>
         <InfoRow label="Currency">{org.currency}</InfoRow>
-        <InfoRow label="Active CRM">{getProvider().info().label}</InfoRow>
+        <InfoRow label="Active CRM">
+          {activeProvider.label}
+          {providerFellBack && (
+            <span className="ml-2 pill bg-warn/15 text-warn">
+              {cfg.providerId} not configured — using {activeProvider.label}
+            </span>
+          )}
+        </InfoRow>
         <InfoRow label="AI assistant">
           <span className={`pill ${isAiConfigured() ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>
             {isAiConfigured() ? "Connected" : "Template fallback"}

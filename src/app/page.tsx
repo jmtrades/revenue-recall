@@ -8,6 +8,9 @@ import { RoiCalculator } from "@/components/marketing/RoiCalculator";
 import { ExitIntent } from "@/components/marketing/ExitIntent";
 import { StickyCta } from "@/components/marketing/StickyCta";
 import { INDUSTRIES } from "@/lib/industries";
+import { PLANS } from "@/lib/billing/plans";
+
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://revenue-recall.app";
 
 const DESCRIPTION =
   "Revenue Recall finds the deals going cold in any CRM (or none), drafts the outreach with AI, and helps you close the loop — built for every industry.";
@@ -63,9 +66,47 @@ const FAQ = [
   { q: "How fast can I be live?", a: "Two minutes. Sign up, pick your industry, and your pipeline, sequences, and AI are ready — your data and recall queue populate immediately." },
 ];
 
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE}/#org`,
+      name: "Revenue Recall",
+      url: SITE,
+      description: DESCRIPTION,
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "Revenue Recall",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description: DESCRIPTION,
+      offers: Object.values(PLANS)
+        .filter((p) => p.monthly !== null)
+        .map((p) => ({
+          "@type": "Offer",
+          name: `${p.name} plan`,
+          price: p.monthly,
+          priceCurrency: "USD",
+          ...(p.monthly && p.monthly > 0 ? { unitText: "per user / month" } : {}),
+        })),
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: FAQ.map((f) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+      })),
+    },
+  ],
+};
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       <AnnouncementBar />
       <MarketingNav />
 

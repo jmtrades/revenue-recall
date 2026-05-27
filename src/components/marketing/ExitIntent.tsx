@@ -39,6 +39,15 @@ export function ExitIntent() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setStatus("loading");
@@ -113,6 +122,7 @@ export function ExitIntent() {
               <input
                 type="email"
                 required
+                autoFocus
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Work email"

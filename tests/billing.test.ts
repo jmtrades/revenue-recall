@@ -45,3 +45,24 @@ describe("pricing margins", () => {
     expect(grossMarginAtMax(PLANS.enterprise, "monthly")).toBeNull();
   });
 });
+
+describe("plan invariants", () => {
+  it("quotas increase up the ladder", () => {
+    expect(PLANS.starter.includedActions).toBeLessThan(PLANS.growth.includedActions);
+    expect(PLANS.growth.includedActions).toBeLessThan(PLANS.scale.includedActions);
+    expect(PLANS.scale.includedActions).toBeLessThanOrEqual(PLANS.enterprise.includedActions);
+  });
+
+  it("advertised quotas match enforcement (guards against landing-copy drift)", () => {
+    // If you change these, update the landing page + FAQ to match.
+    expect(PLANS.starter.includedActions).toBe(50);
+    expect(PLANS.growth.includedActions).toBe(800);
+    expect(PLANS.scale.includedActions).toBe(2000);
+  });
+
+  it("annual is cheaper than monthly for paid plans", () => {
+    for (const id of ["growth", "scale"] as const) {
+      expect(PLANS[id].annual!).toBeLessThan(PLANS[id].monthly!);
+    }
+  });
+});
