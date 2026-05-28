@@ -33,7 +33,28 @@ const STIFF: [RegExp, string, string][] = [
   [/\bas per\b/i, "as per", 'say "based on" or "from"'],
   [/\bper my (last|previous)\b/i, "per my last…", "passive-aggressive corporate tell — rephrase plainly"],
   [/\bplease find attached\b/i, "please find attached", 'just say "here\'s …"'],
+  // Timid hedges — the "asking permission to exist" opener that reads like a bot.
+  [/\bi just wanted to\b/i, "I just wanted to", 'drop "just wanted to" — say what you mean directly'],
+  [/\bi just want to\b/i, "I just want to", 'drop "just want to" — lead with the point'],
+  [/\bi was hoping to\b/i, "I was hoping to", "too timid — ask plainly"],
+  [/\bi thought (i would|i'd)\b/i, "I thought I'd", "filler opener — cut it and start with the real reason"],
 ];
+
+/** Split into sentence-ish units for rhythm analysis. */
+function sentences(text: string): string[] {
+  return text
+    .replace(/\n+/g, " ")
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.split(/\s+/).length >= 2);
+}
+
+function stdev(nums: number[]): number {
+  if (nums.length < 2) return 0;
+  const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
+  const variance = nums.reduce((a, b) => a + (b - mean) ** 2, 0) / nums.length;
+  return Math.sqrt(variance);
+}
 
 export function analyzeHumanness(input: string): HumannessResult {
   const text = input.trim();
@@ -78,6 +99,33 @@ export function analyzeHumanness(input: string): HumannessResult {
   if (words >= 25 && !CONTRACTION.test(text)) {
     flags.push({ text: "no contractions", reason: 'real people write "I\'ll / you\'re / don\'t" — it reads human' });
     score -= 10;
+  }
+
+  // 6. Rhythm. AI writes long, evenly-measured sentences; humans burst — a short
+  //    punchy line next to a longer one. Only judge once there's enough to judge.
+  const sents = sentences(text);
+  if (sents.length >= 4) {
+    const lengths = sents.map((s) => s.split(/\s+/).length);
+    const avg = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+    if (stdev(lengths) < 2.6) {
+      flags.push({ text: "even, metronomic rhythm", reason: "every sentence is about the same length — vary it, drop in a short punchy one" });
+      score -= 9;
+    }
+    if (avg > 26) {
+      flags.push({ text: "long, uniform sentences", reason: "AI runs long and even — break some up and get to the point" });
+      score -= 8;
+    }
+    // 7. Repetitive sentence openers (e.g. every line starting with "I").
+    const firsts = sents.map((s) => (s.match(/^[A-Za-z']+/)?.[0] ?? "").toLowerCase());
+    const counts = new Map<string, number>();
+    for (const f of firsts) if (f) counts.set(f, (counts.get(f) ?? 0) + 1);
+    for (const [word, n] of counts) {
+      if (n >= 3) {
+        flags.push({ text: `${n} sentences start with "${word}"`, reason: "vary how sentences open — real writing doesn't repeat the same first word" });
+        score -= 8;
+        break;
+      }
+    }
   }
 
   score = Math.max(0, Math.min(100, score));

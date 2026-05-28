@@ -34,6 +34,9 @@ export async function completeJson<T>(opts: {
   user: string;
   schema: Record<string, unknown>;
   maxTokens?: number;
+  /** Sampling temperature. Higher = more natural variation (good for human-voice
+   *  drafting); lower = more consistent (good for analysis/distillation). */
+  temperature?: number;
   think?: boolean;
 }): Promise<T> {
   const client = getAnthropic();
@@ -48,6 +51,7 @@ export async function completeJson<T>(opts: {
     messages: [{ role: "user", content: opts.user }],
     output_config: { format: { type: "json_schema", schema: opts.schema } },
   };
+  if (opts.temperature !== undefined) params.temperature = opts.temperature;
   if (opts.think) {
     params.thinking = { type: "adaptive" };
     (params.output_config as Record<string, unknown>).effort = "medium";

@@ -41,6 +41,32 @@ describe("analyzeHumanness", () => {
     expect(r.flags).toHaveLength(0);
   });
 
+  it("flags timid hedge openers", () => {
+    const r = analyzeHumanness("I just wanted to follow up on our chat.");
+    expect(r.flags.some((f) => f.text === "I just wanted to")).toBe(true);
+  });
+
+  it("flags an even, metronomic rhythm", () => {
+    // Four sentences, all ~eight words — the tell-tale AI cadence.
+    const even =
+      "We can review the plan on Tuesday morning together. You will get the full summary before that call. Our team can answer the open questions then. We will confirm the final budget after that.";
+    const r = analyzeHumanness(even);
+    expect(r.flags.some((f) => f.text.includes("metronomic"))).toBe(true);
+  });
+
+  it("flags repetitive sentence openers", () => {
+    const repetitive =
+      "I can send that over today. I think it covers everything. I would love your take. I will follow up Friday.";
+    const r = analyzeHumanness(repetitive);
+    expect(r.flags.some((f) => f.text.includes('start with "i"'))).toBe(true);
+  });
+
+  it("does not flag rhythm on short human messages", () => {
+    // Two sentences — too short to judge cadence; must stay clean.
+    const r = analyzeHumanness("got your note. want me to send the numbers over today?");
+    expect(r.flags).toHaveLength(0);
+  });
+
   it("passes the product's own fallback copy as human", async () => {
     // Every deterministic draft we ship should clear the human bar.
     for (const ind of INDUSTRIES) {

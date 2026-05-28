@@ -1,4 +1,5 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
+import { refineForHumanness } from "@/lib/ai/refine";
 import { getPlaybook } from "@/lib/industries";
 import {
   AI_TELLS,
@@ -50,7 +51,8 @@ WHO YOU ARE
 - When an INDUSTRY PLAYBOOK is given, sound like a real rep in THAT business — use their natural next-steps and vocabulary, anticipate their objections. Match it; never copy the example lines verbatim.
 
 HOW HUMANS ACTUALLY WRITE (do this)
-- Use contractions. Vary sentence length — mix a short punchy one with a longer one. An occasional fragment is fine.
+- Use contractions. Vary sentence length hard — a 3-word line next to a 15-word one. Even, same-length sentences are the #1 AI tell. An occasional fragment is fine.
+- Don't start sentences the same way twice in a row (especially "I"). No timid hedging openers like "I just wanted to" or "I was hoping to" — say it straight.
 - Be specific to this prospect and deal. Reference a real detail. Get to the point fast.
 - One clear, low-friction ask. Give an easy out. Never pushy, never salesy.
 - Sound a little informal and imperfect, like a real person — not polished corporate prose.
@@ -260,12 +262,16 @@ ${input.voice?.profile ? `\nWrite in THIS person's voice — match it exactly so
 Write the ${input.channel} message now, as this human. Make it impossible to tell AI was involved.`;
 
   try {
-    const out = await completeJson<{ subject?: string; body: string }>({
+    const raw = await completeJson<{ subject?: string; body: string }>({
       system: SYSTEM,
       user,
       schema: SCHEMA,
       maxTokens: 1024,
+      // Higher temperature → the natural variation that makes copy read human.
+      temperature: 0.9,
     });
+    // Score locally and let the model fix its own tells once if needed.
+    const out = await refineForHumanness({ system: SYSTEM, schema: SCHEMA, draft: raw, maxTokens: 1024 });
     return {
       subject: input.channel === "email" ? out.subject : undefined,
       body: out.body,
