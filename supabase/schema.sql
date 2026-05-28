@@ -275,3 +275,11 @@ create policy org_rw_personas on personas
 -- missing keys fall back to their defaults in the app layer (lib/org.ts).
 
 alter table orgs add column if not exists notification_prefs jsonb not null default '{}'::jsonb;
+
+-- ===== supabase/migrations/0008_voice_playbook.sql =====
+-- Per-workspace playbook tuning, stored alongside the org's voice persona.
+-- Newline-separated lists the rep can edit in Settings → Voice; when set, they
+-- override the industry defaults in drafts/replies. Empty = use industry playbook.
+
+alter table personas add column if not exists custom_next_steps text;
+alter table personas add column if not exists custom_reengage  text;

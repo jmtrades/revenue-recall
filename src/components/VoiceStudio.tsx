@@ -7,7 +7,7 @@ export function VoiceStudio({
   initial,
   persisted,
 }: {
-  initial: { senderName?: string; role?: string; signature?: string; samples?: string; profile?: string };
+  initial: { senderName?: string; role?: string; signature?: string; samples?: string; profile?: string; customNextSteps?: string[]; customReengage?: string[] };
   persisted: boolean;
 }) {
   const router = useRouter();
@@ -15,20 +15,23 @@ export function VoiceStudio({
   const [signature, setSignature] = useState(initial.signature ?? "");
   const [samples, setSamples] = useState(initial.samples ?? "");
   const [profile, setProfile] = useState(initial.profile ?? "");
+  const [customNextSteps, setCustomNextSteps] = useState((initial.customNextSteps ?? []).join("\n"));
+  const [customReengage, setCustomReengage] = useState((initial.customReengage ?? []).join("\n"));
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const input = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand";
+  const canSave = Boolean(samples.trim() || customNextSteps.trim() || customReengage.trim());
 
   async function learn() {
-    if (!samples.trim()) return;
+    if (!canSave) return;
     setBusy(true); setError(null); setStatus(null);
     try {
       const res = await fetch("/api/voice/learn", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ senderName, signature, samples }),
+        body: JSON.stringify({ senderName, signature, samples, customNextSteps, customReengage }),
       });
       const b = await res.json();
       if (!res.ok) throw new Error(b.error ?? "Failed");
@@ -61,9 +64,34 @@ export function VoiceStudio({
         value={samples}
         onChange={(e) => setSamples(e.target.value)}
       />
-      <div className="mt-2 flex items-center gap-3">
-        <button onClick={learn} disabled={busy || !samples.trim()} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-          {busy ? "Learning…" : "Learn my voice"}
+      <div className="mt-5 grid grid-cols-1 gap-3 border-t border-border pt-4 sm:grid-cols-2">
+        <div>
+          <label className="stat-label">Your go-to next steps</label>
+          <p className="mt-0.5 text-xs text-muted">One per line. Used in drafts instead of the industry defaults.</p>
+          <textarea
+            className={`${input} mt-1.5 resize-none`}
+            rows={4}
+            placeholder={"want me to grab you a showing this weekend?\nfree for a quick call this week?\nwant me to send the numbers over?"}
+            value={customNextSteps}
+            onChange={(e) => setCustomNextSteps(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="stat-label">Your re-engagement openers</label>
+          <p className="mt-0.5 text-xs text-muted">One per line. Used when a deal&apos;s gone cold.</p>
+          <textarea
+            className={`${input} mt-1.5 resize-none`}
+            rows={4}
+            placeholder={"saw a couple new listings and thought of you\nyour search has been quiet — still looking?\nwanted to check before this drops off my list"}
+            value={customReengage}
+            onChange={(e) => setCustomReengage(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center gap-3">
+        <button onClick={learn} disabled={busy || !canSave} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+          {busy ? "Saving…" : "Save my voice"}
         </button>
         {status && <span className="text-sm text-success">{status}</span>}
         {error && <span className="text-sm text-danger">{error}</span>}

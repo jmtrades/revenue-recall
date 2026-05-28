@@ -21,7 +21,7 @@ export interface DraftInput {
   /** Optional extra instruction from a user-defined Autopilot task. */
   instruction?: string;
   /** The rep's distilled writing voice + sign-off, so messages sound like them. */
-  voice?: { senderName?: string; profile?: string; signature?: string };
+  voice?: { senderName?: string; profile?: string; signature?: string; customNextSteps?: string[]; customReengage?: string[] };
 }
 
 export interface DraftResult {
@@ -80,10 +80,15 @@ function fallback(input: DraftInput): DraftResult {
   const cold = (input.daysSinceContact ?? 0) >= 14 || input.recallReason === "lost_winnable";
   const sig = signOff(input);
 
+  // Prefer the workspace's own go-to lines when they've tuned them.
+  const nextFor = (ch: "email" | "sms"): string[] =>
+    input.voice?.customNextSteps?.length ? input.voice.customNextSteps : pb.nextSteps[ch];
+  const reLines = input.voice?.customReengage?.length ? input.voice.customReengage : pb.reengage;
+
   if (input.channel === "sms") {
-    const step = pickVariant(pb.nextSteps.sms, seed);
+    const step = pickVariant(nextFor("sms"), seed);
     const body = cold
-      ? `${sentence(`hey ${first}, ${pickVariant(pb.reengage, seed)}`)} ${step}`
+      ? `${sentence(`hey ${first}, ${pickVariant(reLines, seed)}`)} ${step}`
       : `hey ${first} — ${step}`;
     return { body, source: "template" };
   }
@@ -103,10 +108,10 @@ function fallback(input: DraftInput): DraftResult {
   }
 
   // email
-  const step = pickVariant(pb.nextSteps.email, seed);
+  const step = pickVariant(nextFor("email"), seed);
   if (cold) {
     const subject = pickVariant([`still on your radar, ${first}?`, `worth picking this back up?`, `quick one, ${first}`], seed);
-    const body = `Hi ${first},\n\n${sentence(cap(pickVariant(pb.reengage, seed)))} ${cap(step)}\n\nEither way, no pressure — just tell me to back off and I will.${sig ? `\n\n${sig}` : ""}`;
+    const body = `Hi ${first},\n\n${sentence(cap(pickVariant(reLines, seed)))} ${cap(step)}\n\nEither way, no pressure — just tell me to back off and I will.${sig ? `\n\n${sig}` : ""}`;
     return { subject: cap(subject), body, source: "template" };
   }
   const subject = pickVariant([`next on ${input.dealTitle}`, `quick next step, ${first}`, `keeping ${input.dealTitle} moving`], seed);
@@ -142,7 +147,8 @@ Deal: "${input.dealTitle}" — ${input.valueLabel} ${input.value} ${input.curren
 ${input.recallReason ? `Recall reason: ${input.recallReason} (re-engagement — they've gone quiet)\n` : ""}${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.voice?.senderName || input.repName ? `You are: ${input.voice?.senderName ?? input.repName}\n` : ""}${input.voice?.signature ? `Sign off as: ${input.voice.signature}\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).join("\n- ")}` : "No prior activity logged."}
 
 ${playbookBlock(input)}
-${input.recallReason ? `\nHuman re-engagement openers for this industry (for inspiration): ${pb.reengage.join(" / ")}` : ""}
+${input.voice?.customNextSteps?.length ? `\nThis rep's own go-to next steps (prefer one of these when it fits): ${input.voice.customNextSteps.join(" / ")}` : ""}
+${input.recallReason ? `\nRe-engagement openers (for inspiration): ${(input.voice?.customReengage?.length ? input.voice.customReengage : pb.reengage).join(" / ")}` : ""}
 ${input.voice?.profile ? `\nWrite in THIS person's voice — match it exactly so it sounds like them, not an AI:\n"""${input.voice.profile}"""` : ""}${input.instruction ? `\nAlso follow this instruction for this message:\n"""${input.instruction}"""` : ""}
 
 Write the ${input.channel} message now, as this human. Make it impossible to tell AI was involved.`;

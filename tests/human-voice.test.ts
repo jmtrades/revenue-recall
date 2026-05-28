@@ -127,6 +127,27 @@ describe("every industry has a complete playbook", () => {
   }
 });
 
+describe("workspace playbook overrides", () => {
+  it("uses the workspace's own next-step lines in drafts when set", async () => {
+    const custom = "want me to send the signed paperwork over today?";
+    const out = await draftMessage({
+      ...baseInput("real_estate", "sms", false),
+      voice: { customNextSteps: [custom] },
+    });
+    expect(out.body.includes(custom)).toBe(true);
+  });
+
+  it("uses the workspace's own re-engagement openers when cold", async () => {
+    const opener = "noticed it's been a minute since we connected";
+    const out = await draftMessage({
+      ...baseInput("saas", "email", true),
+      voice: { customReengage: [opener], customNextSteps: ["want to hop on a quick call?"] },
+    });
+    expect(out.body.toLowerCase()).toContain("noticed it's been a minute");
+    assertNoTells(out.body, "override draft");
+  });
+});
+
 describe("pickVariant", () => {
   it("is deterministic for a seed and varies across seeds", () => {
     const opts = ["a", "b", "c", "d", "e"];

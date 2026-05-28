@@ -11,7 +11,7 @@ export interface ReplyInput {
   industryId?: string;
   incoming: string;
   history?: string[];
-  voice?: { senderName?: string; profile?: string; signature?: string };
+  voice?: { senderName?: string; profile?: string; signature?: string; customNextSteps?: string[]; customReengage?: string[] };
 }
 
 export interface ReplyResult {
@@ -49,6 +49,7 @@ function fallback(input: ReplyInput): ReplyResult {
   const sig = input.voice?.signature || input.voice?.senderName || "";
   const intent = detectIntent(input.incoming);
   const sms = input.channel === "sms";
+  const stepPool = input.voice?.customNextSteps?.length ? input.voice.customNextSteps : pb.nextSteps[sms ? "sms" : "email"];
 
   let body: string;
   if (intent === "decline") {
@@ -56,12 +57,12 @@ function fallback(input: ReplyInput): ReplyResult {
       ? `no worries at all ${first} — thanks for letting me know. if anything changes down the road, i'm here. all the best.`
       : `Hi ${first},\n\nTotally understand — thanks for being straight with me. I'll leave it here, but if anything changes down the line, you know where to find me. Wishing you the best.${sig ? `\n\n${sig}` : ""}`;
   } else if (intent === "question") {
-    const step = pickVariant(pb.nextSteps[sms ? "sms" : "email"], seed);
+    const step = pickVariant(stepPool, seed);
     body = sms
       ? `good question ${first}. short version: happy to get you a straight answer. ${step}`
       : `Hi ${first},\n\nGood question — happy to get you a clear answer on that rather than guess over email. ${sentence(capitalize(step))}${sig ? `\n\n${sig}` : ""}`;
   } else {
-    const step = pickVariant(pb.nextSteps[sms ? "sms" : "email"], seed);
+    const step = pickVariant(stepPool, seed);
     body = sms
       ? `thanks ${first}, appreciate you getting back. ${step}`
       : `Hi ${first},\n\nThanks for getting back to me, appreciate it. ${sentence(capitalize(step))}${sig ? `\n\n${sig}` : ""}`;

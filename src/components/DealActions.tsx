@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Stage } from "@/lib/crm/types";
+import { HumannessMeter } from "@/components/HumannessMeter";
 
 const KINDS: { id: "note" | "call" | "email" | "sms" | "meeting"; label: string }[] = [
   { id: "note", label: "Note" },
@@ -130,6 +131,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
           rows={4}
           className="mt-2 w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand"
         />
+        {canDraft && <HumannessMeter text={summary} />}
         <button
           onClick={log}
           disabled={busy || !summary.trim()}

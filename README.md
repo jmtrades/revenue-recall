@@ -38,6 +38,7 @@ src/lib/supabase/           Row types, tenant resolution, bootstrap (seed a fres
 src/lib/comms.ts            Email/SMS/voice — Resend·SendGrid·Twilio adapters + logging fallback
 src/lib/industries/         Industry templates (pipelines, terms, fields) + per-vertical voice playbooks
 src/lib/copy.ts             Human-voice helpers + the canonical list of "AI tells" to never emit
+src/lib/humanness.ts        Scores any copy 0–100 for "sounds human"; flags AI tells live as reps type
 src/lib/recall/engine.ts    Revenue Recall scoring + recommendations
 src/lib/analytics.ts        Pipeline metrics & weighted forecast
 src/lib/queries.ts          Server-side data facade for the UI
@@ -59,7 +60,8 @@ supabase/migrations/        Org-scoped Postgres schema (RLS) for the built-in CR
 - **Autopilot** — users describe a task in plain English ("re-engage cold deals and offer a call"); an AI agent works each matching deal (drafts in review mode, or sends + logs in autonomous mode) and records every action to an immutable run/outcome ledger. Custom scope (recall queue / all open / a stage), channel, autonomy, and **trigger** (manual / daily / on-idle / on-new-lead) per task. Scheduled tasks run via `/api/agent/cron` (Vercel Cron in `vercel.json`, protected by `CRON_SECRET`).
 - **Two-way conversations** — inbound email/SMS webhooks (`/api/inbound/email`, `/api/inbound/sms`) match the contact, log the message, and draft a human-voiced reply — queued to Approvals, or auto-sent when `REPLY_AUTOPILOT=true`.
 - **Approvals inbox** — review-mode AI drafts and inbound-reply drafts queue here; approve to send (+ auto-log) or dismiss, one click each.
-- **Your Voice** — no boring forms: describe how you sound or paste a few of your real messages, and AI distills your voice profile. Every draft and call is written *as you* — human, never AI-sounding. Tailor it per workspace in Settings → Voice.
+- **Your Voice** — no boring forms: describe how you sound or paste a few of your real messages, and AI distills your voice profile. Every draft and call is written *as you* — human, never AI-sounding. Tune it per workspace in Settings → Voice, including your own go-to next-steps and re-engagement openers, which override the industry defaults in every draft and reply.
+- **Human-ness check** — a live "does this sound human?" meter under the deal composer scores your copy 0–100 and flags AI tells (clichés, em-dash overuse, no contractions) so nothing robotic ever goes out.
 - **AI execution layer** — Claude drafts personalized email/SMS/call outreach per deal and generates strategic deal briefs (situation, next step, talking points, risk). On the deal page and inline in the recall queue. Falls back to high-quality templates with no API key; set `ANTHROPIC_API_KEY` to go live.
 - **Revenue Recall** — ranked at-risk queue with reason filters, next-best-action, and one-click AI draft.
 - **Pipeline** — drag-and-drop kanban; **Deal** & **Contact** detail with timelines and inline logging.
