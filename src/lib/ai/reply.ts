@@ -44,20 +44,49 @@ Return only the requested JSON.`;
 
 const SCHEMA = { type: "object", additionalProperties: false, properties: { subject: { type: "string" }, body: { type: "string" } }, required: ["subject", "body"] };
 
-export type Intent = "decline" | "competitor" | "price" | "timing" | "trust" | "info" | "question" | "positive";
+export type Intent =
+  | "hostile"
+  | "spam"
+  | "busy"
+  | "authority"
+  | "budget"
+  | "confused"
+  | "decline"
+  | "competitor"
+  | "price"
+  | "timing"
+  | "trust"
+  | "info"
+  | "question"
+  | "positive";
+
+/** The five reframe-with-an-industry-angle objection types. */
+export type ObjectionKind = "price" | "timing" | "competitor" | "trust" | "info";
+/** Situational intents handled by universal (industry-agnostic) human responses. */
+export type SituationalIntent = "authority" | "budget" | "busy" | "spam" | "confused" | "hostile";
+
+const OBJECTION_KINDS = new Set<Intent>(["price", "timing", "competitor", "trust", "info"]);
+const SITUATIONAL_KINDS = new Set<Intent>(["authority", "budget", "busy", "spam", "confused", "hostile"]);
 
 /**
- * Classify the prospect's incoming message so the reply can address what they
- * actually said. Order matters: the most specific, most actionable objections
- * are checked first (a "send me pricing" should be handled as price, not as a
- * generic question).
+ * Classify the prospect's incoming message so the reply addresses what they
+ * actually said — across the full range a human throws at you on a call, not a
+ * few buckets. Order matters: the most specific / most urgent signals win, and
+ * anything unrecognized still lands on a sensible human default (question →
+ * positive), so there's no input we can't respond to gracefully.
  */
 export function detectIntent(incoming: string): Intent {
   const t = incoming.toLowerCase();
-  if (/\b(not interested|no thanks|no thank you|stop|unsubscribe|please remove|take me off|already (sold|closed))\b/.test(t)) return "decline";
-  if (/\b(went with|going with|already (have|using|bought|got)|we use|we've got|signed with|chose|have a (vendor|provider|solution|agent|lender|broker|guy))\b/.test(t)) return "competitor";
-  if (/\b(how much|price|pricing|cost|costs|expensive|too much|budget|afford|discount|quote|ballpark|rates?)\b/.test(t)) return "price";
-  if (/\b(not (right )?now|not the right time|next (quarter|month|year|week)|later|busy|swamped|circle back|reach out in|check back|bad time|not a priority|after the holidays|q[1-4])\b/.test(t)) return "timing";
+  if (/\b(stop calling|do ?n'?t call( me)?( again)?|leave me alone|this is harassment|how many times|cut it out|piss off|f off|get lost)\b/.test(t)) return "hostile";
+  if (/\b(how did you get|who gave you|where did you get|is this a (robot|recording|robocall|telemarketer|sales call|cold call)|are you a (bot|robot|real person|human)|robocall|is this spam)\b/.test(t)) return "spam";
+  if (/\b(can'?t (talk|chat)|in a meeting|i'?m driving|driving right now|catch me later|call me (back|later)|bad time to talk|at work right now|on my way|in the middle of|gimme a sec)\b/.test(t)) return "busy";
+  if (/\b(not my (call|decision)|talk to my (boss|manager|partner|wife|husband|spouse|team)|run it by|check with (my|the|him|her|them)|needs? approval|loop in|someone else (handles|decides)|not the (decision|one who decides)|above my pay)\b/.test(t)) return "authority";
+  if (/\b(no budget|do ?n'?t have (the |a )?budget|can'?t afford|out of (our )?budget|budget('?s| is)? (tight|frozen|gone|cut|maxed)|no money|spent (our|the) budget|nothing left in the budget)\b/.test(t)) return "budget";
+  if (/\b(who('?s| is) this|what('?s| is) this( about| regarding)?|do i know you|what company|never heard of|what is this in regards)\b/.test(t)) return "confused";
+  if (/\b(not interested|no thanks|no thank you|unsubscribe|please remove|take me off|already (sold|closed)|not for us|we'?ll pass|gonna pass|hard pass)\b/.test(t)) return "decline";
+  if (/\b(went with|going with|already (have|using|bought|got)|we use|we'?ve got|signed with|chose|have a (vendor|provider|solution|agent|lender|broker|guy))\b/.test(t)) return "competitor";
+  if (/\b(how much|price|pricing|cost|costs|expensive|too much|discount|quote|ballpark|rates?)\b/.test(t)) return "price";
+  if (/\b(not (right )?now|not the right time|next (quarter|month|year|week)|maybe later|circle back|reach back|check back|not a priority|after the holidays|q[1-4])\b/.test(t)) return "timing";
   if (/\b(does (it|this) (really|actually)|proof|case study|references?|guarantee|not sure (it|this) works|sounds too good|is this legit|scam|skeptical|trust)\b/.test(t)) return "trust";
   if (/\b(send (me|over|info|details|something|that)|email me|brochure|more (info|details|information)|one[- ]?pager|deck|literature)\b/.test(t)) return "info";
   if (incoming.includes("?") || /\b(what about|can you|do you|when|where|why|which|who)\b/.test(t)) return "question";
@@ -65,13 +94,12 @@ export function detectIntent(incoming: string): Intent {
 }
 
 /**
- * Human responses per intent. Objection intents (competitor/price/timing/trust/
- * info) acknowledge first, then end in one easy question — that question IS the
- * ask, so no generic next-step is appended. decline exits graciously with no
- * ask. question/positive get the industry next-step appended as the ask.
- * Every line is checked clean of AI tells by the test suite.
+ * Universal human responses for the intents that aren't reframed with an
+ * industry angle. decline/hostile exit graciously (no question). question/
+ * positive get the industry next-step appended. Every line is checked clean of
+ * AI tells by the test suite.
  */
-const RESPONSES: Record<Intent, { sms: (f: string) => string[]; email: (f: string) => string[] }> = {
+const RESPONSES: Record<"decline" | "question" | "positive", { sms: (f: string) => string[]; email: (f: string) => string[] }> = {
   decline: {
     sms: (f) => [
       `no worries at all ${f} — thanks for telling me straight. i'll leave you be. if anything changes, i'm here.`,
@@ -82,66 +110,6 @@ const RESPONSES: Record<Intent, { sms: (f: string) => string[]; email: (f: strin
       `Totally understand, and thanks for being straight with me. I'll leave it here — if anything changes down the line, you know where to find me.`,
       `No problem at all, and I appreciate you telling me rather than leaving me guessing. I'll close this out; the door stays open.`,
       `Fair enough — thanks for the honesty, ${f}. I'll stop here, but I'm around anytime if that shifts.`,
-    ],
-  },
-  competitor: {
-    sms: (f) => [
-      `makes sense ${f}, glad you're sorted. out of interest, what tipped you their way?`,
-      `nice ${f} — good you've got someone. what's working well with them so far?`,
-      `all good ${f}. curious, is there anything they're not quite covering for you?`,
-    ],
-    email: (f) => [
-      `Makes sense, and glad you're sorted. Out of interest — what tipped you their way?`,
-      `Good you've got someone in place, ${f}. Quick one: is there anything they're not quite covering for you?`,
-      `Fair enough, and I'm not here to talk anyone down — just curious what's working well so far?`,
-    ],
-  },
-  price: {
-    sms: (f) => [
-      `fair question ${f}. it scales to what you actually need — what budget are you working with?`,
-      `good one ${f}. straight answer: it depends on scope. what range were you hoping to stay under?`,
-      `happy to get you a number ${f}. what's the priority — keep it lean, or do it properly?`,
-    ],
-    email: (f) => [
-      `Fair question, and I'd rather get you a real number than a ballpark. It scales to what you actually need — what budget are you working with?`,
-      `Happy to get you pricing, ${f}. It depends on scope, so quick one: what range were you hoping to stay under?`,
-      `Straight answer: it depends on what matters most to you here. What's the priority — keep it lean, or do this properly?`,
-    ],
-  },
-  timing: {
-    sms: (f) => [
-      `totally fair ${f} — no rush at all. want me to check back in a few weeks when it's calmer?`,
-      `makes sense ${f}, timing's everything. should i ping you early next month instead?`,
-      `all good ${f} — when's realistically a better time for you?`,
-    ],
-    email: (f) => [
-      `Totally fair — no rush on my end. Want me to check back in a few weeks when things have calmed down?`,
-      `Makes sense, timing matters more than people admit. When's realistically a better moment — early next month?`,
-      `No pressure at all, ${f}. Tell me a better time and I'll get out of your way until then.`,
-    ],
-  },
-  trust: {
-    sms: (f) => [
-      `fair to be skeptical ${f}. i'd rather show you than tell you — want a quick example from someone like you?`,
-      `good instinct ${f}. happy to send one real result, not a pitch. want it?`,
-      `totally get it ${f}. what would you need to see to believe it actually works?`,
-    ],
-    email: (f) => [
-      `Fair to be skeptical — I'd be too. I'd rather show you than tell you: want a quick example from someone in your spot?`,
-      `Good instinct, ${f}. Instead of promises, let me send one real result. What would you need to see to feel sure?`,
-      `Honestly, a bit of skepticism is healthy here. What would it take to prove this is worth your time?`,
-    ],
-  },
-  info: {
-    sms: (f) => [
-      `happy to ${f}. quick q so i send the right thing, not a brochure — what matters most to you here?`,
-      `can do ${f}. one question first so it's actually useful: what are you trying to solve?`,
-      `sure ${f} — i'll send exactly what's useful and skip the fluff. what's the main thing you want this to fix?`,
-    ],
-    email: (f) => [
-      `Happy to. Quick question first so I send the right thing rather than a generic brochure — what matters most to you here?`,
-      `Can do, ${f}. One thing first so it's actually useful: what are you trying to solve?`,
-      `Sure — I'll send exactly what's useful and skip the brochure. What's the main thing you want this to fix?`,
     ],
   },
   question: {
@@ -170,6 +138,39 @@ const RESPONSES: Record<Intent, { sms: (f: string) => string[]; email: (f: strin
   },
 };
 
+/**
+ * Situational responses — the things people actually say on calls beyond the
+ * classic objections. Each handles it like a real human would: acknowledge,
+ * address, and (except hostile/decline) end on an easy question. Takes the deal
+ * title so "who is this?" gets real context.
+ */
+const SITUATIONAL: Record<SituationalIntent, { sms: (f: string, deal: string) => string[]; email: (f: string, deal: string) => string[] }> = {
+  authority: {
+    sms: (f) => [`makes sense ${f} — who else'd want a say before you move on this?`, `fair ${f}, who else is in on this decision with you?`, `got it — who'd you want to loop in before deciding?`],
+    email: (f) => [`Makes total sense — who else would want a say before you move on this?`, `Fair enough, ${f}. Who else is part of this decision with you?`, `Good to know — who would you want to bring in before you decide?`],
+  },
+  budget: {
+    sms: (f) => [`totally fair ${f}. is it that the budget's not there this cycle, or that the value isn't clear yet?`, `fair ${f} — is budget the blocker, or is it more whether it's worth it?`, `got it. would it help to look at what it'd actually save you first?`],
+    email: (f) => [`Totally fair. Is it that the budget isn't there this cycle, or that the value isn't clear enough yet?`, `Fair enough, ${f}. Is budget the real blocker, or is it more whether this earns its keep?`, `Understood — would it help to see what it'd actually save you before we talk numbers?`],
+  },
+  busy: {
+    sms: (f) => [`no worries ${f}, sounds like i caught you mid-something. when's better, later today or tomorrow?`, `all good — bad time? give me a better one and i'll catch you then.`, `got it ${f}, want me to be quick now or try you later?`],
+    email: (f) => [`No worries — sounds like I caught you mid-something. When's better, later today or tomorrow?`, `All good, ${f}. Give me a better time and I'll catch you then.`, `Totally fine — want me to be quick now, or try you later?`],
+  },
+  spam: {
+    sms: (f) => [`fair to ask ${f} — i'm a real person, not a robocall. want the 20-second why, then you decide?`, `honest question. i'm a real human with a specific reason — want me to keep it quick?`, `no robot here ${f}. can i give you the short version and you tell me to back off if it's not useful?`],
+    email: (f) => [`Fair to ask. I'm a real person, not a robocall — want the 20-second version of why I'm calling, then you decide?`, `Honest question, and fair. I'm a real human with a specific reason — want me to keep it quick?`, `No robocall here, ${f}. Can I give you the short version, and you tell me to back off if it's not useful?`],
+  },
+  confused: {
+    sms: (f, deal) => [`good question ${f} — i'm calling about ${deal}. want the short version of why it might matter to you?`, `fair — this is about ${deal}. worth 20 seconds?`, `totally fair ${f}. it's about ${deal} — want the quick why?`],
+    email: (f, deal) => [`Good question — I'm calling about ${deal}. Want the short version of why it might matter to you?`, `Fair enough, ${f}. This is about ${deal} — want the quick why?`, `Totally fair. It's about ${deal} — worth twenty seconds of context?`],
+  },
+  hostile: {
+    sms: (f) => [`i hear you ${f}, and i won't keep you. i'll leave it here — take care.`, `understood, i'll stop there. sorry to bug you — all the best.`, `got it, i'll back off completely. take care ${f}.`],
+    email: (f) => [`I hear you, and I won't keep you. I'll leave it here — take care.`, `Understood — I'll stop there. Sorry to have bugged you, all the best.`, `Got it, I'll back off completely. Take care, ${f}.`],
+  },
+};
+
 function fallback(input: ReplyInput): ReplyResult {
   const first = firstName(input.contactName);
   const pb = getPlaybook(input.industryId ?? "generic");
@@ -184,26 +185,31 @@ function fallback(input: ReplyInput): ReplyResult {
   const step = pickVariant(stepPool, seeded(seed, "step"));
   const appendStep = intent === "question" || intent === "positive";
 
-  // Objections get an industry-true reframe that already ends on a question, so
-  // a price/timing/competitor/trust/info reply sounds like a rep who knows this
-  // exact business. Everything else uses the universal human responses.
-  const isObjection = intent === "price" || intent === "timing" || intent === "competitor" || intent === "trust" || intent === "info";
   const ackPool = { sms: ["totally fair", "fair one", "makes sense", "good question"], email: ["Totally fair", "Fair question", "Makes sense", "Good question"] };
 
   let body: string;
-  if (isObjection) {
-    const angle = pb.objectionAngles[intent];
-    if (sms) {
-      body = `${pick(ackPool.sms, seed, "ack")}. ${angle}`;
-    } else {
-      body = `${greet}\n\n${pick(ackPool.email, seed, "ack")}. ${capitalize(angle)}${sigLine}`;
-    }
-  } else if (sms) {
-    const ack = pick(RESPONSES[intent].sms(first), seed, `${intent}_sms`);
-    body = appendStep ? `${ack} ${sentence(step)}` : ack;
+  if (OBJECTION_KINDS.has(intent)) {
+    // Classic objection → industry-true reframe that already ends on a question,
+    // so it sounds like a rep who knows this exact business.
+    const angle = pb.objectionAngles[intent as ObjectionKind];
+    body = sms
+      ? `${pick(ackPool.sms, seed, "ack")}. ${angle}`
+      : `${greet}\n\n${pick(ackPool.email, seed, "ack")}. ${capitalize(angle)}${sigLine}`;
+  } else if (SITUATIONAL_KINDS.has(intent)) {
+    // Real-call situations (busy, who-is-this, decision-maker, hostile, ...).
+    const r = SITUATIONAL[intent as SituationalIntent];
+    body = sms
+      ? pick(r.sms(first, input.dealTitle), seed, `${intent}_sms`)
+      : `${greet}\n\n${pick(r.email(first, input.dealTitle), seed, `${intent}_email`)}${sigLine}`;
   } else {
-    const ack = pick(RESPONSES[intent].email(first), seed, `${intent}_email`);
-    body = `${greet}\n\n${ack}${appendStep ? ` ${sentence(capitalize(step))}` : ""}${sigLine}`;
+    const base = intent === "decline" || intent === "question" || intent === "positive" ? intent : "positive";
+    if (sms) {
+      const ack = pick(RESPONSES[base].sms(first), seed, `${base}_sms`);
+      body = appendStep ? `${ack} ${sentence(step)}` : ack;
+    } else {
+      const ack = pick(RESPONSES[base].email(first), seed, `${base}_email`);
+      body = `${greet}\n\n${ack}${appendStep ? ` ${sentence(capitalize(step))}` : ""}${sigLine}`;
+    }
   }
 
   return { subject: sms ? undefined : `Re: ${input.dealTitle}`, body, source: "template" };

@@ -62,6 +62,18 @@ export function reactTo(intent: Intent, sentiment: Sentiment): Reaction {
     return { tone: "enthusiastic", emotion: "energetic", note: "Match their energy and move to a concrete next step now." };
 
   switch (intent) {
+    case "hostile":
+      return { tone: "reassuring", emotion: "empathetic", note: "They're irritated — de-escalate, apologize lightly, and offer to let them go." };
+    case "spam":
+      return { tone: "confident", emotion: "warm", note: "Reassure them you're a real person, say why fast, keep it light." };
+    case "busy":
+      return { tone: "direct", emotion: "calm", note: "They're slammed — be brief and offer a clearly better time." };
+    case "authority":
+      return { tone: "consultative", emotion: "warm", note: "Find the other deciders and how they'd weigh in — don't pressure." };
+    case "budget":
+      return { tone: "reassuring", emotion: "calm", note: "Separate 'no budget' from 'no value' — no pressure, get the real blocker." };
+    case "confused":
+      return { tone: "warm", emotion: "warm", note: "Give quick, friendly context and earn twenty seconds." };
     case "decline":
       return { tone: "reassuring", emotion: "calm", note: "They're out — be gracious, leave the door open, don't push." };
     case "price":

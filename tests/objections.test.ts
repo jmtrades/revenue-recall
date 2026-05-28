@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { INDUSTRIES, type ObjectionKind } from "@/lib/industries";
-import { draftReply } from "@/lib/ai/reply";
+import { draftReply, detectIntent } from "@/lib/ai/reply";
 import { analyzeHumanness } from "@/lib/humanness";
 import { AI_TELLS } from "@/lib/copy";
 
@@ -65,6 +65,57 @@ describe("objection replies are industry-tailored, human, and reframe-then-ask",
       });
     }
   }
+
+  it("classifies the full range of real-call situations", () => {
+    const map: [string, string][] = [
+      ["stop calling me, seriously", "hostile"],
+      ["how did you get my number?", "spam"],
+      ["is this a robocall?", "spam"],
+      ["can't talk, i'm driving", "busy"],
+      ["call me back later", "busy"],
+      ["that's not my decision, talk to my boss", "authority"],
+      ["i need to run it by my partner", "authority"],
+      ["we have no budget this year", "budget"],
+      ["can't afford it right now", "budget"],
+      ["who is this?", "confused"],
+      ["what's this about?", "confused"],
+      ["not interested, please remove me", "decline"],
+      ["sounds great, let's chat", "positive"],
+    ];
+    for (const [text, intent] of map) expect(detectIntent(text), text).toBe(intent);
+  });
+
+  it("handles every real-call situation cleanly and humanly across channels", async () => {
+    const situations = [
+      "stop calling me",
+      "how did you get my number?",
+      "can't talk, i'm driving",
+      "not my call, talk to my manager",
+      "we have no budget right now",
+      "who is this?",
+    ];
+    for (const channel of ["email", "sms"] as const) {
+      for (const incoming of situations) {
+        const out = await draftReply({ channel, contactName: "Jordan Avery", dealTitle: "Northside Co", industryId: "saas", industryLabel: "SaaS", incoming, voice: { signature: "— Sam" } });
+        assertClean(out.body, `${channel}/${incoming}`);
+        expect(analyzeHumanness(out.body).rating, `${channel}/${incoming}`).not.toBe("robotic");
+        if (channel === "sms") expect(out.body.length).toBeLessThanOrEqual(320);
+      }
+    }
+  });
+
+  it("a hostile prospect gets a gracious exit, not a question", async () => {
+    const out = await draftReply({ channel: "sms", contactName: "Pat", dealTitle: "D", industryId: "generic", incoming: "stop calling me, leave me alone" });
+    expect(out.body.trim().endsWith("?")).toBe(false);
+  });
+
+  it("never throws on weird or empty-ish input — there's always a human reply", async () => {
+    for (const incoming of ["asdfghjkl", "🤔", "k.", "lol ok whatever", "...", "MAYBE???"]) {
+      const out = await draftReply({ channel: "sms", contactName: "Sam", dealTitle: "D", industryId: "generic", incoming });
+      expect(out.body.length).toBeGreaterThan(0);
+      assertClean(out.body, `weird:${incoming}`);
+    }
+  });
 
   it("two different industries reframe the same price objection differently", async () => {
     const re = await draftReply({ channel: "sms", contactName: "Pat", dealTitle: "D", industryId: "real_estate", incoming: "too expensive" });

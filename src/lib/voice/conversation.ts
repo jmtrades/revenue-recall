@@ -105,7 +105,7 @@ function lastProspect(turns: Turn[]): string | null {
 function phaseFor(state: ConversationState, intent: Intent | null): CallPhase {
   const repTurns = state.turns.filter((t) => t.speaker === "rep").length;
   if (repTurns === 0) return "opening";
-  if (intent === "decline") return "wrap";
+  if (intent === "decline" || intent === "hostile") return "wrap";
   if (intent && intent !== "positive" && intent !== "question") return "handling";
   if (repTurns >= 3 && (intent === "positive" || intent === "question")) return "closing";
   return "discovery";
@@ -118,7 +118,9 @@ const OPENERS: ((f: string, co: string) => string)[] = [
   (f) => `Hey ${f}, good to catch you. Quick one — how's everything going on your end?`,
 ];
 
-const SPOKEN: Record<Intent, (f: string) => string[]> = {
+// Spoken handling for the common intents; anything else falls back to "question"
+// handling while the reactive policy still adapts tone/emotion.
+const SPOKEN: Partial<Record<Intent, (f: string) => string[]>> = {
   decline: (f) => [
     `Totally fair, ${f} — I appreciate you being straight with me. I'll let you go, but I'm around if anything ever changes.`,
     `No worries at all, thanks for the honesty. I won't take more of your time — take care, ${f}.`,
@@ -173,13 +175,13 @@ function fallbackRepTurn(state: ConversationState): RepTurn {
   if (phase === "opening") {
     return { ...base, text: pick(OPENERS, seed, "open")(first, co), emotion: "warm", done: false };
   }
-  if (intent === "decline") {
-    return { ...base, text: pick(SPOKEN.decline(first), seed, "decline"), phase: "wrap", done: true };
+  if (intent === "decline" || intent === "hostile") {
+    return { ...base, text: pick(SPOKEN.decline!(first), seed, "decline"), phase: "wrap", done: true };
   }
   if (phase === "closing") {
     return { ...base, text: pick(CLOSERS, seed, "close")(first), emotion: "energetic", done: true };
   }
-  const pool = (intent && SPOKEN[intent]) || SPOKEN.question;
+  const pool = (intent && SPOKEN[intent]) || SPOKEN.question!;
   return { ...base, text: pick(pool(first), seed, intent ?? "discovery"), done: false };
 }
 
