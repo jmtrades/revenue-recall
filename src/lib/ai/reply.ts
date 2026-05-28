@@ -49,12 +49,24 @@ const SCHEMA = { type: "object", additionalProperties: false, properties: { subj
 function fallback(input: ReplyInput): ReplyResult {
   const first = input.contactName.split(" ")[0] || input.contactName;
   const sig = input.voice?.signature || input.voice?.senderName || "";
+  const pick = <T,>(a: T[]): T => a[Math.floor(Math.random() * a.length)];
+
   if (input.channel === "sms") {
-    return { body: `Thanks ${first}! Appreciate the reply. Happy to help with whatever you need on ${input.dealTitle} — want to grab 15 min this week?`, source: "template" };
+    return {
+      body: pick([
+        `Appreciate you getting back to me, ${first}. Want me to take the next bit off your plate — quick call this week?`,
+        `Thanks ${first}! Happy to help however's easiest. Want me to send a quick recap, or grab 15 min?`,
+        `Got it ${first} — thanks for the reply. What's the most useful next step for you here?`,
+      ]),
+      source: "template",
+    };
   }
   return {
     subject: `Re: ${input.dealTitle}`,
-    body: `Hi ${first},\n\nThanks for getting back to me — really appreciate it. Happy to help however I can here.\n\nWould a quick 15-minute call this week be useful to talk it through?\n\n${sig || "Best"}`,
+    body: pick([
+      `Hi ${first},\n\nThanks for getting back to me — really appreciate it. Happy to help however makes this easiest for you.\n\nWould a quick 15 minutes this week be useful, or is there something specific I can answer first?\n\n${sig || "Best"}`,
+      `Hi ${first},\n\nAppreciate the reply. Whatever's the next useful step here, I'm glad to make it easy — a quick recap, a call, or just answering questions.\n\nWhat works best for you?\n\n${sig || "Best"}`,
+    ]),
     source: "template",
   };
 }

@@ -68,35 +68,64 @@ const SCHEMA = {
   required: ["subject", "body"],
 };
 
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 function fallback(input: DraftInput): DraftResult {
   const first = input.contactName.split(" ")[0] || input.contactName;
   const rep = input.voice?.signature || input.voice?.senderName || input.repName || "";
+  const deal = input.dealTitle;
   const cold = (input.daysSinceContact ?? 0) >= 14 || input.recallReason === "lost_winnable";
 
   if (input.channel === "sms") {
     const body = cold
-      ? `Hi ${first}, it's ${rep || "us"} — circling back on ${input.dealTitle}. Worth a quick chat this week? Totally fine if the timing's off.`
-      : `Hi ${first}, following up on ${input.dealTitle}. Any questions I can answer to help you decide? Happy to jump on a quick call.`;
+      ? pick([
+          `Hey ${first}, it's ${rep || "me"} — been a minute. Still worth picking ${deal} back up, or has the timing shifted? Either way's fine.`,
+          `Hi ${first}, circling thoughts on ${deal}. No pressure at all — just didn't want to let it quietly drop if you're still open to it.`,
+          `${first}, quick one on ${deal} — is this still on your radar? Happy to pick up where we left off, or close the loop cleanly.`,
+        ])
+      : pick([
+          `Hey ${first}, anything I can answer on ${deal} to make the decision easier? Glad to jump on a quick call whenever.`,
+          `Hi ${first}, where's your head at on ${deal}? Happy to help with whatever's still open.`,
+          `${first} — what would make ${deal} a clear yes for you? Want to make this easy.`,
+        ]);
     return { body, source: "template" };
   }
 
   if (input.channel === "call") {
     return {
       body: [
-        `• Open warm: reference ${input.company ?? "their goals"} and the last touch (${input.daysSinceContact ?? 0} days ago).`,
-        `• Re-confirm the goal behind "${input.dealTitle}".`,
-        cold ? "• Acknowledge time passed; offer a fresh angle or incentive." : "• Surface any blocker keeping this from moving forward.",
-        `• Quantify value (${input.valueLabel}: ${input.value} ${input.currency}).`,
-        "• Propose a concrete next step + date. Confirm before hanging up.",
+        `• Open warm — reference ${input.company ?? "their world"} and the last touch (${input.daysSinceContact ?? 0} days ago).`,
+        `• Get them talking: what's changed since we last spoke about ${deal}?`,
+        cold ? "• Acknowledge the gap, lead with a fresh angle or an easy ask." : "• Surface the real blocker keeping this from moving.",
+        `• Tie value to their goal (${input.valueLabel}: ${input.value} ${input.currency}).`,
+        "• Land one concrete next step + a date before you hang up.",
       ].join("\n"),
       source: "template",
     };
   }
 
-  const subject = cold ? `Still worth a conversation, ${first}?` : `Next steps on ${input.dealTitle}`;
-  const body = cold
-    ? `Hi ${first},\n\nIt's been a little while since we talked about ${input.dealTitle}. Circumstances change, so I wanted to check in — is this still on your radar?\n\nIf helpful, I can send a fresh proposal or just close the loop. Either way works.\n\nBest,\n${rep}`
-    : `Hi ${first},\n\nFollowing up on ${input.dealTitle}. We left off at the ${input.stageLabel.toLowerCase()} stage — I'd love to help you take the next step.\n\nWould a quick 15-minute call this week make sense?\n\nBest,\n${rep}`;
+  if (cold) {
+    const subject = pick([`Still worth a look, ${first}?`, `Picking ${deal} back up?`, `Quick check on ${deal}`]);
+    const body = `Hi ${first},
+
+It's been a little while since ${deal} was on the table${input.company ? ` for ${input.company}` : ""}. Things change, so I figured I'd check rather than assume — is this still something you'd want to move on?
+
+If it makes sense, I can pick up right where we left off. If not, no worries at all — just let me know and I'll close the loop.
+
+${rep ? rep : "Talk soon"}`;
+    return { subject, body, source: "template" };
+  }
+
+  const subject = pick([`Next step on ${deal}`, `Where we're at on ${deal}`, `Making ${deal} easy`]);
+  const body = `Hi ${first},
+
+Following up on ${deal} — we left off around the ${input.stageLabel.toLowerCase()} stage. I'd love to help you take the next step whenever you're ready.
+
+Would a quick 15 minutes this week be useful, or is there something specific I can answer first?
+
+${rep ? rep : "Best"}`;
   return { subject, body, source: "template" };
 }
 
