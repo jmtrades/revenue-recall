@@ -41,6 +41,15 @@ export function aiModel(override?: string): string {
   return override ?? process.env.ANTHROPIC_MODEL ?? "claude-haiku-4-5-20251001";
 }
 
+/**
+ * Stronger model for nuance-critical, lower-frequency work (live objection
+ * handling, voice distillation). Live certification showed Haiku occasionally
+ * emits placeholders and mishandles angry opt-outs on replies, while Sonnet
+ * handles them correctly — so replies route here. Drafts stay on Haiku (Haiku
+ * matched voice perfectly there). An ANTHROPIC_MODEL env override still wins.
+ */
+export const QUALITY_MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6";
+
 // Short-lived output cache: identical idempotent requests (e.g. a deal brief
 // re-rendered on each page view) are served free — no API call, no metered
 // action. This is one of the biggest cost savers. Per-instance + ephemeral.
