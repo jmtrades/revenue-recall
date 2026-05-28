@@ -76,6 +76,7 @@ Brief the rep now.`;
       schema: SCHEMA,
       maxTokens: 1200,
       think: true,
+      feature: "brief",
     });
     return { ...out, source: "ai" };
   } catch {

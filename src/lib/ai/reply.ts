@@ -127,6 +127,10 @@ const SITUATIONAL: Record<SituationalIntent, { sms: (f: string, deal: string) =>
     sms: (f) => [`i hear you ${f}, and i won't keep you. i'll leave it here — take care.`, `understood, i'll stop there. sorry to bug you — all the best.`, `got it, i'll back off completely. take care ${f}.`],
     email: (f) => [`I hear you, and I won't keep you. I'll leave it here — take care.`, `Understood — I'll stop there. Sorry to have bugged you, all the best.`, `Got it, I'll back off completely. Take care, ${f}.`],
   },
+  gatekeeper: {
+    sms: (f, deal) => [`no worries — could you let ${f} know it's about ${deal}? when's usually a good time to catch them?`, `all good, thanks — what's the best time to reach ${f} directly?`, `thanks for that — could you pass along it's about ${deal}? when's ${f} usually around?`],
+    email: (f, deal) => [`No worries — could you let ${f} know it's about ${deal}? When's usually a good time to catch them?`, `All good, thanks. What's the best time to reach ${f} directly?`, `Thanks for that — could you pass along it's about ${deal}? When's ${f} usually around?`],
+  },
 };
 
 function fallback(input: ReplyInput): ReplyResult {
@@ -198,8 +202,8 @@ ${input.voice?.customNextSteps?.length ? `\nThis rep's own go-to next steps (pre
 
 Write the reply now, as this human. Answer what they actually said.`;
   try {
-    const raw = await completeJson<{ subject?: string; body: string }>({ system: SYSTEM, user, schema: SCHEMA, maxTokens: 900, temperature: 0.9 });
-    const out = await refineForHumanness({ system: SYSTEM, schema: SCHEMA, draft: raw, maxTokens: 900 });
+    const raw = await completeJson<{ subject?: string; body: string }>({ system: SYSTEM, user, schema: SCHEMA, maxTokens: 900, temperature: 0.9, feature: "reply" });
+    const out = await refineForHumanness({ system: SYSTEM, schema: SCHEMA, draft: raw, maxTokens: 900, feature: "reply" });
     return { subject: input.channel === "email" ? out.subject : undefined, body: out.body, source: "ai" };
   } catch {
     return fallback(input);

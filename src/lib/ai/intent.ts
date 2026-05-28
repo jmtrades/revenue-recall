@@ -8,6 +8,7 @@
 export type Intent =
   | "hostile"
   | "spam"
+  | "gatekeeper"
   | "busy"
   | "authority"
   | "budget"
@@ -24,10 +25,10 @@ export type Intent =
 /** The five reframe-with-an-industry-angle objection types. */
 export type ObjectionKind = "price" | "timing" | "competitor" | "trust" | "info";
 /** Situational intents handled by universal (industry-agnostic) human responses. */
-export type SituationalIntent = "authority" | "budget" | "busy" | "spam" | "confused" | "hostile";
+export type SituationalIntent = "authority" | "budget" | "busy" | "spam" | "confused" | "hostile" | "gatekeeper";
 
 export const OBJECTION_KINDS = new Set<Intent>(["price", "timing", "competitor", "trust", "info"]);
-export const SITUATIONAL_KINDS = new Set<Intent>(["authority", "budget", "busy", "spam", "confused", "hostile"]);
+export const SITUATIONAL_KINDS = new Set<Intent>(["authority", "budget", "busy", "spam", "confused", "hostile", "gatekeeper"]);
 
 /**
  * Classify the prospect's incoming message so the reply addresses what they
@@ -40,6 +41,7 @@ export function detectIntent(incoming: string): Intent {
   const t = incoming.toLowerCase();
   if (/\b(stop calling|do ?n'?t call( me)?( again)?|leave me alone|this is harassment|how many times|cut it out|piss off|f off|get lost)\b/.test(t)) return "hostile";
   if (/\b(how did you get|who gave you|where did you get|is this a (robot|recording|robocall|telemarketer|sales call|cold call)|are you a (bot|robot|real person|human)|robocall|is this spam)\b/.test(t)) return "spam";
+  if (/\b(can i (take|leave) a message|who('?s| is) calling|may i ask who|put (you|them) through|s?he'?s not (available|in|here)|s?he'?s in a meeting|s?he'?s out|they'?re not available|this is (his|her|their) (office|assistant))\b/.test(t)) return "gatekeeper";
   if (/\b(can'?t (talk|chat)|in a meeting|i'?m driving|driving right now|catch me later|call me (back|later)|bad time to talk|at work right now|on my way|in the middle of|gimme a sec)\b/.test(t)) return "busy";
   if (/\b(not my (call|decision)|talk to my (boss|manager|partner|wife|husband|spouse|team)|run it by|check with (my|the|him|her|them)|needs? approval|loop in|someone else (handles|decides)|not the (decision|one who decides)|above my pay)\b/.test(t)) return "authority";
   if (/\b(no budget|do ?n'?t have (the |a )?budget|can'?t afford|out of (our )?budget|budget('?s| is)? (tight|frozen|gone|cut|maxed)|no money|spent (our|the) budget|nothing left in the budget)\b/.test(t)) return "budget";

@@ -74,6 +74,8 @@ export function reactTo(intent: Intent, sentiment: Sentiment): Reaction {
       return { tone: "reassuring", emotion: "calm", note: "Separate 'no budget' from 'no value' — no pressure, get the real blocker." };
     case "confused":
       return { tone: "warm", emotion: "warm", note: "Give quick, friendly context and earn twenty seconds." };
+    case "gatekeeper":
+      return { tone: "warm", emotion: "warm", note: "Win the gatekeeper over — be warm and respectful, get a name and the best time." };
     case "decline":
       return { tone: "reassuring", emotion: "calm", note: "They're out — be gracious, leave the door open, don't push." };
     case "price":

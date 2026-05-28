@@ -367,9 +367,10 @@ Write the ${input.channel} message now, as this human. Make it impossible to tel
       maxTokens: 1024,
       // Higher temperature → the natural variation that makes copy read human.
       temperature: 0.9,
+      feature: "draft",
     });
     // Score locally and let the model fix its own tells once if needed.
-    const out = await refineForHumanness({ system: SYSTEM, schema: SCHEMA, draft: raw, maxTokens: 1024 });
+    const out = await refineForHumanness({ system: SYSTEM, schema: SCHEMA, draft: raw, maxTokens: 1024, feature: "draft" });
     return {
       subject: input.channel === "email" ? out.subject : undefined,
       body: out.body,

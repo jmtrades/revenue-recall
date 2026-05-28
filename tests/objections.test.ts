@@ -79,6 +79,9 @@ describe("objection replies are industry-tailored, human, and reframe-then-ask",
       ["can't afford it right now", "budget"],
       ["who is this?", "confused"],
       ["what's this about?", "confused"],
+      ["she's not available right now", "gatekeeper"],
+      ["can I take a message?", "gatekeeper"],
+      ["who's calling?", "gatekeeper"],
       ["not interested, please remove me", "decline"],
       ["sounds great, let's chat", "positive"],
     ];
@@ -93,6 +96,7 @@ describe("objection replies are industry-tailored, human, and reframe-then-ask",
       "not my call, talk to my manager",
       "we have no budget right now",
       "who is this?",
+      "she's not available, can I take a message?",
     ];
     for (const channel of ["email", "sms"] as const) {
       for (const incoming of situations) {

@@ -23,6 +23,8 @@ export interface UsageSummary {
   inputTokens: number;
   outputTokens: number;
   calls: number;
+  /** Cost (USD) attributed per feature label, for ROI/breakdown. */
+  byFeature: Record<string, number>;
 }
 
 const mem: (UsageEntry & { orgId?: string })[] = [];
@@ -63,31 +65,34 @@ export async function recordUsage(entry: Omit<UsageEntry, "at">): Promise<void> 
 }
 
 /** Spend + token summary for the current calendar month. */
+function blank(): UsageSummary {
+  return { costUsd: 0, inputTokens: 0, outputTokens: 0, calls: 0, byFeature: {} };
+}
+
+function add(s: UsageSummary, cost: number, inTok: number, outTok: number, feature?: string): UsageSummary {
+  const key = feature || "other";
+  return {
+    costUsd: s.costUsd + cost,
+    inputTokens: s.inputTokens + inTok,
+    outputTokens: s.outputTokens + outTok,
+    calls: s.calls + 1,
+    byFeature: { ...s.byFeature, [key]: (s.byFeature[key] ?? 0) + cost },
+  };
+}
+
 export async function usageSummary(now: Date = new Date()): Promise<UsageSummary> {
   const mk = now.toISOString().slice(0, 7);
-  const empty: UsageSummary = { costUsd: 0, inputTokens: 0, outputTokens: 0, calls: 0 };
   try {
     if (!isSupabaseConfigured()) {
-      return mem.filter((r) => monthKey(r.at) === mk).reduce(
-        (s, r) => ({ costUsd: s.costUsd + r.costUsd, inputTokens: s.inputTokens + r.inputTokens, outputTokens: s.outputTokens + r.outputTokens, calls: s.calls + 1 }),
-        empty,
-      );
+      return mem.filter((r) => monthKey(r.at) === mk).reduce((s, r) => add(s, r.costUsd, r.inputTokens, r.outputTokens, r.feature), blank());
     }
     const id = await orgId();
-    if (!id) return empty;
+    if (!id) return blank();
     const from = `${mk}-01T00:00:00.000Z`;
-    const { data } = await getSupabase()!.from("ai_usage").select("input_tokens,output_tokens,cost_usd").eq("org_id", id).gte("created_at", from);
-    return (data ?? []).reduce(
-      (s, r) => ({
-        costUsd: s.costUsd + Number(r.cost_usd ?? 0),
-        inputTokens: s.inputTokens + Number(r.input_tokens ?? 0),
-        outputTokens: s.outputTokens + Number(r.output_tokens ?? 0),
-        calls: s.calls + 1,
-      }),
-      empty,
-    );
+    const { data } = await getSupabase()!.from("ai_usage").select("input_tokens,output_tokens,cost_usd,feature").eq("org_id", id).gte("created_at", from);
+    return (data ?? []).reduce((s, r) => add(s, Number(r.cost_usd ?? 0), Number(r.input_tokens ?? 0), Number(r.output_tokens ?? 0), (r.feature as string) ?? undefined), blank());
   } catch {
-    return empty;
+    return blank();
   }
 }
 

@@ -35,14 +35,16 @@ describe("ai cost model", () => {
 });
 
 describe("usage ledger + budget", () => {
-  it("sums this month's cost, tokens, and calls", async () => {
-    await recordUsage({ model: "claude-opus-4-8", inputTokens: 1000, outputTokens: 500, costUsd: 0.0525 });
-    await recordUsage({ model: "claude-opus-4-8", inputTokens: 2000, outputTokens: 1000, costUsd: 0.105 });
+  it("sums this month's cost, tokens, and calls, broken down by feature", async () => {
+    await recordUsage({ model: "claude-opus-4-8", inputTokens: 1000, outputTokens: 500, costUsd: 0.0525, feature: "draft" });
+    await recordUsage({ model: "claude-opus-4-8", inputTokens: 2000, outputTokens: 1000, costUsd: 0.105, feature: "reply" });
+    await recordUsage({ model: "claude-opus-4-8", inputTokens: 500, outputTokens: 200, costUsd: 0.02, feature: "draft" });
     const s = await usageSummary();
-    expect(s.calls).toBe(2);
-    expect(s.inputTokens).toBe(3000);
-    expect(s.outputTokens).toBe(1500);
-    expect(s.costUsd).toBeCloseTo(0.1575, 6);
+    expect(s.calls).toBe(3);
+    expect(s.inputTokens).toBe(3500);
+    expect(s.costUsd).toBeCloseTo(0.1775, 6);
+    expect(s.byFeature.draft).toBeCloseTo(0.0725, 6);
+    expect(s.byFeature.reply).toBeCloseTo(0.105, 6);
   });
 
   it("is unlimited with no budget set", async () => {

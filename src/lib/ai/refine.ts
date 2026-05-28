@@ -20,6 +20,7 @@ export async function refineForHumanness(opts: {
   draft: Draft;
   maxTokens?: number;
   temperature?: number;
+  feature?: string;
 }): Promise<Draft> {
   const before = analyzeHumanness(opts.draft.body);
   if (before.rating === "human" && before.flags.length === 0) return opts.draft;
@@ -42,6 +43,7 @@ Return the improved version as JSON — no commentary.`;
       schema: opts.schema,
       maxTokens: opts.maxTokens ?? 1024,
       temperature: opts.temperature ?? 0.85,
+      feature: opts.feature ? `${opts.feature}.refine` : "refine",
     });
     // Keep the revision only if it actually scores at least as human.
     return analyzeHumanness(revised.body).score >= before.score ? revised : opts.draft;

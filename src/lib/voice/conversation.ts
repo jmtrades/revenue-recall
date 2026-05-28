@@ -209,7 +209,7 @@ ${transcript(state.turns, "rep")}
 
 Say the next line out loud, as the rep. Set done=true only if the call should naturally end now.`;
   try {
-    const out = await completeJson<{ text: string; done: boolean }>({ system: REP_SYSTEM, user, schema: REP_SCHEMA, maxTokens: 220, temperature: 0.9 });
+    const out = await completeJson<{ text: string; done: boolean }>({ system: REP_SYSTEM, user, schema: REP_SCHEMA, maxTokens: 220, temperature: 0.9, feature: "call" });
     return { text: out.text, phase, done: Boolean(out.done), tone: state.tone ?? reaction.tone, emotion: reaction.emotion, coachNote: reaction.note, source: "ai" };
   } catch {
     return fallbackRepTurn(state);
@@ -256,7 +256,7 @@ ${transcript(state.turns, "prospect")}
 
 Say the prospect's next line out loud. React to what the rep just said.`;
   try {
-    const out = await completeJson<{ text: string }>({ system: PROSPECT_SYSTEM, user, schema: PROSPECT_SCHEMA, maxTokens: 160, temperature: 0.95 });
+    const out = await completeJson<{ text: string }>({ system: PROSPECT_SYSTEM, user, schema: PROSPECT_SCHEMA, maxTokens: 160, temperature: 0.95, feature: "roleplay" });
     const sentiment = detectSentiment(out.text);
     return { text: out.text, intent: detectIntent(out.text), sentiment, emotion: sentimentToEmotion(sentiment), source: "ai" };
   } catch {

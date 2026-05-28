@@ -12,8 +12,11 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
   const [org, setOrg] = useState("");
   const [quota, setQuota] = useState("250000");
   const [invites, setInvites] = useState("");
+  const [yourName, setYourName] = useState("");
+  const [role, setRole] = useState("");
+  const [samples, setSamples] = useState("");
 
-  const steps = ["Industry", "Workspace", "Team"];
+  const steps = ["Industry", "Workspace", "Your voice", "Team"];
   const input = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-fg outline-none focus:border-brand";
 
   const [finishing, setFinishing] = useState(false);
@@ -24,13 +27,25 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
       return;
     }
     setFinishing(true);
-    // Persist what we can (name + goal); ignored gracefully if no DB.
+    // Persist what we can (name + goal + the user's voice); ignored gracefully if no DB.
     try {
       await fetch("/api/org", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: org || undefined, monthlyQuota: Number(quota) || undefined }),
       });
+      if (yourName.trim() || samples.trim()) {
+        await fetch("/api/voice/learn", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            senderName: yourName || undefined,
+            role: role || undefined,
+            signature: yourName ? `— ${yourName.split(" ")[0]}` : undefined,
+            samples: samples || undefined,
+          }),
+        });
+      }
     } catch {
       /* non-blocking */
     }
@@ -91,6 +106,36 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
         )}
 
         {step === 2 && (
+          <div>
+            <h2 className="text-xl font-semibold text-fg">Teach it your voice</h2>
+            <p className="mt-1 text-sm text-muted">So every email, text, and call sounds like <em>you</em> — not AI. You can refine this anytime in Settings → Voice.</p>
+            <div className="mt-5 space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="stat-label">Your name</label>
+                  <input className={`${input} mt-1`} value={yourName} onChange={(e) => setYourName(e.target.value)} placeholder="Alex Carter" />
+                </div>
+                <div>
+                  <label className="stat-label">Your role</label>
+                  <input className={`${input} mt-1`} value={role} onChange={(e) => setRole(e.target.value)} placeholder="Account Executive" />
+                </div>
+              </div>
+              <div>
+                <label className="stat-label">How do you sound?</label>
+                <textarea
+                  className={`${input} mt-1`}
+                  rows={5}
+                  value={samples}
+                  onChange={(e) => setSamples(e.target.value)}
+                  placeholder={"Describe your style, or paste a few of your real messages. e.g.\n“Hey Jordan — saw your trial wrapped. Worth 15 min Thursday to show you the part teams actually stick with?”"}
+                />
+                <p className="mt-1 text-xs text-muted">Optional, but it&apos;s what makes the AI write like you. Paste 2–3 real messages for the best match.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
           <div>
             <h2 className="text-xl font-semibold text-fg">Invite your team</h2>
             <p className="mt-1 text-sm text-muted">Optional — add teammate emails, one per line. Skip to do this later.</p>

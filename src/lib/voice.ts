@@ -58,6 +58,7 @@ async function distill(input: { senderName?: string; role?: string; samples: str
       maxTokens: 800,
       // Analysis, not creative writing — keep it consistent run to run.
       temperature: 0.4,
+      feature: "voice",
     });
     return out.profile;
   } catch {
