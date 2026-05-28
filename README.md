@@ -42,7 +42,9 @@ src/lib/humanness.ts        Scores any copy 0–100 for "sounds human"; flags AI
 src/lib/recall/engine.ts    Revenue Recall scoring + recommendations
 src/lib/analytics.ts        Pipeline metrics & weighted forecast
 src/lib/queries.ts          Server-side data facade for the UI
-src/lib/sequences.ts        Multi-channel outreach cadences
+src/lib/sequences.ts        Multi-channel outreach cadence definitions (per industry)
+src/lib/cadence.ts          Cadence runtime: enroll deals/contacts, advance steps on schedule
+src/lib/webhook.ts          Twilio request-signature verification (HMAC-SHA1)
 src/lib/ai/                 AI execution layer (Claude): draft + deal brief, template fallback
 src/lib/automations.ts      Trigger → action automation rules
 src/lib/templates.ts        Email & SMS template library (merge tokens)
@@ -50,15 +52,15 @@ src/components/charts.tsx   Dependency-free SVG charts
 src/app/(app)/              Authenticated shell + product pages
 src/app/(auth)/             Login / signup (chrome-free layout)
 src/app/onboarding/         First-run setup wizard
-src/app/api/                Route handlers (create, move, log, search, meta, notifications)
+src/app/api/                Route handlers (create, move, log, search, meta, notifications, sequence enroll, cron)
 supabase/migrations/        Org-scoped Postgres schema (RLS) for the built-in CRM
 ```
 
 ## Surfaces
 
 - **Dashboard** — KPIs, revenue trend, goal ring, funnel, recall highlights, activity feed, leaderboard.
-- **Autopilot** — users describe a task in plain English ("re-engage cold deals and offer a call"); an AI agent works each matching deal (drafts in review mode, or sends + logs in autonomous mode) and records every action to an immutable run/outcome ledger. Custom scope (recall queue / all open / a stage), channel, autonomy, and **trigger** (manual / daily / on-idle / on-new-lead) per task. Scheduled tasks run via `/api/agent/cron` (Vercel Cron in `vercel.json`, protected by `CRON_SECRET`).
-- **Two-way conversations** — inbound email/SMS webhooks (`/api/inbound/email`, `/api/inbound/sms`) match the contact, log the message, and draft a human-voiced reply — queued to Approvals, or auto-sent when `REPLY_AUTOPILOT=true`.
+- **Autopilot** — users describe a task in plain English ("re-engage cold deals and offer a call"); an AI agent works each matching deal (drafts in review mode, or sends + logs in autonomous mode) and records every action to an immutable run/outcome ledger. Custom scope (recall queue / all open / a stage), channel, autonomy, and **trigger** (manual / daily / on-idle / on-new-lead) per task. Scheduled tasks — and due sequence steps — run via `/api/agent/cron` (Vercel Cron in `vercel.json`, protected by `CRON_SECRET`).
+- **Two-way conversations** — inbound email/SMS webhooks (`/api/inbound/email`, `/api/inbound/sms`) match the contact, log the message, and draft a human-voiced reply — queued to Approvals, or auto-sent when `REPLY_AUTOPILOT=true`. The SMS webhook verifies Twilio's `X-Twilio-Signature` when `TWILIO_AUTH_TOKEN` is set (provably from Twilio), and falls back to a shared `INBOUND_TOKEN` query param otherwise.
 - **Approvals inbox** — review-mode AI drafts and inbound-reply drafts queue here; approve to send (+ auto-log) or dismiss, one click each.
 - **Your Voice** — no boring forms: describe how you sound or paste a few of your real messages, and AI distills your voice profile. Every draft and call is written *as you* — human, never AI-sounding. Tune it per workspace in Settings → Voice, including your own go-to next-steps and re-engagement openers, which override the industry defaults in every draft and reply.
 - **Human-ness check** — a live "does this sound human?" meter under the deal composer scores your copy 0–100 and flags AI tells (clichés, em-dash overuse, no contractions) so nothing robotic ever goes out.
@@ -68,9 +70,9 @@ supabase/migrations/        Org-scoped Postgres schema (RLS) for the built-in CR
 - **Leads** — searchable directory. **Tasks** — prioritized next actions.
 - **Power Dialer** — work the highest-value calls back-to-back: AI call prep (talk track), click-to-call, and AI post-call summary that sets the outcome/sentiment and auto-logs to the timeline.
 - **Inbox** — unified email/SMS/call threads with real send (logs to timeline until a provider is configured). **Calendar** — month grid + agenda.
-- **Sequences**, **Templates**, **Automations** — engagement tooling per industry.
+- **Sequences** — multi-step, multi-channel cadences per industry, with a real runtime: enroll the recall queue, all open deals, or a specific deal/contact, and the cron tick works each step on its scheduled day (drafts in-voice → Approvals, or auto-sends under `SEQUENCE_AUTOPILOT`). Closed-won deals drop out; closed-lost stay enrolled for re-engagement. **Templates**, **Automations** — engagement tooling per industry.
 - **Reports** & **Forecast** — funnel, sources, leaderboard, commit/best-case/weighted.
-- **Settings** — general, industry, pipeline, integrations, team, fields, notifications (saved per-org), CSV import (creates contacts + deals via the active provider), billing.
+- **Settings** — general, industry, pipeline, integrations, team, fields, notifications (saved per-org), CSV import (creates contacts + deals via the active provider). Billing shows the current plan/seat summary; metered payment-provider integration (Stripe) is on the roadmap, not yet wired.
 - Global ⌘K search, quick-create, notifications, responsive mobile nav.
 
 > Every surface works with zero setup on the seeded in-memory store. The real
