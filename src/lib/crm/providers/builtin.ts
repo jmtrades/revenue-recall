@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import type {
   Activity,
   Contact,
@@ -18,15 +20,47 @@ import { getConfig } from "@/lib/config";
  * process-level singleton seeded from the active industry template, so the app
  * is fully functional out of the box. Swapping to a Supabase-backed store later
  * means re-implementing this same interface — nothing upstream changes.
+ *
+ * Optional disk persistence: set BUILTIN_PERSIST=true to write the store through
+ * to a JSON file (BUILTIN_PERSIST_DIR, default ./.data) so demo edits survive
+ * process restarts on local/self-hosted node deploys. Off by default — the store
+ * is then purely in-memory and reseeds fresh each boot (the demo's default, and
+ * what the test suite relies on). Production persistence is Supabase.
  */
+
+const PERSIST = process.env.BUILTIN_PERSIST === "true";
+const PERSIST_DIR = process.env.BUILTIN_PERSIST_DIR || path.join(process.cwd(), ".data");
 
 let store: Dataset | null = null;
 let storeIndustry: string | null = null;
 
+function fileFor(industry: string): string {
+  return path.join(PERSIST_DIR, `builtin-${industry}.json`);
+}
+
+function load(industry: string): Dataset | null {
+  if (!PERSIST) return null;
+  try {
+    return JSON.parse(fs.readFileSync(fileFor(industry), "utf-8")) as Dataset;
+  } catch {
+    return null;
+  }
+}
+
+function persist(): void {
+  if (!PERSIST || !store || !storeIndustry) return;
+  try {
+    fs.mkdirSync(PERSIST_DIR, { recursive: true });
+    fs.writeFileSync(fileFor(storeIndustry), JSON.stringify(store));
+  } catch {
+    // best-effort: a read-only/ephemeral FS just falls back to in-memory.
+  }
+}
+
 function db(): Dataset {
   const industry = getConfig().industryId;
   if (!store || storeIndustry !== industry) {
-    store = seedDataset(industry);
+    store = load(industry) ?? seedDataset(industry);
     storeIndustry = industry;
   }
   return store;
@@ -73,6 +107,7 @@ export class BuiltinProvider implements CrmProvider {
   async createContact(input: Omit<Contact, "id">): Promise<Contact> {
     const contact: Contact = { ...input, id: `c_new_${Date.now()}` };
     db().contacts.unshift(contact);
+    persist();
     return contact;
   }
 
@@ -96,6 +131,7 @@ export class BuiltinProvider implements CrmProvider {
       tags: [],
     };
     db().opportunities.unshift(opp);
+    persist();
     return opp;
   }
 
@@ -116,6 +152,7 @@ export class BuiltinProvider implements CrmProvider {
       summary: `Moved to ${stage?.label ?? stageId}`,
       occurredAt: now,
     });
+    persist();
     return opp;
   }
 
@@ -143,6 +180,7 @@ export class BuiltinProvider implements CrmProvider {
         opp.updatedAt = input.occurredAt;
       }
     }
+    persist();
     return activity;
   }
 }

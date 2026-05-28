@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { listTasks } from "@/lib/agent/store";
 import { runTask } from "@/lib/agent/engine";
 import { runDueSteps } from "@/lib/cadence";
+import { runDigests } from "@/lib/digest";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -37,5 +38,7 @@ async function run() {
   }
   // Advance any sequence enrollments whose next step is due.
   const cadence = await runDueSteps().catch((e) => ({ error: e instanceof Error ? e.message : "cadence failed" }));
-  return NextResponse.json({ ok: true, ran: results.length, results, cadence });
+  // Send any opted-in daily digest / task-reminder emails (once per day).
+  const digests = await runDigests().catch((e) => ({ error: e instanceof Error ? e.message : "digests failed" }));
+  return NextResponse.json({ ok: true, ran: results.length, results, cadence, digests });
 }

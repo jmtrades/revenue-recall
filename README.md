@@ -44,6 +44,7 @@ src/lib/analytics.ts        Pipeline metrics & weighted forecast
 src/lib/queries.ts          Server-side data facade for the UI
 src/lib/sequences.ts        Multi-channel outreach cadence definitions (per industry)
 src/lib/cadence.ts          Cadence runtime: enroll deals/contacts, advance steps on schedule
+src/lib/digest.ts           Scheduled email: daily pipeline digest + task reminders (cron, prefs-gated)
 src/lib/webhook.ts          Twilio request-signature verification (HMAC-SHA1)
 src/lib/ai/                 AI execution layer (Claude): draft + deal brief, template fallback
 src/lib/automations.ts      Trigger → action automation rules
@@ -59,7 +60,7 @@ supabase/migrations/        Org-scoped Postgres schema (RLS) for the built-in CR
 ## Surfaces
 
 - **Dashboard** — KPIs, revenue trend, goal ring, funnel, recall highlights, activity feed, leaderboard.
-- **Autopilot** — users describe a task in plain English ("re-engage cold deals and offer a call"); an AI agent works each matching deal (drafts in review mode, or sends + logs in autonomous mode) and records every action to an immutable run/outcome ledger. Custom scope (recall queue / all open / a stage), channel, autonomy, and **trigger** (manual / daily / on-idle / on-new-lead) per task. Scheduled tasks — and due sequence steps — run via `/api/agent/cron` (Vercel Cron in `vercel.json`, protected by `CRON_SECRET`).
+- **Autopilot** — users describe a task in plain English ("re-engage cold deals and offer a call"); an AI agent works each matching deal (drafts in review mode, or sends + logs in autonomous mode) and records every action to an immutable run/outcome ledger. Custom scope (recall queue / all open / a stage), channel, autonomy, and **trigger** (manual / daily / on-idle / on-new-lead) per task. Scheduled tasks, due sequence steps, and opted-in digest/reminder emails all run via `/api/agent/cron` (Vercel Cron in `vercel.json`, protected by `CRON_SECRET`).
 - **Two-way conversations** — inbound email/SMS webhooks (`/api/inbound/email`, `/api/inbound/sms`) match the contact, log the message, and draft a human-voiced reply — queued to Approvals, or auto-sent when `REPLY_AUTOPILOT=true`. The SMS webhook verifies Twilio's `X-Twilio-Signature` when `TWILIO_AUTH_TOKEN` is set (provably from Twilio), and falls back to a shared `INBOUND_TOKEN` query param otherwise.
 - **Approvals inbox** — review-mode AI drafts and inbound-reply drafts queue here; approve to send (+ auto-log) or dismiss, one click each.
 - **Your Voice** — no boring forms: describe how you sound or paste a few of your real messages, and AI distills your voice profile. Every draft and call is written *as you* — human, never AI-sounding. Tune it per workspace in Settings → Voice, including your own go-to next-steps and re-engagement openers, which override the industry defaults in every draft and reply.
@@ -72,7 +73,7 @@ supabase/migrations/        Org-scoped Postgres schema (RLS) for the built-in CR
 - **Inbox** — unified email/SMS/call threads with real send (logs to timeline until a provider is configured). **Calendar** — month grid + agenda.
 - **Sequences** — multi-step, multi-channel cadences per industry, with a real runtime: enroll the recall queue, all open deals, or a specific deal/contact, and the cron tick works each step on its scheduled day (drafts in-voice → Approvals, or auto-sends under `SEQUENCE_AUTOPILOT`). Closed-won deals drop out; closed-lost stay enrolled for re-engagement. **Templates**, **Automations** — engagement tooling per industry.
 - **Reports** & **Forecast** — funnel, sources, leaderboard, commit/best-case/weighted.
-- **Settings** — general, industry, pipeline, integrations, team, fields, notifications (saved per-org; the toggles gate the in-app "needs attention" feed — recall flags, new deals, stage moves), CSV import (creates contacts + deals via the active provider). Billing shows the current plan/seat summary; metered payment-provider integration (Stripe) is on the roadmap, not yet wired.
+- **Settings** — general, industry, pipeline, integrations, team, fields, notifications (saved per-org; the toggles gate the in-app "needs attention" feed — recall flags, new deals, stage moves — and the scheduled emails: daily pipeline digest and task reminders, sent once a day by the cron when an email provider is configured), CSV import (creates contacts + deals via the active provider). Billing shows the current plan/seat summary; metered payment-provider integration (Stripe) is on the roadmap, not yet wired.
 - Global ⌘K search, quick-create, notifications, responsive mobile nav.
 
 > Every surface works with zero setup on the seeded in-memory store. The real
@@ -86,6 +87,10 @@ supabase/migrations/        Org-scoped Postgres schema (RLS) for the built-in CR
 >   `TWILIO_*` and sends/calls go live; otherwise they log to the timeline.
 > - **AI:** set `ANTHROPIC_API_KEY` for live drafting, briefs, and call
 >   summaries; otherwise high-quality templates.
+>
+> The built-in CRM is in-memory and reseeds each boot. For real persistence use
+> Supabase; or, on local/self-hosted node, set `BUILTIN_PERSIST=true` to write the
+> demo store through to disk (`.data/`) so edits survive restarts.
 
 ### Adding a CRM
 

@@ -30,3 +30,6 @@ next-env.d.ts
 
 # vercel
 .vercel
+
+# built-in CRM disk persistence (opt-in via BUILTIN_PERSIST)
+/.data
