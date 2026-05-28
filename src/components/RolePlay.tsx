@@ -30,7 +30,8 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [coach, setCoach] = useState<string | null>(null);
+  const [coach, setCoach] = useState<{ text: string; tone: string; note: string } | null>(null);
+  const [mood, setMood] = useState<string | null>(null);
   const [voiceOn, setVoiceOn] = useState(true);
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +49,8 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [turns, coach]);
 
-  async function fetchTurn(who: "rep" | "prospect", nextTurns: Turn[]): Promise<string> {
+  interface TurnResp { text: string; emotion?: string; sentiment?: string; tone?: string; coachNote?: string }
+  async function fetchTurn(who: "rep" | "prospect", nextTurns: Turn[]): Promise<TurnResp> {
     const res = await fetch("/api/voice/turn", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -56,11 +58,11 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? "turn failed");
-    return data.text as string;
+    return data as TurnResp;
   }
 
-  function sayAloud(text: string) {
-    if (voiceOn && canSpeak) speak(text, toVoicePrefs(loadVoicePrefs()), voiceRef.current);
+  function sayAloud(text: string, emotion?: string) {
+    if (voiceOn && canSpeak) speak(text, { ...toVoicePrefs(loadVoicePrefs()), emotion: emotion as never }, voiceRef.current);
   }
 
   async function start() {
@@ -70,10 +72,11 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
     try {
       // Rep opens; the app (prospect) reacts.
       const opener: Turn = { speaker: "rep", text: "Hey, it's me — caught you at an okay time?" };
-      const prospectText = await fetchTurn("prospect", [opener]);
-      const next = [opener, { speaker: "prospect" as const, text: prospectText }];
+      const p = await fetchTurn("prospect", [opener]);
+      const next = [opener, { speaker: "prospect" as const, text: p.text }];
       setTurns(next);
-      sayAloud(prospectText);
+      setMood(p.sentiment ?? null);
+      sayAloud(p.text, p.emotion);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't start");
     } finally {
@@ -91,10 +94,11 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
     setTurns(afterRep);
     setBusy(true);
     try {
-      const prospectText = await fetchTurn("prospect", afterRep);
-      const next = [...afterRep, { speaker: "prospect" as const, text: prospectText }];
+      const p = await fetchTurn("prospect", afterRep);
+      const next = [...afterRep, { speaker: "prospect" as const, text: p.text }];
       setTurns(next);
-      sayAloud(prospectText);
+      setMood(p.sentiment ?? null);
+      sayAloud(p.text, p.emotion);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't continue");
     } finally {
@@ -107,7 +111,8 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
     setBusy(true);
     try {
       const ideal = await fetchTurn("rep", turns);
-      setCoach(ideal);
+      setCoach({ text: ideal.text, tone: ideal.tone ?? "warm", note: ideal.coachNote ?? "" });
+      sayAloud(ideal.text, ideal.emotion);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't coach");
     } finally {
@@ -132,6 +137,7 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
     if (typeof window !== "undefined" && canSpeak) window.speechSynthesis.cancel();
     setTurns([]);
     setCoach(null);
+    setMood(null);
     setInput("");
     setError(null);
   }
@@ -142,7 +148,9 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
   return (
     <div className="card">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="font-semibold text-fg">🎙 Practice this call</h2>
+        <h2 className="flex items-center gap-2 font-semibold text-fg">🎙 Practice this call
+          {mood && <span className="pill bg-surface-2 text-muted">reading the room: {mood}</span>}
+        </h2>
         <div className="flex items-center gap-1.5">
           <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)} className={input2} aria-label="Difficulty">
             <option value="easy">Easy</option>
@@ -179,7 +187,8 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
         )}
         {coach && (
           <div className="mt-2 rounded-lg border border-brand/40 bg-brand-soft/20 p-2 text-xs text-fg">
-            <span className="font-medium text-brand">Coach — try: </span>{coach}
+            <div><span className="font-medium text-brand">Coach — try: </span>{coach.text}</div>
+            {coach.note && <div className="mt-1 text-muted">Read: {coach.note} <span className="text-brand">(tone: {coach.tone})</span></div>}
           </div>
         )}
       </div>

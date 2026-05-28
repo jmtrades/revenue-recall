@@ -30,6 +30,29 @@ interface SpeechRecognitionLike {
   stop: () => void;
 }
 
+/** How a line is delivered emotionally — shifts speed, pitch, and pause length
+ *  the way a person's voice changes with the moment. */
+export type Emotion = "neutral" | "warm" | "calm" | "energetic" | "empathetic" | "confident";
+
+interface EmotionProfile {
+  rateMul: number;
+  pitchMul: number;
+  pauseMul: number;
+}
+
+export const EMOTIONS: Record<Emotion, EmotionProfile> = {
+  neutral: { rateMul: 1, pitchMul: 1, pauseMul: 1 },
+  warm: { rateMul: 0.98, pitchMul: 1.01, pauseMul: 1.08 },
+  calm: { rateMul: 0.9, pitchMul: 0.97, pauseMul: 1.3 },
+  energetic: { rateMul: 1.1, pitchMul: 1.06, pauseMul: 0.85 },
+  empathetic: { rateMul: 0.88, pitchMul: 0.96, pauseMul: 1.35 },
+  confident: { rateMul: 1.02, pitchMul: 0.98, pauseMul: 0.95 },
+};
+
+export function emotionProfile(e?: Emotion): EmotionProfile {
+  return EMOTIONS[e ?? "neutral"];
+}
+
 export interface VoicePrefs {
   /** Prefer a specific voice name (substring match), else best-guess natural. */
   preferName?: string;
@@ -38,6 +61,8 @@ export interface VoicePrefs {
   rate?: number;
   /** 0–2; ~1 is natural pitch. */
   pitch?: number;
+  /** Emotional delivery applied on top of base rate/pitch. */
+  emotion?: Emotion;
 }
 
 export interface SpeechChunk {
@@ -179,7 +204,15 @@ export function speak(text: string, prefs: VoicePrefs = {}, voice?: SpeechSynthe
   if (!isSpeechSupported()) return { done: Promise.resolve(), stop: () => {} };
   const synth = window.speechSynthesis;
   synth.cancel();
-  const chunks = humanizeChunks(speakable(text), { rate: prefs.rate, pitch: prefs.pitch });
+  // Fold the emotional profile into base rate/pitch, then scale pauses by it, so
+  // the same line sounds calm-and-slow or upbeat-and-quick as the moment calls for.
+  const emo = emotionProfile(prefs.emotion);
+  const baseRate = (prefs.rate ?? 1) * emo.rateMul;
+  const basePitch = (prefs.pitch ?? 1) * emo.pitchMul;
+  const chunks = humanizeChunks(speakable(text), { rate: baseRate, pitch: basePitch }).map((c) => ({
+    ...c,
+    pauseAfterMs: Math.round(c.pauseAfterMs * emo.pauseMul),
+  }));
   let stopped = false;
   let i = 0;
 

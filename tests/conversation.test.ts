@@ -25,7 +25,7 @@ describe("conversation engine — rep turns", () => {
     expect(analyzeHumanness(t.text).rating).not.toBe("robotic");
   });
 
-  it("keeps them talking — objection turns end on a question", async () => {
+  it("keeps them talking — objection turns end on a question, with adaptive tone", async () => {
     const objections = [
       "what's this going to cost?",
       "now's not a good time, maybe next quarter",
@@ -38,8 +38,17 @@ describe("conversation engine — rep turns", () => {
       expect(t.phase).toBe("handling");
       expect(t.done).toBe(false);
       expect(t.text.trim().endsWith("?"), `${incoming} -> ${t.text}`).toBe(true);
+      expect(typeof t.tone).toBe("string");
+      expect(typeof t.emotion).toBe("string");
+      expect(t.coachNote.length).toBeGreaterThan(0);
       clean(t.text);
     }
+  });
+
+  it("reacts to a frustrated prospect with an empathetic, reassuring shift", async () => {
+    const t = await nextRepTurn(state([{ speaker: "rep", text: "hey" }, { speaker: "prospect", text: "honestly this is a waste of my time, stop calling" }]));
+    expect(t.emotion).toBe("empathetic");
+    expect(t.tone).toBe("reassuring");
   });
 
   it("closes on a concrete next step once there's interest", async () => {

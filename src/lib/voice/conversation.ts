@@ -2,6 +2,8 @@ import { completeJson, isAiConfigured } from "@/lib/ai/client";
 import { getPlaybook } from "@/lib/industries";
 import { getTone, type ToneId } from "@/lib/tones";
 import { detectIntent, type Intent } from "@/lib/ai/reply";
+import { reactTo, reactToText, detectSentiment, sentimentToEmotion, type Sentiment } from "@/lib/voice/reactive";
+import type { Emotion } from "@/lib/voice/speech";
 import { firstName, pick, pickVariant, seeded, sentence } from "@/lib/copy";
 
 /**
@@ -42,6 +44,12 @@ export interface RepTurn {
   phase: CallPhase;
   /** True when the call should naturally end after this line. */
   done: boolean;
+  /** Tone chosen in reaction to the prospect's mood. */
+  tone: ToneId;
+  /** How to deliver it out loud. */
+  emotion: Emotion;
+  /** One-line coaching cue. */
+  coachNote: string;
   source: "ai" | "template";
 }
 
@@ -50,6 +58,10 @@ export interface ProspectTurn {
   text: string;
   /** What the prospect is doing — useful for coaching. */
   intent: Intent;
+  /** Their inferred mood. */
+  sentiment: Sentiment;
+  /** How they sound saying it (drives spoken delivery). */
+  emotion: Emotion;
   source: "ai" | "template";
 }
 
@@ -153,31 +165,36 @@ function fallbackRepTurn(state: ConversationState): RepTurn {
   const incoming = lastProspect(state.turns);
   const intent = incoming ? detectIntent(incoming) : null;
   const phase = phaseFor(state, intent);
+  // React to the prospect's mood; an explicit rep tone still wins if set.
+  const reaction = incoming ? reactToText(incoming) : { tone: "warm" as ToneId, emotion: "warm" as Emotion, note: "Open warm and curious." };
+  const tone = state.tone ?? reaction.tone;
 
+  const base = { phase, tone, emotion: reaction.emotion, coachNote: reaction.note, source: "template" as const };
   if (phase === "opening") {
-    return { text: pick(OPENERS, seed, "open")(first, co), phase, done: false, source: "template" };
+    return { ...base, text: pick(OPENERS, seed, "open")(first, co), emotion: "warm", done: false };
   }
   if (intent === "decline") {
-    return { text: pick(SPOKEN.decline(first), seed, "decline"), phase: "wrap", done: true, source: "template" };
+    return { ...base, text: pick(SPOKEN.decline(first), seed, "decline"), phase: "wrap", done: true };
   }
   if (phase === "closing") {
-    return { text: pick(CLOSERS, seed, "close")(first), phase, done: true, source: "template" };
+    return { ...base, text: pick(CLOSERS, seed, "close")(first), emotion: "energetic", done: true };
   }
   const pool = (intent && SPOKEN[intent]) || SPOKEN.question;
-  return { text: pick(pool(first), seed, intent ?? "discovery"), phase, done: false, source: "template" };
+  return { ...base, text: pick(pool(first), seed, intent ?? "discovery"), done: false };
 }
 
 /** Decide the rep's next spoken line given the call so far. */
 export async function nextRepTurn(state: ConversationState): Promise<RepTurn> {
   if (!isAiConfigured()) return fallbackRepTurn(state);
   const pb = getPlaybook(state.industryId ?? "generic");
-  const tone = getTone(state.tone);
-  const intent = (() => {
-    const inc = lastProspect(state.turns);
-    return inc ? detectIntent(inc) : null;
-  })();
+  const incoming = lastProspect(state.turns);
+  const intent = incoming ? detectIntent(incoming) : null;
+  const reaction = incoming ? reactToText(incoming) : { tone: "warm" as ToneId, emotion: "warm" as Emotion, note: "Open warm and curious." };
+  // Adapt tone to the moment unless the rep pinned one.
+  const tone = getTone(state.tone ?? reaction.tone);
   const phase = phaseFor(state, intent);
   const user = `You're on a live call.
+Read the room: the prospect sounds ${incoming ? detectSentiment(incoming) : "neutral"}. ${reaction.note}
 Tone: ${tone.label} — ${tone.directive}
 Industry: ${state.industryLabel ?? "sales"}
 Prospect: ${state.contactName}${state.company ? ` at ${state.company}` : ""}
@@ -191,7 +208,7 @@ ${transcript(state.turns, "rep")}
 Say the next line out loud, as the rep. Set done=true only if the call should naturally end now.`;
   try {
     const out = await completeJson<{ text: string; done: boolean }>({ system: REP_SYSTEM, user, schema: REP_SCHEMA, maxTokens: 220, temperature: 0.9 });
-    return { text: out.text, phase, done: Boolean(out.done), source: "ai" };
+    return { text: out.text, phase, done: Boolean(out.done), tone: state.tone ?? reaction.tone, emotion: reaction.emotion, coachNote: reaction.note, source: "ai" };
   } catch {
     return fallbackRepTurn(state);
   }
@@ -224,7 +241,8 @@ function fallbackProspectTurn(state: ConversationState, difficulty: Difficulty):
   const repTurns = state.turns.filter((t) => t.speaker === "rep").length;
   const pool = repTurns <= 1 && difficulty !== "hard" ? PROSPECT_LINES.easy : PROSPECT_LINES[difficulty];
   const text = pickVariant(pool, seeded(seed, "prospect"));
-  return { text, intent: detectIntent(text), source: "template" };
+  const sentiment = detectSentiment(text);
+  return { text, intent: detectIntent(text), sentiment, emotion: sentimentToEmotion(sentiment), source: "template" };
 }
 
 /** Generate a realistic prospect line for live role-play practice. */
@@ -237,7 +255,8 @@ ${transcript(state.turns, "prospect")}
 Say the prospect's next line out loud. React to what the rep just said.`;
   try {
     const out = await completeJson<{ text: string }>({ system: PROSPECT_SYSTEM, user, schema: PROSPECT_SCHEMA, maxTokens: 160, temperature: 0.95 });
-    return { text: out.text, intent: detectIntent(out.text), source: "ai" };
+    const sentiment = detectSentiment(out.text);
+    return { text: out.text, intent: detectIntent(out.text), sentiment, emotion: sentimentToEmotion(sentiment), source: "ai" };
   } catch {
     return fallbackProspectTurn(state, difficulty);
   }
