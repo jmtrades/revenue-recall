@@ -17,7 +17,7 @@ export function AutomationsList({ automations }: { automations: Automation[] }) 
           <section key={a.id} className="card">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="font-semibold text-white">{a.name}</h2>
+                <h2 className="font-semibold text-fg">{a.name}</h2>
                 <p className="mt-1 text-sm text-muted">{a.description}</p>
               </div>
               <button
@@ -31,7 +31,7 @@ export function AutomationsList({ automations }: { automations: Automation[] }) 
             <div className="mt-3 rounded-lg border border-border bg-surface-2 p-3">
               <div className="flex items-center gap-2 text-xs">
                 <span className="pill bg-brand-soft text-brand">Trigger</span>
-                <span className="text-white">{a.trigger.label}</span>
+                <span className="text-fg">{a.trigger.label}</span>
               </div>
               <ol className="mt-2 space-y-1">
                 {a.actions.map((act, i) => (

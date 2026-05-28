@@ -5,11 +5,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: "#0b0e14",
-        surface: "#121722",
-        "surface-2": "#1a2030",
-        border: "#232b3d",
-        muted: "#8a93a6",
+        bg: "rgb(var(--bg-rgb) / <alpha-value>)",
+        surface: "rgb(var(--surface-rgb) / <alpha-value>)",
+        "surface-2": "rgb(var(--surface-2-rgb) / <alpha-value>)",
+        border: "rgb(var(--border-rgb) / <alpha-value>)",
+        muted: "rgb(var(--muted-rgb) / <alpha-value>)",
+        // Primary text. fg = emphasis (white in dark), body = default copy.
+        fg: "rgb(var(--fg-rgb) / <alpha-value>)",
+        body: "rgb(var(--body-rgb) / <alpha-value>)",
         brand: {
           DEFAULT: "rgb(var(--brand-rgb) / <alpha-value>)",
           soft: "rgb(var(--brand-soft-rgb) / <alpha-value>)",

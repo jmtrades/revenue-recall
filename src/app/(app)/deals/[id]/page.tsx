@@ -24,18 +24,18 @@ export default async function DealPage({ params }: { params: { id: string } }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 text-sm text-muted">
-        <Link href="/pipeline" className="hover:text-white">Pipeline</Link>
+        <Link href="/pipeline" className="hover:text-fg">Pipeline</Link>
         <span>/</span>
-        <span className="text-white">{opp.title}</span>
+        <span className="text-fg">{opp.title}</span>
       </div>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-white">{opp.title}</h1>
+          <h1 className="text-2xl font-semibold text-fg">{opp.title}</h1>
           <div className="mt-1 flex items-center gap-2 text-sm text-muted">
             <span className={`pill ${stage?.type === "won" ? "bg-success/15 text-success" : stage?.type === "lost" ? "bg-danger/15 text-danger" : "bg-brand-soft text-brand"}`}>{stage?.label}</span>
             <span>·</span>
-            <span className="text-xl font-semibold text-white">{money(opp.value, opp.currency)}</span>
+            <span className="text-xl font-semibold text-fg">{money(opp.value, opp.currency)}</span>
           </div>
         </div>
       </div>
@@ -46,7 +46,7 @@ export default async function DealPage({ params }: { params: { id: string } }) {
           {openStages.map((s, i) => (
             <div key={s.id} className="flex flex-1 flex-col gap-1">
               <div className={`h-1.5 rounded-full ${i <= currentIdx ? "bg-brand" : "bg-surface-2"}`} />
-              <span className={`text-[10px] ${i === currentIdx ? "text-white" : "text-muted"}`}>{s.label}</span>
+              <span className={`text-[10px] ${i === currentIdx ? "text-fg" : "text-muted"}`}>{s.label}</span>
             </div>
           ))}
         </div>
@@ -64,7 +64,7 @@ export default async function DealPage({ params }: { params: { id: string } }) {
                     <ActivityIcon kind={a.kind} />
                     <div className="flex-1 pb-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm capitalize text-white">{a.kind.replace("_", " ")}{a.direction ? ` · ${a.direction}` : ""}</span>
+                        <span className="text-sm capitalize text-fg">{a.kind.replace("_", " ")}{a.direction ? ` · ${a.direction}` : ""}</span>
                         <span className="text-xs text-muted">{relativeDays(daysAgo(a.occurredAt))}</span>
                       </div>
                       <p className="text-sm text-muted">{a.summary}</p>
@@ -88,7 +88,7 @@ export default async function DealPage({ params }: { params: { id: string } }) {
               <Link href={`/leads/${contact.id}`} className="flex items-center gap-3 rounded-lg p-1 hover:bg-surface-2">
                 <Avatar name={contact.name} size={40} />
                 <div>
-                  <div className="text-sm font-medium text-white">{contact.name}</div>
+                  <div className="text-sm font-medium text-fg">{contact.name}</div>
                   {contact.company && <div className="text-xs text-muted">{contact.company}</div>}
                 </div>
               </Link>
@@ -96,7 +96,7 @@ export default async function DealPage({ params }: { params: { id: string } }) {
                 {contact.points.map((p, i) => (
                   <div key={i} className="flex items-center justify-between text-sm">
                     <span className="text-xs uppercase text-muted">{p.channel}</span>
-                    <span className="text-white">{p.value}</span>
+                    <span className="text-fg">{p.value}</span>
                   </div>
                 ))}
               </div>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getOrgSettings, updateOrgSettings } from "@/lib/org";
-import { ACCENT_KEYS } from "@/lib/theme";
+import { ACCENT_KEYS, THEME_MODES } from "@/lib/theme";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,7 @@ const Patch = z.object({
   name: z.string().min(1).max(120).optional(),
   monthlyQuota: z.number().nonnegative().max(1_000_000_000).optional(),
   notificationPrefs: z.record(z.boolean()).optional(),
-  theme: z.object({ accent: z.enum(ACCENT_KEYS) }).optional(),
+  theme: z.object({ accent: z.enum(ACCENT_KEYS).optional(), mode: z.enum(THEME_MODES).optional() }).optional(),
 });
 
 export async function PATCH(req: Request) {

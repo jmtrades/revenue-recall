@@ -58,7 +58,7 @@ export default async function DashboardPage() {
         <Card title="Revenue trend" className="lg:col-span-2" action={<Link href="/reports" className="text-sm text-brand hover:underline">Reports →</Link>}>
           <div className="mb-4 flex items-end gap-3">
             <div>
-              <div className="text-2xl font-semibold text-white">{money(wonThisMonth, m.currency)}</div>
+              <div className="text-2xl font-semibold text-fg">{money(wonThisMonth, m.currency)}</div>
               <div className="text-xs text-muted">won this month</div>
             </div>
             <div className="mb-1 ml-auto">
@@ -72,7 +72,7 @@ export default async function DashboardPage() {
           <div className="flex flex-col items-center gap-3 py-2">
             <ProgressRing value={attainment} size={120} thickness={11} color={attainment >= 1 ? "#34d399" : "rgb(var(--brand-rgb))"} />
             <div className="text-center">
-              <div className="text-sm text-white">{money(wonThisMonth, m.currency)} <span className="text-muted">/ {compactMoney(org.monthlyQuota, m.currency)}</span></div>
+              <div className="text-sm text-fg">{money(wonThisMonth, m.currency)} <span className="text-muted">/ {compactMoney(org.monthlyQuota, m.currency)}</span></div>
               <div className="text-xs text-muted">{attainment >= 1 ? "Goal reached 🎉" : `${money(Math.max(0, org.monthlyQuota - wonThisMonth), m.currency)} to go`}</div>
             </div>
           </div>
@@ -93,7 +93,7 @@ export default async function DashboardPage() {
                 <li key={r.opportunityId}>
                   <Link href={`/deals/${r.opportunityId}`} className="block rounded-lg border border-border bg-surface-2 p-3 transition hover:border-brand/50">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm text-white">{r.title}</span>
+                      <span className="truncate text-sm text-fg">{r.title}</span>
                       <ScoreDot score={r.score} />
                     </div>
                     <div className="mt-2 flex items-center justify-between">
@@ -115,7 +115,7 @@ export default async function DashboardPage() {
               <li key={f.activity.id} className="flex items-center gap-3 rounded-lg px-1 py-2 hover:bg-surface-2/50">
                 <ActivityIcon kind={f.activity.kind} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm text-white">{f.activity.summary}</p>
+                  <p className="truncate text-sm text-fg">{f.activity.summary}</p>
                   <p className="truncate text-xs text-muted">{f.contactName ?? f.dealTitle ?? ""}</p>
                 </div>
                 <span className="shrink-0 text-xs text-muted">{timeAgo(f.activity.occurredAt)}</span>
@@ -131,10 +131,10 @@ export default async function DashboardPage() {
                 <span className="w-4 text-center text-sm font-semibold text-muted">{i + 1}</span>
                 <Avatar name={row.name} size={30} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm text-white">{row.name}</p>
+                  <p className="truncate text-sm text-fg">{row.name}</p>
                   <p className="text-xs text-muted">{row.won} won</p>
                 </div>
-                <span className="text-sm tabular-nums text-white">{compactMoney(row.value, m.currency)}</span>
+                <span className="text-sm tabular-nums text-fg">{compactMoney(row.value, m.currency)}</span>
               </li>
             ))}
           </ul>

@@ -8,6 +8,39 @@
      `rgb(var(--brand-rgb) / <alpha>)` tokens and these effects share one source. */
   --brand-rgb: 91 140 255;
   --brand-soft-rgb: 42 58 102;
+  /* Neutral surface + text palette (dark default). The app shell flips these
+     to light via [data-theme="light"]; marketing/auth never set data-theme so
+     they always render dark. --fg stays pure white in dark, so converting
+     text-fg → text-fg is a no-op visually in dark mode. */
+  --bg-rgb: 11 14 20;
+  --surface-rgb: 18 23 34;
+  --surface-2-rgb: 26 32 48;
+  --border-rgb: 35 43 61;
+  --muted-rgb: 138 147 166;
+  --fg-rgb: 255 255 255;
+  --body-rgb: 231 234 240;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg-rgb: 246 247 249;
+  --surface-rgb: 255 255 255;
+  --surface-2-rgb: 240 242 246;
+  --border-rgb: 225 229 236;
+  --muted-rgb: 90 100 118;
+  --fg-rgb: 17 24 39;
+  --body-rgb: 31 41 55;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-rgb: 11 14 20;
+  --surface-rgb: 18 23 34;
+  --surface-2-rgb: 26 32 48;
+  --border-rgb: 35 43 61;
+  --muted-rgb: 138 147 166;
+  --fg-rgb: 255 255 255;
+  --body-rgb: 231 234 240;
 }
 
 html {
@@ -16,8 +49,8 @@ html {
 
 html,
 body {
-  background-color: #0b0e14;
-  color: #e7eaf0;
+  background-color: rgb(var(--bg-rgb));
+  color: rgb(var(--body-rgb));
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -46,19 +79,19 @@ textarea:focus-visible {
 /* Refined scrollbars */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #2a3346 transparent;
+  scrollbar-color: rgb(var(--border-rgb)) transparent;
 }
 *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 *::-webkit-scrollbar-thumb {
-  background: #232b3d;
+  background: rgb(var(--border-rgb));
   border-radius: 8px;
-  border: 2px solid #0b0e14;
+  border: 2px solid rgb(var(--bg-rgb));
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: #2f3a52;
+  background: rgb(var(--muted-rgb) / 0.6);
 }
 
 @layer components {
@@ -69,16 +102,16 @@ textarea:focus-visible {
     @apply text-xs font-medium uppercase tracking-wide text-muted;
   }
   .stat-value {
-    @apply mt-1 text-2xl font-semibold text-white;
+    @apply mt-1 text-2xl font-semibold text-fg;
   }
   .pill {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .nav-link {
-    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-surface-2 hover:text-white;
+    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-surface-2 hover:text-fg;
   }
   .nav-link-active {
-    @apply bg-surface-2 text-white;
+    @apply bg-surface-2 text-fg;
   }
 }
 

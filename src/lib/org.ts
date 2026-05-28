@@ -63,7 +63,7 @@ export async function updateOrgSettings(patch: {
   name?: string;
   monthlyQuota?: number;
   notificationPrefs?: NotificationPrefs;
-  theme?: Theme;
+  theme?: Partial<Theme>;
 }): Promise<OrgSettings> {
   const client = getSupabase();
   if (!client) throw new Error("Settings are read-only without a database.");
@@ -73,7 +73,12 @@ export async function updateOrgSettings(patch: {
   if (patch.name !== undefined) update.name = patch.name;
   if (patch.monthlyQuota !== undefined) update.monthly_quota = patch.monthlyQuota;
   if (patch.notificationPrefs !== undefined) update.notification_prefs = mergeNotificationPrefs(patch.notificationPrefs);
-  if (patch.theme !== undefined) update.theme = mergeTheme(patch.theme);
+  // Merge a partial theme patch over the org's current theme so changing the
+  // mode never resets the accent (or vice-versa).
+  if (patch.theme !== undefined) {
+    const current = await read();
+    update.theme = mergeTheme({ ...current.theme, ...patch.theme });
+  }
   if (Object.keys(update).length === 0) return read();
   const { error } = await client.from("orgs").update(update).eq("id", orgId);
   if (error) throw new Error(error.message);

@@ -32,23 +32,34 @@ export type AccentKey = keyof typeof ACCENTS;
 export const ACCENT_KEYS = Object.keys(ACCENTS) as [AccentKey, ...AccentKey[]];
 export const DEFAULT_ACCENT: AccentKey = "indigo";
 
+/** Appearance mode. "system" follows the OS preference (resolved on the client). */
+export type ThemeMode = "dark" | "light" | "system";
+export const THEME_MODES = ["dark", "light", "system"] as [ThemeMode, ...ThemeMode[]];
+export const DEFAULT_MODE: ThemeMode = "dark";
+
 export interface Theme {
   accent: AccentKey;
+  mode: ThemeMode;
 }
 
 export function defaultTheme(): Theme {
-  return { accent: DEFAULT_ACCENT };
+  return { accent: DEFAULT_ACCENT, mode: DEFAULT_MODE };
 }
 
 export function isAccentKey(v: unknown): v is AccentKey {
   return typeof v === "string" && v in ACCENTS;
 }
 
+export function isThemeMode(v: unknown): v is ThemeMode {
+  return v === "dark" || v === "light" || v === "system";
+}
+
 /** Merge a stored (untrusted) theme blob over the defaults. */
 export function mergeTheme(stored?: Record<string, unknown> | Theme | null): Theme {
   const theme = defaultTheme();
-  const accent = (stored as { accent?: unknown } | null | undefined)?.accent;
-  if (isAccentKey(accent)) theme.accent = accent;
+  const s = stored as { accent?: unknown; mode?: unknown } | null | undefined;
+  if (isAccentKey(s?.accent)) theme.accent = s!.accent;
+  if (isThemeMode(s?.mode)) theme.mode = s!.mode;
   return theme;
 }
 

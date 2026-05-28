@@ -29,7 +29,7 @@ export function Notifications() {
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative grid h-9 w-9 place-items-center rounded-lg border border-border text-muted transition hover:bg-surface-2 hover:text-white"
+        className="relative grid h-9 w-9 place-items-center rounded-lg border border-border text-muted transition hover:bg-surface-2 hover:text-fg"
         aria-label="Notifications"
       >
         <Icon name="bell" size={17} />
@@ -44,7 +44,7 @@ export function Notifications() {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
-            <div className="border-b border-border px-4 py-2.5 text-sm font-medium text-white">Needs attention</div>
+            <div className="border-b border-border px-4 py-2.5 text-sm font-medium text-fg">Needs attention</div>
             <div className="max-h-96 overflow-y-auto">
               {items.length === 0 ? (
                 <p className="px-4 py-8 text-center text-sm text-muted">{loaded ? "All clear 🎉" : "Loading…"}</p>
@@ -56,7 +56,7 @@ export function Notifications() {
                     className="block w-full border-b border-border/60 px-4 py-3 text-left transition last:border-0 hover:bg-surface-2"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm text-white">{n.title}</span>
+                      <span className="truncate text-sm text-fg">{n.title}</span>
                       <span className="shrink-0 text-xs text-muted">{KIND_LABEL[n.kind]}</span>
                     </div>
                     <p className="mt-0.5 line-clamp-2 text-xs text-muted">{n.detail}</p>

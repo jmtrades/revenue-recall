@@ -104,7 +104,7 @@ export function ImportCsv({ writable }: { writable: boolean }) {
             }`}
           >
             <div className="text-3xl text-muted/60">⬆</div>
-            <p className="mt-2 text-sm text-white">{fileName ?? "Drop a CSV here or click to upload"}</p>
+            <p className="mt-2 text-sm text-fg">{fileName ?? "Drop a CSV here or click to upload"}</p>
             <p className="mt-1 text-xs text-muted">Columns: name, email, phone, company, value, stage</p>
           </button>
           <input
@@ -124,7 +124,7 @@ export function ImportCsv({ writable }: { writable: boolean }) {
 
       {preview && status !== "done" && (
         <div className="mt-4 rounded-xl border border-border bg-surface-2/40 p-4">
-          <p className="text-sm text-white">
+          <p className="text-sm text-fg">
             <span className="font-medium">{preview.rows.length}</span> record{preview.rows.length === 1 ? "" : "s"} ready
             {preview.skipped > 0 && <span className="text-muted"> · {preview.skipped} skipped (no name)</span>}
           </p>
@@ -139,7 +139,7 @@ export function ImportCsv({ writable }: { writable: boolean }) {
             >
               {status === "importing" ? "Importing…" : `Import ${preview.rows.length} record${preview.rows.length === 1 ? "" : "s"}`}
             </button>
-            <button onClick={reset} className="text-sm text-muted transition hover:text-white">
+            <button onClick={reset} className="text-sm text-muted transition hover:text-fg">
               Cancel
             </button>
           </div>
@@ -148,7 +148,7 @@ export function ImportCsv({ writable }: { writable: boolean }) {
 
       {status === "done" && result && (
         <div className="mt-4 rounded-xl border border-success/40 bg-success/10 p-4">
-          <p className="text-sm font-medium text-white">Import complete ✓</p>
+          <p className="text-sm font-medium text-fg">Import complete ✓</p>
           <p className="mt-1 text-sm text-muted">
             {result.contacts} contact{result.contacts === 1 ? "" : "s"} and {result.deals} deal
             {result.deals === 1 ? "" : "s"} created.
@@ -161,7 +161,7 @@ export function ImportCsv({ writable }: { writable: boolean }) {
               ))}
             </ul>
           )}
-          <button onClick={reset} className="mt-3 text-sm text-brand transition hover:text-white">
+          <button onClick={reset} className="mt-3 text-sm text-brand transition hover:text-fg">
             Import another file
           </button>
         </div>

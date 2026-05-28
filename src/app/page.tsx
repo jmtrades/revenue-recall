@@ -73,7 +73,7 @@ export default function LandingPage() {
         <div className="relative mx-auto grid max-w-6xl gap-12 px-5 py-20 lg:grid-cols-2 lg:items-center lg:py-28">
           <div className="animate-fade-up">
             <span className="pill border border-border bg-surface/60 text-muted">The universal sales OS</span>
-            <h1 className="mt-5 text-4xl font-semibold leading-[1.1] tracking-tight text-white sm:text-5xl lg:text-6xl">
+            <h1 className="mt-5 text-4xl font-semibold leading-[1.1] tracking-tight text-fg sm:text-5xl lg:text-6xl">
               Recover the revenue <span className="gradient-text">you&apos;re about to lose.</span>
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
@@ -83,7 +83,7 @@ export default function LandingPage() {
               <Link href="/signup" className="rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand/90">
                 Start free — no card
               </Link>
-              <Link href="/dashboard" className="rounded-xl border border-border bg-surface/60 px-6 py-3 text-sm font-semibold text-white transition hover:bg-surface-2">
+              <Link href="/dashboard" className="rounded-xl border border-border bg-surface/60 px-6 py-3 text-sm font-semibold text-fg transition hover:bg-surface-2">
                 See the live demo →
               </Link>
             </div>
@@ -124,7 +124,7 @@ export default function LandingPage() {
           <p className="text-center text-xs font-semibold uppercase tracking-wider text-muted">Plugs into the stack you already use — or works with none</p>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm font-medium text-muted/80">
             {["Salesforce", "HubSpot", "Close", "Pipedrive", "Gmail", "Outlook", "Twilio", "Slack"].map((n) => (
-              <span key={n} className="transition hover:text-white">{n}</span>
+              <span key={n} className="transition hover:text-fg">{n}</span>
             ))}
           </div>
         </div>
@@ -133,7 +133,7 @@ export default function LandingPage() {
       {/* Problem → Solution */}
       <section className="mx-auto max-w-3xl px-5 py-20 text-center">
         <p className="text-sm font-semibold uppercase tracking-wider text-brand">The leak no one&apos;s plugging</p>
-        <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+        <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">
           Most revenue isn&apos;t lost to competitors. It&apos;s lost to silence.
         </h2>
         <p className="mt-5 text-lg leading-relaxed text-muted">
@@ -145,13 +145,13 @@ export default function LandingPage() {
       <section id="features" className="mx-auto max-w-6xl px-5 py-16">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-semibold uppercase tracking-wider text-brand">Everything you need to close the loop</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">One platform, the whole motion</h2>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">One platform, the whole motion</h2>
         </div>
         <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f) => (
             <div key={f.title} className="group rounded-2xl border border-border bg-surface p-6 transition hover:border-brand/40 hover:bg-surface-2/40">
               <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand-soft text-brand transition group-hover:scale-105"><Icon name={f.icon} size={22} /></div>
-              <h3 className="mt-4 font-semibold text-white">{f.title}</h3>
+              <h3 className="mt-4 font-semibold text-fg">{f.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted">{f.body}</p>
             </div>
           ))}
@@ -171,7 +171,7 @@ export default function LandingPage() {
           </div>
           <div className="rounded-2xl border border-brand/40 bg-surface p-7 ring-glow">
             <p className="text-sm font-semibold uppercase tracking-wider text-brand">With Revenue Recall</p>
-            <ul className="mt-4 space-y-3 text-sm text-white">
+            <ul className="mt-4 space-y-3 text-sm text-fg">
               {["Every slipping deal surfaced and ranked by recoverable revenue", "The record writes itself — AI logs the work automatically", "Outreach in your exact voice, indistinguishable from you", "Autopilot follows up so nothing is ever dropped", "You act before deals go cold, not after"].map((t) => (
                 <li key={t} className="flex gap-2"><span className="text-success">✓</span> {t}</li>
               ))}
@@ -185,13 +185,13 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-5 py-20">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-sm font-semibold uppercase tracking-wider text-brand">How it works</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Live in minutes. Recovering by day one.</h2>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Live in minutes. Recovering by day one.</h2>
           </div>
           <div className="mt-12 grid gap-6 md:grid-cols-3">
             {STEPS.map((s) => (
               <div key={s.n} className="rounded-2xl border border-border bg-surface p-6">
                 <div className="text-3xl font-semibold text-brand/40">{s.n}</div>
-                <h3 className="mt-3 font-semibold text-white">{s.title}</h3>
+                <h3 className="mt-3 font-semibold text-fg">{s.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">{s.body}</p>
               </div>
             ))}
@@ -203,12 +203,12 @@ export default function LandingPage() {
       <section id="industries" className="mx-auto max-w-6xl px-5 py-20">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-semibold uppercase tracking-wider text-brand">Tuned to your world</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Built for every industry</h2>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Built for every industry</h2>
           <p className="mt-4 text-muted">Terminology, pipelines, and playbooks that match how you sell — out of the box.</p>
         </div>
         <div className="mt-10 flex flex-wrap justify-center gap-3">
           {INDUSTRIES.filter((i) => i.id !== "generic").map((i) => (
-            <span key={i.id} className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-white transition hover:border-brand/40">
+            <span key={i.id} className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-fg transition hover:border-brand/40">
               {i.label}
             </span>
           ))}
@@ -223,7 +223,7 @@ export default function LandingPage() {
             {TESTIMONIALS.map((t) => (
               <figure key={t.role} className="rounded-2xl border border-border bg-surface p-6">
                 <div className="text-sm text-warn">★★★★★</div>
-                <blockquote className="mt-3 text-sm leading-relaxed text-white">“{t.quote}”</blockquote>
+                <blockquote className="mt-3 text-sm leading-relaxed text-fg">“{t.quote}”</blockquote>
                 <figcaption className="mt-4 text-xs text-muted">{t.role}</figcaption>
               </figure>
             ))}
@@ -235,12 +235,12 @@ export default function LandingPage() {
       <section className="mx-auto max-w-3xl px-5 py-20">
         <div className="text-center">
           <p className="text-sm font-semibold uppercase tracking-wider text-brand">FAQ</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Questions, answered</h2>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Questions, answered</h2>
         </div>
         <div className="mt-10 space-y-3">
           {FAQ.map((f) => (
             <details key={f.q} className="group rounded-xl border border-border bg-surface p-5 [&_summary]:cursor-pointer">
-              <summary className="flex items-center justify-between text-sm font-medium text-white marker:content-['']">
+              <summary className="flex items-center justify-between text-sm font-medium text-fg marker:content-['']">
                 {f.q}
                 <span className="text-muted transition group-open:rotate-45">+</span>
               </summary>
@@ -254,16 +254,16 @@ export default function LandingPage() {
       <section id="pricing" className="mx-auto max-w-6xl px-5 py-20">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-semibold uppercase tracking-wider text-brand">Pricing</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Start free. Scale when it pays for itself.</h2>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Start free. Scale when it pays for itself.</h2>
         </div>
         <div className="mt-12 grid gap-6 lg:grid-cols-3">
           {PRICING.map((p) => (
             <div key={p.name} className={`relative rounded-2xl border p-7 ${p.featured ? "border-brand bg-surface ring-glow" : "border-border bg-surface"}`}>
               {p.featured && <span className="absolute -top-3 left-7 rounded-full bg-brand px-3 py-1 text-xs font-semibold text-white">Most popular</span>}
-              <h3 className="font-semibold text-white">{p.name}</h3>
+              <h3 className="font-semibold text-fg">{p.name}</h3>
               <p className="mt-1 text-sm text-muted">{p.blurb}</p>
               <div className="mt-5 flex items-end gap-1">
-                <span className="text-4xl font-semibold text-white">{p.price}</span>
+                <span className="text-4xl font-semibold text-fg">{p.price}</span>
                 <span className="mb-1 text-sm text-muted">{p.cadence}</span>
               </div>
               <Link href={p.href} className={`mt-6 block rounded-xl px-4 py-2.5 text-center text-sm font-semibold transition ${p.featured ? "bg-brand text-white hover:bg-brand/90" : "border border-border text-white hover:bg-surface-2"}`}>
@@ -286,11 +286,11 @@ export default function LandingPage() {
         <div className="hero-glow relative overflow-hidden rounded-3xl border border-border bg-surface px-8 py-16 text-center">
           <div className="surface-grid absolute inset-0 opacity-30" />
           <div className="relative">
-            <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Stop losing deals to silence.</h2>
+            <h2 className="text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Stop losing deals to silence.</h2>
             <p className="mx-auto mt-4 max-w-xl text-muted">Spin up Revenue Recall in minutes — connect your CRM or start fresh — and see what you can win back.</p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Link href="/signup" className="rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand/90">Start free</Link>
-              <Link href="/dashboard" className="rounded-xl border border-border bg-surface/60 px-6 py-3 text-sm font-semibold text-white transition hover:bg-surface-2">Explore the demo</Link>
+              <Link href="/dashboard" className="rounded-xl border border-border bg-surface/60 px-6 py-3 text-sm font-semibold text-fg transition hover:bg-surface-2">Explore the demo</Link>
             </div>
             <p className="mt-4 text-xs text-muted">Free forever to start · No credit card · Cancel anytime</p>
           </div>

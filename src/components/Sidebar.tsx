@@ -7,7 +7,7 @@ export function Sidebar({ orgName, industryLabel }: { orgName: string; industryL
       <Link href="/dashboard" className="px-3 pb-6">
         <div className="flex items-center gap-2">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand text-sm font-bold text-white">RR</span>
-          <span className="text-sm font-semibold text-white">Revenue Recall</span>
+          <span className="text-sm font-semibold text-fg">Revenue Recall</span>
         </div>
         <p className="mt-3 truncate text-xs text-muted">{orgName}</p>
         <span className="pill mt-1 bg-brand-soft text-brand">{industryLabel}</span>

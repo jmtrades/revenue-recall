@@ -49,11 +49,11 @@ export default async function ReportsPage() {
                   <td className="py-2.5">
                     <span className="flex items-center gap-2">
                       <Avatar name={row.name} size={26} />
-                      <span className="text-white">{row.name}</span>
+                      <span className="text-fg">{row.name}</span>
                     </span>
                   </td>
                   <td className="py-2.5 text-right tabular-nums text-muted">{row.won}</td>
-                  <td className="py-2.5 text-right tabular-nums text-white">{compactMoney(row.value, m.currency)}</td>
+                  <td className="py-2.5 text-right tabular-nums text-fg">{compactMoney(row.value, m.currency)}</td>
                   <td className="py-2.5 text-right tabular-nums text-muted">{compactMoney(row.openValue, m.currency)}</td>
                 </tr>
               ))}

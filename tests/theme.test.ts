@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { ACCENTS, ACCENT_KEYS, DEFAULT_ACCENT, accentVars, defaultTheme, isAccentKey, mergeTheme } from "@/lib/theme";
+import { ACCENTS, ACCENT_KEYS, DEFAULT_ACCENT, DEFAULT_MODE, accentVars, defaultTheme, isAccentKey, isThemeMode, mergeTheme } from "@/lib/theme";
 
 describe("appearance theme", () => {
-  it("defaults to the canonical accent", () => {
-    expect(defaultTheme()).toEqual({ accent: DEFAULT_ACCENT });
+  it("defaults to the canonical accent and mode", () => {
+    expect(defaultTheme()).toEqual({ accent: DEFAULT_ACCENT, mode: DEFAULT_MODE });
     expect(ACCENT_KEYS).toContain(DEFAULT_ACCENT);
   });
 
@@ -16,17 +16,22 @@ describe("appearance theme", () => {
     }
   });
 
-  it("merges a stored accent and ignores anything invalid", () => {
+  it("merges a stored accent + mode and ignores anything invalid", () => {
     expect(mergeTheme({ accent: "emerald" }).accent).toBe("emerald");
     expect(mergeTheme({ accent: "not-a-color" }).accent).toBe(DEFAULT_ACCENT);
+    expect(mergeTheme({ mode: "light" }).mode).toBe("light");
+    expect(mergeTheme({ mode: "bogus" }).mode).toBe(DEFAULT_MODE);
+    expect(mergeTheme({ accent: "rose", mode: "system" })).toEqual({ accent: "rose", mode: "system" });
     expect(mergeTheme(null)).toEqual(defaultTheme());
     expect(mergeTheme({}).accent).toBe(DEFAULT_ACCENT);
   });
 
-  it("isAccentKey guards the curated palette", () => {
+  it("guards palette and mode", () => {
     expect(isAccentKey("violet")).toBe(true);
     expect(isAccentKey("chartreuse")).toBe(false);
     expect(isAccentKey(42)).toBe(false);
+    expect(isThemeMode("system")).toBe(true);
+    expect(isThemeMode("sepia")).toBe(false);
   });
 
   it("exposes accent as CSS custom properties for the shell", () => {

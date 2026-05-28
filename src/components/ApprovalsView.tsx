@@ -54,7 +54,7 @@ export function ApprovalsView({ rows }: { rows: ApprovalRow[] }) {
             <div className="flex items-center gap-2">
               <Avatar name={it.contactName} size={30} />
               <div>
-                {it.dealId ? <Link href={`/deals/${it.dealId}`} className="text-sm font-medium text-white hover:underline">{it.contactName}</Link> : <span className="text-sm font-medium text-white">{it.contactName}</span>}
+                {it.dealId ? <Link href={`/deals/${it.dealId}`} className="text-sm font-medium text-fg hover:underline">{it.contactName}</Link> : <span className="text-sm font-medium text-fg">{it.contactName}</span>}
                 <div className="text-xs text-muted">{it.channel === "email" ? "✉ Email" : "💬 SMS"} · {it.source === "ai" ? "AI draft" : "template"}</div>
               </div>
             </div>
@@ -65,7 +65,7 @@ export function ApprovalsView({ rows }: { rows: ApprovalRow[] }) {
               </button>
             </div>
           </div>
-          {it.subject && <div className="mb-1 text-sm font-medium text-white">{it.subject}</div>}
+          {it.subject && <div className="mb-1 text-sm font-medium text-fg">{it.subject}</div>}
           <pre className="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-lg border border-border bg-surface-2 px-3 py-2.5 font-sans text-sm leading-relaxed text-muted">{it.body}</pre>
         </section>
       ))}

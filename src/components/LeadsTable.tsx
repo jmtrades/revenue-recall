@@ -38,9 +38,9 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search name, company, email…"
-          className="w-64 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand"
+          className="w-64 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
         />
-        <select value={owner} onChange={(e) => setOwner(e.target.value)} className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand">
+        <select value={owner} onChange={(e) => setOwner(e.target.value)} className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand">
           <option value="">All owners</option>
           {owners.map((o) => (
             <option key={o} value={o}>{o}</option>
@@ -67,7 +67,7 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
                   <span className="flex items-center gap-2">
                     <Avatar name={r.name} size={28} />
                     <span>
-                      <span className="block font-medium text-white">{r.name}</span>
+                      <span className="block font-medium text-fg">{r.name}</span>
                       <span className="block text-xs text-muted">{r.email}</span>
                     </span>
                   </span>
@@ -75,7 +75,7 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
                 <td className="px-4 py-3 text-muted">{r.company || "—"}</td>
                 <td className="px-4 py-3"><span className="pill bg-surface-2 text-muted">{r.stage}</span></td>
                 <td className="px-4 py-3 text-muted">{r.owner}</td>
-                <td className="px-4 py-3 text-right tabular-nums text-white">{r.value !== null ? money(r.value, r.currency) : "—"}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-fg">{r.value !== null ? money(r.value, r.currency) : "—"}</td>
               </tr>
             ))}
             {filtered.length === 0 && (

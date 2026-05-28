@@ -43,7 +43,7 @@ export function NotificationSettings({ initial, persisted }: { initial: Notifica
           const on = prefs[o.key] ?? false;
           return (
             <li key={o.key} className="flex items-center justify-between py-3">
-              <span className="text-sm text-white">{o.label}</span>
+              <span className="text-sm text-fg">{o.label}</span>
               <button
                 type="button"
                 onClick={() => toggle(o.key)}

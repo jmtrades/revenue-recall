@@ -16,7 +16,7 @@ export function Avatar({ name, size = 32 }: { name: string; size?: number }) {
   const idx = name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_COLORS.length;
   return (
     <span
-      className="inline-grid shrink-0 place-items-center rounded-full font-semibold text-white"
+      className="inline-grid shrink-0 place-items-center rounded-full font-semibold text-fg"
       style={{ width: size, height: size, background: AVATAR_COLORS[idx], fontSize: size * 0.4 }}
     >
       {initials(name)}
@@ -29,7 +29,7 @@ export function Card({ children, className = "", title, action }: { children: Re
     <section className={`card ${className}`}>
       {(title || action) && (
         <div className="mb-4 flex items-center justify-between">
-          {title && <h2 className="font-semibold text-white">{title}</h2>}
+          {title && <h2 className="font-semibold text-fg">{title}</h2>}
           {action}
         </div>
       )}
@@ -59,8 +59,8 @@ export function Button({
   const sizes = { sm: "px-2.5 py-1 text-xs", md: "px-3.5 py-2 text-sm" };
   const variants = {
     primary: "bg-brand text-white hover:bg-brand/90",
-    ghost: "text-muted hover:bg-surface-2 hover:text-white",
-    outline: "border border-border text-white hover:bg-surface-2",
+    ghost: "text-muted hover:bg-surface-2 hover:text-fg",
+    outline: "border border-border text-fg hover:bg-surface-2",
     danger: "bg-danger/90 text-white hover:bg-danger",
   };
   const cls = `${base} ${sizes[size]} ${variants[variant]}`;
@@ -72,7 +72,7 @@ export function EmptyState({ icon = "◌", title, hint }: { icon?: string; title
   return (
     <div className="grid place-items-center rounded-xl border border-dashed border-border py-12 text-center">
       <div className="text-3xl text-muted/60">{icon}</div>
-      <p className="mt-2 text-sm font-medium text-white">{title}</p>
+      <p className="mt-2 text-sm font-medium text-fg">{title}</p>
       {hint && <p className="mt-1 max-w-sm text-xs text-muted">{hint}</p>}
     </div>
   );
@@ -82,7 +82,7 @@ export function InfoRow({ label, children }: { label: string; children: ReactNod
   return (
     <div className="flex items-center justify-between border-b border-border/60 py-2.5 last:border-0">
       <span className="text-xs uppercase tracking-wide text-muted">{label}</span>
-      <span className="text-sm text-white">{children}</span>
+      <span className="text-sm text-fg">{children}</span>
     </div>
   );
 }
@@ -109,7 +109,7 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
   return (
     <header className="mb-6 flex items-end justify-between gap-4">
       <div>
-        <h1 className="text-2xl font-semibold text-white">{title}</h1>
+        <h1 className="text-2xl font-semibold text-fg">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
       </div>
       {action}
@@ -119,7 +119,7 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
 
 export function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "default" | "success" | "warn" | "danger" }) {
   const toneClass =
-    tone === "success" ? "text-success" : tone === "warn" ? "text-warn" : tone === "danger" ? "text-danger" : "text-white";
+    tone === "success" ? "text-success" : tone === "warn" ? "text-warn" : tone === "danger" ? "text-danger" : "text-fg";
   return (
     <div className="card">
       <p className="stat-label">{label}</p>
@@ -151,7 +151,7 @@ export function ScoreDot({ score }: { score: number }) {
   return (
     <span className="inline-flex items-center gap-2">
       <span className={`h-2 w-2 rounded-full ${color}`} />
-      <span className="tabular-nums text-sm text-white">{score}</span>
+      <span className="tabular-nums text-sm text-fg">{score}</span>
     </span>
   );
 }

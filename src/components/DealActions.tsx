@@ -84,7 +84,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
           value={currentStageId}
           disabled={!canWrite}
           onChange={(e) => move(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand disabled:opacity-60"
+          className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand disabled:opacity-60"
         >
           {stages.map((s) => (
             <option key={s.id} value={s.id}>{s.label}</option>
@@ -121,7 +121,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             placeholder="Subject"
-            className="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand"
+            className="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
           />
         )}
         <textarea
@@ -129,7 +129,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
           onChange={(e) => setSummary(e.target.value)}
           placeholder="What happened? Or click ✨ Draft with AI."
           rows={4}
-          className="mt-2 w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand"
+          className="mt-2 w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
         />
         {canDraft && <HumannessMeter text={summary} />}
         <button

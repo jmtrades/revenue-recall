@@ -31,7 +31,7 @@ export function HumannessMeter({ text }: { text: string }) {
         <ul className="mt-2 space-y-0.5 text-[11px] leading-relaxed text-muted">
           {r.flags.slice(0, 4).map((f, i) => (
             <li key={i}>
-              • <span className="text-white">&ldquo;{f.text}&rdquo;</span> — {f.reason}
+              • <span className="text-fg">&ldquo;{f.text}&rdquo;</span> — {f.reason}
             </li>
           ))}
         </ul>

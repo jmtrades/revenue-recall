@@ -19,7 +19,7 @@ export function OrgSettingsForm({
   const [error, setError] = useState<string | null>(null);
 
   const dirty = name !== initialName || Number(quota) !== initialQuota;
-  const input = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand disabled:opacity-60";
+  const input = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand disabled:opacity-60";
 
   async function save() {
     setStatus("saving");

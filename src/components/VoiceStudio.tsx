@@ -21,7 +21,7 @@ export function VoiceStudio({
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const input = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand";
+  const input = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand";
   const canSave = Boolean(samples.trim() || customNextSteps.trim() || customReengage.trim());
 
   async function learn() {
@@ -47,7 +47,7 @@ export function VoiceStudio({
 
   return (
     <div className="card">
-      <h2 className="flex items-center gap-2 font-semibold text-white">✨ Your voice</h2>
+      <h2 className="flex items-center gap-2 font-semibold text-fg">✨ Your voice</h2>
       <p className="mt-1 text-sm text-muted">
         No forms. Just describe how you sound, or paste a few of your real emails/texts — the AI learns your voice so every
         message reads like <em>you</em>, never like an AI.

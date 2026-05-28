@@ -37,7 +37,7 @@ export function AgentsView({
   const [trigger, setTrigger] = useState("manual");
   const [creating, setCreating] = useState(false);
 
-  const input = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand";
+  const input = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand";
 
   async function create() {
     if (!name.trim() || !goal.trim()) return;
@@ -87,7 +87,7 @@ export function AgentsView({
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_1fr]">
       <div className="space-y-6">
         <section className="card border-brand/30">
-          <h2 className="flex items-center gap-2 font-semibold text-white">✨ New autopilot task</h2>
+          <h2 className="flex items-center gap-2 font-semibold text-fg">✨ New autopilot task</h2>
           <p className="mt-1 text-xs text-muted">Describe what you want done in plain English. The AI works each deal for you.</p>
           <div className="mt-3 space-y-2.5">
             <input className={input} placeholder="Task name (e.g. Re-engage cold deals)" value={name} onChange={(e) => setName(e.target.value)} />
@@ -124,7 +124,7 @@ export function AgentsView({
         </section>
 
         <section className="card">
-          <h2 className="font-semibold text-white">Your tasks</h2>
+          <h2 className="font-semibold text-fg">Your tasks</h2>
           {tasks.length === 0 ? (
             <p className="mt-2 text-sm text-muted">No tasks yet. Create one above.</p>
           ) : (
@@ -132,7 +132,7 @@ export function AgentsView({
               {tasks.map((t) => (
                 <li key={t.id} className="rounded-lg border border-border bg-surface-2 p-3">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-medium text-white">{t.name}</span>
+                    <span className="text-sm font-medium text-fg">{t.name}</span>
                     <span className="pill bg-surface text-muted">{t.autonomy === "auto" ? "Autonomous" : "Review"}</span>
                   </div>
                   <p className="mt-1 line-clamp-2 text-xs text-muted">{t.goal}</p>
@@ -152,7 +152,7 @@ export function AgentsView({
       </div>
 
       <section className="card p-0">
-        <div className="border-b border-border px-5 py-3 text-sm font-semibold text-white">Run ledger</div>
+        <div className="border-b border-border px-5 py-3 text-sm font-semibold text-fg">Run ledger</div>
         {runs.length === 0 ? (
           <p className="p-6 text-sm text-muted">No runs yet — create a task and hit “Run now”. Every action the AI takes is recorded here.</p>
         ) : (
@@ -160,7 +160,7 @@ export function AgentsView({
             {runs.map((r) => (
               <li key={r.id} className="px-5 py-4">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium text-white">{taskName(r.taskId)}</span>
+                  <span className="text-sm font-medium text-fg">{taskName(r.taskId)}</span>
                   <span className="flex items-center gap-2">
                     {r.ai ? <span className="pill bg-brand-soft text-brand">AI</span> : <span className="pill bg-surface-2 text-muted">templates</span>}
                     <span className={`pill ${r.status === "failed" ? "bg-danger/15 text-danger" : "bg-success/15 text-success"}`}>{r.status}</span>
@@ -172,7 +172,7 @@ export function AgentsView({
                     {r.actions.map((a, i) => (
                       <li key={i} className="flex items-center gap-2 rounded-lg bg-surface-2/50 px-2.5 py-1.5 text-xs">
                         <span className={`pill ${RESULT_STYLE[a.result] ?? "bg-surface-2 text-muted"}`}>{a.result}</span>
-                        {a.dealId ? <Link href={`/deals/${a.dealId}`} className="font-medium text-white hover:underline">{a.title}</Link> : <span className="font-medium text-white">{a.title}</span>}
+                        {a.dealId ? <Link href={`/deals/${a.dealId}`} className="font-medium text-fg hover:underline">{a.title}</Link> : <span className="font-medium text-fg">{a.title}</span>}
                         <span className="truncate text-muted">{a.detail}</span>
                       </li>
                     ))}

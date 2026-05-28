@@ -31,7 +31,7 @@ export default async function ForecastPage() {
                 <div className="h-6 flex-1 overflow-hidden rounded bg-surface-2">
                   <div className="h-full rounded bg-brand/70" style={{ width: `${(s.value / maxStage) * 100}%` }} />
                 </div>
-                <span className="w-24 shrink-0 text-right text-sm tabular-nums text-white">{compactMoney(s.value, f.currency)}</span>
+                <span className="w-24 shrink-0 text-right text-sm tabular-nums text-fg">{compactMoney(s.value, f.currency)}</span>
                 <span className="w-10 shrink-0 text-right text-xs tabular-nums text-muted">{s.count}</span>
               </div>
             ))}
@@ -42,7 +42,7 @@ export default async function ForecastPage() {
           <div className="flex flex-col items-center gap-3 py-2">
             <ProgressRing value={attainment} size={120} thickness={11} color={attainment >= 1 ? "#34d399" : "rgb(var(--brand-rgb))"} />
             <div className="text-center">
-              <div className="text-sm text-white">{money(f.weighted, f.currency)} <span className="text-muted">/ {compactMoney(f.quota, f.currency)}</span></div>
+              <div className="text-sm text-fg">{money(f.weighted, f.currency)} <span className="text-muted">/ {compactMoney(f.quota, f.currency)}</span></div>
               <div className="text-xs text-muted">weighted vs. quota</div>
             </div>
           </div>

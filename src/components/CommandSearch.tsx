@@ -72,7 +72,7 @@ export function CommandSearch() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search contacts and deals…"
-              className="w-full border-b border-border bg-transparent px-4 py-3.5 text-sm text-white outline-none placeholder:text-muted"
+              className="w-full border-b border-border bg-transparent px-4 py-3.5 text-sm text-fg outline-none placeholder:text-muted"
             />
             <div className="max-h-80 overflow-y-auto p-2">
               {results.contacts.length === 0 && results.deals.length === 0 && (
@@ -82,7 +82,7 @@ export function CommandSearch() {
                 <div className="mb-1">
                   <p className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-muted">Contacts</p>
                   {results.contacts.map((c) => (
-                    <button key={c.id} onClick={() => go(`/leads/${c.id}`)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-white hover:bg-surface-2">
+                    <button key={c.id} onClick={() => go(`/leads/${c.id}`)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-fg hover:bg-surface-2">
                       <span>{c.name}</span>
                       <span className="text-xs text-muted">{c.company}</span>
                     </button>
@@ -93,7 +93,7 @@ export function CommandSearch() {
                 <div>
                   <p className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-muted">Deals</p>
                   {results.deals.map((d) => (
-                    <button key={d.id} onClick={() => go(`/deals/${d.id}`)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-white hover:bg-surface-2">
+                    <button key={d.id} onClick={() => go(`/deals/${d.id}`)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-fg hover:bg-surface-2">
                       <span className="truncate">{d.title}</span>
                       <span className="shrink-0 text-xs text-muted">{new Intl.NumberFormat("en-US", { style: "currency", currency: d.currency, notation: "compact" }).format(d.value)}</span>
                     </button>

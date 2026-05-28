@@ -17,7 +17,7 @@ export default function SequencesPage() {
           <section key={seq.id} className="card">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <Link href={`/sequences/${seq.id}`} className="font-semibold text-white hover:underline">{seq.name}</Link>
+                <Link href={`/sequences/${seq.id}`} className="font-semibold text-fg hover:underline">{seq.name}</Link>
                 <p className="mt-1 text-sm text-muted">{seq.goal}</p>
               </div>
               <span className="pill bg-surface-2 text-muted">{seq.steps.length} steps</span>
@@ -32,7 +32,7 @@ export default function SequencesPage() {
                   <div className="min-w-0 flex-1 rounded-lg border border-border bg-surface-2 p-3">
                     <div className="mb-1 flex items-center gap-2">
                       <ChannelBadge channel={step.channel} />
-                      <span className="truncate text-sm font-medium text-white">{step.subject}</span>
+                      <span className="truncate text-sm font-medium text-fg">{step.subject}</span>
                     </div>
                     <p className="text-xs leading-relaxed text-muted">{step.body}</p>
                   </div>

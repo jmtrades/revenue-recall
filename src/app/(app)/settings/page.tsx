@@ -57,7 +57,7 @@ export default async function SettingsPage() {
         {INDUSTRIES.map((ind) => (
           <div key={ind.id} className={`rounded-lg border p-3 ${ind.id === cfg.industryId ? "border-brand bg-brand-soft/30" : "border-border bg-surface-2"}`}>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-white">{ind.label}</span>
+              <span className="text-sm font-medium text-fg">{ind.label}</span>
               {ind.id === cfg.industryId && <span className="pill bg-brand text-white">Active</span>}
             </div>
             <p className="mt-1 text-xs text-muted">{ind.blurb}</p>
@@ -75,7 +75,7 @@ export default async function SettingsPage() {
           <li key={s.id} className="flex items-center justify-between rounded-lg border border-border bg-surface-2 px-3 py-2">
             <span className="flex items-center gap-2">
               <span className={`h-2.5 w-2.5 rounded-full ${s.type === "won" ? "bg-success" : s.type === "lost" ? "bg-danger" : "bg-brand"}`} />
-              <span className="text-sm text-white">{s.label}</span>
+              <span className="text-sm text-fg">{s.label}</span>
               <span className="pill bg-surface text-muted">{s.type}</span>
             </span>
             <span className="text-xs tabular-nums text-muted">{pct(s.probability)} win</span>
@@ -88,14 +88,14 @@ export default async function SettingsPage() {
   const integrationsTab = (
     <Card>
       <p className="mb-3 text-sm text-muted">
-        Active: <span className="text-white">{cfg.providerId}</span>. Set <code className="text-brand">CRM_PROVIDER</code> to switch.
+        Active: <span className="text-fg">{cfg.providerId}</span>. Set <code className="text-brand">CRM_PROVIDER</code> to switch.
         Unconfigured providers fall back to the built-in CRM automatically.
       </p>
       <ul className="divide-y divide-border">
         {integrations.map((p) => (
           <li key={p.id} className="flex items-center justify-between py-3">
             <div>
-              <span className="text-sm font-medium text-white">{p.label}</span>
+              <span className="text-sm font-medium text-fg">{p.label}</span>
               <div className="mt-1 flex gap-1.5">
                 {p.capabilities.read && <span className="pill bg-surface-2 text-muted">read</span>}
                 {p.capabilities.write && <span className="pill bg-surface-2 text-muted">write</span>}
@@ -116,7 +116,7 @@ export default async function SettingsPage() {
           <li key={u.id} className="flex items-center gap-3 py-3">
             <Avatar name={u.name} size={36} />
             <div>
-              <div className="text-sm font-medium text-white">{u.name}</div>
+              <div className="text-sm font-medium text-fg">{u.name}</div>
               <div className="text-xs text-muted">{u.email ?? "—"}</div>
             </div>
           </li>
@@ -140,7 +140,7 @@ export default async function SettingsPage() {
         ] as const).map(([label, c]) => (
           <li key={label} className="flex items-center justify-between py-3">
             <div>
-              <span className="text-sm font-medium text-white">{label}</span>
+              <span className="text-sm font-medium text-fg">{label}</span>
               <div className="mt-1 text-xs text-muted">Provider: {c.provider}</div>
             </div>
             <span className={`pill ${c.live ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>{c.live ? "Live" : "Logging only"}</span>
@@ -177,7 +177,7 @@ export default async function SettingsPage() {
 
   const appearanceTab = (
     <Card>
-      <AppearanceSettings initialAccent={org.theme.accent} persisted={org.persisted} />
+      <AppearanceSettings initialAccent={org.theme.accent} initialMode={org.theme.mode} persisted={org.persisted} />
     </Card>
   );
 
@@ -190,7 +190,7 @@ export default async function SettingsPage() {
           {active.fields.map((f) => (
             <li key={f.key} className="flex items-center justify-between py-3">
               <div>
-                <span className="text-sm text-white">{f.label}</span>
+                <span className="text-sm text-fg">{f.label}</span>
                 <code className="ml-2 text-xs text-muted">{f.key}</code>
               </div>
               <span className="pill bg-surface-2 text-muted">{f.type}{f.options ? ` · ${f.options.length} options` : ""}</span>

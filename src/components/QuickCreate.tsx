@@ -95,7 +95,7 @@ export function QuickCreate() {
     }
   }
 
-  const inputCls = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand";
+  const inputCls = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand";
 
   return (
     <>
@@ -108,7 +108,7 @@ export function QuickCreate() {
           <div className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex border-b border-border">
               {(["deal", "contact"] as const).map((t) => (
-                <button key={t} onClick={() => setTab(t)} className={`flex-1 px-4 py-3 text-sm font-medium capitalize ${tab === t ? "border-b-2 border-brand text-white" : "text-muted hover:text-white"}`}>
+                <button key={t} onClick={() => setTab(t)} className={`flex-1 px-4 py-3 text-sm font-medium capitalize ${tab === t ? "border-b-2 border-brand text-fg" : "text-muted hover:text-fg"}`}>
                   New {t === "deal" ? meta?.terminology.opportunity ?? "Deal" : meta?.terminology.contact ?? "Contact"}
                 </button>
               ))}

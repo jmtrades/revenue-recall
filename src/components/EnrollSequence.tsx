@@ -36,7 +36,7 @@ export function EnrollSequence({ sequenceId }: { sequenceId: string }) {
     }
   }
 
-  const input = "rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand";
+  const input = "rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand";
 
   return (
     <div className="flex flex-wrap items-center gap-3">

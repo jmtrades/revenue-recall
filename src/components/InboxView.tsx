@@ -46,7 +46,7 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
       <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface">
         <div className="flex gap-1 border-b border-border p-2">
           {(["all", "unread"] as const).map((f) => (
-            <button key={f} onClick={() => setFilter(f)} className={`flex-1 rounded-lg px-3 py-1.5 text-sm capitalize ${filter === f ? "bg-surface-2 text-white" : "text-muted hover:text-white"}`}>
+            <button key={f} onClick={() => setFilter(f)} className={`flex-1 rounded-lg px-3 py-1.5 text-sm capitalize ${filter === f ? "bg-surface-2 text-fg" : "text-muted hover:text-fg"}`}>
               {f}
             </button>
           ))}
@@ -64,7 +64,7 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
                 <Avatar name={t.contactName} size={36} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-sm font-medium text-white">{t.contactName}</span>
+                    <span className="truncate text-sm font-medium text-fg">{t.contactName}</span>
                     <span className="shrink-0 text-xs text-muted">{timeAgo(t.lastAt)}</span>
                   </div>
                   <p className="truncate text-xs text-muted">{CHANNEL[t.channel]} {t.snippet}</p>
@@ -85,7 +85,7 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
               <div className="flex items-center gap-3">
                 <Avatar name={active.contactName} size={36} />
                 <div>
-                  <div className="text-sm font-medium text-white">{active.contactName}</div>
+                  <div className="text-sm font-medium text-fg">{active.contactName}</div>
                   <div className="text-xs text-muted">{active.company}</div>
                 </div>
               </div>
@@ -96,7 +96,7 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
                 <div key={m.id} className={`flex ${m.direction === "outbound" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm ${m.direction === "outbound" ? "bg-brand text-white" : "bg-surface-2 text-white"}`}>
                     <p>{m.body}</p>
-                    <p className={`mt-1 text-[10px] ${m.direction === "outbound" ? "text-white/70" : "text-muted"}`}>{CHANNEL[m.channel]} · {timeAgo(m.at)} ago</p>
+                    <p className={`mt-1 text-[10px] ${m.direction === "outbound" ? "text-fg/70" : "text-muted"}`}>{CHANNEL[m.channel]} · {timeAgo(m.at)} ago</p>
                   </div>
                 </div>
               ))}
@@ -107,7 +107,7 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   placeholder="Type a reply…"
-                  className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand"
+                  className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
                 />
                 <button onClick={send} disabled={sending || !draft.trim()} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{sending ? "Sending…" : "Send"}</button>
               </div>
