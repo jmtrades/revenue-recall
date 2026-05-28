@@ -54,9 +54,20 @@ export async function POST(req: Request) {
 
   let contacts = 0;
   let deals = 0;
+  let skipped = 0;
   const errors: string[] = [];
+  const seenEmails = new Set<string>();
 
   for (const r of parsed.data.rows) {
+    // Skip obvious in-batch duplicates so a re-uploaded file doesn't double up.
+    const emailKey = r.email?.trim().toLowerCase();
+    if (emailKey) {
+      if (seenEmails.has(emailKey)) {
+        skipped += 1;
+        continue;
+      }
+      seenEmails.add(emailKey);
+    }
     const points = [
       ...(r.email ? [{ channel: "email" as const, value: r.email }] : []),
       ...(r.phone ? [{ channel: "phone" as const, value: r.phone }] : []),
@@ -86,5 +97,5 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ created: contacts, deals, failed: errors.length, errors: errors.slice(0, 10) });
+  return NextResponse.json({ created: contacts, deals, skipped, failed: errors.length, errors: errors.slice(0, 10) });
 }

@@ -16,21 +16,32 @@ export async function POST(req: Request) {
   const sb = getSupabase();
   if (!sb) return NextResponse.json({ error: "no db" }, { status: 503 });
 
-  let event: { type: string; data: { object: Record<string, unknown> } };
+  let event: { id?: string; type: string; data: { object: Record<string, unknown> } };
   try {
     event = JSON.parse(raw);
   } catch {
     return NextResponse.json({ error: "bad payload" }, { status: 400 });
   }
 
+  // Idempotency: record the event id first; a duplicate delivery (Stripe retries)
+  // short-circuits so we never double-apply credits or plan changes.
+  if (event.id) {
+    const { error: dupErr } = await sb.from("stripe_events").insert({ id: event.id });
+    if (dupErr) {
+      if (dupErr.code === "23505") return NextResponse.json({ received: true, duplicate: true });
+      // If we can't record it, fail so Stripe retries rather than risk a silent drop.
+      return NextResponse.json({ error: "dedupe failed" }, { status: 500 });
+    }
+  }
+
   const obj = event.data.object;
+  const meta = (obj.metadata as Record<string, string>) ?? {};
 
   try {
     switch (event.type) {
       case "checkout.session.completed": {
-        const orgId = (obj.client_reference_id as string) ?? (obj.metadata as Record<string, string>)?.org_id;
+        const orgId = (obj.client_reference_id as string) ?? meta.org_id;
         if (!orgId) break;
-        const meta = (obj.metadata as Record<string, string>) ?? {};
 
         if (obj.mode === "subscription") {
           await sb
@@ -45,10 +56,7 @@ export async function POST(req: Request) {
         } else if (obj.mode === "payment") {
           const credits = Number(meta.credit_actions ?? 0);
           if (credits > 0) {
-            // Atomic add via RPC-free read-modify-write is racy; use SQL increment.
-            const { data: org } = await sb.from("orgs").select("ai_credits").eq("id", orgId).maybeSingle();
-            const current = (org?.ai_credits as number | undefined) ?? 0;
-            await sb.from("orgs").update({ ai_credits: current + credits }).eq("id", orgId);
+            await sb.rpc("increment_ai_credits", { p_org: orgId, p_amount: credits });
             if (obj.customer) await sb.from("orgs").update({ stripe_customer_id: obj.customer as string }).eq("id", orgId);
           }
         }
@@ -59,31 +67,40 @@ export async function POST(req: Request) {
       case "customer.subscription.created": {
         const customer = obj.customer as string;
         const status = obj.status as string;
-        const items = (obj.items as { data?: Array<{ price?: { id?: string }; quantity?: number }> })?.data ?? [];
-        const priceId = items[0]?.price?.id;
-        const quantity = items[0]?.quantity ?? 1;
-        const periodEnd = obj.current_period_end as number | undefined;
+        const items = (obj.items as { data?: Array<{ price?: { id?: string }; quantity?: number; current_period_end?: number }> })?.data ?? [];
+        const item = items[0];
+        const priceId = item?.price?.id;
+        const quantity = item?.quantity ?? 1;
+        // current_period_end moved onto the item in recent API versions; fall back to the object.
+        const periodEnd = item?.current_period_end ?? (obj.current_period_end as number | undefined);
         const plan = priceId ? planForPriceId(priceId) : null;
 
-        const update: Record<string, unknown> = {
-          plan_status: status,
-          seats: quantity,
-        };
+        const update: Record<string, unknown> = { plan_status: status, seats: quantity };
         if (plan) update.plan = plan;
         if (periodEnd) update.current_period_end = new Date(periodEnd * 1000).toISOString();
-        await sb.from("orgs").update(update).eq("stripe_customer_id", customer);
+
+        // Prefer the org id we stamped on the subscription metadata; the
+        // customer link may not exist yet if this event arrives before checkout.
+        if (meta.org_id) {
+          update.stripe_customer_id = customer;
+          await sb.from("orgs").update(update).eq("id", meta.org_id);
+        } else {
+          await sb.from("orgs").update(update).eq("stripe_customer_id", customer);
+        }
         break;
       }
 
       case "customer.subscription.deleted": {
         const customer = obj.customer as string;
-        await sb.from("orgs").update({ plan: "starter", plan_status: "canceled" }).eq("stripe_customer_id", customer);
+        if (meta.org_id) {
+          await sb.from("orgs").update({ plan: "starter", plan_status: "canceled" }).eq("id", meta.org_id);
+        } else {
+          await sb.from("orgs").update({ plan: "starter", plan_status: "canceled" }).eq("stripe_customer_id", customer);
+        }
         break;
       }
     }
   } catch {
-    // Acknowledge receipt; Stripe retries on non-2xx, but a DB hiccup shouldn't
-    // cause infinite retries for an event we've largely processed.
     return NextResponse.json({ received: true, warning: "partial" });
   }
 

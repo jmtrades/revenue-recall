@@ -1,15 +1,14 @@
 import crypto from "crypto";
 
-/** Constant-time string comparison that won't leak length via early return. */
+/**
+ * Constant-time string comparison. Both sides are hashed to a fixed-length
+ * digest first, so the comparison never branches on (or leaks) the secret's
+ * length and can't throw on mismatched byte lengths.
+ */
 export function safeEqual(a: string, b: string): boolean {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  if (ab.length !== bb.length) {
-    // Still run a comparison to keep timing uniform, then fail.
-    crypto.timingSafeEqual(ab, ab);
-    return false;
-  }
-  return crypto.timingSafeEqual(ab, bb);
+  const ah = crypto.createHash("sha256").update(a).digest();
+  const bh = crypto.createHash("sha256").update(b).digest();
+  return crypto.timingSafeEqual(ah, bh);
 }
 
 /**
