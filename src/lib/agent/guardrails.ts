@@ -15,7 +15,7 @@ const OUTBOUND_KINDS = new Set(["email", "sms", "call"]);
 // are winnable and we re-engage after a cooldown. This is the whole point of
 // Revenue Recall: a no today isn't a no forever.
 const HARD_OPT_OUT =
-  /\b(unsubscribe|opt[\s-]?out|please remove|remove me|take me off( your list)?|do ?n'?t (ever )?(contact|call|text|email|message)( me)?|stop (calling|texting|messaging|emailing|contacting)|lose my number|never contact me)\b/i;
+  /\b(unsubscribe|opt[\s-]?out|please remove|remove me|take me off( your list)?|do(?:n'?t| not)( ever)? (contact|call|text|email|message)( me)?|stop (calling|texting|messaging|emailing|contacting)|lose my number|never contact me)\b/i;
 
 /** True only for an explicit, permanent opt-out (or outright hostility). */
 export function isHardOptOut(text: string): boolean {
