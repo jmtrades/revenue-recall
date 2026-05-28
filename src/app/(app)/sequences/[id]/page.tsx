@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getSequence } from "@/lib/sequences";
 import { INDUSTRIES } from "@/lib/industries";
 import { PageHeader, Card, ChannelBadge, Stat } from "@/components/ui";
+import { EnrollSequence } from "@/components/EnrollSequence";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,15 @@ export default function SequenceDetailPage({ params }: { params: { id: string } 
         <Stat label="Channels" value={String(channels.length)} hint={channels.join(" · ")} />
         <Stat label="Audience" value={audience} />
       </section>
+
+      <Card title="Start this cadence">
+        <p className="mb-3 text-sm text-muted">
+          Enroll a set of deals and the scheduler works each step on its day — drafting in your voice and queuing to
+          Approvals (or auto-sending when <code className="text-white">SEQUENCE_AUTOPILOT</code> is on). Closed-won deals
+          drop out automatically.
+        </p>
+        <EnrollSequence sequenceId={seq.id} />
+      </Card>
 
       <Card title="Cadence">
         <ol className="relative space-y-4 before:absolute before:left-[15px] before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-border">

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { listTasks } from "@/lib/agent/store";
 import { runTask } from "@/lib/agent/engine";
+import { runDueSteps } from "@/lib/cadence";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -34,5 +35,7 @@ async function run() {
     const r = await runTask(t);
     results.push({ task: t.name, trigger: t.trigger, status: r.status, processed: r.itemsProcessed });
   }
-  return NextResponse.json({ ok: true, ran: results.length, results });
+  // Advance any sequence enrollments whose next step is due.
+  const cadence = await runDueSteps().catch((e) => ({ error: e instanceof Error ? e.message : "cadence failed" }));
+  return NextResponse.json({ ok: true, ran: results.length, results, cadence });
 }
