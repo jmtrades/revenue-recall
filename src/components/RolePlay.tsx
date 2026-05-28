@@ -9,8 +9,12 @@ import {
   pickVoice,
   speak,
   listenOnce,
+  listenContinuous,
+  type SpeakHandle,
+  type ListenHandle,
 } from "@/lib/voice/speech";
 import { loadVoicePrefs, toVoicePrefs } from "@/lib/voice/prefs";
+import { shouldBargeIn, wordCount } from "@/lib/voice/turntaking";
 
 type Difficulty = "easy" | "medium" | "hard";
 interface Turn {
@@ -34,9 +38,28 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
   const [mood, setMood] = useState<string | null>(null);
   const [voiceOn, setVoiceOn] = useState(true);
   const [listening, setListening] = useState(false);
+  const [live, setLive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const speakHandleRef = useRef<SpeakHandle | null>(null);
+  const speakingRef = useRef(false);
+  const liveListenRef = useRef<ListenHandle | null>(null);
+  const liveRef = useRef(false);
+
+  // Keep a ref in sync so async callbacks see the latest live state.
+  useEffect(() => {
+    liveRef.current = live;
+    if (!live) {
+      liveListenRef.current?.stop();
+      liveListenRef.current = null;
+    }
+  }, [live]);
+
+  useEffect(() => () => {
+    liveListenRef.current?.stop();
+    speakHandleRef.current?.stop();
+  }, []);
 
   const canSpeak = typeof window !== "undefined" && isSpeechSupported();
   const canListen = typeof window !== "undefined" && isRecognitionSupported();
@@ -62,7 +85,52 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
   }
 
   function sayAloud(text: string, emotion?: string) {
-    if (voiceOn && canSpeak) speak(text, { ...toVoicePrefs(loadVoicePrefs()), emotion: emotion as never }, voiceRef.current);
+    if (!voiceOn || !canSpeak) {
+      // No audio — in live mode, open the floor immediately so it stays hands-free.
+      if (liveRef.current) startLiveListen();
+      return;
+    }
+    speakingRef.current = true;
+    const h = speak(text, { ...toVoicePrefs(loadVoicePrefs()), emotion: emotion as never }, voiceRef.current);
+    speakHandleRef.current = h;
+    h.done.finally(() => {
+      speakingRef.current = false;
+      if (liveRef.current) startLiveListen(); // hand the floor back to the human
+    });
+  }
+
+  /**
+   * Hands-free turn: listen continuously, barge-in (stop talking the instant the
+   * human speaks over us), and on a finished sentence, take the turn.
+   */
+  function startLiveListen() {
+    if (!canListen || !liveRef.current) return;
+    liveListenRef.current?.stop();
+    setListening(true);
+    liveListenRef.current = listenContinuous({
+      lang: "en-US",
+      onSpeechStart: () => {
+        if (shouldBargeIn(speakingRef.current, 2)) {
+          speakHandleRef.current?.stop();
+          speakingRef.current = false;
+        }
+      },
+      onInterim: (t) => {
+        // A couple of real words while we're still talking = they took the floor.
+        if (speakingRef.current && wordCount(t) >= 2) {
+          speakHandleRef.current?.stop();
+          speakingRef.current = false;
+        }
+      },
+      onFinal: (t) => {
+        if (!liveRef.current) return;
+        liveListenRef.current?.stop();
+        liveListenRef.current = null;
+        setListening(false);
+        void send(t);
+      },
+      onError: () => setListening(false),
+    });
   }
 
   async function start() {
@@ -135,6 +203,11 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
 
   function reset() {
     if (typeof window !== "undefined" && canSpeak) window.speechSynthesis.cancel();
+    liveListenRef.current?.stop();
+    liveListenRef.current = null;
+    speakHandleRef.current?.stop();
+    speakingRef.current = false;
+    setListening(false);
     setTurns([]);
     setCoach(null);
     setMood(null);
@@ -163,6 +236,15 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
           {canSpeak && (
             <button onClick={() => setVoiceOn((v) => !v)} title="Toggle spoken voice" className={`rounded-lg border px-2 py-1 text-xs transition ${voiceOn ? "border-brand text-brand" : "border-border text-muted"}`}>
               {voiceOn ? "🔊" : "🔇"}
+            </button>
+          )}
+          {canListen && (
+            <button
+              onClick={() => setLive((v) => !v)}
+              title="Hands-free: it listens, pauses, and you can talk over it"
+              className={`rounded-lg border px-2 py-1 text-xs transition ${live ? "border-success text-success" : "border-border text-muted"}`}
+            >
+              {live ? "● Live" : "Live"}
             </button>
           )}
         </div>

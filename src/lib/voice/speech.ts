@@ -19,6 +19,14 @@
 interface SpeechRecognitionAlt { transcript: string }
 interface SpeechRecognitionResultLike { 0: SpeechRecognitionAlt }
 interface SpeechRecognitionResultEvent { results: { 0: SpeechRecognitionResultLike } }
+interface SpeechRecognitionResultListLike {
+  length: number;
+  [i: number]: SpeechRecognitionResultLike & { isFinal: boolean };
+}
+interface SpeechRecognitionStreamEvent {
+  resultIndex: number;
+  results: SpeechRecognitionResultListLike;
+}
 interface SpeechRecognitionLike {
   lang: string;
   interimResults: boolean;
@@ -26,8 +34,19 @@ interface SpeechRecognitionLike {
   continuous: boolean;
   onresult: ((e: SpeechRecognitionResultEvent) => void) | null;
   onerror: ((e: { error?: string }) => void) | null;
+  onspeechstart?: (() => void) | null;
+  onend?: (() => void) | null;
   start: () => void;
   stop: () => void;
+}
+
+function recognitionCtor(): (new () => SpeechRecognitionLike) | null {
+  if (!isRecognitionSupported()) return null;
+  const w = window as unknown as {
+    SpeechRecognition?: new () => SpeechRecognitionLike;
+    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
 /** How a line is delivered emotionally — shifts speed, pitch, and pause length
@@ -257,11 +276,7 @@ export function listenOnce(
     opts.onError?.("speech recognition not supported");
     return { stop: () => {} };
   }
-  const w = window as unknown as {
-    SpeechRecognition?: new () => SpeechRecognitionLike;
-    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-  };
-  const Rec = w.SpeechRecognition ?? w.webkitSpeechRecognition!;
+  const Rec = recognitionCtor()!;
   const rec = new Rec();
   rec.lang = opts.lang ?? "en-US";
   rec.interimResults = false;
@@ -278,4 +293,69 @@ export function listenOnce(
     /* already started */
   }
   return { stop: () => rec.stop() };
+}
+
+export interface ContinuousOptions {
+  lang?: string;
+  /** Fires the moment the person starts talking (used for barge-in). */
+  onSpeechStart?: () => void;
+  /** Live partial transcript as they speak. */
+  onInterim?: (text: string) => void;
+  /** A completed utterance. */
+  onFinal: (text: string) => void;
+  onError?: (e: string) => void;
+}
+
+/**
+ * Continuously listen for a hands-free call: streams interim text, signals when
+ * speech starts (so the speaker can yield the floor — barge-in), and emits each
+ * finished utterance. Auto-restarts if the engine ends on its own. Client-only.
+ */
+export function listenContinuous(opts: ContinuousOptions): ListenHandle {
+  const Rec = recognitionCtor();
+  if (!Rec) {
+    opts.onError?.("speech recognition not supported");
+    return { stop: () => {} };
+  }
+  const rec = new Rec();
+  rec.lang = opts.lang ?? "en-US";
+  rec.interimResults = true;
+  rec.maxAlternatives = 1;
+  rec.continuous = true;
+  let stopped = false;
+
+  rec.onspeechstart = () => opts.onSpeechStart?.();
+  rec.onresult = (e) => {
+    const ev = e as unknown as SpeechRecognitionStreamEvent;
+    let interim = "";
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      const r = ev.results[i];
+      const text = (r?.[0]?.transcript ?? "").trim();
+      if (!text) continue;
+      if (r.isFinal) opts.onFinal(text);
+      else interim += ` ${text}`;
+    }
+    if (interim.trim()) opts.onInterim?.(interim.trim());
+  };
+  rec.onerror = (e) => opts.onError?.(e.error ?? "recognition error");
+  rec.onend = () => {
+    if (!stopped) {
+      try {
+        rec.start(); // keep the floor open across the engine's auto-stops
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+  try {
+    rec.start();
+  } catch {
+    /* already started */
+  }
+  return {
+    stop: () => {
+      stopped = true;
+      rec.stop();
+    },
+  };
 }
