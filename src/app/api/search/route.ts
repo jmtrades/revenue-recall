@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 import { getProvider } from "@/lib/crm/registry";
+import { rateLimit, clientKey } from "@/lib/ratelimit";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const q = (new URL(req.url).searchParams.get("q") ?? "").trim().toLowerCase();
+  // Public read endpoint — cap bursts (60/min per client).
+  const rl = rateLimit(clientKey(req, "search"), 60, 60_000);
+  if (!rl.ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+
+  const raw = new URL(req.url).searchParams.get("q") ?? "";
+  const q = raw.trim().slice(0, 100).toLowerCase(); // bound the query
   if (!q) return NextResponse.json({ contacts: [], deals: [] });
 
   const provider = getProvider();

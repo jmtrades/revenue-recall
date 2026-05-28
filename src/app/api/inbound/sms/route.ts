@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { handleInbound } from "@/lib/inbound";
 import { verifyTwilioSignature } from "@/lib/webhook";
+import { rateLimit, clientKey } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -29,6 +30,9 @@ function authorized(req: Request, url: URL, params: Record<string, string>): boo
 
 /** Twilio inbound SMS webhook (application/x-www-form-urlencoded). */
 export async function POST(req: Request) {
+  if (!rateLimit(clientKey(req, "inbound-sms"), 120, 60_000).ok) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
   const url = new URL(req.url);
   const form = await req.formData().catch(() => null);
   const params: Record<string, string> = {};
