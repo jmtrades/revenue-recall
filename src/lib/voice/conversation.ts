@@ -1,7 +1,7 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
 import { getPlaybook } from "@/lib/industries";
 import { getTone, type ToneId } from "@/lib/tones";
-import { detectIntent, type Intent } from "@/lib/ai/reply";
+import { detectIntent, type Intent } from "@/lib/ai/intent";
 import { reactTo, reactToText, detectSentiment, sentimentToEmotion, type Sentiment } from "@/lib/voice/reactive";
 import type { Emotion } from "@/lib/voice/speech";
 import { firstName, pick, pickVariant, seeded, sentence } from "@/lib/copy";

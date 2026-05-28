@@ -1,6 +1,6 @@
 import type { Emotion } from "@/lib/voice/speech";
 import type { ToneId } from "@/lib/tones";
-import { detectIntent, type Intent } from "@/lib/ai/reply";
+import { detectIntent, type Intent } from "@/lib/ai/intent";
 
 /**
  * Reactive delivery policy — the "read the room and adjust" reflex. From what the

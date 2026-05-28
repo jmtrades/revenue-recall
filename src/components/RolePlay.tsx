@@ -15,6 +15,7 @@ import {
 } from "@/lib/voice/speech";
 import { loadVoicePrefs, toVoicePrefs } from "@/lib/voice/prefs";
 import { shouldBargeIn, wordCount } from "@/lib/voice/turntaking";
+import { analyzeCall, type CallScore } from "@/lib/voice/scorecard";
 
 type Difficulty = "easy" | "medium" | "hard";
 interface Turn {
@@ -36,6 +37,7 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
   const [busy, setBusy] = useState(false);
   const [coach, setCoach] = useState<{ text: string; tone: string; note: string } | null>(null);
   const [mood, setMood] = useState<string | null>(null);
+  const [score, setScore] = useState<CallScore | null>(null);
   const [voiceOn, setVoiceOn] = useState(true);
   const [listening, setListening] = useState(false);
   const [live, setLive] = useState(false);
@@ -211,6 +213,7 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
     setTurns([]);
     setCoach(null);
     setMood(null);
+    setScore(null);
     setInput("");
     setError(null);
   }
@@ -302,9 +305,37 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
             </button>
           </div>
           <div className="mt-2 flex items-center justify-between">
-            <button onClick={coachMe} disabled={busy} className="text-xs text-brand hover:underline disabled:opacity-50">💡 Coach me</button>
+            <div className="flex items-center gap-3">
+              <button onClick={coachMe} disabled={busy} className="text-xs text-brand hover:underline disabled:opacity-50">💡 Coach me</button>
+              <button onClick={() => setScore(analyzeCall(turns))} disabled={turns.length < 2} className="text-xs text-brand hover:underline disabled:opacity-50">📊 Score call</button>
+            </div>
             <button onClick={reset} className="text-xs text-muted hover:text-fg">Reset</button>
           </div>
+
+          {score && (
+            <div className="mt-3 rounded-lg border border-border bg-surface-2/40 p-3">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-fg">Call score</span>
+                <span className={`grid h-7 w-7 place-items-center rounded-full text-sm font-bold text-white ${score.grade === "A" || score.grade === "B" ? "bg-success" : score.grade === "C" ? "bg-warn" : "bg-danger"}`}>{score.grade}</span>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted">
+                <span>Talk ratio: <span className="text-fg">{Math.round(score.talkRatio * 100)}% you</span></span>
+                <span>Questions asked: <span className="text-fg">{score.questionsAsked}</span></span>
+                <span>Their mood: <span className="text-fg">{score.sentimentArc}</span></span>
+                <span>Next step: <span className="text-fg">{score.nextStepSecured ? "booked ✓" : "none"}</span></span>
+              </div>
+              {score.objections.length > 0 && (
+                <p className="mt-2 text-xs text-muted">
+                  Objections: {score.objections.map((o) => `${o.intent}${o.handled ? " ✓" : " ✗"}`).join(", ")}
+                </p>
+              )}
+              <ul className="mt-2 space-y-1">
+                {score.tips.map((tip, i) => (
+                  <li key={i} className="flex gap-1.5 text-xs text-fg"><span className="text-brand">→</span>{tip}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </>
       )}
     </div>
