@@ -22,10 +22,10 @@ export function AutomationsList({ automations }: { automations: Automation[] }) 
               </div>
               <button
                 onClick={() => setEnabled((e) => ({ ...e, [a.id]: !e[a.id] }))}
-                className={`relative h-6 w-11 shrink-0 rounded-full transition ${enabled[a.id] ? "bg-success" : "bg-surface-2"}`}
+                className={`relative h-6 w-11 shrink-0 rounded-full border transition ${enabled[a.id] ? "border-success bg-success" : "border-border bg-surface-2"}`}
                 aria-label="Toggle automation"
               >
-                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${enabled[a.id] ? "left-[22px]" : "left-0.5"}`} />
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-all ${enabled[a.id] ? "left-[22px]" : "left-0.5"}`} />
               </button>
             </div>
             <div className="mt-3 rounded-lg border border-border bg-surface-2 p-3">

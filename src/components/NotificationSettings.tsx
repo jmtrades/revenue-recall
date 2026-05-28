@@ -50,9 +50,9 @@ export function NotificationSettings({ initial, persisted }: { initial: Notifica
                 disabled={!persisted}
                 aria-pressed={on}
                 aria-label={o.label}
-                className={`relative h-6 w-11 rounded-full transition disabled:cursor-default disabled:opacity-70 ${on ? "bg-success" : "bg-surface-2"}`}
+                className={`relative h-6 w-11 rounded-full border transition disabled:cursor-default disabled:opacity-70 ${on ? "border-success bg-success" : "border-border bg-surface-2"}`}
               >
-                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${on ? "left-[22px]" : "left-0.5"}`} />
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-all ${on ? "left-[22px]" : "left-0.5"}`} />
               </button>
             </li>
           );
