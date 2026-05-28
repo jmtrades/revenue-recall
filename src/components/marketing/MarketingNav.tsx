@@ -11,7 +11,7 @@ export function MarketingNav() {
         <nav className="hidden items-center gap-7 text-sm text-muted md:flex">
           <a href="/#features" className="transition hover:text-white">Features</a>
           <a href="/#how" className="transition hover:text-white">How it works</a>
-          <a href="/#industries" className="transition hover:text-white">Industries</a>
+          <Link href="/industries" className="transition hover:text-white">Industries</Link>
           <a href="/#roi" className="transition hover:text-white">ROI</a>
           <Link href="/pricing" className="transition hover:text-white">Pricing</Link>
         </nav>
