@@ -72,7 +72,7 @@ supabase/migrations/        Org-scoped Postgres schema (RLS) for the built-in CR
 - **Inbox** — unified email/SMS/call threads with real send (logs to timeline until a provider is configured). **Calendar** — month grid + agenda.
 - **Sequences** — multi-step, multi-channel cadences per industry, with a real runtime: enroll the recall queue, all open deals, or a specific deal/contact, and the cron tick works each step on its scheduled day (drafts in-voice → Approvals, or auto-sends under `SEQUENCE_AUTOPILOT`). Closed-won deals drop out; closed-lost stay enrolled for re-engagement. **Templates**, **Automations** — engagement tooling per industry.
 - **Reports** & **Forecast** — funnel, sources, leaderboard, commit/best-case/weighted.
-- **Settings** — general, industry, pipeline, integrations, team, fields, notifications (saved per-org), CSV import (creates contacts + deals via the active provider). Billing shows the current plan/seat summary; metered payment-provider integration (Stripe) is on the roadmap, not yet wired.
+- **Settings** — general, industry, pipeline, integrations, team, fields, notifications (saved per-org; the toggles gate the in-app "needs attention" feed — recall flags, new deals, stage moves), CSV import (creates contacts + deals via the active provider). Billing shows the current plan/seat summary; metered payment-provider integration (Stripe) is on the roadmap, not yet wired.
 - Global ⌘K search, quick-create, notifications, responsive mobile nav.
 
 > Every surface works with zero setup on the seeded in-memory store. The real

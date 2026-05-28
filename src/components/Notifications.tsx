@@ -3,13 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-interface Note { id: string; title: string; reason: string; score: number; recommendation: string }
+interface Note { id: string; kind: "recall" | "new_lead" | "stage_change"; title: string; detail: string; href: string }
 
-const REASON_LABEL: Record<string, string> = {
-  going_cold: "Going cold",
-  stalled: "Stalled",
-  lost_winnable: "Winnable loss",
-  no_activity: "Untouched",
+const KIND_LABEL: Record<Note["kind"], string> = {
+  recall: "At risk",
+  new_lead: "New deal",
+  stage_change: "Moved",
 };
 
 export function Notifications() {
@@ -52,14 +51,14 @@ export function Notifications() {
                 items.map((n) => (
                   <button
                     key={n.id}
-                    onClick={() => { setOpen(false); router.push(`/deals/${n.id}`); }}
+                    onClick={() => { setOpen(false); router.push(n.href); }}
                     className="block w-full border-b border-border/60 px-4 py-3 text-left transition last:border-0 hover:bg-surface-2"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate text-sm text-white">{n.title}</span>
-                      <span className="shrink-0 text-xs text-muted">{REASON_LABEL[n.reason] ?? n.reason}</span>
+                      <span className="shrink-0 text-xs text-muted">{KIND_LABEL[n.kind]}</span>
                     </div>
-                    <p className="mt-0.5 line-clamp-2 text-xs text-muted">{n.recommendation}</p>
+                    <p className="mt-0.5 line-clamp-2 text-xs text-muted">{n.detail}</p>
                   </button>
                 ))
               )}
