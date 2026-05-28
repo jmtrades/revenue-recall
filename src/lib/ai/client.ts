@@ -40,6 +40,13 @@ export function aiModel(override?: string): string {
 }
 
 /**
+ * Stronger model for nuance-critical, lower-frequency work (live objection
+ * handling, voice distillation) where quality matters most. An explicit
+ * ANTHROPIC_MODEL env override still wins, so operators can pin one model.
+ */
+export const QUALITY_MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6";
+
+/**
  * Run a structured-output completion and return the parsed JSON object.
  * The system prompt is marked cacheable (stable across calls); per-request
  * context belongs in the user message.

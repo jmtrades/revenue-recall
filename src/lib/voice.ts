@@ -1,7 +1,7 @@
 import { cache } from "@/lib/cache";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
-import { completeJson, isAiConfigured } from "@/lib/ai/client";
+import { completeJson, isAiConfigured, QUALITY_MODEL } from "@/lib/ai/client";
 
 export interface Voice {
   senderName?: string;
@@ -28,9 +28,19 @@ export const getActiveVoice = cache(async (): Promise<Voice> => {
   };
 });
 
-const DISTILL_SYSTEM = `You analyze a salesperson's own words (a self-description and/or example messages) and produce a concise, actionable VOICE PROFILE another writer can follow to sound EXACTLY like this person — like a human, never like an AI.
-Capture: tone & warmth, formality, typical sentence length & rhythm, how they greet, how they sign off, signature words/phrases/quirks, emoji usage, punctuation habits, and what they never do.
-Write 5-9 short bullet points. Be specific and imitable. Do NOT repeat the samples verbatim. Return only the JSON.`;
+const DISTILL_SYSTEM = `You are an elite ghostwriting coach. From a salesperson's own words (a self-description and/or real messages), produce a precise, imitable VOICE PROFILE that lets another writer reproduce this exact human — so faithfully no reader could tell it wasn't them. Never make them sound like an AI.
+
+Capture concretely (with mini-examples drawn from their words where possible):
+- Tone & warmth; formality level; how much personality vs. all-business.
+- Sentence rhythm: short and punchy vs. flowing; average length; fragments?
+- Greetings and sign-offs they actually use (verbatim patterns).
+- Signature words, phrases, and verbal tics; contractions; slang.
+- Capitalization and punctuation habits (lowercase? em dashes? ellipses? one-line texts?).
+- Emoji usage (which, how often, where).
+- How they handle asks, pushback, and saying no.
+- Hard "never does" list (things that would break the illusion).
+
+Write 6-10 tight, specific, imitable bullets. Do NOT repeat the samples verbatim — distill the pattern. Return only the JSON.`;
 
 const SCHEMA = { type: "object", additionalProperties: false, properties: { profile: { type: "string" } }, required: ["profile"] };
 
@@ -42,6 +52,7 @@ async function distill(input: { senderName?: string; role?: string; samples: str
       user: `Name: ${input.senderName ?? "(unknown)"}\nRole: ${input.role ?? "(unknown)"}\nTheir words (self-description and/or example messages):\n"""${input.samples}"""\n\nProduce the voice profile now.`,
       schema: SCHEMA,
       maxTokens: 800,
+      model: QUALITY_MODEL,
     });
     return out.profile;
   } catch {

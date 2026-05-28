@@ -3,6 +3,8 @@ import { getActiveVoice } from "@/lib/voice";
 import { draftReply } from "@/lib/ai/reply";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { createOutboxItem } from "@/lib/agent/store";
+import { getConfig } from "@/lib/config";
+import { getIndustry } from "@/lib/industries";
 import type { Contact, Opportunity } from "@/lib/crm/types";
 
 function digits(s: string): string {
@@ -61,6 +63,7 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     company: contact.company,
     dealTitle: deal?.title ?? `${contact.name}`,
     incoming: body,
+    industryLabel: getIndustry(getConfig().industryId).label,
     history,
     voice,
   });
