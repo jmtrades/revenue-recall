@@ -39,7 +39,7 @@ const FEATURES = [
 ];
 
 const STEPS = [
-  { n: "01", title: "Connect or start fresh", body: "Plug in your CRM or spin up the built-in one. We map your pipeline, contacts, and history in minutes." },
+  { n: "01", title: "Describe your business", body: "Tell us what you sell in a sentence — your pipeline, terminology, and AI voice build themselves around it. Connect your CRM or start fresh." },
   { n: "02", title: "Recall surfaces the risk", body: "The engine continuously ranks revenue that's slipping — cold, stalled, and winnable-lost — so you always know what to work next." },
   { n: "03", title: "AI drafts, you close", body: "One click drafts the outreach or preps the call. Send, dial, and log — the loop closes itself and the data makes it smarter." },
 ];

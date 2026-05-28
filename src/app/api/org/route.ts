@@ -11,6 +11,7 @@ export async function GET() {
 const Patch = z.object({
   name: z.string().min(1).max(120).optional(),
   monthlyQuota: z.number().nonnegative().max(1_000_000_000).optional(),
+  industryId: z.string().min(1).max(60).optional(),
 });
 
 export async function PATCH(req: Request) {

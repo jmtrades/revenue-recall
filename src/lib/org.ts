@@ -49,7 +49,11 @@ async function read(): Promise<OrgSettings> {
 /** Current org settings (DB-backed when available, else env). Request-cached. */
 export const getOrgSettings = cache(read);
 
-export async function updateOrgSettings(patch: { name?: string; monthlyQuota?: number }): Promise<OrgSettings> {
+export async function updateOrgSettings(patch: {
+  name?: string;
+  monthlyQuota?: number;
+  industryId?: string;
+}): Promise<OrgSettings> {
   const client = getSupabase();
   if (!client) throw new Error("Settings are read-only without a database.");
   const orgId = await resolveActiveOrgId();
@@ -57,6 +61,10 @@ export async function updateOrgSettings(patch: { name?: string; monthlyQuota?: n
   const update: Record<string, unknown> = {};
   if (patch.name !== undefined) update.name = patch.name;
   if (patch.monthlyQuota !== undefined) update.monthly_quota = patch.monthlyQuota;
+  if (patch.industryId !== undefined) {
+    update.industry_id = patch.industryId;
+    update.currency = getIndustry(patch.industryId).currency; // keep currency consistent with industry
+  }
   if (Object.keys(update).length === 0) return read();
   const { error } = await client.from("orgs").update(update).eq("id", orgId);
   if (error) throw new Error(error.message);
