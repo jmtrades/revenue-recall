@@ -6,6 +6,7 @@ import { getIndustry } from "@/lib/industries";
 import { draftMessage, draftVariations, type DraftInput } from "@/lib/ai/draft";
 import { getActiveVoice } from "@/lib/voice";
 import { isToneId } from "@/lib/tones";
+import { autoTone } from "@/lib/voice/autotone";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -13,7 +14,9 @@ export const maxDuration = 60;
 const Body = z.object({
   dealId: z.string().min(1),
   channel: z.enum(["email", "sms", "call"]),
+  /** A tone preset, or "auto" to pick one from the deal's signals. */
   tone: z.string().optional(),
+  scenario: z.enum(["voicemail", "breakup"]).optional(),
   /** When > 1, return that many distinct alternatives instead of one draft. */
   variations: z.number().int().min(1).max(5).optional(),
 });
@@ -32,10 +35,17 @@ export async function POST(req: Request) {
 
   const industry = getIndustry(getConfig().industryId);
   const voice = await getActiveVoice();
+  const days = daysSince(detail.opp.lastActivityAt);
+  const recallReason = detail.opp.lossReason ? "lost_winnable" : undefined;
+  // Explicit tone wins; "auto" (or missing) picks one from the deal's signals.
+  const tone = isToneId(parsed.data.tone)
+    ? parsed.data.tone
+    : autoTone({ daysSinceContact: days, recallReason, stageLabel: detail.stage?.label, value: detail.opp.value }).tone;
   const input: DraftInput = {
     voice,
     channel: parsed.data.channel,
-    tone: isToneId(parsed.data.tone) ? parsed.data.tone : undefined,
+    tone,
+    scenario: parsed.data.scenario,
     contactName: detail.contact?.name ?? detail.opp.title,
     company: detail.contact?.company,
     dealTitle: detail.opp.title,
@@ -45,8 +55,8 @@ export async function POST(req: Request) {
     stageLabel: detail.stage?.label ?? "open",
     industryLabel: industry.label,
     industryId: industry.id,
-    recallReason: detail.opp.lossReason ? "lost_winnable" : undefined,
-    daysSinceContact: daysSince(detail.opp.lastActivityAt),
+    recallReason,
+    daysSinceContact: days,
     history: detail.activities.map((a) => `${a.kind}: ${a.summary}`),
     repName: detail.owner?.name === "You" ? "" : detail.owner?.name,
   };

@@ -36,6 +36,8 @@ export interface DraftInput {
   tone?: ToneId;
   /** Variation index — produces a distinctly different take of the same message. */
   variant?: number;
+  /** Special message type. Default is a normal outreach/follow-up. */
+  scenario?: "voicemail" | "breakup";
   /** Optional extra instruction from a user-defined Autopilot task. */
   instruction?: string;
   /** The rep's distilled writing voice + sign-off, so messages sound like them. */
@@ -113,6 +115,16 @@ function fallback(input: DraftInput): DraftResult {
     input.voice?.customNextSteps?.length ? input.voice.customNextSteps : pb.nextSteps[ch];
   const reLines = input.voice?.customReengage?.length ? input.voice.customReengage : pb.reengage;
 
+  // Scenario messages have their own shape and override the channel default.
+  if (input.scenario === "voicemail") {
+    return { body: voicemailFallback(input, first, seed), source: "template" };
+  }
+  if (input.scenario === "breakup") {
+    return input.channel === "sms"
+      ? { body: breakupSmsFallback(first, seed), source: "template" }
+      : { ...breakupEmailFallback(input, first, seed, sigLine), source: "template" };
+  }
+
   if (input.channel === "sms") {
     return { body: smsFallback(input, first, seed, cold, nextFor("sms"), reLines), source: "template" };
   }
@@ -120,6 +132,44 @@ function fallback(input: DraftInput): DraftResult {
     return { body: callFallback(input, seed), source: "template" };
   }
   return { ...emailFallback(input, first, seed, cold, sigLine, nextFor("email"), reLines), source: "template" };
+}
+
+/** A short, natural voicemail to leave — spoken, casual, one easy reason to call back. */
+function voicemailFallback(input: DraftInput, first: string, seed: string): string {
+  const rep = input.voice?.senderName || input.repName || "";
+  const who = rep ? `it's ${rep}` : "it's me";
+  const skeletons = [
+    `Hey ${first}, ${who} — quick one about ${input.dealTitle}. Give me a ring when you get a sec, no rush. Talk soon.`,
+    `Hi ${first}, ${who}. Wanted to catch you about ${input.dealTitle} — call me back when it's easy, I'll keep it short. Cheers.`,
+    `Hey ${first}, ${who}. Nothing urgent — had a quick thought on ${input.dealTitle}. Buzz me back when you've got a minute.`,
+    `${first}, ${who} — tried to catch you about ${input.dealTitle}. Ping me back whenever, I'll be around. Thanks.`,
+  ];
+  return pick(skeletons, seed, "vm");
+}
+
+/** The gracious "last touch" / breakup email — often the one that gets a reply. */
+function breakupEmailFallback(input: DraftInput, first: string, seed: string, sigLine: string): { subject: string; body: string } {
+  const greet = pick(GREETINGS_EMAIL, seed, "greet")(first);
+  const subject = pick(
+    [`closing the loop, ${first}`, `should I close this out?`, `last one on ${input.dealTitle}`, `wrapping up ${input.dealTitle}`],
+    seed,
+    "subj",
+  );
+  const skeletons = [
+    `${greet}\n\nI haven't heard back, so I'll assume the timing's just off and stop chasing — no hard feelings at all. If it's ever worth picking up, you know where I am.${sigLine}`,
+    `${greet}\n\nI don't want to be the person clogging your inbox, so this'll be my last one for now. If things change down the line, just say the word and I'll pick it right back up.${sigLine}`,
+    `${greet}\n\nSounds like now's not the moment, and that's completely fine. I'll close this out on my end — door's open whenever it makes sense for you.${sigLine}`,
+  ];
+  return { subject: cap(subject), body: pick(skeletons, seed, "breakup_email") };
+}
+
+function breakupSmsFallback(first: string, seed: string): string {
+  const skeletons = [
+    `hey ${first} — i'll stop chasing for now, figure the timing's just off. door's open if it ever makes sense. all the best.`,
+    `${first}, i won't keep bugging you — this is my last one for now. just shout if anything changes.`,
+    `all good ${first}, i'll close this out on my end. if it's ever worth picking up, you know where i am.`,
+  ];
+  return pick(skeletons, seed, "breakup_sms");
 }
 
 function smsFallback(input: DraftInput, first: string, seed: string, cold: boolean, stepPool: string[], reLines: string[]): string {
@@ -281,6 +331,12 @@ export async function draftMessage(input: DraftInput): Promise<DraftResult> {
 
   const pb = getPlaybook(input.industryId ?? "generic");
   const tone = getTone(input.tone);
+  const scenarioCoaching =
+    input.scenario === "voicemail"
+      ? `\nThis is a VOICEMAIL to leave out loud: 2-3 short spoken sentences, warm and casual, one easy reason to call back, no pressure. No subject, no sign-off block — it's spoken.`
+      : input.scenario === "breakup"
+        ? `\nThis is a BREAKUP / last-touch message: gracious, zero guilt-trip, make it genuinely easy to walk away — and easy to come back. No pushy ask; leave the door open. (These often get the reply.)`
+        : "";
   const callCoaching =
     input.channel === "call"
       ? `\nThis is a CALL talk track (5 short bullets), built to keep them on the phone, not a monologue:
@@ -291,7 +347,7 @@ export async function draftMessage(input: DraftInput): Promise<DraftResult> {
       : "";
   const user = `Channel: ${input.channel}
 Industry: ${input.industryLabel}
-Tone for this message: ${tone.label} — ${tone.directive}${callCoaching}
+Tone for this message: ${tone.label} — ${tone.directive}${scenarioCoaching}${callCoaching}
 Prospect: ${input.contactName}${input.company ? ` at ${input.company}` : ""}
 Deal: "${input.dealTitle}" — ${input.valueLabel} ${input.value} ${input.currency}, currently at stage "${input.stageLabel}"
 ${input.recallReason ? `Recall reason: ${input.recallReason} (re-engagement — they've gone quiet)\n` : ""}${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.voice?.senderName || input.repName ? `You are: ${input.voice?.senderName ?? input.repName}\n` : ""}${input.voice?.signature ? `Sign off as: ${input.voice.signature}\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).join("\n- ")}` : "No prior activity logged."}

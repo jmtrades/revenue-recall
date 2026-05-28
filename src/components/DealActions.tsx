@@ -19,7 +19,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [kind, setKind] = useState<(typeof KINDS)[number]["id"]>("note");
-  const [tone, setTone] = useState<ToneId>(DEFAULT_TONE);
+  const [tone, setTone] = useState<ToneId | "auto">("auto");
   const [summary, setSummary] = useState("");
   const [subject, setSubject] = useState("");
   const [busy, setBusy] = useState(false);
@@ -29,7 +29,8 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
 
   const canDraft = kind === "email" || kind === "sms" || kind === "call";
 
-  async function draft(count = 1) {
+  async function draft(opts: { count?: number; scenario?: "voicemail" | "breakup" } = {}) {
+    const count = opts.count ?? 1;
     setDrafting(true);
     setError(null);
     setVariations([]);
@@ -37,7 +38,13 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
       const res = await fetch(`/api/ai/draft`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dealId, channel: kind, tone, ...(count > 1 ? { variations: count } : {}) }),
+        body: JSON.stringify({
+          dealId,
+          channel: opts.scenario === "voicemail" ? "call" : kind,
+          tone,
+          ...(opts.scenario ? { scenario: opts.scenario } : {}),
+          ...(count > 1 ? { variations: count } : {}),
+        }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Draft failed");
@@ -118,24 +125,25 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
             <div className="flex items-center gap-1.5">
               <select
                 value={tone}
-                onChange={(e) => setTone(e.target.value as ToneId)}
+                onChange={(e) => setTone(e.target.value as ToneId | "auto")}
                 title="Voice / tone for the AI draft"
                 aria-label="Draft tone"
                 className="rounded-lg border border-border bg-surface px-2 py-0.5 text-xs text-muted outline-none focus:border-brand"
               >
+                <option value="auto">Auto (from deal)</option>
                 {TONES.map((t) => (
                   <option key={t.id} value={t.id}>{t.label}</option>
                 ))}
               </select>
               <button
-                onClick={() => draft(1)}
+                onClick={() => draft()}
                 disabled={drafting}
                 className="inline-flex items-center gap-1 rounded-lg border border-brand/40 bg-brand-soft/30 px-2 py-0.5 text-xs font-medium text-brand transition hover:bg-brand-soft/50 disabled:opacity-50"
               >
                 {drafting ? "Drafting…" : "✨ Draft with AI"}
               </button>
               <button
-                onClick={() => draft(3)}
+                onClick={() => draft({ count: 3 })}
                 disabled={drafting}
                 title="Generate three distinct takes to choose from"
                 className="rounded-lg border border-border px-2 py-0.5 text-xs text-muted transition hover:text-fg disabled:opacity-50"
@@ -145,6 +153,13 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
             </div>
           )}
         </div>
+        {canDraft && (
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            <span className="text-[11px] text-muted">Quick:</span>
+            <button onClick={() => draft({ scenario: "voicemail" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">📞 Voicemail</button>
+            <button onClick={() => draft({ scenario: "breakup" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">👋 Breakup</button>
+          </div>
+        )}
         {variations.length > 1 && (
           <div className="mt-2 space-y-1.5">
             <p className="text-[11px] text-muted">Pick the one that sounds most like you:</p>
