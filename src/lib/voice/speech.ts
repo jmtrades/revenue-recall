@@ -119,6 +119,37 @@ export function humanizeChunks(text: string, base: { rate?: number; pitch?: numb
     });
 }
 
+const DAYS: Record<string, string> = {
+  Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday", Sun: "Sunday",
+};
+
+/**
+ * Normalize text so a synth reads it like a person, not a symbol-reader: turn
+ * dashes into natural pauses, expand the abbreviations people skim past in
+ * writing but would say in full ("15 min" → "15 minutes", "e.g." → "for
+ * example"), voice symbols (& % ), and strip bullets/markdown. Pure and tested.
+ */
+export function speakable(text: string): string {
+  let s = text;
+  s = s.replace(/[•*]|^[\s]*[-–]\s+/gm, " "); // bullets / markdown leaders
+  s = s.replace(/\s*[—–]\s*/g, ", "); // dashes → spoken pause
+  s = s.replace(/\s*&\s*/g, " and ");
+  s = s.replace(/(\d)\s*%/g, "$1 percent").replace(/%/g, " percent");
+  s = s.replace(/\bw\//gi, "with ");
+  s = s.replace(/\be\.g\.\s*/gi, "for example, ");
+  s = s.replace(/\bi\.e\.\s*/gi, "that is, ");
+  s = s.replace(/\bASAP\b/g, "as soon as possible");
+  s = s.replace(/\bapprox\.?\b/gi, "approximately");
+  s = s.replace(/\bvs\.?\b/gi, "versus");
+  // Units only when they follow a number, so we don't mangle real words.
+  s = s.replace(/(\d+)\s*mins?\b/gi, (_m, n) => `${n} ${n === "1" ? "minute" : "minutes"}`);
+  s = s.replace(/(\d+)\s*hrs?\b/gi, (_m, n) => `${n} ${n === "1" ? "hour" : "hours"}`);
+  // Day abbreviations as whole words.
+  s = s.replace(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/g, (m) => DAYS[m] ?? m);
+  s = s.replace(/\s{2,}/g, " ").replace(/\s+([,.!?])/g, "$1").trim();
+  return s;
+}
+
 /** Load voices, awaiting the async voiceschanged event the first time if needed. */
 export function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   if (!isSpeechSupported()) return Promise.resolve([]);
@@ -148,7 +179,7 @@ export function speak(text: string, prefs: VoicePrefs = {}, voice?: SpeechSynthe
   if (!isSpeechSupported()) return { done: Promise.resolve(), stop: () => {} };
   const synth = window.speechSynthesis;
   synth.cancel();
-  const chunks = humanizeChunks(text, { rate: prefs.rate, pitch: prefs.pitch });
+  const chunks = humanizeChunks(speakable(text), { rate: prefs.rate, pitch: prefs.pitch });
   let stopped = false;
   let i = 0;
 

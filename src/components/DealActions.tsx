@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Stage } from "@/lib/crm/types";
 import { HumannessMeter } from "@/components/HumannessMeter";
+import { SpeakButton } from "@/components/SpeakButton";
 import { TONES, DEFAULT_TONE, type ToneId } from "@/lib/tones";
 
 const KINDS: { id: "note" | "call" | "email" | "sms" | "meeting"; label: string }[] = [
@@ -188,6 +189,11 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
           className="mt-2 w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
         />
         {canDraft && <HumannessMeter text={summary} />}
+        {canDraft && summary.trim() && (
+          <div className="mt-1 flex justify-end">
+            <SpeakButton text={summary} label="Hear it" />
+          </div>
+        )}
         <button
           onClick={log}
           disabled={busy || !summary.trim()}

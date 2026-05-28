@@ -10,6 +10,7 @@ import {
   speak,
   listenOnce,
 } from "@/lib/voice/speech";
+import { loadVoicePrefs, toVoicePrefs } from "@/lib/voice/prefs";
 
 type Difficulty = "easy" | "medium" | "hard";
 interface Turn {
@@ -40,7 +41,7 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
   const canListen = typeof window !== "undefined" && isRecognitionSupported();
 
   useEffect(() => {
-    if (canSpeak) loadVoices().then((v) => (voiceRef.current = pickVoice(v, { lang: "en" })));
+    if (canSpeak) loadVoices().then((v) => (voiceRef.current = pickVoice(v, toVoicePrefs(loadVoicePrefs()))));
   }, [canSpeak]);
 
   useEffect(() => {
@@ -59,7 +60,7 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
   }
 
   function sayAloud(text: string) {
-    if (voiceOn && canSpeak) speak(text, { rate: 1, pitch: 1, lang: "en-US" }, voiceRef.current);
+    if (voiceOn && canSpeak) speak(text, toVoicePrefs(loadVoicePrefs()), voiceRef.current);
   }
 
   async function start() {

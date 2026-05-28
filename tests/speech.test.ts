@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { humanizeChunks, pickVoice, isSpeechSupported, isRecognitionSupported } from "@/lib/voice/speech";
+import { humanizeChunks, pickVoice, isSpeechSupported, isRecognitionSupported, speakable } from "@/lib/voice/speech";
+import { normalizePrefs, DEFAULT_VOICE_PREFS, toVoicePrefs } from "@/lib/voice/prefs";
 
 // A minimal stand-in for SpeechSynthesisVoice (only the fields pickVoice reads).
 function voice(name: string, lang = "en-US", localService = true): SpeechSynthesisVoice {
@@ -69,5 +70,54 @@ describe("humanizeChunks", () => {
 
   it("is deterministic — same input yields same prosody", () => {
     expect(humanizeChunks("Steady cadence, every time.")).toEqual(humanizeChunks("Steady cadence, every time."));
+  });
+});
+
+describe("speakable normalization", () => {
+  it("turns dashes into spoken pauses", () => {
+    expect(speakable("Hey — quick one")).toBe("Hey, quick one");
+  });
+
+  it("expands units after numbers and common abbreviations", () => {
+    expect(speakable("got 15 min?")).toContain("15 minutes");
+    expect(speakable("1 min call")).toContain("1 minute");
+    expect(speakable("e.g. Thursday")).toContain("for example,");
+    expect(speakable("call ASAP")).toContain("as soon as possible");
+    expect(speakable("us vs them")).toContain("versus");
+  });
+
+  it("voices symbols and strips bullets", () => {
+    expect(speakable("sales & ops")).toContain("and");
+    expect(speakable("up 20%")).toContain("20 percent");
+    expect(speakable("• first point")).not.toContain("•");
+  });
+
+  it("expands weekday abbreviations", () => {
+    expect(speakable("free Thu or Fri?")).toBe("free Thursday or Friday?");
+  });
+
+  it("does not mangle ordinary words containing unit substrings", () => {
+    // "minimum" must not become "minimumutes" etc.
+    expect(speakable("the minimum is fine")).toBe("the minimum is fine");
+  });
+});
+
+describe("voice prefs", () => {
+  it("clamps out-of-range values to safe bounds", () => {
+    const p = normalizePrefs({ rate: 9, pitch: -3, voiceName: "Samantha" });
+    expect(p.rate).toBeLessThanOrEqual(1.4);
+    expect(p.pitch).toBeGreaterThanOrEqual(0.6);
+    expect(p.voiceName).toBe("Samantha");
+  });
+
+  it("falls back to defaults for junk input", () => {
+    expect(normalizePrefs(null)).toEqual(DEFAULT_VOICE_PREFS);
+    expect(normalizePrefs({ rate: "fast" }).rate).toBe(DEFAULT_VOICE_PREFS.rate);
+    expect(normalizePrefs({ voiceName: "" }).voiceName).toBeUndefined();
+  });
+
+  it("maps into the speak() prefs shape", () => {
+    const v = toVoicePrefs({ voiceName: "Alex", rate: 1.1, pitch: 0.9 });
+    expect(v).toEqual({ preferName: "Alex", rate: 1.1, pitch: 0.9, lang: "en-US" });
   });
 });

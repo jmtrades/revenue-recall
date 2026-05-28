@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { CallQueueItem } from "@/lib/queries";
 import { Avatar, ReasonBadge, ScoreDot } from "@/components/ui";
 import { RolePlay } from "@/components/RolePlay";
+import { SpeakButton } from "@/components/SpeakButton";
 
 interface Brief {
   summary: string;
@@ -148,7 +149,10 @@ export function DialerView({ queue }: { queue: CallQueueItem[] }) {
           <div className="card border-brand/30">
             <div className="mb-2 flex items-center justify-between">
               <h2 className="font-semibold text-fg">✨ AI call prep</h2>
-              <button onClick={loadBrief} disabled={briefBusy} className="text-xs text-brand hover:underline disabled:opacity-50">{briefBusy ? "Preparing…" : brief ? "Refresh" : "Prepare"}</button>
+              <div className="flex items-center gap-2">
+                {brief && <SpeakButton text={`${brief.summary} ${brief.talkingPoints.join(". ")}. Goal: ${brief.nextStep}`} label="Prep" />}
+                <button onClick={loadBrief} disabled={briefBusy} className="text-xs text-brand hover:underline disabled:opacity-50">{briefBusy ? "Preparing…" : brief ? "Refresh" : "Prepare"}</button>
+              </div>
             </div>
             {!brief ? (
               <p className="text-sm text-muted">Generate a talk track before you dial.</p>

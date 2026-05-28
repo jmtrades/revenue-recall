@@ -13,6 +13,7 @@ import { OrgSettingsForm } from "@/components/OrgSettingsForm";
 import { AppearanceSettings } from "@/components/AppearanceSettings";
 import { BillingSettings } from "@/components/BillingSettings";
 import { VoiceStudio } from "@/components/VoiceStudio";
+import { VoiceControls } from "@/components/VoiceControls";
 import { getSubscription } from "@/lib/billing/store";
 import { billingConfigured } from "@/lib/billing/stripe";
 import { NotificationSettings } from "@/components/NotificationSettings";
@@ -25,7 +26,14 @@ export default async function SettingsPage() {
   const org = await getOrgSettings();
   const voice = await getActiveVoice();
   const active = getIndustry(org.industryId);
-  const voiceTab = <VoiceStudio initial={voice} persisted={org.persisted} />;
+  const voiceTab = (
+    <>
+      <VoiceStudio initial={voice} persisted={org.persisted} />
+      <Card className="mt-4">
+        <VoiceControls />
+      </Card>
+    </>
+  );
   const integrations = listIntegrations();
   const { users, pipeline } = await getTeamAndPipeline();
   const subscription = await getSubscription();
