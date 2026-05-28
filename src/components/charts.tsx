@@ -1,8 +1,10 @@
 /**
  * Dependency-free SVG charts. Server-renderable, theme-aware, deterministic.
+ * BRAND resolves to the org's accent via the --brand-rgb CSS variable set on the
+ * app shell, so charts re-color with the chosen theme.
  */
 
-const BRAND = "#5b8cff";
+const BRAND = "rgb(var(--brand-rgb))";
 const GRID = "#232b3d";
 const MUTED = "#8a93a6";
 

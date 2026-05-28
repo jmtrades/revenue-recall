@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Icon } from "@/components/icons";
 
 interface Results {
   contacts: { id: string; name: string; company: string }[];
@@ -58,7 +59,7 @@ export function CommandSearch() {
         onClick={() => setOpen(true)}
         className="flex w-44 items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-muted transition hover:border-brand/50 sm:w-72"
       >
-        <span>⌕</span>
+        <Icon name="search" size={16} className="shrink-0" />
         <span className="flex-1 truncate text-left">Search…</span>
         <kbd className="hidden rounded border border-border px-1.5 text-[10px] sm:inline">⌘K</kbd>
       </button>

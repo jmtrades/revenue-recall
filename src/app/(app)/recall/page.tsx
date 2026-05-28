@@ -36,7 +36,7 @@ export default async function RecallPage() {
   const segments = [
     { label: "Going cold", value: summary.byReason.going_cold.count, color: "#fbbf24" },
     { label: "Stalled", value: summary.byReason.stalled.count, color: "#f87171" },
-    { label: "Winnable losses", value: summary.byReason.lost_winnable.count, color: "#5b8cff" },
+    { label: "Winnable losses", value: summary.byReason.lost_winnable.count, color: "rgb(var(--brand-rgb))" },
     { label: "Untouched", value: summary.byReason.no_activity.count, color: "#8a93a6" },
   ].filter((s) => s.value > 0);
 

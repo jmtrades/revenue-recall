@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Icon } from "@/components/icons";
 
 interface Meta {
   defaultStageId: string;
@@ -99,7 +100,7 @@ export function QuickCreate() {
   return (
     <>
       <button onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90">
-        <span className="text-base leading-none">＋</span> New
+        <Icon name="plus" size={16} /> New
       </button>
 
       {open && (

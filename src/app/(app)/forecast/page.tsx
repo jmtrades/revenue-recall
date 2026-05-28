@@ -40,7 +40,7 @@ export default async function ForecastPage() {
 
         <Card title="Quota attainment">
           <div className="flex flex-col items-center gap-3 py-2">
-            <ProgressRing value={attainment} size={120} thickness={11} color={attainment >= 1 ? "#34d399" : "#5b8cff"} />
+            <ProgressRing value={attainment} size={120} thickness={11} color={attainment >= 1 ? "#34d399" : "rgb(var(--brand-rgb))"} />
             <div className="text-center">
               <div className="text-sm text-white">{money(f.weighted, f.currency)} <span className="text-muted">/ {compactMoney(f.quota, f.currency)}</span></div>
               <div className="text-xs text-muted">weighted vs. quota</div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Icon } from "@/components/icons";
 
 interface Note { id: string; kind: "recall" | "new_lead" | "stage_change"; title: string; detail: string; href: string }
 
@@ -31,7 +32,7 @@ export function Notifications() {
         className="relative grid h-9 w-9 place-items-center rounded-lg border border-border text-muted transition hover:bg-surface-2 hover:text-white"
         aria-label="Notifications"
       >
-        ◔
+        <Icon name="bell" size={17} />
         {loaded && items.length > 0 && (
           <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-danger px-1 text-[10px] font-semibold text-white">
             {items.length}
