@@ -131,7 +131,7 @@ export default function LandingPage() {
 
       {/* Problem → Solution */}
       <section className="mx-auto max-w-3xl px-5 py-20 text-center">
-        <p className="text-sm font-semibold uppercase tracking-wider text-brand">The leak no one's plugging</p>
+        <p className="text-sm font-semibold uppercase tracking-wider text-brand">The leak no one&apos;s plugging</p>
         <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
           Most revenue isn&apos;t lost to competitors. It&apos;s lost to silence.
         </h2>

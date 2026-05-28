@@ -268,3 +268,10 @@ drop policy if exists org_rw_personas on personas;
 create policy org_rw_personas on personas
   using (org_id = current_org_id()) with check (org_id = current_org_id());
 
+
+-- ===== supabase/migrations/0007_notification_prefs.sql =====
+-- Per-org notification preferences (was a static, non-functional UI).
+-- A JSON map of { settingKey: boolean }; unknown keys are ignored on read and
+-- missing keys fall back to their defaults in the app layer (lib/org.ts).
+
+alter table orgs add column if not exists notification_prefs jsonb not null default '{}'::jsonb;

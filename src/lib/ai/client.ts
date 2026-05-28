@@ -53,7 +53,6 @@ export async function completeJson<T>(opts: {
     (params.output_config as Record<string, unknown>).effort = "medium";
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const res = await client.messages.create(params as any);
   const block = res.content.find((b): b is Anthropic.TextBlock => b.type === "text");
   if (!block) throw new Error("No content returned");

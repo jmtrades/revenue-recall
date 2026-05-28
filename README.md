@@ -10,8 +10,8 @@ tells a rep the single best next action.
 
 - **Any CRM, or none.** Every backend implements one small `CrmProvider`
   interface. Ships with a fully-working built-in CRM (seeded demo data, zero
-  setup), a Close CRM adapter, and stubs for HubSpot / Salesforce / Pipedrive
-  that document exactly how to add the next one.
+  setup), a read+write Close CRM adapter, and stubs for HubSpot / Salesforce /
+  Pipedrive that document exactly how to add the next one.
 - **Any industry.** Industry templates remap terminology, pipelines, stages, and
   fields. Real estate, mortgage, insurance, SaaS, agency, automotive, home
   services, and a generic fallback ship in the box — add more by appending to
@@ -67,7 +67,7 @@ supabase/migrations/        Org-scoped Postgres schema (RLS) for the built-in CR
 - **Inbox** — unified email/SMS/call threads with real send (logs to timeline until a provider is configured). **Calendar** — month grid + agenda.
 - **Sequences**, **Templates**, **Automations** — engagement tooling per industry.
 - **Reports** & **Forecast** — funnel, sources, leaderboard, commit/best-case/weighted.
-- **Settings** — general, industry, pipeline, integrations, team, fields, notifications, import, billing.
+- **Settings** — general, industry, pipeline, integrations, team, fields, notifications (saved per-org), CSV import (creates contacts + deals via the active provider), billing.
 - Global ⌘K search, quick-create, notifications, responsive mobile nav.
 
 > Every surface works with zero setup on the seeded in-memory store. The real
