@@ -15,6 +15,28 @@ export interface IndustryTerminology {
   value: string;
 }
 
+/**
+ * How a real rep in this vertical actually talks. Drives both the AI prompt
+ * (so live drafts are accurate to the industry) and the deterministic
+ * fallbacks (so the no-API-key demo still reads like a human, not a template).
+ */
+export interface IndustryPlaybook {
+  /** What the contact ultimately wants. */
+  buyerGoal: string;
+  /** What the rep does for them, in plain words. */
+  repRole: string;
+  /** Real objections people in this vertical actually voice. */
+  objections: string[];
+  /** Natural, human next-step asks, by channel. Phrased as a real rep would. */
+  nextSteps: { email: string[]; sms: string[]; call: string[] };
+  /** Human openers for re-engaging a cold or lost deal. */
+  reengage: string[];
+  /** A few example lines in a real rep's voice — style anchors for the AI. */
+  sampleVoice: string[];
+  /** Words and phrases native to this industry. */
+  vocabulary: string[];
+}
+
 export interface IndustryTemplate {
   id: string;
   label: string;
@@ -27,6 +49,8 @@ export interface IndustryTemplate {
   pipeline: Omit<Pipeline, "id"> & { id: string };
   /** Industry-specific contact attributes surfaced in the UI. */
   fields: { key: string; label: string; type: "text" | "number" | "currency" | "date" | "select"; options?: string[] }[];
+  /** How reps in this vertical communicate. */
+  playbook: IndustryPlaybook;
 }
 
 function stages(
@@ -63,6 +87,22 @@ export const INDUSTRIES: IndustryTemplate[] = [
       { key: "area", label: "Target Area", type: "text" },
       { key: "preApproved", label: "Pre-Approved", type: "select", options: ["Yes", "No", "Unknown"] },
     ],
+    playbook: {
+      buyerGoal: "find or sell the right home on the right timeline — without overpaying or missing out",
+      repRole: "their agent, who lines up showings, runs the numbers, and gets them to a clean close",
+      objections: ["still just looking", "waiting for rates to come down", "want to see what else hits the market", "not sure it's the right time to sell", "the offer felt low"],
+      nextSteps: {
+        email: ["want me to line up a few showings this weekend?", "happy to pull fresh comps for your place — want me to?", "should I send over the three that just came on near you?"],
+        sms: ["want me to grab you a showing this weekend?", "free for a quick look this week?", "want the numbers on it before someone else jumps?"],
+        call: ["Ask what's changed — timeline, budget, must-haves.", "Mention one or two specific listings that fit.", "Offer to line up showings for the weekend."],
+      },
+      reengage: ["saw a couple new listings near you and thought of you", "your search has been quiet lately — still looking, or did you land something?", "that place you liked came back on the market"],
+      sampleVoice: [
+        "hey jess — that 3br on maple came back on. want me to grab you a showing this weekend?",
+        "morning! pulled fresh comps for your place and you've got more equity than you'd think. coffee this week to talk strategy?",
+      ],
+      vocabulary: ["showing", "listing", "comps", "offer", "closing", "pre-approval", "walkthrough", "under contract"],
+    },
   },
   {
     id: "mortgage",
@@ -88,6 +128,22 @@ export const INDUSTRIES: IndustryTemplate[] = [
       { key: "creditScore", label: "Credit Score", type: "number" },
       { key: "ltv", label: "LTV %", type: "number" },
     ],
+    playbook: {
+      buyerGoal: "get approved and funded at the best rate, with no surprises along the way",
+      repRole: "their loan officer, who locks the rate, clears conditions, and gets them to funding",
+      objections: ["rates are too high right now", "still shopping lenders", "waiting on my credit to come up", "not sure I'll qualify", "the fees look high"],
+      nextSteps: {
+        email: ["want me to re-run your numbers at today's rates?", "happy to get you pre-approved so you're ready to move", "should I refresh your quote before it expires?"],
+        sms: ["rates dipped this week — want me to re-run your numbers?", "free for 10 min to lock this in?", "want me to refresh your quote before it expires?"],
+        call: ["Re-run the scenario at today's rate; lead with the monthly payment.", "Ask what's holding them back — rate, fees, or timing.", "Walk through what you need to get them pre-approved fast."],
+      },
+      reengage: ["your rate quote from last month is about to expire", "rates moved since we last talked — worth another look", "wanted to catch you before your pre-approval lapses"],
+      sampleVoice: [
+        "hey marcus — rates ticked down this week. want me to re-run your refi? takes me 10 min and could save you real money.",
+        "quick one: your pre-approval expires friday. want me to refresh it so you don't lose your spot?",
+      ],
+      vocabulary: ["rate lock", "pre-approval", "refi", "closing costs", "underwriting", "APR", "conditions", "funding"],
+    },
   },
   {
     id: "insurance",
@@ -111,6 +167,22 @@ export const INDUSTRIES: IndustryTemplate[] = [
       { key: "lineOfBusiness", label: "Line of Business", type: "select", options: ["Auto", "Home", "Life", "Commercial", "Health"] },
       { key: "renewalDate", label: "Renewal Date", type: "date" },
     ],
+    playbook: {
+      buyerGoal: "the right coverage at a fair price — not overpaying, not underinsured",
+      repRole: "their agent, who shops the market, explains the coverage, and handles renewals",
+      objections: ["happy with my current carrier", "found it cheaper elsewhere", "don't have time to switch", "not sure I need that coverage", "let me think about it"],
+      nextSteps: {
+        email: ["want me to shop your renewal and see if I can beat it?", "happy to do a quick coverage review — takes about 10 minutes", "should I send over a side-by-side quote?"],
+        sms: ["want me to shop your renewal before it auto-renews?", "free for a quick coverage check this week?", "want me to see if I can beat your current rate?"],
+        call: ["Lead with their renewal date and what's changed.", "Ask what they pay now and what's actually covered.", "Offer a quick side-by-side so the savings are obvious."],
+      },
+      reengage: ["your policy renews next month — want me to shop it?", "rates shifted this year; you might be leaving money on the table", "wanted to reach you before your renewal locks in"],
+      sampleVoice: [
+        "hi dana — your policy renews next month. want me to shop it around so you're not overpaying? no obligation either way.",
+        "found a plan with better coverage for less than you're paying now. worth two minutes to look?",
+      ],
+      vocabulary: ["premium", "coverage", "deductible", "renewal", "carrier", "quote", "policy", "bound"],
+    },
   },
   {
     id: "saas",
@@ -137,6 +209,22 @@ export const INDUSTRIES: IndustryTemplate[] = [
       { key: "plan", label: "Plan", type: "select", options: ["Starter", "Pro", "Business", "Enterprise"] },
       { key: "useCase", label: "Use Case", type: "text" },
     ],
+    playbook: {
+      buyerGoal: "solve the problem and prove ROI without a painful rollout or wasted budget",
+      repRole: "their point of contact, who scopes the fit, runs the trial, and makes the business case",
+      objections: ["no budget this quarter", "need to loop in my team", "already using a competitor", "not the right time", "need to see ROI first"],
+      nextSteps: {
+        email: ["want me to extend the trial so your team can really test it?", "happy to put together a quick ROI breakdown for finance", "should we get the wider team on a call?"],
+        sms: ["did the trial give your team enough to go on?", "free for 15 min to map out rollout?", "want me to loop in your team this week?"],
+        call: ["Ask what the trial proved — or didn't.", "Surface the real blocker: budget, buy-in, or priorities.", "Offer to build the business case for their boss."],
+      },
+      reengage: ["your trial wrapped a while back — did it land with the team?", "did the team settle on a direction?", "wanted to check before we close out your account"],
+      sampleVoice: [
+        "hey sam — did the trial give your team enough to make the call? happy to extend it or jump on 15 min if there are open questions.",
+        "if budget's the holdup, i can put together an ROI breakdown your finance team will actually like. want me to?",
+      ],
+      vocabulary: ["trial", "POC", "rollout", "seats", "ROI", "stakeholders", "onboarding", "renewal", "ARR"],
+    },
   },
   {
     id: "agency",
@@ -160,6 +248,22 @@ export const INDUSTRIES: IndustryTemplate[] = [
       { key: "service", label: "Service", type: "text" },
       { key: "engagement", label: "Engagement Type", type: "select", options: ["Project", "Retainer", "Hourly"] },
     ],
+    playbook: {
+      buyerGoal: "get the project done well, on budget, by someone they trust",
+      repRole: "their partner, who scopes the work, sets expectations, and delivers",
+      objections: ["budget's tight right now", "thinking about doing it in-house", "comparing a few agencies", "timing's off", "need to see examples first"],
+      nextSteps: {
+        email: ["want me to tighten the scope to fit your budget?", "happy to send a couple of relevant case studies", "should we get on a quick call to map phase one?"],
+        sms: ["still thinking about the project? happy to adjust scope if budget's the holdup", "free for a quick call this week?", "want me to send over a couple of examples?"],
+        call: ["Ask where the project sits on their priority list.", "If budget's the issue, offer a phased scope.", "Share one real result you got for a similar client."],
+      },
+      reengage: ["wanted to see if the project's still on your radar", "any movement on the timeline for this?", "happy to revisit the scope if things have changed"],
+      sampleVoice: [
+        "hi priya — still thinking about the website? if budget's the holdup, i can phase it so you start smaller and scale up.",
+        "no rush at all — just let me know if this is still live or if i should park it for now.",
+      ],
+      vocabulary: ["scope", "retainer", "deliverables", "phase", "kickoff", "statement of work", "milestone"],
+    },
   },
   {
     id: "auto",
@@ -184,6 +288,22 @@ export const INDUSTRIES: IndustryTemplate[] = [
       { key: "tradeIn", label: "Has Trade-In", type: "select", options: ["Yes", "No"] },
       { key: "financing", label: "Financing", type: "select", options: ["Cash", "Finance", "Lease"] },
     ],
+    playbook: {
+      buyerGoal: "get into the right vehicle at a fair price, with a payment that works",
+      repRole: "their salesperson, who finds the right vehicle, sorts financing, and gets them driving",
+      objections: ["still shopping around", "payment's too high", "waiting on my trade-in value", "want to think it over", "found one cheaper"],
+      nextSteps: {
+        email: ["want me to hold the one you liked for you?", "happy to run a few payment options with your trade-in", "should I get you behind the wheel this weekend?"],
+        sms: ["the one you liked is still here but moving — want me to hold it?", "free to come take it for a spin this week?", "want me to run your numbers with the trade-in?"],
+        call: ["Confirm the vehicle and the payment they're targeting.", "Mention current inventory and any new incentives.", "Offer to hold it and set a test-drive time."],
+      },
+      reengage: ["the one you drove is still on the lot — for now", "new incentives dropped this month, worth another look", "did you end up finding something, or still looking?"],
+      sampleVoice: [
+        "hey chris — that tacoma you drove is still here but it's moving fast. want me to hold it til the weekend?",
+        "good news — incentives changed this month and your payment just dropped. want the new numbers?",
+      ],
+      vocabulary: ["test drive", "trade-in", "financing", "incentives", "lot", "payment", "down payment", "delivery"],
+    },
   },
   {
     id: "home_services",
@@ -207,6 +327,22 @@ export const INDUSTRIES: IndustryTemplate[] = [
       { key: "jobType", label: "Job Type", type: "text" },
       { key: "urgency", label: "Urgency", type: "select", options: ["Emergency", "This Week", "This Month", "Planning"] },
     ],
+    playbook: {
+      buyerGoal: "get the job done right by someone reliable, at a fair price, without the runaround",
+      repRole: "their contact, who gets a tech out, quotes the job, and gets it on the schedule",
+      objections: ["getting a couple other quotes", "it's more than I expected", "going to wait on it", "not urgent yet", "might just do it myself"],
+      nextSteps: {
+        email: ["want me to get a tech out this week to take a look?", "happy to walk through the quote line by line", "should I get you on the schedule before we book up?"],
+        sms: ["want me to send a tech out this week to take a look?", "still want that estimate? can get someone out fast", "want me to hold a spot on the schedule?"],
+        call: ["Confirm the job and how soon they need it done.", "If price is the snag, walk the quote and the options.", "Offer the next open appointment."],
+      },
+      reengage: ["did you still want us out to take a look before the season hits?", "your estimate's still good — want to move forward?", "wanted to reach you before our schedule fills up"],
+      sampleVoice: [
+        "hi pat — did you still want us out to look at the roof before winter? can get a tech there this week.",
+        "your quote's still good through the month. want me to lock in a spot before we book up?",
+      ],
+      vocabulary: ["estimate", "quote", "tech", "job", "install", "scheduled", "site visit", "warranty"],
+    },
   },
   {
     id: "generic",
@@ -227,9 +363,29 @@ export const INDUSTRIES: IndustryTemplate[] = [
       ]),
     },
     fields: [],
+    playbook: {
+      buyerGoal: "solve their problem with someone they trust, at a fair price",
+      repRole: "their point of contact, who answers questions and helps them decide",
+      objections: ["still comparing options", "budget's tight", "need to think it over", "not the right time", "looping in someone else"],
+      nextSteps: {
+        email: ["want to grab 15 minutes this week?", "happy to answer any open questions", "should I send over the details?"],
+        sms: ["free for a quick call this week?", "any questions I can help with?", "want me to send the details over?"],
+        call: ["Reconfirm what they're trying to solve.", "Surface the real blocker.", "Propose one concrete next step with a date."],
+      },
+      reengage: ["wanted to see if this is still on your radar", "anything change on your end since we last talked?", "happy to pick this back up whenever the timing's right"],
+      sampleVoice: [
+        "hey — still worth a conversation, or has this dropped off your list? either way, just let me know.",
+        "happy to help whenever you're ready, no pressure at all. want me to send over the details?",
+      ],
+      vocabulary: ["next step", "follow up", "proposal", "timeline", "decision"],
+    },
   },
 ];
 
 export function getIndustry(id: string): IndustryTemplate {
   return INDUSTRIES.find((i) => i.id === id) ?? INDUSTRIES[INDUSTRIES.length - 1];
+}
+
+export function getPlaybook(id: string): IndustryPlaybook {
+  return getIndustry(id).playbook;
 }

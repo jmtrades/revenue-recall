@@ -36,7 +36,8 @@ src/lib/crm/providers/      builtin · supabase (full DB) · close · stub (hubs
 src/lib/crm/registry.ts     Resolves the active provider; auto-selects Supabase when configured
 src/lib/supabase/           Row types, tenant resolution, bootstrap (seed a fresh org)
 src/lib/comms.ts            Email/SMS/voice — Resend·SendGrid·Twilio adapters + logging fallback
-src/lib/industries/         Industry templates (pipelines, terms, fields)
+src/lib/industries/         Industry templates (pipelines, terms, fields) + per-vertical voice playbooks
+src/lib/copy.ts             Human-voice helpers + the canonical list of "AI tells" to never emit
 src/lib/recall/engine.ts    Revenue Recall scoring + recommendations
 src/lib/analytics.ts        Pipeline metrics & weighted forecast
 src/lib/queries.ts          Server-side data facade for the UI
@@ -91,7 +92,22 @@ board, analytics — works unchanged because it only ever talks to the interface
 ### Adding an industry
 
 Append an `IndustryTemplate` to `INDUSTRIES` in `src/lib/industries/index.ts`.
-You get terminology, a default pipeline, and custom fields with no other changes.
+You get terminology, a default pipeline, custom fields, and a **voice playbook**
+(buyer goal, real objections, natural next-steps per channel, re-engagement
+openers, sample rep lines, vocabulary) with no other changes. The playbook feeds
+both the live AI prompt and the no-API-key fallbacks, so outreach reads like a
+real rep in that vertical — never like AI. TypeScript enforces that every
+industry ships a complete playbook.
+
+### Sounding human, never like AI
+
+Every customer-facing generator (drafts, replies, call talk-tracks) is built to
+be indistinguishable from a real person: the AI prompts ban the usual "AI tells"
+and inject the industry playbook, and the deterministic fallbacks (what the demo
+shows with no API key) pull natural, industry-true phrasing and vary per deal.
+`src/lib/copy.ts` holds the canonical `AI_TELLS` list, and the test suite asserts
+no fallback, template, or sequence ever emits one — across every industry and
+channel.
 
 ## Going live with Supabase
 

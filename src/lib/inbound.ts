@@ -1,5 +1,7 @@
 import { getProvider } from "@/lib/crm/registry";
 import { getActiveVoice } from "@/lib/voice";
+import { getOrgSettings } from "@/lib/org";
+import { getIndustry } from "@/lib/industries";
 import { draftReply } from "@/lib/ai/reply";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { createOutboxItem } from "@/lib/agent/store";
@@ -53,13 +55,16 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     occurredAt: new Date().toISOString(),
   });
 
-  const voice = await getActiveVoice();
+  const [voice, org] = await Promise.all([getActiveVoice(), getOrgSettings()]);
+  const industry = getIndustry(org.industryId);
   const history = deal ? (await provider.listActivities(deal.id)).map((a) => `${a.direction ?? "out"} ${a.kind}: ${a.summary}`) : [];
   const reply = await draftReply({
     channel,
     contactName: contact.name,
     company: contact.company,
     dealTitle: deal?.title ?? `${contact.name}`,
+    industryLabel: industry.label,
+    industryId: industry.id,
     incoming: body,
     history,
     voice,

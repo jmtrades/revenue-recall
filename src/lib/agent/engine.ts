@@ -105,6 +105,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
         currency: t.opp.currency,
         stageLabel: pipelines.flatMap((p) => p.stages).find((s) => s.id === t.opp.stageId)?.label ?? "open",
         industryLabel: industry.label,
+        industryId: industry.id,
         recallReason: t.reason,
         daysSinceContact: t.days ?? daysSince(t.opp.lastActivityAt),
         history,

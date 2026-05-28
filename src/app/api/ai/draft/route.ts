@@ -39,6 +39,7 @@ export async function POST(req: Request) {
     currency: detail.opp.currency,
     stageLabel: detail.stage?.label ?? "open",
     industryLabel: industry.label,
+    industryId: industry.id,
     recallReason: detail.opp.lossReason ? "lost_winnable" : undefined,
     daysSinceContact: daysSince(detail.opp.lastActivityAt),
     history: detail.activities.map((a) => `${a.kind}: ${a.summary}`),

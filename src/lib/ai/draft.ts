@@ -1,4 +1,6 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
+import { getPlaybook } from "@/lib/industries";
+import { AI_TELLS, capitalize as cap, firstName, pickVariant, sentence } from "@/lib/copy";
 
 export interface DraftInput {
   channel: "email" | "sms" | "call";
@@ -10,6 +12,8 @@ export interface DraftInput {
   currency: string;
   stageLabel: string;
   industryLabel: string;
+  /** Industry id, so output is tuned to how that vertical actually talks. */
+  industryId?: string;
   recallReason?: string;
   daysSinceContact?: number;
   history?: string[];
@@ -26,18 +30,29 @@ export interface DraftResult {
   source: "ai" | "template";
 }
 
-const SYSTEM = `You ghostwrite outreach AS a specific human sales rep. The message must read as if that person typed it themselves on their phone — never like an AI, an assistant, a bot, or a template.
+const SYSTEM = `You ghostwrite outreach AS a specific human sales rep. Every message must read as if that person typed it themselves on their phone between meetings — never like an AI, an assistant, a bot, or a mail-merge template. If a reader could suspect AI wrote it, you failed.
 
-Hard rules:
-- You are the rep, a real person. Never reveal or imply AI involvement. No "as an AI", no disclaimers, no robotic scaffolding.
-- When a VOICE PROFILE is provided, match it precisely — tone, rhythm, greetings, sign-off, quirks, emoji habits. The result should be indistinguishable from that person's own writing.
-- Sound like a busy human who actually knows this prospect: specific, brief, a little informal. Vary your phrasing — never formulaic.
-- Match the channel. Email: short subject + 50-110 word body. SMS: under 320 chars, no subject, conversational. Call: a 4-6 bullet talk track in the body, no subject.
-- Personalize from the supplied context only. Never invent facts. One clear, low-friction call to action.
-- Banned: "I hope this email finds you well", "I wanted to reach out", "circling back" clichés, corporate jargon, hype, exclamation overload.
-- Re-engagement: acknowledge time has passed like a human would, lead with a genuine reason or easy ask, give a graceful out.
-- Sign off in the rep's voice using their signature/name when provided.
-Return only the requested JSON.`;
+WHO YOU ARE
+- You are the rep — a real, busy person who knows this prospect. Never reveal or imply AI. No disclaimers, no "as an AI", no robotic scaffolding.
+- When a VOICE PROFILE is given, match it exactly: tone, rhythm, greetings, sign-off, quirks, capitalization, emoji habits. The result must be indistinguishable from that person's own writing.
+- When an INDUSTRY PLAYBOOK is given, sound like a real rep in THAT business — use their natural next-steps and vocabulary, anticipate their objections. Match it; never copy the example lines verbatim.
+
+HOW HUMANS ACTUALLY WRITE (do this)
+- Use contractions. Vary sentence length — mix a short punchy one with a longer one. An occasional fragment is fine.
+- Be specific to this prospect and deal. Reference a real detail. Get to the point fast.
+- One clear, low-friction ask. Give an easy out. Never pushy, never salesy.
+- Sound a little informal and imperfect, like a real person — not polished corporate prose.
+- SMS: lowercase-casual is good, under 320 chars, no subject. Email: a short, human subject + 40-90 word body. Call: a 5-bullet talk track in the body, no subject.
+
+NEVER (these are instant AI tells)
+- Banned openers: "I hope this email finds you well", "I wanted to reach out", "I'm reaching out", "Just reaching out".
+- Banned clichés: "circling back", "touch base", "at your earliest convenience", "don't hesitate", "feel free to", "looking forward to hearing from you", "let me know if you have any questions".
+- Banned AI words: delve, leverage, utilize, elevate, streamline, robust, seamless, cutting-edge, best-in-class, synergy, furthermore, moreover, unlock, game-changer.
+- No buzzwords, no hype, no exclamation spam, no over-the-top enthusiasm, no perfectly balanced rule-of-three lists, no em-dash overuse.
+- Never invent facts. Use only the supplied context.
+
+RE-ENGAGEMENT: acknowledge time has passed the way a human would (lightly, no guilt-trip), lead with a genuine reason or an easy question, and make it painless to say "not now".
+Sign off in the rep's voice using their signature/name when provided. Return only the requested JSON.`;
 
 const SCHEMA = {
   type: "object",
@@ -49,49 +64,88 @@ const SCHEMA = {
   required: ["subject", "body"],
 };
 
+function signOff(input: DraftInput): string {
+  return input.voice?.signature || input.voice?.senderName || input.repName || "";
+}
+
+/**
+ * Deterministic, industry-aware, human-sounding fallback used when no API key is
+ * set (the default demo path). Pulls natural phrasing from the industry playbook
+ * and varies per deal so it never reads like a fixed template.
+ */
 function fallback(input: DraftInput): DraftResult {
-  const first = input.contactName.split(" ")[0] || input.contactName;
-  const rep = input.voice?.signature || input.voice?.senderName || input.repName || "";
+  const first = firstName(input.contactName);
+  const pb = getPlaybook(input.industryId ?? "generic");
+  const seed = `${input.dealTitle}|${input.contactName}|${input.channel}`;
   const cold = (input.daysSinceContact ?? 0) >= 14 || input.recallReason === "lost_winnable";
+  const sig = signOff(input);
 
   if (input.channel === "sms") {
+    const step = pickVariant(pb.nextSteps.sms, seed);
     const body = cold
-      ? `Hi ${first}, it's ${rep || "us"} — circling back on ${input.dealTitle}. Worth a quick chat this week? Totally fine if the timing's off.`
-      : `Hi ${first}, following up on ${input.dealTitle}. Any questions I can answer to help you decide? Happy to jump on a quick call.`;
+      ? `${sentence(`hey ${first}, ${pickVariant(pb.reengage, seed)}`)} ${step}`
+      : `hey ${first} — ${step}`;
     return { body, source: "template" };
   }
 
   if (input.channel === "call") {
+    const [a, b, c] = [pb.nextSteps.call[0], pb.nextSteps.call[1], pb.nextSteps.call[2]];
     return {
       body: [
-        `• Open warm: reference ${input.company ?? "their goals"} and the last touch (${input.daysSinceContact ?? 0} days ago).`,
-        `• Re-confirm the goal behind "${input.dealTitle}".`,
-        cold ? "• Acknowledge time passed; offer a fresh angle or incentive." : "• Surface any blocker keeping this from moving forward.",
-        `• Quantify value (${input.valueLabel}: ${input.value} ${input.currency}).`,
-        "• Propose a concrete next step + date. Confirm before hanging up.",
+        `• Open like you know them: reference ${input.company ?? "their situation"}${input.daysSinceContact ? ` and that it's been ${input.daysSinceContact} days` : ""}.`,
+        `• ${a}`,
+        `• ${b ?? "Listen for the real blocker before you pitch anything."}`,
+        `• ${c ?? `Keep ${input.valueLabel.toLowerCase()} (${input.value} ${input.currency}) in mind and anchor to it.`}`,
+        `• Lock one concrete next step with a date before you hang up.`,
       ].join("\n"),
       source: "template",
     };
   }
 
-  const subject = cold ? `Still worth a conversation, ${first}?` : `Next steps on ${input.dealTitle}`;
-  const body = cold
-    ? `Hi ${first},\n\nIt's been a little while since we talked about ${input.dealTitle}. Circumstances change, so I wanted to check in — is this still on your radar?\n\nIf helpful, I can send a fresh proposal or just close the loop. Either way works.\n\nBest,\n${rep}`
-    : `Hi ${first},\n\nFollowing up on ${input.dealTitle}. We left off at the ${input.stageLabel.toLowerCase()} stage — I'd love to help you take the next step.\n\nWould a quick 15-minute call this week make sense?\n\nBest,\n${rep}`;
-  return { subject, body, source: "template" };
+  // email
+  const step = pickVariant(pb.nextSteps.email, seed);
+  if (cold) {
+    const subject = pickVariant([`still on your radar, ${first}?`, `worth picking this back up?`, `quick one, ${first}`], seed);
+    const body = `Hi ${first},\n\n${sentence(cap(pickVariant(pb.reengage, seed)))} ${cap(step)}\n\nEither way, no pressure — just tell me to back off and I will.${sig ? `\n\n${sig}` : ""}`;
+    return { subject: cap(subject), body, source: "template" };
+  }
+  const subject = pickVariant([`next on ${input.dealTitle}`, `quick next step, ${first}`, `keeping ${input.dealTitle} moving`], seed);
+  const opener = pickVariant(
+    [`Wanted to keep ${input.dealTitle} moving`, `Following up on ${input.dealTitle}`, `Picking back up on ${input.dealTitle}`],
+    seed,
+  );
+  const body = `Hi ${first},\n\n${opener} — we left off around ${input.stageLabel.toLowerCase()}. ${cap(step)}${sig ? `\n\n${sig}` : ""}`;
+  return { subject: cap(subject), body, source: "template" };
+}
+
+function playbookBlock(input: DraftInput): string {
+  const pb = getPlaybook(input.industryId ?? "generic");
+  const ch = input.channel === "call" ? "call" : input.channel;
+  return `How a real ${input.industryLabel} rep talks (match the spirit, never copy these lines):
+- What ${firstName(input.contactName)} wants: ${pb.buyerGoal}
+- You are: ${pb.repRole}
+- Objections you might hit: ${pb.objections.join("; ")}
+- Natural next steps for ${ch}: ${pb.nextSteps[ch].join(" / ")}
+- Words this industry uses: ${pb.vocabulary.join(", ")}
+- Example lines in a real rep's voice (for tone only):
+  • ${pb.sampleVoice.join("\n  • ")}`;
 }
 
 export async function draftMessage(input: DraftInput): Promise<DraftResult> {
   if (!isAiConfigured()) return fallback(input);
 
+  const pb = getPlaybook(input.industryId ?? "generic");
   const user = `Channel: ${input.channel}
 Industry: ${input.industryLabel}
 Prospect: ${input.contactName}${input.company ? ` at ${input.company}` : ""}
 Deal: "${input.dealTitle}" — ${input.valueLabel} ${input.value} ${input.currency}, currently at stage "${input.stageLabel}"
-${input.recallReason ? `Recall reason: ${input.recallReason}\n` : ""}${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.voice?.senderName || input.repName ? `You are: ${input.voice?.senderName ?? input.repName}\n` : ""}${input.voice?.signature ? `Sign off as: ${input.voice.signature}\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).join("\n- ")}` : "No prior activity logged."}
+${input.recallReason ? `Recall reason: ${input.recallReason} (re-engagement — they've gone quiet)\n` : ""}${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.voice?.senderName || input.repName ? `You are: ${input.voice?.senderName ?? input.repName}\n` : ""}${input.voice?.signature ? `Sign off as: ${input.voice.signature}\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).join("\n- ")}` : "No prior activity logged."}
+
+${playbookBlock(input)}
+${input.recallReason ? `\nHuman re-engagement openers for this industry (for inspiration): ${pb.reengage.join(" / ")}` : ""}
 ${input.voice?.profile ? `\nWrite in THIS person's voice — match it exactly so it sounds like them, not an AI:\n"""${input.voice.profile}"""` : ""}${input.instruction ? `\nAlso follow this instruction for this message:\n"""${input.instruction}"""` : ""}
 
-Write the ${input.channel} message now, as this human.`;
+Write the ${input.channel} message now, as this human. Make it impossible to tell AI was involved.`;
 
   try {
     const out = await completeJson<{ subject?: string; body: string }>({
@@ -109,3 +163,6 @@ Write the ${input.channel} message now, as this human.`;
     return fallback(input);
   }
 }
+
+/** Exposed for tests: the phrases we guarantee never appear in human copy. */
+export { AI_TELLS };
