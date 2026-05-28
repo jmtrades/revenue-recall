@@ -24,27 +24,43 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
   const [busy, setBusy] = useState(false);
   const [drafting, setDrafting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [variations, setVariations] = useState<{ subject?: string; body: string }[]>([]);
 
   const canDraft = kind === "email" || kind === "sms" || kind === "call";
 
-  async function draft() {
+  async function draft(count = 1) {
     setDrafting(true);
     setError(null);
+    setVariations([]);
     try {
       const res = await fetch(`/api/ai/draft`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dealId, channel: kind, tone }),
+        body: JSON.stringify({ dealId, channel: kind, tone, ...(count > 1 ? { variations: count } : {}) }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Draft failed");
-      setSummary(body.body);
-      setSubject(body.subject ?? "");
+      if (body.variations) {
+        const list = body.variations as { subject?: string; body: string }[];
+        if (list.length > 0) {
+          setSummary(list[0].body);
+          setSubject(list[0].subject ?? "");
+          if (list.length > 1) setVariations(list);
+        }
+      } else {
+        setSummary(body.body);
+        setSubject(body.subject ?? "");
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Draft failed");
     } finally {
       setDrafting(false);
     }
+  }
+
+  function applyVariation(v: { subject?: string; body: string }) {
+    setSummary(v.body);
+    setSubject(v.subject ?? "");
   }
 
   async function move(stageId: string) {
@@ -111,15 +127,40 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
                 ))}
               </select>
               <button
-                onClick={draft}
+                onClick={() => draft(1)}
                 disabled={drafting}
                 className="inline-flex items-center gap-1 rounded-lg border border-brand/40 bg-brand-soft/30 px-2 py-0.5 text-xs font-medium text-brand transition hover:bg-brand-soft/50 disabled:opacity-50"
               >
                 {drafting ? "Drafting…" : "✨ Draft with AI"}
               </button>
+              <button
+                onClick={() => draft(3)}
+                disabled={drafting}
+                title="Generate three distinct takes to choose from"
+                className="rounded-lg border border-border px-2 py-0.5 text-xs text-muted transition hover:text-fg disabled:opacity-50"
+              >
+                3 takes
+              </button>
             </div>
           )}
         </div>
+        {variations.length > 1 && (
+          <div className="mt-2 space-y-1.5">
+            <p className="text-[11px] text-muted">Pick the one that sounds most like you:</p>
+            {variations.map((v, i) => (
+              <button
+                key={i}
+                onClick={() => applyVariation(v)}
+                className={`block w-full rounded-lg border px-3 py-2 text-left text-xs transition ${
+                  summary === v.body ? "border-brand bg-brand-soft/20 text-fg" : "border-border bg-surface-2 text-muted hover:text-fg"
+                }`}
+              >
+                {v.subject && <span className="block font-medium text-fg">{v.subject}</span>}
+                <span className="line-clamp-3 whitespace-pre-wrap">{v.body}</span>
+              </button>
+            ))}
+          </div>
+        )}
         <div className="mt-1 flex flex-wrap gap-1">
           {KINDS.map((k) => (
             <button

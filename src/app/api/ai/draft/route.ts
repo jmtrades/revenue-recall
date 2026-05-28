@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getDealDetail } from "@/lib/queries";
 import { getConfig } from "@/lib/config";
 import { getIndustry } from "@/lib/industries";
-import { draftMessage } from "@/lib/ai/draft";
+import { draftMessage, draftVariations, type DraftInput } from "@/lib/ai/draft";
 import { getActiveVoice } from "@/lib/voice";
 import { isToneId } from "@/lib/tones";
 
@@ -14,6 +14,8 @@ const Body = z.object({
   dealId: z.string().min(1),
   channel: z.enum(["email", "sms", "call"]),
   tone: z.string().optional(),
+  /** When > 1, return that many distinct alternatives instead of one draft. */
+  variations: z.number().int().min(1).max(5).optional(),
 });
 
 function daysSince(iso?: string): number | undefined {
@@ -30,7 +32,7 @@ export async function POST(req: Request) {
 
   const industry = getIndustry(getConfig().industryId);
   const voice = await getActiveVoice();
-  const result = await draftMessage({
+  const input: DraftInput = {
     voice,
     channel: parsed.data.channel,
     tone: isToneId(parsed.data.tone) ? parsed.data.tone : undefined,
@@ -47,7 +49,12 @@ export async function POST(req: Request) {
     daysSinceContact: daysSince(detail.opp.lastActivityAt),
     history: detail.activities.map((a) => `${a.kind}: ${a.summary}`),
     repName: detail.owner?.name === "You" ? "" : detail.owner?.name,
-  });
+  };
 
-  return NextResponse.json(result);
+  const count = parsed.data.variations ?? 1;
+  if (count > 1) {
+    const variations = await draftVariations(input, count);
+    return NextResponse.json({ variations });
+  }
+  return NextResponse.json(await draftMessage(input));
 }

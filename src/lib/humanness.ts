@@ -38,6 +38,9 @@ const STIFF: [RegExp, string, string][] = [
   [/\bi just want to\b/i, "I just want to", 'drop "just want to" — lead with the point'],
   [/\bi was hoping to\b/i, "I was hoping to", "too timid — ask plainly"],
   [/\bi thought (i would|i'd)\b/i, "I thought I'd", "filler opener — cut it and start with the real reason"],
+  [/\bjust checking in\b/i, "just checking in", 'the emptiest follow-up there is — give a real reason you\'re writing'],
+  [/\bjust following up\b/i, "just following up", 'say what you\'re following up about and why now'],
+  [/\bgentle reminder\b/i, "gentle reminder", "reads automated — just make the ask"],
 ];
 
 /** Split into sentence-ish units for rhythm analysis. */

@@ -34,6 +34,8 @@ export interface DraftInput {
   repName?: string;
   /** Selectable voice/tone preset for this message (see lib/tones). */
   tone?: ToneId;
+  /** Variation index — produces a distinctly different take of the same message. */
+  variant?: number;
   /** Optional extra instruction from a user-defined Autopilot task. */
   instruction?: string;
   /** The rep's distilled writing voice + sign-off, so messages sound like them. */
@@ -95,11 +97,13 @@ function signOff(input: DraftInput): string {
 function fallback(input: DraftInput): DraftResult {
   const first = firstName(input.contactName);
   const pb = getPlaybook(input.industryId ?? "generic");
-  // Fold the tone into the seed so picking a different voice reshuffles the
-  // composition into a different (still clean) message. Default tone keeps the
-  // seed byte-identical to before, so existing output is unchanged.
+  // Fold the tone and variation index into the seed so picking a different voice
+  // (or asking for another take) reshuffles the composition into a different
+  // (still clean) message. Default tone + variant 0 keep the seed byte-identical
+  // to before, so existing output is unchanged.
   const tonePart = input.tone && input.tone !== "warm" ? `|${input.tone}` : "";
-  const seed = `${input.dealTitle}|${input.contactName}|${input.channel}${tonePart}`;
+  const variantPart = input.variant ? `|v${input.variant}` : "";
+  const seed = `${input.dealTitle}|${input.contactName}|${input.channel}${tonePart}${variantPart}`;
   const cold = (input.daysSinceContact ?? 0) >= 14 || input.recallReason === "lost_winnable";
   const sig = signOff(input);
   const sigLine = sig ? `\n\n${sig}` : "";
@@ -295,7 +299,7 @@ ${input.recallReason ? `Recall reason: ${input.recallReason} (re-engagement — 
 ${playbookBlock(input)}
 ${input.voice?.customNextSteps?.length ? `\nThis rep's own go-to next steps (prefer one of these when it fits): ${input.voice.customNextSteps.join(" / ")}` : ""}
 ${input.recallReason ? `\nRe-engagement openers (for inspiration): ${(input.voice?.customReengage?.length ? input.voice.customReengage : pb.reengage).join(" / ")}` : ""}
-${input.voice?.profile ? `\nWrite in THIS person's voice — match it exactly so it sounds like them, not an AI:\n"""${input.voice.profile}"""` : ""}${input.instruction ? `\nAlso follow this instruction for this message:\n"""${input.instruction}"""` : ""}
+${input.voice?.profile ? `\nWrite in THIS person's voice — match it exactly so it sounds like them, not an AI:\n"""${input.voice.profile}"""` : ""}${input.instruction ? `\nAlso follow this instruction for this message:\n"""${input.instruction}"""` : ""}${input.variant ? `\nThis is alternative take #${input.variant + 1}. Open differently and restructure it so it reads as a genuinely distinct message from a default version — same intent, fresh wording.` : ""}
 
 Write the ${input.channel} message now, as this human. Make it impossible to tell AI was involved.`;
 
@@ -318,6 +322,27 @@ Write the ${input.channel} message now, as this human. Make it impossible to tel
   } catch {
     return fallback(input);
   }
+}
+
+/**
+ * Produce several distinct takes of the same message so a rep can pick the one
+ * that sounds most like them. Each variant reshuffles the deterministic
+ * composition (no key) or nudges the model toward a fresh structure (live), and
+ * we de-dupe identical bodies so the rep always sees genuine alternatives.
+ */
+export async function draftVariations(input: DraftInput, count = 3): Promise<DraftResult[]> {
+  const n = Math.max(1, Math.min(count, 5));
+  const all = await Promise.all(Array.from({ length: n }, (_, i) => draftMessage({ ...input, variant: i })));
+  const seen = new Set<string>();
+  const unique: DraftResult[] = [];
+  for (const r of all) {
+    const key = r.body.trim();
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(r);
+    }
+  }
+  return unique;
 }
 
 /** Exposed for tests: the phrases we guarantee never appear in human copy. */
