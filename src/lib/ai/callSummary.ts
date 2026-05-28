@@ -78,7 +78,7 @@ ${input.notes}
 
 Summarize the call now.`;
   try {
-    const out = await completeJson<Omit<CallSummaryResult, "source">>({ system: SYSTEM, user, schema: SCHEMA, maxTokens: 700 });
+    const out = await completeJson<Omit<CallSummaryResult, "source">>({ system: SYSTEM, user, schema: SCHEMA, maxTokens: 700, cache: true });
     return { ...out, source: "ai" };
   } catch {
     return fallback(input);

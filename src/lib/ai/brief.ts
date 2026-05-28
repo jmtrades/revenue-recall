@@ -82,6 +82,7 @@ Brief the rep now.`;
       schema: SCHEMA,
       maxTokens: 1200,
       think: true,
+      cache: true,
     });
     return { ...out, source: "ai" };
   } catch {

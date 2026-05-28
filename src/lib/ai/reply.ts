@@ -1,4 +1,4 @@
-import { completeJson, isAiConfigured, QUALITY_MODEL } from "@/lib/ai/client";
+import { completeJson, isAiConfigured } from "@/lib/ai/client";
 
 export interface ReplyInput {
   channel: "email" | "sms";
@@ -71,7 +71,7 @@ ${input.voice?.profile ? `\nWrite in THIS person's voice — match it so it soun
 
 Write the reply now, as this human.`;
   try {
-    const out = await completeJson<{ subject?: string; body: string }>({ system: SYSTEM, user, schema: SCHEMA, maxTokens: 900, model: QUALITY_MODEL });
+    const out = await completeJson<{ subject?: string; body: string }>({ system: SYSTEM, user, schema: SCHEMA, maxTokens: 900 });
     return { subject: input.channel === "email" ? out.subject : undefined, body: out.body, source: "ai" };
   } catch {
     return fallback(input);

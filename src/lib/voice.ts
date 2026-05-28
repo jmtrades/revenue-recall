@@ -1,7 +1,7 @@
 import { cache } from "@/lib/cache";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
-import { completeJson, isAiConfigured, QUALITY_MODEL } from "@/lib/ai/client";
+import { completeJson, isAiConfigured } from "@/lib/ai/client";
 
 export interface Voice {
   senderName?: string;
@@ -52,7 +52,6 @@ async function distill(input: { senderName?: string; role?: string; samples: str
       user: `Name: ${input.senderName ?? "(unknown)"}\nRole: ${input.role ?? "(unknown)"}\nTheir words (self-description and/or example messages):\n"""${input.samples}"""\n\nProduce the voice profile now.`,
       schema: SCHEMA,
       maxTokens: 800,
-      model: QUALITY_MODEL,
     });
     return out.profile;
   } catch {
