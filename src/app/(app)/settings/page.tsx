@@ -11,7 +11,10 @@ import { PageHeader, Card, Avatar, InfoRow } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
 import { OrgSettingsForm } from "@/components/OrgSettingsForm";
 import { AppearanceSettings } from "@/components/AppearanceSettings";
+import { BillingSettings } from "@/components/BillingSettings";
 import { VoiceStudio } from "@/components/VoiceStudio";
+import { getSubscription } from "@/lib/billing/store";
+import { billingConfigured } from "@/lib/billing/stripe";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { ImportCsv } from "@/components/ImportCsv";
 
@@ -25,6 +28,7 @@ export default async function SettingsPage() {
   const voiceTab = <VoiceStudio initial={voice} persisted={org.persisted} />;
   const integrations = listIntegrations();
   const { users, pipeline } = await getTeamAndPipeline();
+  const subscription = await getSubscription();
 
   const general = (
     <Card>
@@ -154,21 +158,14 @@ export default async function SettingsPage() {
 
   const billingTab = (
     <Card>
-      <div className="rounded-lg border border-brand/40 bg-brand-soft/20 p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-white">Growth plan</p>
-            <p className="text-xs text-muted">Unlimited pipelines, automations, and recall.</p>
-          </div>
-          <span className="pill bg-brand text-white">Current</span>
-        </div>
-      </div>
-      <div className="mt-2">
-        <InfoRow label="Seats">{users.length} active</InfoRow>
-        <InfoRow label="Billing cycle">Monthly</InfoRow>
-        <InfoRow label="Next invoice">—</InfoRow>
-      </div>
-      <p className="mt-3 text-xs text-muted">Billing is handled by your payment provider at launch.</p>
+      <BillingSettings
+        configured={billingConfigured()}
+        plan={subscription.plan}
+        status={subscription.status}
+        seats={Math.max(subscription.seats, users.length)}
+        currentPeriodEnd={subscription.currentPeriodEnd}
+        hasCustomer={Boolean(subscription.stripeCustomerId)}
+      />
     </Card>
   );
 
