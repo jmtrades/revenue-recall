@@ -86,7 +86,10 @@ supabase/migrations/        Org-scoped Postgres schema (RLS) for the built-in CR
 > - **Email/SMS/Voice:** set `RESEND_API_KEY`/`SENDGRID_API_KEY` and/or
 >   `TWILIO_*` and sends/calls go live; otherwise they log to the timeline.
 > - **AI:** set `ANTHROPIC_API_KEY` for live drafting, briefs, and call
->   summaries; otherwise high-quality templates.
+>   summaries; otherwise high-quality templates. Every live call is metered
+>   (tokens + USD cost, shown in Settings → Billing); set `AI_MONTHLY_BUDGET_USD`
+>   to cap spend per org — when hit, drafting transparently falls back to the
+>   free templates so costs never run away.
 >
 > The built-in CRM is in-memory and reseeds each boot. For real persistence use
 > Supabase; or, on local/self-hosted node, set `BUILTIN_PERSIST=true` to write the

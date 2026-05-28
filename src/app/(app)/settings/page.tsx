@@ -16,6 +16,7 @@ import { VoiceStudio } from "@/components/VoiceStudio";
 import { VoiceControls } from "@/components/VoiceControls";
 import { getSubscription } from "@/lib/billing/store";
 import { billingConfigured } from "@/lib/billing/stripe";
+import { usageSummary, monthlyBudgetUsd } from "@/lib/ai/usage";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { ImportCsv } from "@/components/ImportCsv";
 
@@ -37,6 +38,8 @@ export default async function SettingsPage() {
   const integrations = listIntegrations();
   const { users, pipeline } = await getTeamAndPipeline();
   const subscription = await getSubscription();
+  const aiUsage = await usageSummary();
+  const aiBudget = monthlyBudgetUsd();
 
   const general = (
     <Card>
@@ -174,6 +177,15 @@ export default async function SettingsPage() {
         currentPeriodEnd={subscription.currentPeriodEnd}
         hasCustomer={Boolean(subscription.stripeCustomerId)}
       />
+      <div className="mt-4 rounded-lg border border-border p-4">
+        <p className="text-sm font-medium text-fg">AI usage this month</p>
+        <p className="mt-0.5 text-xs text-muted">Live drafting/brief/voice cost. Margin guard auto-falls back to free templates if a budget is hit.</p>
+        <div className="mt-3">
+          <InfoRow label="Cost">${aiUsage.costUsd.toFixed(2)}{aiBudget > 0 ? ` / $${aiBudget.toFixed(0)} budget` : " (no cap set)"}</InfoRow>
+          <InfoRow label="Calls">{aiUsage.calls.toLocaleString()}</InfoRow>
+          <InfoRow label="Tokens">{(aiUsage.inputTokens + aiUsage.outputTokens).toLocaleString()}</InfoRow>
+        </div>
+      </div>
     </Card>
   );
 

@@ -1,4 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { costOf } from "@/lib/ai/cost";
+import { recordUsage, isWithinBudget } from "@/lib/ai/usage";
 
 /**
  * Anthropic client factory. Returns null when no API key is configured, so the
@@ -38,9 +40,15 @@ export async function completeJson<T>(opts: {
    *  drafting); lower = more consistent (good for analysis/distillation). */
   temperature?: number;
   think?: boolean;
+  /** Label for usage/cost attribution (e.g. "draft", "reply", "brief"). */
+  feature?: string;
 }): Promise<T> {
   const client = getAnthropic();
   if (!client) throw new Error("AI not configured");
+
+  // Margin guard: if the org has hit its monthly AI budget, stop spending — the
+  // caller catches this and falls back to the free template path.
+  if (!(await isWithinBudget())) throw new Error("AI monthly budget reached");
 
   // Built untyped: output_config / adaptive thinking are current API fields
   // that may post-date the installed SDK's static types.
@@ -58,6 +66,13 @@ export async function completeJson<T>(opts: {
   }
 
   const res = await client.messages.create(params as any);
+
+  // Meter the call (best-effort) so cost is tracked and the budget cap works.
+  const usage = (res as { usage?: { input_tokens?: number; output_tokens?: number } }).usage;
+  const inTok = usage?.input_tokens ?? 0;
+  const outTok = usage?.output_tokens ?? 0;
+  void recordUsage({ model: aiModel(), inputTokens: inTok, outputTokens: outTok, costUsd: costOf(aiModel(), inTok, outTok), feature: opts.feature });
+
   const block = res.content.find((b): b is Anthropic.TextBlock => b.type === "text");
   if (!block) throw new Error("No content returned");
   return JSON.parse(block.text) as T;
