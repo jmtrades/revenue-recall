@@ -14,6 +14,7 @@ import type { Contact, Opportunity, Pipeline } from "@/lib/crm/types";
 
 const SKIP_LABEL: Record<NonNullable<SkipReason>, string> = {
   opted_out: "Skipped — they opted out / asked us to stop.",
+  recently_declined: "Held — soft 'no for now'; will re-engage after the cooldown.",
   recently_contacted: "Skipped — already contacted recently (cooldown).",
   quiet_hours: "Held — outside sending hours, will retry next run.",
   daily_cap: "Held — daily send cap reached.",

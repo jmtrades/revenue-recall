@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { hasOptedOut, inCooldown, quietHoursNow, sendGate } from "@/lib/agent/guardrails";
+import { hasOptedOut, isHardOptOut, lastSoftDeclineAt, inCooldown, quietHoursNow, sendGate } from "@/lib/agent/guardrails";
 import type { Activity, Contact, Opportunity } from "@/lib/crm/types";
 
 beforeEach(() => {
@@ -7,6 +7,7 @@ beforeEach(() => {
   delete process.env.AGENT_QUIET_END_UTC;
   delete process.env.AGENT_DAILY_SEND_CAP;
   delete process.env.AGENT_COOLDOWN_DAYS;
+  delete process.env.AGENT_DECLINE_COOLDOWN_DAYS;
 });
 
 const contact = (attrs?: Record<string, unknown>): Contact => ({ id: "c1", name: "Jordan", points: [], attributes: attrs as never });
@@ -21,10 +22,42 @@ describe("opt-out suppression", () => {
     expect(hasOptedOut(contact(), opp(), [])).toBe(false);
   });
 
-  it("flags a prior inbound decline / hostility", () => {
-    expect(hasOptedOut(contact(), opp(), [act({ direction: "inbound", summary: "not interested, please remove me" })])).toBe(true);
+  it("only a HARD opt-out permanently suppresses — a soft decline does not", () => {
+    // Hard opt-out / hostility → suppressed forever.
+    expect(hasOptedOut(contact(), opp(), [act({ direction: "inbound", summary: "please unsubscribe me" })])).toBe(true);
     expect(hasOptedOut(contact(), opp(), [act({ direction: "inbound", summary: "stop calling me" })])).toBe(true);
-    expect(hasOptedOut(contact(), opp(), [act({ direction: "inbound", summary: "sounds good, tell me more" })])).toBe(false);
+    expect(hasOptedOut(contact(), opp(), [act({ direction: "inbound", summary: "take me off your list" })])).toBe(true);
+    // Soft "no for now" → NOT a permanent opt-out (still winnable, re-engage later).
+    expect(hasOptedOut(contact(), opp(), [act({ direction: "inbound", summary: "not interested right now" })])).toBe(false);
+    expect(hasOptedOut(contact(), opp(), [act({ direction: "inbound", summary: "we'll pass for now" })])).toBe(false);
+  });
+
+  it("isHardOptOut distinguishes permanent from soft", () => {
+    expect(isHardOptOut("unsubscribe")).toBe(true);
+    expect(isHardOptOut("do not contact me again")).toBe(true);
+    expect(isHardOptOut("leave me alone")).toBe(true); // hostile
+    expect(isHardOptOut("not interested")).toBe(false);
+    expect(isHardOptOut("not for us right now")).toBe(false);
+  });
+});
+
+describe("soft-decline re-engagement", () => {
+  it("finds the most recent soft decline, ignoring hard opt-outs", () => {
+    const now = Date.now();
+    const iso = new Date(now).toISOString();
+    expect(lastSoftDeclineAt([act({ direction: "inbound", summary: "not interested", occurredAt: iso })])).toBe(new Date(iso).getTime());
+    expect(lastSoftDeclineAt([act({ direction: "inbound", summary: "unsubscribe" })])).toBeNull();
+    expect(lastSoftDeclineAt([act({ direction: "outbound", summary: "not interested" })])).toBeNull();
+  });
+
+  it("a declined deal is paused for the cooldown, then followed up again", () => {
+    const now = new Date("2026-02-01T14:00:00Z");
+    const recentDecline = [act({ direction: "inbound", summary: "not interested right now", occurredAt: new Date(now.getTime() - 5 * 86400000).toISOString() })];
+    const oldDecline = [act({ direction: "inbound", summary: "not interested right now", occurredAt: new Date(now.getTime() - 45 * 86400000).toISOString() })];
+    // 5 days after a soft no (default 30-day gap) → hold.
+    expect(sendGate({ contact: contact(), opp: opp(), activities: recentDecline, autonomy: "auto", sentSoFar: 0, now })).toBe("recently_declined");
+    // 45 days later → follow up again (this is the whole point of recall).
+    expect(sendGate({ contact: contact(), opp: opp(), activities: oldDecline, autonomy: "auto", sentSoFar: 0, now })).toBeNull();
   });
 });
 

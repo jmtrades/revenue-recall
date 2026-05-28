@@ -10,7 +10,20 @@ import type { Activity, Contact, Opportunity } from "@/lib/crm/types";
 
 const OUTBOUND_KINDS = new Set(["email", "sms", "call"]);
 
-/** Don't contact someone who asked us to stop, or is flagged do-not-contact. */
+// A HARD opt-out means never contact again (legal/ethical: unsubscribe, "stop",
+// do-not-contact). A soft "not interested / not now" is NOT this — those deals
+// are winnable and we re-engage after a cooldown. This is the whole point of
+// Revenue Recall: a no today isn't a no forever.
+const HARD_OPT_OUT =
+  /\b(unsubscribe|opt[\s-]?out|please remove|remove me|take me off( your list)?|do ?n'?t (ever )?(contact|call|text|email|message)( me)?|stop (calling|texting|messaging|emailing|contacting)|lose my number|never contact me)\b/i;
+
+/** True only for an explicit, permanent opt-out (or outright hostility). */
+export function isHardOptOut(text: string): boolean {
+  return HARD_OPT_OUT.test(text) || detectIntent(text) === "hostile";
+}
+
+/** Don't contact someone who explicitly opted out or is flagged do-not-contact.
+ *  A soft decline does NOT count here — it's handled by a re-engagement cooldown. */
 export function hasOptedOut(contact: Contact | undefined, opp: Opportunity | undefined, activities: Activity[]): boolean {
   const a = contact?.attributes;
   if (a) {
@@ -18,8 +31,27 @@ export function hasOptedOut(contact: Contact | undefined, opp: Opportunity | und
     if (String(a.status ?? "").toLowerCase().includes("do not contact")) return true;
   }
   if (opp?.tags?.some((t) => /do[\s-]?not[\s-]?contact|unsubscrib|opt[\s-]?out/i.test(t))) return true;
-  // They told us no on a previous inbound.
-  return activities.some((act) => act.direction === "inbound" && (detectIntent(act.summary) === "decline" || detectIntent(act.summary) === "hostile"));
+  // Only a HARD opt-out on a prior inbound permanently suppresses.
+  return activities.some((act) => act.direction === "inbound" && isHardOptOut(act.summary));
+}
+
+/** Most recent soft-decline inbound time (a "no for now" we should re-engage later). */
+export function lastSoftDeclineAt(activities: Activity[]): number | null {
+  let latest: number | null = null;
+  for (const act of activities) {
+    if (act.direction !== "inbound" || isHardOptOut(act.summary)) continue;
+    if (detectIntent(act.summary) === "decline") {
+      const t = new Date(act.occurredAt).getTime();
+      if (latest === null || t > latest) latest = t;
+    }
+  }
+  return latest;
+}
+
+/** Days to wait after a soft decline before re-engaging (default 30). 0 = re-engage freely. */
+export function declineCooldownDays(): number {
+  const n = Number(process.env.AGENT_DECLINE_COOLDOWN_DAYS);
+  return Number.isFinite(n) && n >= 0 ? n : 30;
 }
 
 /** Avoid re-touching a deal we already reached out to within the cooldown window. */
@@ -50,12 +82,13 @@ export function cooldownDays(): number {
   return Number.isFinite(n) && n >= 0 ? n : 3;
 }
 
-export type SkipReason = "opted_out" | "recently_contacted" | "quiet_hours" | "daily_cap" | null;
+export type SkipReason = "opted_out" | "recently_declined" | "recently_contacted" | "quiet_hours" | "daily_cap" | null;
 
 /**
  * Single decision point: should the agent send to this target right now? Returns
  * a skip reason or null (clear to send). `autonomy` gates the volume rails;
- * opt-out always applies.
+ * opt-out always applies. A soft decline pauses re-engagement for a cooldown but
+ * never blocks forever — winnable deals come back around.
  */
 export function sendGate(opts: {
   contact: Contact | undefined;
@@ -67,7 +100,12 @@ export function sendGate(opts: {
 }): SkipReason {
   if (hasOptedOut(opts.contact, opts.opp, opts.activities)) return "opted_out";
   if (opts.autonomy !== "auto") return null; // review mode is human-gated; only opt-out blocks drafting
-  if (inCooldown(opts.activities, cooldownDays(), opts.now?.getTime())) return "recently_contacted";
+  const nowMs = opts.now?.getTime() ?? Date.now();
+  // Soft decline → respect a longer re-engagement gap, then follow up again.
+  const softDecline = lastSoftDeclineAt(opts.activities);
+  const declineDays = declineCooldownDays();
+  if (softDecline !== null && declineDays > 0 && nowMs - softDecline < declineDays * 86_400_000) return "recently_declined";
+  if (inCooldown(opts.activities, cooldownDays(), nowMs)) return "recently_contacted";
   if (quietHoursNow(opts.now)) return "quiet_hours";
   if (opts.sentSoFar >= dailySendCap()) return "daily_cap";
   return null;
