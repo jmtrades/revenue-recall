@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Stage } from "@/lib/crm/types";
 import { HumannessMeter } from "@/components/HumannessMeter";
+import { TONES, DEFAULT_TONE, type ToneId } from "@/lib/tones";
 
 const KINDS: { id: "note" | "call" | "email" | "sms" | "meeting"; label: string }[] = [
   { id: "note", label: "Note" },
@@ -17,6 +18,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [kind, setKind] = useState<(typeof KINDS)[number]["id"]>("note");
+  const [tone, setTone] = useState<ToneId>(DEFAULT_TONE);
   const [summary, setSummary] = useState("");
   const [subject, setSubject] = useState("");
   const [busy, setBusy] = useState(false);
@@ -32,7 +34,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
       const res = await fetch(`/api/ai/draft`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dealId, channel: kind }),
+        body: JSON.stringify({ dealId, channel: kind, tone }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Draft failed");
@@ -93,16 +95,29 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
       </div>
 
       <div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <label className="stat-label">Log activity</label>
           {canDraft && (
-            <button
-              onClick={draft}
-              disabled={drafting}
-              className="inline-flex items-center gap-1 rounded-lg border border-brand/40 bg-brand-soft/30 px-2 py-0.5 text-xs font-medium text-brand transition hover:bg-brand-soft/50 disabled:opacity-50"
-            >
-              {drafting ? "Drafting…" : "✨ Draft with AI"}
-            </button>
+            <div className="flex items-center gap-1.5">
+              <select
+                value={tone}
+                onChange={(e) => setTone(e.target.value as ToneId)}
+                title="Voice / tone for the AI draft"
+                aria-label="Draft tone"
+                className="rounded-lg border border-border bg-surface px-2 py-0.5 text-xs text-muted outline-none focus:border-brand"
+              >
+                {TONES.map((t) => (
+                  <option key={t.id} value={t.id}>{t.label}</option>
+                ))}
+              </select>
+              <button
+                onClick={draft}
+                disabled={drafting}
+                className="inline-flex items-center gap-1 rounded-lg border border-brand/40 bg-brand-soft/30 px-2 py-0.5 text-xs font-medium text-brand transition hover:bg-brand-soft/50 disabled:opacity-50"
+              >
+                {drafting ? "Drafting…" : "✨ Draft with AI"}
+              </button>
+            </div>
           )}
         </div>
         <div className="mt-1 flex flex-wrap gap-1">

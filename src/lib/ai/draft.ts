@@ -1,6 +1,7 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
 import { refineForHumanness } from "@/lib/ai/refine";
 import { getPlaybook } from "@/lib/industries";
+import { getTone, type ToneId } from "@/lib/tones";
 import {
   AI_TELLS,
   capitalize as cap,
@@ -31,6 +32,8 @@ export interface DraftInput {
   daysSinceContact?: number;
   history?: string[];
   repName?: string;
+  /** Selectable voice/tone preset for this message (see lib/tones). */
+  tone?: ToneId;
   /** Optional extra instruction from a user-defined Autopilot task. */
   instruction?: string;
   /** The rep's distilled writing voice + sign-off, so messages sound like them. */
@@ -92,7 +95,11 @@ function signOff(input: DraftInput): string {
 function fallback(input: DraftInput): DraftResult {
   const first = firstName(input.contactName);
   const pb = getPlaybook(input.industryId ?? "generic");
-  const seed = `${input.dealTitle}|${input.contactName}|${input.channel}`;
+  // Fold the tone into the seed so picking a different voice reshuffles the
+  // composition into a different (still clean) message. Default tone keeps the
+  // seed byte-identical to before, so existing output is unchanged.
+  const tonePart = input.tone && input.tone !== "warm" ? `|${input.tone}` : "";
+  const seed = `${input.dealTitle}|${input.contactName}|${input.channel}${tonePart}`;
   const cold = (input.daysSinceContact ?? 0) >= 14 || input.recallReason === "lost_winnable";
   const sig = signOff(input);
   const sigLine = sig ? `\n\n${sig}` : "";
@@ -138,30 +145,51 @@ function smsFallback(input: DraftInput, first: string, seed: string, cold: boole
 
 function callFallback(input: DraftInput, seed: string): string {
   const pb = getPlaybook(input.industryId ?? "generic");
-  const [a, b, c] = [pb.nextSteps.call[0], pb.nextSteps.call[1], pb.nextSteps.call[2]];
+  const step = pickVariant(pb.nextSteps.call, seeded(seed, "call_step"));
   const opener = pick(
     [
-      `Open like you know them: reference ${input.company ?? "their situation"}${input.daysSinceContact ? ` and that it's been ${input.daysSinceContact} days` : ""}.`,
-      `Skip the script — start with ${input.company ?? "what they're working on"} and why you're calling now.`,
-      `Lead warm: a quick "${input.daysSinceContact ? "been a bit" : "good timing"}" and straight into ${input.company ?? "their situation"}.`,
+      `Open like you know them: reference ${input.company ?? "their situation"}${input.daysSinceContact ? ` and that it's been ${input.daysSinceContact} days` : ""}, then ask how things are going.`,
+      `Skip the script — start with ${input.company ?? "what they're working on"} and why you're calling now, then hand them the mic.`,
+      `Lead warm: a quick "${input.daysSinceContact ? "been a bit" : "good timing"}", then straight into a question about ${input.company ?? "their situation"}.`,
     ],
     seed,
     "call_open",
   );
+  // A discovery question keeps them talking — people stay on calls they're driving.
+  const discover = pick(
+    [
+      "Ask an open question and then go quiet — let them fill the space.",
+      "Get them talking: what's changed since you last spoke, and what's the priority now?",
+      "Ask what a good outcome here looks like for them — then actually listen.",
+    ],
+    seed,
+    "call_discover",
+  );
+  // Handle the objection you're most likely to hear — acknowledge, don't argue.
+  const objection = pickVariant(pb.objections, seeded(seed, "call_obj"));
+  const handle = pick(
+    [
+      `If you hear "${objection}", agree it's fair, then ask a question instead of pitching back.`,
+      `Likely pushback: "${objection}". Acknowledge it honestly, then ask what'd need to be true for it to work.`,
+      `Expect "${objection}". Don't argue it — get curious about what's behind it.`,
+    ],
+    seed,
+    "call_handle",
+  );
   const closer = pick(
     [
-      "Lock one concrete next step with a date before you hang up.",
-      "Don't end without a specific day and time for the next step.",
-      "Get a real commitment — a date on the calendar, not a 'maybe'.",
+      "Lock one concrete next step with a real date before you hang up.",
+      "Don't end without a specific day and time — a calendar slot, not a 'maybe'.",
+      "Get a real commitment: name the next step and put a date on it together.",
     ],
     seed,
     "call_close",
   );
   return [
     `• ${opener}`,
-    `• ${a}`,
-    `• ${b ?? "Listen for the real blocker before you pitch anything."}`,
-    `• ${c ?? `Keep ${input.valueLabel.toLowerCase()} (${input.value} ${input.currency}) in mind and anchor to it.`}`,
+    `• ${discover}`,
+    `• ${sentence(cap(step))}`,
+    `• ${handle}`,
     `• ${closer}`,
   ].join("\n");
 }
@@ -248,8 +276,18 @@ export async function draftMessage(input: DraftInput): Promise<DraftResult> {
   if (!isAiConfigured()) return fallback(input);
 
   const pb = getPlaybook(input.industryId ?? "generic");
+  const tone = getTone(input.tone);
+  const callCoaching =
+    input.channel === "call"
+      ? `\nThis is a CALL talk track (5 short bullets), built to keep them on the phone, not a monologue:
+- Open warm and earn 20 seconds: a real reason you're calling now, then a genuine question.
+- Make most bullets QUESTIONS — open-ended, about them. People stay on the phone when they're talking, not being pitched.
+- Include one bullet that handles the objection you're most likely to hear (acknowledge it, don't argue, ask a question back).
+- Close by locking one concrete next step with a real date/time — never a vague "I'll follow up".`
+      : "";
   const user = `Channel: ${input.channel}
 Industry: ${input.industryLabel}
+Tone for this message: ${tone.label} — ${tone.directive}${callCoaching}
 Prospect: ${input.contactName}${input.company ? ` at ${input.company}` : ""}
 Deal: "${input.dealTitle}" — ${input.valueLabel} ${input.value} ${input.currency}, currently at stage "${input.stageLabel}"
 ${input.recallReason ? `Recall reason: ${input.recallReason} (re-engagement — they've gone quiet)\n` : ""}${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.voice?.senderName || input.repName ? `You are: ${input.voice?.senderName ?? input.repName}\n` : ""}${input.voice?.signature ? `Sign off as: ${input.voice.signature}\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).join("\n- ")}` : "No prior activity logged."}

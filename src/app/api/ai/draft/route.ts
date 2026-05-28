@@ -5,6 +5,7 @@ import { getConfig } from "@/lib/config";
 import { getIndustry } from "@/lib/industries";
 import { draftMessage } from "@/lib/ai/draft";
 import { getActiveVoice } from "@/lib/voice";
+import { isToneId } from "@/lib/tones";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -12,6 +13,7 @@ export const maxDuration = 60;
 const Body = z.object({
   dealId: z.string().min(1),
   channel: z.enum(["email", "sms", "call"]),
+  tone: z.string().optional(),
 });
 
 function daysSince(iso?: string): number | undefined {
@@ -31,6 +33,7 @@ export async function POST(req: Request) {
   const result = await draftMessage({
     voice,
     channel: parsed.data.channel,
+    tone: isToneId(parsed.data.tone) ? parsed.data.tone : undefined,
     contactName: detail.contact?.name ?? detail.opp.title,
     company: detail.contact?.company,
     dealTitle: detail.opp.title,
