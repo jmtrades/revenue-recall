@@ -9,27 +9,60 @@
 
 /** Phrases that scream "AI" or "template". Never produce these. */
 export const AI_TELLS: string[] = [
+  // Robotic openers
   "i hope this email finds you well",
   "i hope this finds you well",
+  "i hope this message finds you",
   "i hope you're doing well",
+  "i hope you are doing well",
+  "i hope all is well",
+  "i trust this email",
+  "i trust you're well",
   "i wanted to reach out",
   "i am reaching out",
   "i'm reaching out",
   "just reaching out",
+  "i wanted to touch base",
+  // Filler follow-up clichés
   "circling back",
   "circle back",
   "touch base",
-  "i hope all is well",
+  "touching base",
+  "as we discussed",
+  "as previously mentioned",
+  "per our conversation",
+  "per my last email",
+  "per my previous email",
+  "as per our",
+  // Stiff closers
   "at your earliest convenience",
   "please don't hesitate",
   "don't hesitate to reach out",
+  "don't hesitate to contact",
   "feel free to reach out",
   "looking forward to hearing from you",
+  "i look forward to hearing",
   "i'd be more than happy",
   "i would be more than happy",
   "let me know if you have any questions",
+  "thank you for your time and consideration",
+  "thank you in advance",
+  "warm regards",
+  "best regards",
+  "kind regards",
+  // Corporate filler / hype
   "in today's fast-paced",
   "in today's ever-changing",
+  "without further ado",
+  "needless to say",
+  "at the end of the day",
+  "first and foremost",
+  "that being said",
+  "rest assured",
+  "we are thrilled",
+  "i am excited to",
+  "we're excited to share",
+  // AI-favorite vocabulary
   "delve",
   "leverage",
   "utilize",
@@ -40,14 +73,28 @@ export const AI_TELLS: string[] = [
   "cutting-edge",
   "best-in-class",
   "game-changer",
+  "game changer",
   "unlock the potential",
   "take it to the next level",
+  "move the needle",
+  "low-hanging fruit",
   "synergy",
   "furthermore",
   "moreover",
-  "rest assured",
-  "we are thrilled",
-  "i am excited to",
+  "a myriad of",
+  "plethora",
+  "ecosystem",
+  "holistic",
+  "paradigm",
+  "actionable insights",
+  "supercharge",
+  "skyrocket",
+  "tap into",
+  "harness the power",
+  "transform your",
+  "revolutionize",
+  "empower your",
+  "as an ai",
 ];
 
 /**
@@ -80,3 +127,60 @@ export function sentence(s: string): string {
   const t = s.trim();
   return /[.!?]$/.test(t) ? t : `${t}.`;
 }
+
+/**
+ * Salt a base seed so independent parts of a message (greeting, sign-off,
+ * skeleton choice, …) vary independently of each other but stay deterministic
+ * for a given deal. Without salting, every part of a message would rotate in
+ * lockstep and the output would still feel templated.
+ */
+export function seeded(seed: string, salt: string): string {
+  return `${seed}::${salt}`;
+}
+
+/** Pick from a pool using a salted seed. Shorthand for the common pattern. */
+export function pick<T>(items: T[], seed: string, salt: string): T {
+  return pickVariant(items, seeded(seed, salt));
+}
+
+/**
+ * The point of these pools is structural variety. A real person doesn't open
+ * every message the same way, so we rotate greetings, connectors, and easy-outs
+ * independently — combined with multiple body skeletons, two deals almost never
+ * produce the same-shaped message. None of these may contain an AI tell.
+ */
+
+/** Email greetings. Each embeds the first name so the body always personalizes. */
+export const GREETINGS_EMAIL: ((f: string) => string)[] = [
+  (f) => `Hi ${f},`,
+  (f) => `Hey ${f},`,
+  (f) => `${f} —`,
+  (f) => `${f},`,
+  (f) => `Hey ${f}, quick one —`,
+];
+
+/** SMS greetings: plain, lowercase-casual, no trailing punctuation. */
+export const GREETINGS_SMS: ((f: string) => string)[] = [
+  (f) => `hey ${f}`,
+  (f) => `hi ${f}`,
+  (f) => `${f}`,
+  (f) => `hey ${f}`,
+];
+
+/** Low-pressure email closers for re-engagement, so we never repeat one line. */
+export const EASY_OUT_EMAIL: string[] = [
+  "No rush at all — if the timing's off, just say so and I'll back off.",
+  'If now\'s not the moment, no problem at all — a quick "not now" works.',
+  "Totally fine if this has slid down your list. Just tell me either way.",
+  "Either way's good with me — I'd rather know than keep guessing.",
+  "No pressure on my end — tell me to hold off and I will.",
+];
+
+/** Low-pressure SMS easy-outs (lowercase-casual). */
+export const EASY_OUT_SMS: string[] = [
+  "no pressure either way",
+  "totally fine if now's not the time",
+  "just say the word if you'd rather i hold off",
+  "no worries if it's not the moment",
+  "either way's good, just let me know",
+];

@@ -1,6 +1,18 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
 import { getPlaybook } from "@/lib/industries";
-import { AI_TELLS, capitalize as cap, firstName, pickVariant, sentence } from "@/lib/copy";
+import {
+  AI_TELLS,
+  capitalize as cap,
+  firstName,
+  pickVariant,
+  pick,
+  seeded,
+  sentence,
+  GREETINGS_EMAIL,
+  GREETINGS_SMS,
+  EASY_OUT_EMAIL,
+  EASY_OUT_SMS,
+} from "@/lib/copy";
 
 export interface DraftInput {
   channel: "email" | "sms" | "call";
@@ -70,8 +82,10 @@ function signOff(input: DraftInput): string {
 
 /**
  * Deterministic, industry-aware, human-sounding fallback used when no API key is
- * set (the default demo path). Pulls natural phrasing from the industry playbook
- * and varies per deal so it never reads like a fixed template.
+ * set (the default demo path). Composes from multiple body skeletons whose parts
+ * (greeting, opener, next-step, easy-out, sign-off) each rotate on an
+ * independent salted seed — so two deals almost never produce the same-shaped
+ * message, and nothing reads like a fixed mail-merge.
  */
 function fallback(input: DraftInput): DraftResult {
   const first = firstName(input.contactName);
@@ -79,6 +93,7 @@ function fallback(input: DraftInput): DraftResult {
   const seed = `${input.dealTitle}|${input.contactName}|${input.channel}`;
   const cold = (input.daysSinceContact ?? 0) >= 14 || input.recallReason === "lost_winnable";
   const sig = signOff(input);
+  const sigLine = sig ? `\n\n${sig}` : "";
 
   // Prefer the workspace's own go-to lines when they've tuned them.
   const nextFor = (ch: "email" | "sms"): string[] =>
@@ -86,41 +101,132 @@ function fallback(input: DraftInput): DraftResult {
   const reLines = input.voice?.customReengage?.length ? input.voice.customReengage : pb.reengage;
 
   if (input.channel === "sms") {
-    const step = pickVariant(nextFor("sms"), seed);
-    const body = cold
-      ? `${sentence(`hey ${first}, ${pickVariant(reLines, seed)}`)} ${step}`
-      : `hey ${first} — ${step}`;
-    return { body, source: "template" };
+    return { body: smsFallback(input, first, seed, cold, nextFor("sms"), reLines), source: "template" };
   }
-
   if (input.channel === "call") {
-    const [a, b, c] = [pb.nextSteps.call[0], pb.nextSteps.call[1], pb.nextSteps.call[2]];
-    return {
-      body: [
-        `• Open like you know them: reference ${input.company ?? "their situation"}${input.daysSinceContact ? ` and that it's been ${input.daysSinceContact} days` : ""}.`,
-        `• ${a}`,
-        `• ${b ?? "Listen for the real blocker before you pitch anything."}`,
-        `• ${c ?? `Keep ${input.valueLabel.toLowerCase()} (${input.value} ${input.currency}) in mind and anchor to it.`}`,
-        `• Lock one concrete next step with a date before you hang up.`,
-      ].join("\n"),
-      source: "template",
-    };
+    return { body: callFallback(input, seed), source: "template" };
+  }
+  return { ...emailFallback(input, first, seed, cold, sigLine, nextFor("email"), reLines), source: "template" };
+}
+
+function smsFallback(input: DraftInput, first: string, seed: string, cold: boolean, stepPool: string[], reLines: string[]): string {
+  const greet = pick(GREETINGS_SMS, seed, "greet")(first);
+  const step = pickVariant(stepPool, seeded(seed, "step"));
+
+  if (cold) {
+    const re = pickVariant(reLines, seeded(seed, "re"));
+    const out = pick(EASY_OUT_SMS, seed, "out");
+    const skeletons = [
+      `${greet}, ${sentence(re)} ${sentence(step)}`,
+      `${sentence(re)} ${sentence(step)} ${sentence(out)}`,
+      `${greet} — ${sentence(re)} ${sentence(step)}`,
+      `${sentence(re)} ${sentence(step)}`,
+    ];
+    return pick(skeletons, seed, "sms_cold");
   }
 
-  // email
-  const step = pickVariant(nextFor("email"), seed);
-  if (cold) {
-    const subject = pickVariant([`still on your radar, ${first}?`, `worth picking this back up?`, `quick one, ${first}`], seed);
-    const body = `Hi ${first},\n\n${sentence(cap(pickVariant(reLines, seed)))} ${cap(step)}\n\nEither way, no pressure — just tell me to back off and I will.${sig ? `\n\n${sig}` : ""}`;
-    return { subject: cap(subject), body, source: "template" };
-  }
-  const subject = pickVariant([`next on ${input.dealTitle}`, `quick next step, ${first}`, `keeping ${input.dealTitle} moving`], seed);
-  const opener = pickVariant(
-    [`Wanted to keep ${input.dealTitle} moving`, `Following up on ${input.dealTitle}`, `Picking back up on ${input.dealTitle}`],
+  const skeletons = [
+    `${greet} — ${sentence(step)}`,
+    `${greet}, ${sentence(step)}`,
+    `${sentence(step)}`,
+    `${greet}, quick one — ${sentence(step)}`,
+  ];
+  return pick(skeletons, seed, "sms_warm");
+}
+
+function callFallback(input: DraftInput, seed: string): string {
+  const pb = getPlaybook(input.industryId ?? "generic");
+  const [a, b, c] = [pb.nextSteps.call[0], pb.nextSteps.call[1], pb.nextSteps.call[2]];
+  const opener = pick(
+    [
+      `Open like you know them: reference ${input.company ?? "their situation"}${input.daysSinceContact ? ` and that it's been ${input.daysSinceContact} days` : ""}.`,
+      `Skip the script — start with ${input.company ?? "what they're working on"} and why you're calling now.`,
+      `Lead warm: a quick "${input.daysSinceContact ? "been a bit" : "good timing"}" and straight into ${input.company ?? "their situation"}.`,
+    ],
     seed,
+    "call_open",
   );
-  const body = `Hi ${first},\n\n${opener} — we left off around ${input.stageLabel.toLowerCase()}. ${cap(step)}${sig ? `\n\n${sig}` : ""}`;
-  return { subject: cap(subject), body, source: "template" };
+  const closer = pick(
+    [
+      "Lock one concrete next step with a date before you hang up.",
+      "Don't end without a specific day and time for the next step.",
+      "Get a real commitment — a date on the calendar, not a 'maybe'.",
+    ],
+    seed,
+    "call_close",
+  );
+  return [
+    `• ${opener}`,
+    `• ${a}`,
+    `• ${b ?? "Listen for the real blocker before you pitch anything."}`,
+    `• ${c ?? `Keep ${input.valueLabel.toLowerCase()} (${input.value} ${input.currency}) in mind and anchor to it.`}`,
+    `• ${closer}`,
+  ].join("\n");
+}
+
+function emailFallback(
+  input: DraftInput,
+  first: string,
+  seed: string,
+  cold: boolean,
+  sigLine: string,
+  stepPool: string[],
+  reLines: string[],
+): { subject: string; body: string } {
+  const greet = pick(GREETINGS_EMAIL, seed, "greet")(first);
+  const step = pickVariant(stepPool, seeded(seed, "step"));
+
+  if (cold) {
+    const re = pickVariant(reLines, seeded(seed, "re"));
+    const out = pick(EASY_OUT_EMAIL, seed, "out");
+    const subject = pick(
+      [
+        `still on your radar, ${first}?`,
+        `worth picking this back up?`,
+        `quick one, ${first}`,
+        `${input.dealTitle} — still live?`,
+        `should I keep this open, ${first}?`,
+      ],
+      seed,
+      "subj",
+    );
+    const skeletons = [
+      `${greet}\n\n${sentence(cap(re))} ${sentence(cap(step))}\n\n${out}${sigLine}`,
+      `${greet}\n\n${sentence(cap(re))}\n\n${sentence(cap(step))} ${out}${sigLine}`,
+      `${greet}\n\n${sentence(cap(step))} The reason I ask: ${sentence(re)}\n\n${out}${sigLine}`,
+      `${greet}\n\n${sentence(cap(re))} ${sentence(cap(step))} ${out}${sigLine}`,
+    ];
+    return { subject: cap(subject), body: pick(skeletons, seed, "email_cold") };
+  }
+
+  const subject = pick(
+    [
+      `next on ${input.dealTitle}`,
+      `quick next step, ${first}`,
+      `keeping ${input.dealTitle} moving`,
+      `where we're at on ${input.dealTitle}`,
+    ],
+    seed,
+    "subj",
+  );
+  const opener = pick(
+    [
+      `Wanted to keep ${input.dealTitle} moving`,
+      `Following up on ${input.dealTitle}`,
+      `Picking back up on ${input.dealTitle}`,
+      `Keeping this one warm`,
+    ],
+    seed,
+    "opener",
+  );
+  const stageLow = input.stageLabel.toLowerCase();
+  const skeletons = [
+    `${greet}\n\n${opener} — we left off around ${stageLow}. ${sentence(cap(step))}${sigLine}`,
+    `${greet}\n\n${opener}. ${sentence(cap(step))}${sigLine}`,
+    `${greet}\n\n${sentence(cap(step))}\n\nWe're around ${stageLow} now, so this feels like the right next move.${sigLine}`,
+    `${greet}\n\n${opener}. We're at ${stageLow}. ${sentence(cap(step))}${sigLine}`,
+  ];
+  return { subject: cap(subject), body: pick(skeletons, seed, "email_warm") };
 }
 
 function playbookBlock(input: DraftInput): string {

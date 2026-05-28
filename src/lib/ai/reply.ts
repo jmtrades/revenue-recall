@@ -1,6 +1,6 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
 import { getPlaybook } from "@/lib/industries";
-import { capitalize, firstName, pickVariant, sentence } from "@/lib/copy";
+import { capitalize, firstName, pickVariant, pick, seeded, sentence, GREETINGS_EMAIL } from "@/lib/copy";
 
 export interface ReplyInput {
   channel: "email" | "sms";
@@ -47,25 +47,58 @@ function fallback(input: ReplyInput): ReplyResult {
   const pb = getPlaybook(input.industryId ?? "generic");
   const seed = `${input.dealTitle}|${input.contactName}|${input.incoming.length}`;
   const sig = input.voice?.signature || input.voice?.senderName || "";
+  const sigLine = sig ? `\n\n${sig}` : "";
   const intent = detectIntent(input.incoming);
   const sms = input.channel === "sms";
   const stepPool = input.voice?.customNextSteps?.length ? input.voice.customNextSteps : pb.nextSteps[sms ? "sms" : "email"];
+  const greet = pick(GREETINGS_EMAIL, seed, "greet")(first);
+  const step = pickVariant(stepPool, seeded(seed, "step"));
 
   let body: string;
   if (intent === "decline") {
     body = sms
-      ? `no worries at all ${first} — thanks for letting me know. if anything changes down the road, i'm here. all the best.`
-      : `Hi ${first},\n\nTotally understand — thanks for being straight with me. I'll leave it here, but if anything changes down the line, you know where to find me. Wishing you the best.${sig ? `\n\n${sig}` : ""}`;
+      ? pick(
+          [
+            `no worries at all ${first} — thanks for letting me know. if anything changes down the road, i'm around.`,
+            `all good ${first}, appreciate the heads up. door's open if things shift later.`,
+            `got it ${first}, thanks for being straight with me. i'm here if that changes.`,
+          ],
+          seed,
+          "decline_sms",
+        )
+      : `${greet}\n\n${pick(
+          [
+            "Totally understand — thanks for being straight with me. I'll leave it here, but if anything changes down the line, you know where to find me.",
+            "No problem at all, and thanks for letting me know. I'll close this out on my end — I'm around anytime if that shifts.",
+            "Fair enough, and I appreciate you telling me rather than leaving me guessing. I'll stop here; the door stays open.",
+          ],
+          seed,
+          "decline_email",
+        )}${sigLine}`;
   } else if (intent === "question") {
-    const step = pickVariant(stepPool, seed);
     body = sms
-      ? `good question ${first}. short version: happy to get you a straight answer. ${step}`
-      : `Hi ${first},\n\nGood question — happy to get you a clear answer on that rather than guess over email. ${sentence(capitalize(step))}${sig ? `\n\n${sig}` : ""}`;
+      ? `${pick(
+          [`good question ${first}. short version: happy to get you a straight answer.`, `fair question ${first} — let me get you the real answer, not a guess.`, `great question ${first}. i'd rather get you the actual number.`],
+          seed,
+          "q_sms",
+        )} ${sentence(step)}`
+      : `${greet}\n\n${pick(
+          ["Good question — happy to get you a clear answer rather than guess over email.", "Great question. Let me get you a straight answer instead of hand-waving it.", "Fair question, and I'd rather get you the real number than ballpark it."],
+          seed,
+          "q_email",
+        )} ${sentence(capitalize(step))}${sigLine}`;
   } else {
-    const step = pickVariant(stepPool, seed);
     body = sms
-      ? `thanks ${first}, appreciate you getting back. ${step}`
-      : `Hi ${first},\n\nThanks for getting back to me, appreciate it. ${sentence(capitalize(step))}${sig ? `\n\n${sig}` : ""}`;
+      ? `${pick(
+          [`thanks ${first}, appreciate you getting back.`, `nice one ${first} — thanks for the reply.`, `great, thanks ${first}.`],
+          seed,
+          "pos_sms",
+        )} ${sentence(step)}`
+      : `${greet}\n\n${pick(
+          ["Thanks for getting back to me, appreciate it.", `Thanks ${first} — glad this is still live.`, "Great, and thanks for the quick reply."],
+          seed,
+          "pos_email",
+        )} ${sentence(capitalize(step))}${sigLine}`;
   }
 
   return { subject: sms ? undefined : `Re: ${input.dealTitle}`, body, source: "template" };
