@@ -330,3 +330,9 @@ alter table digest_runs enable row level security;
 drop policy if exists org_rw_digest_runs on digest_runs;
 create policy org_rw_digest_runs on digest_runs
   using (org_id = current_org_id()) with check (org_id = current_org_id());
+
+-- ===== supabase/migrations/0011_org_theme.sql =====
+-- Per-org appearance. Stores the chosen accent (and room for future appearance
+-- options) as a small JSON blob; the app reads it to theme the UI chrome.
+
+alter table orgs add column if not exists theme jsonb not null default '{}'::jsonb;

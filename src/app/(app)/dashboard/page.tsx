@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getOverview, getActivityFeed, getReports } from "@/lib/queries";
 import { getOrgSettings } from "@/lib/org";
+import { getSessionUser } from "@/lib/auth";
+import { firstName } from "@/lib/copy";
 import { compactMoney, money, pct, relativeDays } from "@/lib/format";
 import { PageHeader, Stat, ReasonBadge, ScoreDot, Card, Avatar, ActivityIcon, Button } from "@/components/ui";
 import { Funnel, ProgressRing, BarChart, Sparkline } from "@/components/charts";
@@ -12,17 +14,36 @@ function timeAgo(iso: string): string {
   return relativeDays(days);
 }
 
+function partOfDay(hour: number): string {
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+/** A short, personal nudge based on what's actually waiting in the recall queue. */
+function focusLine(recallCount: number, recoverable: number, currency: string): string {
+  if (recallCount === 0) return "Your pipeline is well tended — nothing slipping today.";
+  return `${recallCount} ${recallCount === 1 ? "deal needs" : "deals need"} attention — ${money(recoverable, currency)} recoverable if you act now.`;
+}
+
 export default async function DashboardPage() {
-  const [o, feed, reports, org] = await Promise.all([getOverview(), getActivityFeed(8), getReports(), getOrgSettings()]);
+  const [o, feed, reports, org, user] = await Promise.all([
+    getOverview(),
+    getActivityFeed(8),
+    getReports(),
+    getOrgSettings(),
+    getSessionUser(),
+  ]);
   const m = o.metrics;
   const wonThisMonth = reports.monthlyWon[reports.monthlyWon.length - 1]?.value ?? 0;
   const attainment = org.monthlyQuota > 0 ? wonThisMonth / org.monthlyQuota : 0;
+  const greeting = user?.name ? `${partOfDay(new Date().getHours())}, ${firstName(user.name)}` : partOfDay(new Date().getHours());
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Welcome back`}
-        subtitle={`${o.industryLabel} · connected to ${o.providerLabel}`}
+        title={greeting}
+        subtitle={focusLine(o.recallSummary.itemCount, o.recallSummary.totalRecoverable, m.currency)}
         action={<Button href="/recall" variant="primary">↺ Work the recall queue</Button>}
       />
 

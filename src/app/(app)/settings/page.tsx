@@ -10,6 +10,7 @@ import { pct } from "@/lib/format";
 import { PageHeader, Card, Avatar, InfoRow } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
 import { OrgSettingsForm } from "@/components/OrgSettingsForm";
+import { AppearanceSettings } from "@/components/AppearanceSettings";
 import { VoiceStudio } from "@/components/VoiceStudio";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { ImportCsv } from "@/components/ImportCsv";
@@ -177,6 +178,12 @@ export default async function SettingsPage() {
     </Card>
   );
 
+  const appearanceTab = (
+    <Card>
+      <AppearanceSettings initialAccent={org.theme.accent} persisted={org.persisted} />
+    </Card>
+  );
+
   const fieldsTab = (
     <Card>
       {active.fields.length === 0 ? (
@@ -203,6 +210,7 @@ export default async function SettingsPage() {
       <Tabs
         tabs={[
           { id: "general", label: "General", content: general },
+          { id: "appearance", label: "Appearance", content: appearanceTab },
           { id: "voice", label: "Voice", content: voiceTab },
           { id: "industry", label: "Industry", content: industryTab },
           { id: "pipeline", label: "Pipeline", content: pipelineTab },

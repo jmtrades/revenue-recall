@@ -4,6 +4,7 @@ import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getConfig } from "@/lib/config";
 import { getIndustry } from "@/lib/industries";
 import { defaultNotificationPrefs, mergeNotificationPrefs, type NotificationPrefs } from "@/lib/notifications";
+import { defaultTheme, mergeTheme, type Theme } from "@/lib/theme";
 
 export { NOTIFICATION_OPTIONS, defaultNotificationPrefs, mergeNotificationPrefs, type NotificationPrefs } from "@/lib/notifications";
 
@@ -14,6 +15,7 @@ export interface OrgSettings {
   currency: string;
   monthlyQuota: number;
   notificationPrefs: NotificationPrefs;
+  theme: Theme;
   /** true when backed by a database row (editable), false when env-derived. */
   persisted: boolean;
 }
@@ -26,6 +28,7 @@ function envFallback(): OrgSettings {
     currency: getIndustry(cfg.industryId).currency,
     monthlyQuota: cfg.monthlyQuota,
     notificationPrefs: defaultNotificationPrefs(),
+    theme: defaultTheme(),
     persisted: false,
   };
 }
@@ -37,7 +40,7 @@ async function read(): Promise<OrgSettings> {
   if (!orgId) return envFallback();
   const { data } = await client
     .from("orgs")
-    .select("id,name,industry_id,currency,monthly_quota,notification_prefs")
+    .select("id,name,industry_id,currency,monthly_quota,notification_prefs,theme")
     .eq("id", orgId)
     .maybeSingle();
   if (!data) return envFallback();
@@ -48,6 +51,7 @@ async function read(): Promise<OrgSettings> {
     currency: (data.currency as string) ?? "USD",
     monthlyQuota: Number(data.monthly_quota ?? getConfig().monthlyQuota),
     notificationPrefs: mergeNotificationPrefs(data.notification_prefs as Record<string, unknown> | null),
+    theme: mergeTheme(data.theme as Record<string, unknown> | null),
     persisted: true,
   };
 }
@@ -59,6 +63,7 @@ export async function updateOrgSettings(patch: {
   name?: string;
   monthlyQuota?: number;
   notificationPrefs?: NotificationPrefs;
+  theme?: Theme;
 }): Promise<OrgSettings> {
   const client = getSupabase();
   if (!client) throw new Error("Settings are read-only without a database.");
@@ -68,6 +73,7 @@ export async function updateOrgSettings(patch: {
   if (patch.name !== undefined) update.name = patch.name;
   if (patch.monthlyQuota !== undefined) update.monthly_quota = patch.monthlyQuota;
   if (patch.notificationPrefs !== undefined) update.notification_prefs = mergeNotificationPrefs(patch.notificationPrefs);
+  if (patch.theme !== undefined) update.theme = mergeTheme(patch.theme);
   if (Object.keys(update).length === 0) return read();
   const { error } = await client.from("orgs").update(update).eq("id", orgId);
   if (error) throw new Error(error.message);

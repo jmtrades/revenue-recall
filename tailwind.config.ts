@@ -11,8 +11,8 @@ const config: Config = {
         border: "#232b3d",
         muted: "#8a93a6",
         brand: {
-          DEFAULT: "#5b8cff",
-          soft: "#2a3a66",
+          DEFAULT: "rgb(var(--brand-rgb) / <alpha-value>)",
+          soft: "rgb(var(--brand-soft-rgb) / <alpha-value>)",
         },
         success: "#34d399",
         warn: "#fbbf24",
