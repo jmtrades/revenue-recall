@@ -2,6 +2,7 @@ import Link from "next/link";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { Footer } from "@/components/marketing/Footer";
 import { HeroPreview } from "@/components/marketing/HeroPreview";
+import { Icon, type IconName } from "@/components/icons";
 import { INDUSTRIES } from "@/lib/industries";
 
 const DESCRIPTION =
@@ -19,13 +20,13 @@ export const metadata = {
   twitter: { card: "summary_large_image", title: "Revenue Recall", description: DESCRIPTION },
 };
 
-const FEATURES = [
-  { icon: "↺", title: "Revenue Recall engine", body: "Automatically scores every deal going cold, stalled, or marked lost-but-winnable — and tells a rep the single best next action, ranked by recoverable revenue." },
-  { icon: "⛁", title: "Works with any CRM — or none", body: "One adapter layer for Salesforce, HubSpot, Close, Pipedrive, or our built-in CRM. No CRM? Start fresh in minutes. Switch backends without losing a thing." },
-  { icon: "✨", title: "AI that drafts and calls", body: "Claude writes personalized email, SMS, and call scripts from real deal context, briefs reps before every call, and summarizes outcomes straight into the timeline." },
-  { icon: "☎", title: "Power Dialer", body: "Work your highest-value calls back-to-back with AI prep, click-to-call, and auto-logged outcomes and sentiment. No more cold dials into the void." },
-  { icon: "⚡", title: "Automations", body: "Speed-to-lead, idle-deal recall, stage hand-offs, win-backs — set-and-forget rules that handle the follow-up so nothing slips." },
-  { icon: "◎", title: "Built for every industry", body: "Real estate, mortgage, insurance, SaaS, agencies, auto, home services — terminology, pipelines, and playbooks tuned to how you actually sell." },
+const FEATURES: { icon: IconName; title: string; body: string }[] = [
+  { icon: "recall", title: "Revenue Recall engine", body: "Automatically scores every deal going cold, stalled, or marked lost-but-winnable — and tells a rep the single best next action, ranked by recoverable revenue." },
+  { icon: "database", title: "Works with any CRM — or none", body: "One adapter layer for Salesforce, HubSpot, Close, Pipedrive, or our built-in CRM. No CRM? Start fresh in minutes. Switch backends without losing a thing." },
+  { icon: "autopilot", title: "AI that drafts and calls", body: "Claude writes personalized email, SMS, and call scripts from real deal context, briefs reps before every call, and summarizes outcomes straight into the timeline." },
+  { icon: "dialer", title: "Power Dialer", body: "Work your highest-value calls back-to-back with AI prep, click-to-call, and auto-logged outcomes and sentiment. No more cold dials into the void." },
+  { icon: "automations", title: "Automations", body: "Speed-to-lead, idle-deal recall, stage hand-offs, win-backs — set-and-forget rules that handle the follow-up so nothing slips." },
+  { icon: "layers", title: "Built for every industry", body: "Real estate, mortgage, insurance, SaaS, agencies, auto, home services — terminology, pipelines, and playbooks tuned to how you actually sell." },
 ];
 
 const STEPS = [
@@ -149,7 +150,7 @@ export default function LandingPage() {
         <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f) => (
             <div key={f.title} className="group rounded-2xl border border-border bg-surface p-6 transition hover:border-brand/40 hover:bg-surface-2/40">
-              <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand-soft text-xl text-brand transition group-hover:scale-105">{f.icon}</div>
+              <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand-soft text-brand transition group-hover:scale-105"><Icon name={f.icon} size={22} /></div>
               <h3 className="mt-4 font-semibold text-white">{f.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted">{f.body}</p>
             </div>
