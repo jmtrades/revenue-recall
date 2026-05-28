@@ -184,8 +184,21 @@ function fallback(input: ReplyInput): ReplyResult {
   const step = pickVariant(stepPool, seeded(seed, "step"));
   const appendStep = intent === "question" || intent === "positive";
 
+  // Objections get an industry-true reframe that already ends on a question, so
+  // a price/timing/competitor/trust/info reply sounds like a rep who knows this
+  // exact business. Everything else uses the universal human responses.
+  const isObjection = intent === "price" || intent === "timing" || intent === "competitor" || intent === "trust" || intent === "info";
+  const ackPool = { sms: ["totally fair", "fair one", "makes sense", "good question"], email: ["Totally fair", "Fair question", "Makes sense", "Good question"] };
+
   let body: string;
-  if (sms) {
+  if (isObjection) {
+    const angle = pb.objectionAngles[intent];
+    if (sms) {
+      body = `${pick(ackPool.sms, seed, "ack")}. ${angle}`;
+    } else {
+      body = `${greet}\n\n${pick(ackPool.email, seed, "ack")}. ${capitalize(angle)}${sigLine}`;
+    }
+  } else if (sms) {
     const ack = pick(RESPONSES[intent].sms(first), seed, `${intent}_sms`);
     body = appendStep ? `${ack} ${sentence(step)}` : ack;
   } else {
@@ -211,7 +224,13 @@ THEIR INCOMING MESSAGE:
 How a real ${input.industryLabel ?? "sales"} rep talks (match the spirit, don't copy):
 - Natural next steps: ${pb.nextSteps[input.channel].join(" / ")}
 - Objections you might be answering: ${pb.objections.join("; ")}
-${input.voice?.profile ? `\nWrite in THIS person's voice — match it so it sounds like them, not an AI:\n"""${input.voice.profile}"""` : ""}
+- How a pro in this business reframes each objection (match this angle, your words):
+  • Price: ${pb.objectionAngles.price}
+  • Timing: ${pb.objectionAngles.timing}
+  • Competitor: ${pb.objectionAngles.competitor}
+  • Skeptical: ${pb.objectionAngles.trust}
+  • "Just send info": ${pb.objectionAngles.info}
+${input.voice?.customNextSteps?.length ? `\nThis rep's own go-to next steps (prefer one when it fits): ${input.voice.customNextSteps.join(" / ")}` : ""}${input.voice?.profile ? `\nWrite in THIS person's voice — match it so it sounds like them, not an AI:\n"""${input.voice.profile}"""` : ""}
 
 Write the reply now, as this human. Answer what they actually said.`;
   try {

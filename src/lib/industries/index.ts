@@ -35,7 +35,17 @@ export interface IndustryPlaybook {
   sampleVoice: string[];
   /** Words and phrases native to this industry. */
   vocabulary: string[];
+  /**
+   * Industry-true handling for the core objection types. Each is a human reframe
+   * that ends on a question, so a reply lands like a rep who knows this business —
+   * not a generic script. Lowercase-initial so it composes for SMS; the email
+   * path capitalizes it. TypeScript enforces all five on every industry.
+   */
+  objectionAngles: Record<ObjectionKind, string>;
 }
+
+/** The objection types the reply engine reframes (decline/question/positive aren't reframed). */
+export type ObjectionKind = "price" | "timing" | "competitor" | "trust" | "info";
 
 export interface IndustryTemplate {
   id: string;
@@ -102,6 +112,13 @@ export const INDUSTRIES: IndustryTemplate[] = [
         "morning! pulled fresh comps for your place and you've got more equity than you'd think. coffee this week to talk strategy?",
       ],
       vocabulary: ["showing", "listing", "comps", "offer", "closing", "pre-approval", "walkthrough", "under contract"],
+      objectionAngles: {
+        price: "what a place actually sells for tracks the market more than the asking number, so what's the ceiling you don't want to cross?",
+        timing: "the right home shows up when it's ready, not on a schedule, want me to keep an eye out and ping you the moment something real lands?",
+        competitor: "good you've got an agent, that matters a lot, what's the one thing you wish they were doing differently?",
+        trust: "it's a big move, so it's fair to be careful, want me to send a couple of recent closes near you so you can see how it actually played out?",
+        info: "happy to send something over, what matters more to you right now, the numbers or the neighborhoods?",
+      },
     },
   },
   {
@@ -143,6 +160,13 @@ export const INDUSTRIES: IndustryTemplate[] = [
         "quick one: your pre-approval expires friday. want me to refresh it so you don't lose your spot?",
       ],
       vocabulary: ["rate lock", "pre-approval", "refi", "closing costs", "underwriting", "APR", "conditions", "funding"],
+      objectionAngles: {
+        price: "rate and fees are the whole game here, so what rate were you quoted, and I'll tell you straight if I can beat it?",
+        timing: "rates move on their own schedule, so want me to keep watch and only ping you if they dip into your range?",
+        competitor: "good you're working with someone, are they actually locking your rate or still leaving it floating?",
+        trust: "money this big, it's smart to be careful, want me to run your exact scenario so you see real numbers and not a pitch?",
+        info: "can do, are you more focused on the monthly payment or the cash you'd need to close?",
+      },
     },
   },
   {
@@ -182,6 +206,13 @@ export const INDUSTRIES: IndustryTemplate[] = [
         "found a plan with better coverage for less than you're paying now. worth two minutes to look?",
       ],
       vocabulary: ["premium", "coverage", "deductible", "renewal", "carrier", "quote", "policy", "bound"],
+      objectionAngles: {
+        price: "cheaper premiums usually mean thinner coverage, so what's the thing you'd be gutted to lose if it wasn't covered?",
+        timing: "gaps in coverage are the expensive kind, so when's your current policy up for renewal?",
+        competitor: "good you're covered, when did someone last actually check your policy for gaps?",
+        trust: "claims are where it really counts, and it's fair to ask, want me to walk you through how yours would actually pay out?",
+        info: "happy to, are you trying to save on what you've got or close a gap you're worried about?",
+      },
     },
   },
   {
@@ -224,6 +255,13 @@ export const INDUSTRIES: IndustryTemplate[] = [
         "if budget's the holdup, i can put together an ROI breakdown your finance team will actually like. want me to?",
       ],
       vocabulary: ["trial", "POC", "rollout", "seats", "ROI", "stakeholders", "onboarding", "renewal", "ARR"],
+      objectionAngles: {
+        price: "it should pay for itself or it isn't worth it, so what would it need to save you to be a no-brainer?",
+        timing: "bad timing kills good tools, so what'd need to be true for this to be worth it next quarter?",
+        competitor: "good you've got something already, where does it fall short when things get busy?",
+        trust: "it's fair to want proof, want me to show you a team like yours and what actually changed for them in the first month?",
+        info: "can do, what's the one workflow you'd want this to fix first?",
+      },
     },
   },
   {
@@ -263,6 +301,13 @@ export const INDUSTRIES: IndustryTemplate[] = [
         "no rush at all — just let me know if this is still live or if i should park it for now.",
       ],
       vocabulary: ["scope", "retainer", "deliverables", "phase", "kickoff", "statement of work", "milestone"],
+      objectionAngles: {
+        price: "you're paying for results, not hours, so what would a real win need to look like to make it worth it?",
+        timing: "no rush at all, want me to check back when your next campaign's on the horizon?",
+        competitor: "good you've got a team, what's the gap they haven't quite managed to close for you?",
+        trust: "agencies overpromise, so it's fair to be wary, want to see real numbers from a client in your space?",
+        info: "happy to, is the priority more leads, or better ones that'll actually close?",
+      },
     },
   },
   {
@@ -303,6 +348,13 @@ export const INDUSTRIES: IndustryTemplate[] = [
         "good news — incentives changed this month and your payment just dropped. want the new numbers?",
       ],
       vocabulary: ["test drive", "trade-in", "financing", "incentives", "lot", "payment", "down payment", "delivery"],
+      objectionAngles: {
+        price: "the sticker's never the real number once we factor everything in, so what monthly payment were you trying to land near?",
+        timing: "the right one tends to move fast, want me to hold it and I'll text you if someone else starts circling?",
+        competitor: "good you're shopping around, what's the best offer you've got so I know what I'm up against?",
+        trust: "it's fair to be cautious, want me to send the full history and the real numbers up front so there's no surprises?",
+        info: "can do, are you set on this model, or open to one that'd fit the budget better?",
+      },
     },
   },
   {
@@ -342,6 +394,13 @@ export const INDUSTRIES: IndustryTemplate[] = [
         "your quote's still good through the month. want me to lock in a spot before we book up?",
       ],
       vocabulary: ["estimate", "quote", "tech", "job", "install", "scheduled", "site visit", "warranty"],
+      objectionAngles: {
+        price: "cheap work tends to get done twice, so what's the budget you're hoping to stay under and I'll scope it right?",
+        timing: "small issues get pricey fast, want me to swing by for a quick look before it's a bigger job?",
+        competitor: "good you've got someone, did they actually stand behind the work they did?",
+        trust: "it's fair to be careful about who you let in, want me to send reviews from your street and a written quote?",
+        info: "happy to, what's the main thing you'd want sorted first?",
+      },
     },
   },
   {
@@ -378,6 +437,13 @@ export const INDUSTRIES: IndustryTemplate[] = [
         "happy to help whenever you're ready, no pressure at all. want me to send over the details?",
       ],
       vocabulary: ["next step", "follow up", "proposal", "timeline", "decision"],
+      objectionAngles: {
+        price: "it scales to what you actually need, so what's the budget you're working with?",
+        timing: "no rush at all, when's realistically a better time to pick this back up?",
+        competitor: "good you've got something already, what's the one thing it isn't quite doing for you?",
+        trust: "it's fair to be skeptical, want me to send one real example from someone in your exact spot?",
+        info: "what matters most to you here, so I send the right thing and not a brochure?",
+      },
     },
   },
 ];
