@@ -1,0 +1,220 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { TONES, DEFAULT_TONE, type ToneId } from "@/lib/tones";
+import {
+  isSpeechSupported,
+  isRecognitionSupported,
+  loadVoices,
+  pickVoice,
+  speak,
+  listenOnce,
+} from "@/lib/voice/speech";
+
+type Difficulty = "easy" | "medium" | "hard";
+interface Turn {
+  speaker: "rep" | "prospect";
+  text: string;
+}
+
+/**
+ * Live call role-play. The app plays a realistic prospect (spoken aloud with our
+ * in-house, no-third-party voice), the rep practises responding by typing or
+ * speaking, and the conversation engine can coach the ideal next line. All voice
+ * I/O is browser-native — no audio leaves the device, no provider key.
+ */
+export function RolePlay({ contactName, company, dealTitle }: { contactName: string; company?: string; dealTitle: string }) {
+  const [turns, setTurns] = useState<Turn[]>([]);
+  const [tone, setTone] = useState<ToneId>(DEFAULT_TONE);
+  const [difficulty, setDifficulty] = useState<Difficulty>("medium");
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [coach, setCoach] = useState<string | null>(null);
+  const [voiceOn, setVoiceOn] = useState(true);
+  const [listening, setListening] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const canSpeak = typeof window !== "undefined" && isSpeechSupported();
+  const canListen = typeof window !== "undefined" && isRecognitionSupported();
+
+  useEffect(() => {
+    if (canSpeak) loadVoices().then((v) => (voiceRef.current = pickVoice(v, { lang: "en" })));
+  }, [canSpeak]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, [turns, coach]);
+
+  async function fetchTurn(who: "rep" | "prospect", nextTurns: Turn[]): Promise<string> {
+    const res = await fetch("/api/voice/turn", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ who, contactName, company, dealTitle, tone, difficulty, turns: nextTurns }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "turn failed");
+    return data.text as string;
+  }
+
+  function sayAloud(text: string) {
+    if (voiceOn && canSpeak) speak(text, { rate: 1, pitch: 1, lang: "en-US" }, voiceRef.current);
+  }
+
+  async function start() {
+    setError(null);
+    setCoach(null);
+    setBusy(true);
+    try {
+      // Rep opens; the app (prospect) reacts.
+      const opener: Turn = { speaker: "rep", text: "Hey, it's me — caught you at an okay time?" };
+      const prospectText = await fetchTurn("prospect", [opener]);
+      const next = [opener, { speaker: "prospect" as const, text: prospectText }];
+      setTurns(next);
+      sayAloud(prospectText);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't start");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function send(text: string) {
+    const said = text.trim();
+    if (!said || busy) return;
+    setInput("");
+    setCoach(null);
+    setError(null);
+    const afterRep = [...turns, { speaker: "rep" as const, text: said }];
+    setTurns(afterRep);
+    setBusy(true);
+    try {
+      const prospectText = await fetchTurn("prospect", afterRep);
+      const next = [...afterRep, { speaker: "prospect" as const, text: prospectText }];
+      setTurns(next);
+      sayAloud(prospectText);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't continue");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function coachMe() {
+    setError(null);
+    setBusy(true);
+    try {
+      const ideal = await fetchTurn("rep", turns);
+      setCoach(ideal);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't coach");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function mic() {
+    if (!canListen || listening) return;
+    setError(null);
+    setListening(true);
+    listenOnce(
+      (t) => {
+        setListening(false);
+        void send(t);
+      },
+      { lang: "en-US", onError: (e) => { setListening(false); setError(`mic: ${e}`); } },
+    );
+  }
+
+  function reset() {
+    if (typeof window !== "undefined" && canSpeak) window.speechSynthesis.cancel();
+    setTurns([]);
+    setCoach(null);
+    setInput("");
+    setError(null);
+  }
+
+  const started = turns.length > 0;
+  const input2 = "rounded-lg border border-border bg-surface px-2 py-1 text-xs text-fg outline-none focus:border-brand";
+
+  return (
+    <div className="card">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h2 className="font-semibold text-fg">🎙 Practice this call</h2>
+        <div className="flex items-center gap-1.5">
+          <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)} className={input2} aria-label="Difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+          <select value={tone} onChange={(e) => setTone(e.target.value as ToneId)} className={input2} aria-label="Your tone">
+            {TONES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+          </select>
+          {canSpeak && (
+            <button onClick={() => setVoiceOn((v) => !v)} title="Toggle spoken voice" className={`rounded-lg border px-2 py-1 text-xs transition ${voiceOn ? "border-brand text-brand" : "border-border text-muted"}`}>
+              {voiceOn ? "🔊" : "🔇"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <p className="mb-3 text-xs text-muted">
+        You sell, the app plays {contactName.split(" ")[0]} as a {difficulty} prospect — out loud, on-device.
+        {!canSpeak && " (Spoken voice needs a browser that supports speech synthesis.)"}
+      </p>
+
+      <div ref={scrollRef} className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border bg-surface-2/40 p-3">
+        {!started ? (
+          <p className="py-6 text-center text-sm text-muted">Start a live role-play to rehearse the opener, objections, and the close.</p>
+        ) : (
+          turns.map((t, i) => (
+            <div key={i} className={`flex ${t.speaker === "rep" ? "justify-end" : "justify-start"}`}>
+              <span className={`max-w-[80%] rounded-2xl px-3 py-1.5 text-sm ${t.speaker === "rep" ? "bg-brand text-white" : "bg-surface text-fg"}`}>
+                {t.text}
+              </span>
+            </div>
+          ))
+        )}
+        {coach && (
+          <div className="mt-2 rounded-lg border border-brand/40 bg-brand-soft/20 p-2 text-xs text-fg">
+            <span className="font-medium text-brand">Coach — try: </span>{coach}
+          </div>
+        )}
+      </div>
+
+      {error && <p className="mt-2 text-xs text-danger">{error}</p>}
+
+      {!started ? (
+        <button onClick={start} disabled={busy} className="mt-3 w-full rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
+          {busy ? "Connecting…" : "Start role-play"}
+        </button>
+      ) : (
+        <>
+          <div className="mt-3 flex items-center gap-2">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && send(input)}
+              placeholder={busy ? "…" : "Your response…"}
+              disabled={busy}
+              className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand disabled:opacity-60"
+            />
+            {canListen && (
+              <button onClick={mic} disabled={busy || listening} title="Speak your response" className={`rounded-lg border px-3 py-2 text-sm transition ${listening ? "border-danger text-danger" : "border-border text-muted hover:text-fg"} disabled:opacity-50`}>
+                {listening ? "● listening" : "🎤"}
+              </button>
+            )}
+            <button onClick={() => send(input)} disabled={busy || !input.trim()} className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
+              Send
+            </button>
+          </div>
+          <div className="mt-2 flex items-center justify-between">
+            <button onClick={coachMe} disabled={busy} className="text-xs text-brand hover:underline disabled:opacity-50">💡 Coach me</button>
+            <button onClick={reset} className="text-xs text-muted hover:text-fg">Reset</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

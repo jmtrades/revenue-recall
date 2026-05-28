@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { CallQueueItem } from "@/lib/queries";
 import { Avatar, ReasonBadge, ScoreDot } from "@/components/ui";
+import { RolePlay } from "@/components/RolePlay";
 
 interface Brief {
   summary: string;
@@ -163,6 +164,8 @@ export function DialerView({ queue }: { queue: CallQueueItem[] }) {
               </div>
             )}
           </div>
+
+          <RolePlay contactName={active.contactName} company={active.company} dealTitle={active.title} />
 
           <div className="card">
             <h2 className="mb-2 font-semibold text-fg">Call notes</h2>
