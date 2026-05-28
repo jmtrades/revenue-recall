@@ -5,11 +5,19 @@ import { getIndustry } from "@/lib/industries";
 import { buildRecallQueue } from "@/lib/recall/engine";
 import { draftMessage } from "@/lib/ai/draft";
 import { isAiConfigured } from "@/lib/ai/client";
-import { sendEmail, sendSms } from "@/lib/comms";
+import { sendEmail, sendSms, placeCall } from "@/lib/comms";
+import { sendGate, type SkipReason } from "@/lib/agent/guardrails";
 import { compactMoney } from "@/lib/format";
 import { createRun, createOutboxItem, touchTask } from "@/lib/agent/store";
 import type { AgentAction, AgentRun, AgentTask } from "@/lib/agent/types";
 import type { Contact, Opportunity, Pipeline } from "@/lib/crm/types";
+
+const SKIP_LABEL: Record<NonNullable<SkipReason>, string> = {
+  opted_out: "Skipped — they opted out / asked us to stop.",
+  recently_contacted: "Skipped — already contacted recently (cooldown).",
+  quiet_hours: "Held — outside sending hours, will retry next run.",
+  daily_cap: "Held — daily send cap reached.",
+};
 
 const MAX_ITEMS = 8;
 
@@ -94,7 +102,16 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
         continue;
       }
 
-      const history = (await provider.listActivities(t.opp.id)).map((a) => `${a.kind}: ${a.summary}`);
+      // Guardrails: never message someone who opted out; in auto mode also respect
+      // cooldown, quiet hours, and the daily cap. Checked before drafting to save cost.
+      const activities = await provider.listActivities(t.opp.id);
+      const gate = sendGate({ contact, opp: t.opp, activities, autonomy: task.autonomy, sentSoFar: sent });
+      if (gate) {
+        actions.push({ type: task.channel, dealId: t.opp.id, title: name, detail: SKIP_LABEL[gate], result: "skipped", source: "template", value: t.recoverable });
+        continue;
+      }
+
+      const history = activities.map((a) => `${a.kind}: ${a.summary}`);
       const draft = await draftMessage({
         channel: task.channel === "call" ? "call" : task.channel,
         contactName: name,
@@ -120,7 +137,24 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
 
       let result: AgentAction["result"] = "drafted";
       if (task.channel === "call") {
-        result = "queued"; // talk track prepared for the dialer
+        if (task.autonomy === "auto" && to) {
+          // Place the call autonomously (real dial when Twilio is set; logged otherwise).
+          const res = await placeCall(to);
+          result = res.status === "failed" ? "skipped" : res.status === "sent" ? "sent" : "logged";
+          if (result !== "skipped") {
+            sent += 1;
+            await provider.logActivity({
+              opportunityId: t.opp.id,
+              contactId: t.opp.contactId,
+              kind: "call",
+              summary: `Auto-dialed. Talk track:\n${draft.body}`,
+              direction: "outbound",
+              occurredAt: new Date().toISOString(),
+            });
+          }
+        } else {
+          result = "queued"; // talk track prepared for the dialer (review mode / no number)
+        }
       } else if (task.autonomy === "auto") {
         if (!to) {
           result = "skipped";
@@ -158,11 +192,12 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
       });
     }
 
-    const verb = task.autonomy === "auto" && task.channel !== "call" && task.channel !== "none" ? `${sent} sent` : `${drafted} prepared`;
+    const skipped = actions.filter((a) => a.result === "skipped").length;
+    const verb = task.autonomy === "auto" && task.channel !== "none" ? `${sent} sent` : `${drafted} prepared`;
     const summary =
       targets.length === 0
         ? "No matching deals to work right now."
-        : `Worked ${targets.length} deal${targets.length === 1 ? "" : "s"} · ${verb}${recoverable > 0 ? ` · ${compactMoney(recoverable, "USD")} recoverable` : ""}.`;
+        : `Worked ${targets.length} deal${targets.length === 1 ? "" : "s"} · ${verb}${skipped ? ` · ${skipped} skipped (guardrails)` : ""}${recoverable > 0 ? ` · ${compactMoney(recoverable, "USD")} recoverable` : ""}.`;
 
     const run = await createRun({
       taskId: task.id,
