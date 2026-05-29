@@ -85,16 +85,9 @@ export default function LandingPage() {
               </Link>
             </div>
             <p className="mt-3 text-xs text-muted">Free to start · No credit card · Live in 2 minutes</p>
-            <div className="mt-6 flex items-center gap-4">
-              <div className="flex -space-x-2">
-                {["AC", "JN", "SP", "TR", "MK"].map((i, n) => (
-                  <span key={i} className="grid h-8 w-8 place-items-center rounded-full border-2 border-bg text-[10px] font-semibold text-white" style={{ background: ["#5b8cff", "#34d399", "#fbbf24", "#a78bfa", "#fb923c"][n] }}>{i}</span>
-                ))}
-              </div>
-              <div className="text-sm">
-                <span className="text-warn">★★★★★</span>
-                <span className="ml-2 text-muted">Closing teams across 8+ industries run on it</span>
-              </div>
+            <div className="mt-8 border-t border-border/60 pt-6">
+              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">Runs closing teams in</p>
+              <p className="mt-2 text-sm text-body">Real estate · SaaS · Insurance · Mortgage · Agencies · Auto · Home services</p>
             </div>
           </div>
           <div className="animate-fade-up [animation-delay:120ms]">
@@ -242,10 +235,10 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-5 py-20">
           <div className="grid gap-5 md:grid-cols-3">
             {TESTIMONIALS.map((t) => (
-              <figure key={t.role} className="rounded-2xl border border-border bg-surface p-6">
-                <div className="text-sm text-warn">★★★★★</div>
-                <blockquote className="mt-3 text-sm leading-relaxed text-fg">“{t.quote}”</blockquote>
-                <figcaption className="mt-4 text-xs text-muted">{t.role}</figcaption>
+              <figure key={t.role} className="rounded-2xl border border-border bg-surface p-6 shadow-soft">
+                <span className="font-display text-3xl leading-none text-brand">&ldquo;</span>
+                <blockquote className="mt-2 text-sm leading-relaxed text-fg">{t.quote}</blockquote>
+                <figcaption className="mt-4 text-xs font-medium uppercase tracking-wider text-muted">{t.role}</figcaption>
               </figure>
             ))}
           </div>

@@ -47,7 +47,7 @@ export function HeroPreview() {
                 <span className="min-w-0 flex-1 truncate text-sm text-fg">{r.name}</span>
                 <span className="hidden text-[11px] text-muted sm:inline">{r.reason}</span>
                 <span className="text-sm font-medium tabular-nums text-brand">{r.value}</span>
-                <span className="rounded-md bg-brand px-2 py-0.5 text-[10px] font-medium text-white">✨ Draft</span>
+                <span className="inline-flex items-center gap-1 rounded-md bg-brand/15 px-2 py-0.5 text-[10px] font-medium text-brand"><span className="h-1.5 w-1.5 rounded-full bg-brand" /> Working</span>
               </div>
             ))}
           </div>
