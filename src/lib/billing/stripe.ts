@@ -20,6 +20,7 @@ export function billingConfigured(): boolean {
 /** Stripe price id for a plan, if one has been wired via env. */
 export function priceId(plan: PlanId): string | undefined {
   if (plan === "growth") return env("STRIPE_PRICE_GROWTH");
+  if (plan === "team") return env("STRIPE_PRICE_TEAM");
   if (plan === "scale") return env("STRIPE_PRICE_SCALE");
   return undefined;
 }
@@ -28,6 +29,7 @@ export function priceId(plan: PlanId): string | undefined {
 export function planForPrice(price: string | undefined): PlanId | undefined {
   if (!price) return undefined;
   if (price === env("STRIPE_PRICE_GROWTH")) return "growth";
+  if (price === env("STRIPE_PRICE_TEAM")) return "team";
   if (price === env("STRIPE_PRICE_SCALE")) return "scale";
   return undefined;
 }

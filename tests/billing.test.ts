@@ -37,10 +37,12 @@ describe("stripe webhook signature", () => {
 });
 
 describe("plan catalog", () => {
-  it("has exactly the three known plans, free first", () => {
-    expect(PLANS.map((p) => p.id)).toEqual(["free", "growth", "scale"]);
+  it("has the known plan tiers in order, free first", () => {
+    expect(PLANS.map((p) => p.id)).toEqual(["free", "growth", "team", "scale"]);
     expect(PLANS[0].purchasable).toBe(false); // free isn't a checkout
     expect(getPlan("growth").purchasable).toBe(true);
+    expect(getPlan("team").purchasable).toBe(true); // new self-serve team tier
+    expect(getPlan("scale").purchasable).toBe(false); // contact sales
   });
 
   it("getPlan falls back to free for an unknown id", () => {

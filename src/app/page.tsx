@@ -252,14 +252,45 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="mx-auto max-w-6xl px-5 py-20">
+      {/* What it replaces — the ROI math */}
+      <section className="mx-auto max-w-5xl px-5 py-20">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-brand">Pricing</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Cheaper than the rep you&apos;d hire. Works 10x the hours.</h2>
-          <p className="mt-4 text-muted">Start free and see the revenue you&apos;re losing. Scale up when it&apos;s already paid for itself.</p>
+          <p className="text-sm font-semibold uppercase tracking-wider text-brand">The math</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">One system replaces the whole stack — and the headcount.</h2>
+          <p className="mt-4 text-muted">What teams pay today to do what Revenue Recall does autonomously:</p>
         </div>
-        <PricingPlans />
+        <div className="mx-auto mt-10 grid max-w-3xl gap-px overflow-hidden rounded-2xl border border-border bg-border">
+          {[
+            { item: "An SDR / appointment setter (salary + ramp)", cost: "$4,000–6,000 / mo" },
+            { item: "Sales sequencer (Outreach, Salesloft)", cost: "$100+ / user / mo" },
+            { item: "Power dialer", cost: "$100+ / user / mo" },
+            { item: "Data, enrichment & AI writing tools", cost: "$100+ / mo" },
+          ].map((r) => (
+            <div key={r.item} className="flex items-center justify-between gap-4 bg-surface px-5 py-4 text-sm">
+              <span className="text-muted">{r.item}</span>
+              <span className="shrink-0 font-medium text-fg line-through decoration-danger/60">{r.cost}</span>
+            </div>
+          ))}
+          <div className="flex items-center justify-between gap-4 bg-brand-soft/40 px-5 py-5">
+            <span className="font-semibold text-fg">Revenue Recall — all of it, autonomous, 24/7</span>
+            <span className="shrink-0 text-lg font-semibold gradient-text">from $149 / mo</span>
+          </div>
+        </div>
+        <p className="mx-auto mt-6 max-w-2xl text-center text-sm text-muted">
+          Reactivate a single mid-size deal and it&apos;s paid for the year. Everything else it recovers is margin.
+        </p>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing" className="border-y border-border bg-surface/30">
+        <div className="mx-auto max-w-6xl px-5 py-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-wider text-brand">Pricing</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Priced per AI rep — a fraction of the human one.</h2>
+            <p className="mt-4 text-muted">Start free and watch it surface the revenue you&apos;re losing. Add reps when it&apos;s already paying for itself.</p>
+          </div>
+          <PricingPlans />
+        </div>
       </section>
 
       {/* FAQ */}
