@@ -43,6 +43,11 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Anchor targets clear the sticky nav instead of hiding under it. */
+section[id], [id]:target {
+  scroll-margin-top: 5.5rem;
+}
+
 html,
 body {
   background-color: rgb(var(--bg-rgb));
