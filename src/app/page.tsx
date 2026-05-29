@@ -67,7 +67,7 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="hero-glow relative overflow-hidden">
         <div className="surface-grid absolute inset-0 opacity-40" />
-        <div className="relative mx-auto grid max-w-6xl gap-12 px-5 py-20 lg:grid-cols-2 lg:items-center lg:py-28">
+        <div className="relative mx-auto grid max-w-6xl gap-12 px-5 pb-20 pt-14 lg:grid-cols-2 lg:items-center lg:pb-28 lg:pt-20">
           <div className="animate-fade-up">
             <span className="pill border border-border bg-surface/60 text-muted">Autonomous outbound · every industry</span>
             <h1 className="mt-5 text-4xl font-semibold leading-[1.1] tracking-tight text-fg sm:text-5xl lg:text-6xl">
