@@ -286,12 +286,18 @@ export default function LandingPage() {
       {/* Testimonials */}
       <section className="border-y border-border bg-surface/30">
         <div className="mx-auto max-w-6xl px-5 py-20">
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="mx-auto max-w-2xl text-center">
+            <span className="eyebrow">Proof</span>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">What happens when teams turn it on</h2>
+          </div>
+          <div className="mt-12 grid gap-5 md:grid-cols-3">
             {TESTIMONIALS.map((t) => (
-              <figure key={t.role} className="rounded-2xl border border-border bg-surface p-6 shadow-soft">
-                <span className="font-display text-3xl leading-none text-brand">&ldquo;</span>
-                <blockquote className="mt-2 text-sm leading-relaxed text-fg">{t.quote}</blockquote>
-                <figcaption className="mt-4 text-xs font-medium uppercase tracking-wider text-muted">{t.role}</figcaption>
+              <figure key={t.role} className="raised flex h-full flex-col rounded-2xl border border-border bg-surface p-7">
+                <blockquote className="flex-1 text-[15px] leading-relaxed text-body">&ldquo;{t.quote}&rdquo;</blockquote>
+                <figcaption className="mt-6 flex items-center gap-2.5 border-t border-border/60 pt-5">
+                  <span className="h-1.5 w-1.5 flex-none rounded-full bg-brand" />
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted">{t.role}</span>
+                </figcaption>
               </figure>
             ))}
           </div>
@@ -301,11 +307,11 @@ export default function LandingPage() {
       {/* What it replaces — the ROI math */}
       <section className="mx-auto max-w-5xl px-5 py-20">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-brand">The math</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">One system replaces the whole stack — and the headcount.</h2>
+          <span className="eyebrow">The math</span>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">One system replaces the whole stack — and the headcount.</h2>
           <p className="mt-4 text-muted">What teams pay today to do what Revenue Recall does autonomously:</p>
         </div>
-        <div className="mx-auto mt-10 grid max-w-3xl gap-px overflow-hidden rounded-2xl border border-border bg-border">
+        <div className="raised mx-auto mt-10 grid max-w-3xl gap-px overflow-hidden rounded-2xl border border-border bg-border">
           {[
             { item: "An SDR / appointment setter (salary + ramp)", cost: "$4,000–6,000 / mo" },
             { item: "Sales sequencer (Outreach, Salesloft)", cost: "$100+ / user / mo" },
@@ -313,13 +319,19 @@ export default function LandingPage() {
             { item: "Data, enrichment & AI writing tools", cost: "$100+ / mo" },
           ].map((r) => (
             <div key={r.item} className="flex items-center justify-between gap-4 bg-surface px-5 py-4 text-sm">
-              <span className="text-muted">{r.item}</span>
-              <span className="shrink-0 font-medium text-fg line-through decoration-danger/60">{r.cost}</span>
+              <span className="flex items-center gap-3 text-body">
+                <span className="grid h-[18px] w-[18px] flex-none place-items-center rounded-full border border-border text-muted/60"><CrossMini /></span>
+                {r.item}
+              </span>
+              <span className="shrink-0 font-medium text-muted line-through decoration-danger/50">{r.cost}</span>
             </div>
           ))}
-          <div className="flex items-center justify-between gap-4 bg-brand-soft/40 px-5 py-5">
-            <span className="font-semibold text-fg">Revenue Recall — all of it, autonomous, 24/7</span>
-            <span className="shrink-0 text-lg font-semibold gradient-text">from $149 / mo</span>
+          <div className="flex items-center justify-between gap-4 border-l-2 border-brand bg-brand-soft/40 px-5 py-5">
+            <span className="flex items-center gap-3 font-semibold text-fg">
+              <span className="grid h-[18px] w-[18px] flex-none place-items-center rounded-full bg-brand/20 text-brand"><CheckMini /></span>
+              Revenue Recall — all of it, autonomous, 24/7
+            </span>
+            <span className="shrink-0 font-display text-lg font-semibold text-brand">from $149 / mo</span>
           </div>
         </div>
         <p className="mx-auto mt-6 max-w-2xl text-center text-sm text-muted">
@@ -331,8 +343,8 @@ export default function LandingPage() {
       <section id="pricing" className="border-y border-border bg-surface/30">
         <div className="mx-auto max-w-6xl px-5 py-20">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-brand">Pricing</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Priced per AI rep — a fraction of the human one.</h2>
+            <span className="eyebrow">Pricing</span>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Priced per AI rep — a fraction of the human one.</h2>
             <p className="mt-4 text-muted">Start free and watch it surface the revenue you&apos;re losing. Add reps when it&apos;s already paying for itself.</p>
           </div>
           <PricingPlans />
