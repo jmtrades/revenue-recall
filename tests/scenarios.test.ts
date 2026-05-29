@@ -58,3 +58,32 @@ describe("breakup / last-touch scenario", () => {
     }
   });
 });
+
+describe("referral / recap / renewal / reschedule scenarios", () => {
+  const scenarios = ["referral", "recap", "renewal", "reschedule"] as const;
+
+  it("each is clean, human, and personalized across industries and channels", async () => {
+    for (const ind of INDUSTRIES) {
+      for (const channel of ["email", "sms"] as const) {
+        for (const scenario of scenarios) {
+          const out = await draftMessage({ ...base, industryId: ind.id, industryLabel: ind.label, channel, scenario, voice: { signature: "— Sam" } });
+          expect(out.source).toBe("template");
+          assertClean(out.body, `${ind.id}/${channel}/${scenario}`);
+          expect(analyzeHumanness(out.body).rating).not.toBe("robotic");
+          if (channel === "sms") expect(out.body.length).toBeLessThanOrEqual(320);
+          else {
+            expect(out.subject).toBeTruthy();
+            expect(out.body).toContain("— Sam");
+          }
+        }
+      }
+    }
+  });
+
+  it("invites a reply — each ends on a question", async () => {
+    for (const scenario of scenarios) {
+      const out = await draftMessage({ ...base, channel: "sms", scenario });
+      expect(out.body.trim().endsWith("?"), `${scenario}: ${out.body}`).toBe(true);
+    }
+  });
+});

@@ -37,7 +37,7 @@ export interface DraftInput {
   /** Variation index — produces a distinctly different take of the same message. */
   variant?: number;
   /** Special message type. Default is a normal outreach/follow-up. */
-  scenario?: "voicemail" | "breakup";
+  scenario?: "voicemail" | "breakup" | "referral" | "recap" | "renewal" | "reschedule";
   /** Optional extra instruction from a user-defined Autopilot task. */
   instruction?: string;
   /** The rep's distilled writing voice + sign-off, so messages sound like them. */
@@ -124,6 +124,9 @@ function fallback(input: DraftInput): DraftResult {
       ? { body: breakupSmsFallback(first, seed), source: "template" }
       : { ...breakupEmailFallback(input, first, seed, sigLine), source: "template" };
   }
+  if (input.scenario && SCENARIO_COPY[input.scenario]) {
+    return scenarioFallback(input, first, seed, sigLine);
+  }
 
   if (input.channel === "sms") {
     return { body: smsFallback(input, first, seed, cold, nextFor("sms"), reLines), source: "template" };
@@ -170,6 +173,82 @@ function breakupSmsFallback(first: string, seed: string): string {
     `all good ${first}, i'll close this out on my end. if it's ever worth picking up, you know where i am.`,
   ];
   return pick(skeletons, seed, "breakup_sms");
+}
+
+type ScenarioKey = "referral" | "recap" | "renewal" | "reschedule";
+
+/** Deterministic, human copy for the remaining scenarios. `D` is the deal title.
+ *  Bodies end on a question so they invite a reply; the email path adds greeting + sign-off. */
+const SCENARIO_COPY: Record<ScenarioKey, { subject: (f: string, d: string) => string[]; email: (f: string, d: string) => string[]; sms: (f: string, d: string) => string[]; coach: string }> = {
+  referral: {
+    subject: (f, d) => [`quick favor, ${f}?`, `who else should I be talking to?`, `one ask on ${d}`],
+    email: (f) => [
+      `Since this has been going well, figured I'd ask — is there anyone else you know who's wrestling with the same thing? Totally fine if not, just thought I'd check.`,
+      `Quick one, ${f} — who's the one person you'd point me to if they had this on their plate? No pressure at all.`,
+      `If it's been useful, would you mind pointing me to one person who might get value from it too? Happy to keep it low-key.`,
+    ],
+    sms: (f) => [
+      `hey ${f} — random ask: anyone you know dealing with the same thing? no worries if not.`,
+      `quick one ${f}: who's the one person you'd send my way? totally fine to say no one comes to mind.`,
+      `if it's been useful, mind pointing me to someone who'd get value too?`,
+    ],
+    coach: "Referral ask: only after real value, make it one easy name, zero pressure.",
+  },
+  recap: {
+    subject: (f, d) => [`recap + next step on ${d}`, `quick recap, ${f}`, `where we landed on ${d}`],
+    email: (f, d) => [
+      `Good talking just now. Quick recap so we're on the same page: we covered where ${d} stands and what matters most to you. I'll get the next piece over, and we said we'd reconnect — does that still work?`,
+      `Thanks for the time, ${f}. To recap: we talked through your priorities on ${d} and the path forward. I'll handle my side — want me to lock the next step now?`,
+      `Great chat. Short recap: we aligned on the goal for ${d} and the next move. I'll follow through on what I owe you — when works to pick it back up?`,
+    ],
+    sms: (f, d) => [
+      `great chat ${f} — quick recap: we lined up the next step on ${d}. i'll handle my side. good to lock a time?`,
+      `thanks ${f}! recap: covered ${d} and the path forward. want me to set the next step now?`,
+      `good talking ${f}. i'll send my piece over — shall we pin the next step?`,
+    ],
+    coach: "Post-meeting recap: confirm what was agreed, own your next step, pin the follow-up.",
+  },
+  renewal: {
+    subject: (f, d) => [`${d} — renewal coming up`, `quick one before renewal, ${f}`, `keeping ${d} going`],
+    email: (f, d) => [
+      `Your renewal on ${d} is coming up, so I wanted to get ahead of it. Anything you'd want to change or add before we roll it over? Happy to walk through options.`,
+      `Quick one, ${f} — ${d} is up for renewal soon. Before it rolls, is it working the way you hoped, or is there something you'd tweak?`,
+      `Renewal time on ${d}. Rather than auto-pilot it, want to take five minutes to make sure it still fits where you're headed?`,
+    ],
+    sms: (f, d) => [
+      `hey ${f} — ${d} renews soon. anything you'd change before it rolls over?`,
+      `quick one ${f}: renewal's coming up on ${d}. still working how you hoped, or want to tweak?`,
+      `before ${d} renews — worth five minutes to make sure it still fits?`,
+    ],
+    coach: "Renewal/upsell: get ahead of it, check fit honestly, open the door to expand — no hard sell.",
+  },
+  reschedule: {
+    subject: (f, d) => [`missed you — let's grab another time`, `no worries, ${f} — reschedule?`, `another go at ${d}?`],
+    email: (f, d) => [
+      `Looks like we missed each other — no problem at all, happens to everyone. Want to grab another time this week for ${d}? Easy to find a slot that works.`,
+      `No worries that we didn't connect, ${f}. Want to put another time on the calendar for ${d}? Whatever's easiest for you.`,
+      `We got crossed wires on the last one — totally fine. When's good to try again on ${d}?`,
+    ],
+    sms: (f, d) => [
+      `hey ${f}, looks like we missed each other — no worries. want to grab another time for ${d}?`,
+      `no stress that we didn't connect ${f}. when's good to try again on ${d}?`,
+      `missed you ${f}! easy to find another slot for ${d} — what works this week?`,
+    ],
+    coach: "No-show reschedule: zero guilt, assume good faith, make rebooking effortless.",
+  },
+};
+
+function scenarioFallback(input: DraftInput, first: string, seed: string, sigLine: string): { subject?: string; body: string; source: "template" } {
+  const key = input.scenario as ScenarioKey;
+  const copy = SCENARIO_COPY[key];
+  const d = input.dealTitle;
+  if (input.channel === "sms") {
+    return { body: pick(copy.sms(first, d), seed, `${key}_sms`), source: "template" };
+  }
+  const greet = pick(GREETINGS_EMAIL, seed, "greet")(first);
+  const subject = cap(pick(copy.subject(first, d), seed, `${key}_subj`));
+  const body = `${greet}\n\n${pick(copy.email(first, d), seed, `${key}_email`)}${sigLine}`;
+  return { subject, body, source: "template" };
 }
 
 function smsFallback(input: DraftInput, first: string, seed: string, cold: boolean, stepPool: string[], reLines: string[]): string {
@@ -336,7 +415,9 @@ export async function draftMessage(input: DraftInput): Promise<DraftResult> {
       ? `\nThis is a VOICEMAIL to leave out loud: 2-3 short spoken sentences, warm and casual, one easy reason to call back, no pressure. No subject, no sign-off block — it's spoken.`
       : input.scenario === "breakup"
         ? `\nThis is a BREAKUP / last-touch message: gracious, zero guilt-trip, make it genuinely easy to walk away — and easy to come back. No pushy ask; leave the door open. (These often get the reply.)`
-        : "";
+        : input.scenario && SCENARIO_COPY[input.scenario as ScenarioKey]
+          ? `\nScenario — ${SCENARIO_COPY[input.scenario as ScenarioKey].coach}`
+          : "";
   const callCoaching =
     input.channel === "call"
       ? `\nThis is a CALL talk track (5 short bullets), built to keep them on the phone, not a monologue:

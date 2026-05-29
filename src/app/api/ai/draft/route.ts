@@ -16,7 +16,7 @@ const Body = z.object({
   channel: z.enum(["email", "sms", "call"]),
   /** A tone preset, or "auto" to pick one from the deal's signals. */
   tone: z.string().optional(),
-  scenario: z.enum(["voicemail", "breakup"]).optional(),
+  scenario: z.enum(["voicemail", "breakup", "referral", "recap", "renewal", "reschedule"]).optional(),
   /** When > 1, return that many distinct alternatives instead of one draft. */
   variations: z.number().int().min(1).max(5).optional(),
 });

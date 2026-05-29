@@ -29,7 +29,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
 
   const canDraft = kind === "email" || kind === "sms" || kind === "call";
 
-  async function draft(opts: { count?: number; scenario?: "voicemail" | "breakup" } = {}) {
+  async function draft(opts: { count?: number; scenario?: "voicemail" | "breakup" | "referral" | "recap" | "renewal" | "reschedule" } = {}) {
     const count = opts.count ?? 1;
     setDrafting(true);
     setError(null);
@@ -157,6 +157,10 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
           <div className="mt-1 flex flex-wrap gap-1.5">
             <span className="text-[11px] text-muted">Quick:</span>
             <button onClick={() => draft({ scenario: "voicemail" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">📞 Voicemail</button>
+            <button onClick={() => draft({ scenario: "recap" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">📝 Recap</button>
+            <button onClick={() => draft({ scenario: "reschedule" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">↻ Reschedule</button>
+            <button onClick={() => draft({ scenario: "referral" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">🙌 Referral</button>
+            <button onClick={() => draft({ scenario: "renewal" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">🔁 Renewal</button>
             <button onClick={() => draft({ scenario: "breakup" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">👋 Breakup</button>
           </div>
         )}
