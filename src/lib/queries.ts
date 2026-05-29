@@ -4,7 +4,8 @@ import { getConfig } from "@/lib/config";
 import { getOrgSettings } from "@/lib/org";
 import { getIndustry, recallThresholdsFor } from "@/lib/industries";
 import { computeMetrics, type PipelineMetrics } from "@/lib/analytics";
-import { buildRecallQueue, summarizeRecall, type RecallItem, type RecallSummary } from "@/lib/recall/engine";
+import { buildRecallQueue, summarizeRecall, computeRecallOutcomes, type RecallItem, type RecallSummary, type RecallOutcomes } from "@/lib/recall/engine";
+import { listEnrollments } from "@/lib/cadence";
 import type { Activity, Contact, Opportunity, Pipeline, Stage, User } from "@/lib/crm/types";
 
 /** Everything the dashboard needs in one round trip. */
@@ -91,6 +92,19 @@ export async function getRecallQueue(): Promise<{ items: RecallItem[]; summary: 
     contacts: new Map(contacts.map((c) => [c.id, c])),
     opps: new Map(opportunities.map((o) => [o.id, o])),
   };
+}
+
+/** Recall ROI — did re-engaging cold/lost deals actually win them back? */
+export async function getRecallOutcomes(): Promise<RecallOutcomes> {
+  const provider = getProvider();
+  const [pipelines, opportunities, enrollments] = await Promise.all([
+    provider.listPipelines(),
+    provider.listOpportunities(),
+    listEnrollments(undefined, 1000),
+  ]);
+  const stages = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
+  const oppById = new Map(opportunities.map((o) => [o.id, o]));
+  return computeRecallOutcomes(enrollments, oppById, stages, opportunities[0]?.currency ?? "USD");
 }
 
 export async function getLeads(): Promise<{ contacts: Contact[]; opps: Map<string, Opportunity>; owners: Map<string, User> }> {

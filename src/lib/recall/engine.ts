@@ -199,6 +199,70 @@ export interface RecallSummary {
   byReason: Record<RecallReason, { count: number; value: number }>;
 }
 
+/**
+ * Recall ROI, derived from recall-sequence enrollments joined against current
+ * deal states — so we can show "did recalling actually win deals back?" without
+ * any new persistence. Attribution is necessarily heuristic: a deal counts as
+ * won-back only if it reached a won stage on/after it was enrolled in recall.
+ */
+export interface RecallEnrollmentRef {
+  sequenceId: string;
+  dealId?: string;
+  stepIndex: number;
+  status: "active" | "completed" | "stopped";
+  enrolledAt: string;
+  lastStepAt?: string;
+}
+
+export interface RecallOutcomes {
+  /** Deals enrolled into a recall sequence. */
+  recalled: number;
+  /** Of those, how many got at least one outreach touch. */
+  reEngaged: number;
+  /** Reached a won stage on/after being recalled. */
+  wonBack: number;
+  /** Total value of won-back deals. */
+  recoveredValue: number;
+  /** Still open and in play. */
+  inProgress: number;
+  currency: string;
+}
+
+/** Sequence ids that represent a re-engagement ("recall") effort. */
+const RECALL_SEQUENCE_IDS: ReadonlySet<string> = new Set(["recall"]);
+
+export function computeRecallOutcomes(
+  enrollments: RecallEnrollmentRef[],
+  oppById: Map<string, Opportunity>,
+  stages: Map<string, Stage>,
+  currency: string,
+): RecallOutcomes {
+  let recalled = 0;
+  let reEngaged = 0;
+  let wonBack = 0;
+  let recoveredValue = 0;
+  let inProgress = 0;
+  for (const e of enrollments) {
+    if (!RECALL_SEQUENCE_IDS.has(e.sequenceId)) continue;
+    recalled += 1;
+    if (e.stepIndex > 0 || e.lastStepAt) reEngaged += 1;
+    const deal = e.dealId ? oppById.get(e.dealId) : undefined;
+    if (!deal) continue;
+    const stage = stages.get(deal.stageId);
+    if (stage?.type === "won") {
+      // Only credit recall when the win landed on/after enrollment.
+      const wonAt = deal.closedAt ?? deal.updatedAt;
+      if (!wonAt || wonAt >= e.enrolledAt) {
+        wonBack += 1;
+        recoveredValue += deal.value;
+      }
+    } else if (stage?.type === "open") {
+      inProgress += 1;
+    }
+  }
+  return { recalled, reEngaged, wonBack, recoveredValue, inProgress, currency };
+}
+
 export function summarizeRecall(items: RecallItem[], currency: string): RecallSummary {
   const byReason = {
     going_cold: { count: 0, value: 0 },

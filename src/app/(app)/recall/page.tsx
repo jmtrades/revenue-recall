@@ -1,4 +1,4 @@
-import { getRecallQueue } from "@/lib/queries";
+import { getRecallQueue, getRecallOutcomes } from "@/lib/queries";
 import { money } from "@/lib/format";
 import { PageHeader, Stat } from "@/components/ui";
 import { MiniLegendBar } from "@/components/charts";
@@ -13,7 +13,7 @@ function primaryContact(c?: Contact): string {
 }
 
 export default async function RecallPage() {
-  const { items, summary, contacts, opps } = await getRecallQueue();
+  const [{ items, summary, contacts, opps }, outcomes] = await Promise.all([getRecallQueue(), getRecallOutcomes()]);
 
   const rows: RecallRow[] = items.map((r) => {
     const opp = opps.get(r.opportunityId);
@@ -54,6 +54,18 @@ export default async function RecallPage() {
           {segments.length > 0 ? <MiniLegendBar segments={segments} /> : <p className="text-sm text-muted">Nothing at risk.</p>}
         </div>
       </section>
+
+      {outcomes.recalled > 0 && (
+        <section>
+          <p className="stat-label mb-3">Recall results so far</p>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <Stat label="Recalled" value={String(outcomes.recalled)} hint="deals worked" />
+            <Stat label="Re-engaged" value={String(outcomes.reEngaged)} hint="got a touch" />
+            <Stat label="Won back" value={String(outcomes.wonBack)} tone="success" hint="closed after recall" />
+            <Stat label="Recovered" value={money(outcomes.recoveredValue, outcomes.currency)} tone="success" hint="revenue won back" />
+          </div>
+        </section>
+      )}
 
       <RecallQueue rows={rows} />
     </div>
