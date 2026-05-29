@@ -169,6 +169,17 @@ export class BuiltinProvider implements CrmProvider {
       .slice(0, limit);
   }
 
+  async listActivitiesByOpps(opportunityIds: Id[]): Promise<Record<Id, Activity[]>> {
+    const want = new Set(opportunityIds);
+    const out: Record<Id, Activity[]> = {};
+    for (const id of opportunityIds) out[id] = [];
+    for (const a of db().activities) {
+      if (a.opportunityId && want.has(a.opportunityId)) out[a.opportunityId].push(a);
+    }
+    for (const id of opportunityIds) out[id].sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1));
+    return out;
+  }
+
   async logActivity(input: Omit<Activity, "id">): Promise<Activity> {
     const d = db();
     const activity: Activity = { ...input, id: `a_${Date.now()}` };

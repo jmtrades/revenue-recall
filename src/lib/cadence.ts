@@ -11,6 +11,7 @@ import { isAiConfigured } from "@/lib/ai/client";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { createOutboxItem } from "@/lib/agent/store";
 import { hasOptedOut } from "@/lib/agent/guardrails";
+import { batchActivities } from "@/lib/crm/activities";
 import { getSequence } from "@/lib/sequences";
 import type { Contact, Opportunity, Pipeline } from "@/lib/crm/types";
 
@@ -255,6 +256,8 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
 
   const active = await listActiveEnrollments();
   const due = active.filter((e) => e.nextDueAt <= now);
+  // Prefetch activities for every due deal in one batch (avoids N+1 opt-out lookups).
+  const actByOpp = await batchActivities(provider, due.map((e) => e.dealId).filter((id): id is string => Boolean(id)));
 
   const result: CadenceTickResult = { due: due.length, processed: 0, sent: 0, queued: 0, completed: 0, stopped: 0 };
 
@@ -279,7 +282,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
 
     // Honor opt-outs: stop the cadence for anyone who unsubscribed or asked us to
     // stop. (A soft "not now" is left enrolled — re-engagement is the point.)
-    const optOutActs = deal ? await provider.listActivities(deal.id) : [];
+    const optOutActs = deal ? actByOpp.get(deal.id) ?? [] : [];
     if (hasOptedOut(contact, deal, optOutActs)) {
       await updateEnrollment(e.id, { status: "stopped" });
       result.stopped += 1;

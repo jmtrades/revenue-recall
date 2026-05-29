@@ -147,5 +147,12 @@ export interface CrmProvider {
   listActivities(opportunityId: Id): Promise<Activity[]>;
   /** Most recent activities across the whole org, newest first. */
   listRecentActivities(limit: number): Promise<Activity[]>;
+  /**
+   * Optional batch fetch: activities for many opportunities at once, keyed by
+   * opportunity id. Providers that can do this in one query (Supabase, built-in)
+   * implement it to avoid N+1 in the agent/cadence loops; callers use the
+   * `batchActivities` helper, which falls back to per-id fetches when absent.
+   */
+  listActivitiesByOpps?(opportunityIds: Id[]): Promise<Record<Id, Activity[]>>;
   logActivity(input: Omit<Activity, "id">): Promise<Activity>;
 }

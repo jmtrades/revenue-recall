@@ -9,6 +9,7 @@ import { sendEmail, sendSms, placeCall } from "@/lib/comms";
 import { sendGate, type SkipReason } from "@/lib/agent/guardrails";
 import { compactMoney } from "@/lib/format";
 import { createRun, createOutboxItem, touchTask } from "@/lib/agent/store";
+import { batchActivities } from "@/lib/crm/activities";
 import type { AgentAction, AgentRun, AgentTask } from "@/lib/agent/types";
 import type { Contact, Opportunity, Pipeline } from "@/lib/crm/types";
 
@@ -78,6 +79,8 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
     const contactById = new Map<string, Contact>(contacts.map((c) => [c.id, c]));
     const industry = getIndustry(org.industryId);
     const targets = await resolveTargets(task, pipelines, opps);
+    // Prefetch every target's activities in one batch (avoids N+1 in the loop).
+    const actByOpp = await batchActivities(provider, targets.map((t) => t.opp.id));
 
     const actions: AgentAction[] = [];
     const pending: { dealId: string; contactId: string; channel: "email" | "sms"; subject?: string; body: string; source: "ai" | "template" }[] = [];
@@ -105,7 +108,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
 
       // Guardrails: never message someone who opted out; in auto mode also respect
       // cooldown, quiet hours, and the daily cap. Checked before drafting to save cost.
-      const activities = await provider.listActivities(t.opp.id);
+      const activities = actByOpp.get(t.opp.id) ?? [];
       const gate = sendGate({ contact, opp: t.opp, activities, autonomy: task.autonomy, sentSoFar: sent });
       if (gate) {
         actions.push({ type: task.channel, dealId: t.opp.id, title: name, detail: SKIP_LABEL[gate], result: "skipped", source: "template", value: t.recoverable });
