@@ -12,6 +12,7 @@
     "test": "vitest run",
     "smoke": "node scripts/smoke.mjs",
     "smoke:crm": "CRM_LIVE_SMOKE=1 vitest run tests/live/crm.live.test.ts",
+    "smoke:ai": "AI_LIVE_SMOKE=1 vitest run tests/live/ai.live.test.ts",
     "scan:secrets": "bash scripts/scan-secrets.sh",
     "db:migrate": "bash scripts/db-migrate.sh",
     "db:bootstrap": "bash scripts/db-bootstrap.sh"
