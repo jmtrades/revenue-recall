@@ -55,7 +55,7 @@ export function Button({
   onClick?: () => void;
   disabled?: boolean;
 }) {
-  const base = "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-50";
+  const base = "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-[transform,background-color,border-color,color] duration-150 active:scale-[0.97] disabled:opacity-50";
   const sizes = { sm: "px-2.5 py-1 text-xs", md: "px-3.5 py-2 text-sm" };
   const variants = {
     primary: "bg-brand text-white hover:bg-brand/90",
@@ -109,7 +109,7 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
   return (
     <header className="mb-6 flex items-end justify-between gap-4">
       <div>
-        <h1 className="text-2xl font-semibold text-fg">{title}</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-fg">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
       </div>
       {action}

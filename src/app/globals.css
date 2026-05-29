@@ -117,14 +117,19 @@ textarea:focus-visible {
 @layer components {
   .card {
     @apply rounded-xl border border-border bg-surface p-5;
-    /* Subtle elevation + a hairline top highlight so cards feel lifted, not flat. */
-    box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.04) inset, 0 1px 2px rgb(0 0 0 / 0.25), 0 8px 24px -16px rgb(0 0 0 / 0.6);
+    /* Real material: hairline top highlight (catches light) + a faint top-down
+       sheen + layered ambient shadow. Depth hierarchy, not a flat 1px box. */
+    background-image: linear-gradient(rgb(255 255 255 / 0.025), transparent 40%);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.05),
+      0 1px 2px rgb(0 0 0 / 0.25),
+      0 12px 32px -20px rgb(0 0 0 / 0.7);
   }
   .stat-label {
     @apply text-xs font-medium uppercase tracking-wide text-muted;
   }
   .stat-value {
-    @apply mt-1 text-2xl font-semibold text-fg;
+    @apply mt-1 font-display text-2xl font-semibold tabular-nums tracking-tight text-fg;
   }
   .pill {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
@@ -144,10 +149,25 @@ textarea:focus-visible {
     flex: none;
   }
   .nav-link {
-    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-surface-2 hover:text-fg;
+    @apply relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg;
   }
   .nav-link-active {
-    @apply bg-surface-2 text-fg;
+    @apply bg-brand-soft/60 text-fg;
+  }
+  /* Active rail: a short brand bar tucked against the sidebar edge. */
+  .nav-link-active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: 1.1rem;
+    width: 3px;
+    transform: translateY(-50%);
+    border-radius: 0 3px 3px 0;
+    background: rgb(var(--brand-rgb));
+  }
+  .nav-link-active svg {
+    color: rgb(var(--brand-rgb));
   }
 }
 

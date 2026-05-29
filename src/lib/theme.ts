@@ -19,9 +19,10 @@ export interface Accent {
 }
 
 export const ACCENTS = {
+  emerald: { label: "Money", brand: "5 150 105", soft: "12 45 33", hex: "#059669" },
   indigo: { label: "Indigo", brand: "91 140 255", soft: "42 58 102", hex: "#5b8cff" },
   violet: { label: "Violet", brand: "167 139 250", soft: "58 46 102", hex: "#a78bfa" },
-  emerald: { label: "Emerald", brand: "52 211 153", soft: "20 71 58", hex: "#34d399" },
+  mint: { label: "Mint", brand: "52 211 153", soft: "20 71 58", hex: "#34d399" },
   rose: { label: "Rose", brand: "251 113 133", soft: "92 38 51", hex: "#fb7185" },
   amber: { label: "Amber", brand: "245 178 38", soft: "84 60 12", hex: "#f5b226" },
   cyan: { label: "Cyan", brand: "34 211 238", soft: "16 68 80", hex: "#22d3ee" },
@@ -30,7 +31,7 @@ export const ACCENTS = {
 
 export type AccentKey = keyof typeof ACCENTS;
 export const ACCENT_KEYS = Object.keys(ACCENTS) as [AccentKey, ...AccentKey[]];
-export const DEFAULT_ACCENT: AccentKey = "indigo";
+export const DEFAULT_ACCENT: AccentKey = "emerald";
 
 /** Appearance mode. "system" follows the OS preference (resolved on the client). */
 export type ThemeMode = "dark" | "light" | "system";
