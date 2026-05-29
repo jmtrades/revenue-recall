@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { Icon, type IconName } from "@/components/icons";
 
 const AVATAR_COLORS = ["#5b8cff", "#34d399", "#fbbf24", "#f87171", "#a78bfa", "#22d3ee", "#fb923c"];
 
@@ -87,20 +88,20 @@ export function InfoRow({ label, children }: { label: string; children: ReactNod
   );
 }
 
-const ACTIVITY_ICON: Record<string, string> = {
-  call: "📞",
-  email: "✉",
-  sms: "💬",
-  meeting: "🤝",
-  note: "📝",
-  task: "✓",
-  stage_change: "↗",
+const ACTIVITY_ICON: Record<string, IconName> = {
+  call: "dialer",
+  email: "mail",
+  sms: "message",
+  meeting: "calendar",
+  note: "note",
+  task: "tasks",
+  stage_change: "forecast",
 };
 
 export function ActivityIcon({ kind }: { kind: string }) {
   return (
-    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border bg-surface-2 text-sm">
-      {ACTIVITY_ICON[kind] ?? "•"}
+    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border bg-surface-2 text-muted">
+      <Icon name={ACTIVITY_ICON[kind] ?? "recall"} size={15} />
     </span>
   );
 }
@@ -142,8 +143,17 @@ export function ReasonBadge({ reason }: { reason: string }) {
 }
 
 export function ChannelBadge({ channel }: { channel: string }) {
-  const map: Record<string, string> = { call: "📞 Call", email: "✉ Email", sms: "💬 SMS" };
-  return <span className="pill bg-surface-2 text-muted">{map[channel] ?? channel}</span>;
+  const map: Record<string, { icon: IconName; label: string }> = {
+    call: { icon: "dialer", label: "Call" },
+    email: { icon: "mail", label: "Email" },
+    sms: { icon: "message", label: "SMS" },
+  };
+  const c = map[channel] ?? { icon: "recall" as IconName, label: channel };
+  return (
+    <span className="pill gap-1 bg-surface-2 text-muted">
+      <Icon name={c.icon} size={12} /> {c.label}
+    </span>
+  );
 }
 
 export function ScoreDot({ score }: { score: number }) {
