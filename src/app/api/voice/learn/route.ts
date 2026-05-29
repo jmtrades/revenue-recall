@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { learnVoice } from "@/lib/voice";
+import { aiRateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -15,6 +16,7 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  if (!aiRateLimit(req, "voice-learn").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Add a description or a writing sample first." }, { status: 400 });
   const { samples, customNextSteps, customReengage } = parsed.data;

@@ -6,7 +6,6 @@
 
 const BRAND = "rgb(var(--brand-rgb))";
 const GRID = "rgb(var(--border-rgb))";
-const MUTED = "rgb(var(--muted-rgb))";
 
 export function Sparkline({ data, width = 120, height = 32, color = BRAND }: { data: number[]; width?: number; height?: number; color?: string }) {
   if (data.length < 2) return <svg width={width} height={height} />;

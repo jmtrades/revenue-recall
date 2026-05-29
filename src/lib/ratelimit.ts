@@ -39,6 +39,17 @@ export function clientKey(req: Request, scope: string): string {
   return `${scope}:${ip}`;
 }
 
+/**
+ * Throttle a cost-incurring AI/voice endpoint per client. The monthly budget cap
+ * protects total spend; this stops a single client from bursting (abuse / runaway
+ * loops). Tune with AI_RATE_LIMIT_PER_MIN (default 30/min).
+ */
+export function aiRateLimit(req: Request, scope = "ai"): RateLimitResult {
+  const perMin = Number(process.env.AI_RATE_LIMIT_PER_MIN);
+  const limit = Number.isFinite(perMin) && perMin > 0 ? perMin : 30;
+  return rateLimit(clientKey(req, scope), limit, 60_000);
+}
+
 /** Test-only: clear all buckets between cases. */
 export function _resetRateLimit(): void {
   buckets.clear();

@@ -5,6 +5,7 @@ import { getIndustry } from "@/lib/industries";
 import { getActiveVoice } from "@/lib/voice";
 import { isToneId } from "@/lib/tones";
 import { nextRepTurn, simulateProspect, type ConversationState, type Difficulty } from "@/lib/voice/conversation";
+import { aiRateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -21,6 +22,7 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  if (!aiRateLimit(req, "voice").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 
