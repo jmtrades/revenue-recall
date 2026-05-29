@@ -7,6 +7,7 @@ import { Card, Avatar, InfoRow, ActivityIcon, EmptyState } from "@/components/ui
 import { DealActions } from "@/components/DealActions";
 import { AiBrief } from "@/components/AiBrief";
 import { contactInsights } from "@/lib/insights";
+import { getLanguage, toLanguageCode } from "@/lib/languages";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +108,15 @@ export default async function DealPage({ params }: { params: { id: string } }) {
                     <span className="text-fg">{p.value}</span>
                   </div>
                 ))}
+                {(() => {
+                  const code = toLanguageCode(typeof contact.attributes?.preferredLanguage === "string" ? contact.attributes.preferredLanguage : typeof contact.attributes?.language === "string" ? contact.attributes.language : undefined);
+                  return code ? (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-xs uppercase text-muted">language</span>
+                      <span className="text-fg">{getLanguage(code).label}</span>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             </Card>
           )}
