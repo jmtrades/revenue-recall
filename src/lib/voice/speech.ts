@@ -175,6 +175,11 @@ const DAYS: Record<string, string> = {
  * and strip bullets/markdown. Pure and tested.
  */
 const SCALE: Record<string, string> = { k: "thousand", m: "million", b: "billion" };
+const DIGIT_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+/** Speak a run of digits one-by-one ("4567" → "four five six seven"). */
+function sayDigits(d: string): string {
+  return d.replace(/\D/g, "").split("").map((c) => DIGIT_WORDS[Number(c)]).join(" ");
+}
 
 export function speakable(text: string): string {
   let s = text;
@@ -187,6 +192,19 @@ export function speakable(text: string): string {
   // Times: "2pm"/"2:30 p.m." → "2 PM"/"2:30 PM" (synths read the spelled form better).
   s = s.replace(/\b(\d{1,2})(:\d{2})?\s*([ap])\.?m\.?\b/gi, (_m, h: string, min: string | undefined, ap: string) => `${h}${min ?? ""} ${ap.toLowerCase() === "a" ? "AM" : "PM"}`);
 
+  // Phone numbers → grouped, spoken digits so a callback number isn't read as one
+  // giant integer. Matched only on phone-SHAPED tokens (separators or a leading +),
+  // so plain large numbers (money, already voiced above) are left intact.
+  s = s.replace(/\(?\b(\d{3})\)?[\s.-](\d{3})[\s.-](\d{4})\b/g, (_m, a: string, b: string, c: string) => `${sayDigits(a)}, ${sayDigits(b)}, ${sayDigits(c)}`);
+  s = s.replace(/\+(\d[\d\s.-]{8,16}\d)/g, (_m, d: string) => sayDigits(d));
+  // Emails: speak "@" and "." inside the address ("sales@acme.com" → "sales at acme dot com").
+  s = s.replace(/\b([\w.+-]+)@([\w-]+(?:\.[\w-]+)+)\b/g, (_m, user: string, host: string) => {
+    const say = (p: string) => p.replace(/\./g, " dot ").replace(/[_+-]/g, " ").replace(/\s{2,}/g, " ").trim();
+    return `${say(user)} at ${say(host)}`;
+  });
+
+  s = s.replace(/#(?=\d)/g, "number "); // "#3" → "number 3"
+  s = s.replace(/\betc\.?/gi, "and so on");
   s = s.replace(/\s*&\s*/g, " and ");
   s = s.replace(/(\d)\s*%/g, "$1 percent").replace(/%/g, " percent");
   s = s.replace(/\bw\//gi, "with ");

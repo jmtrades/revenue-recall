@@ -113,6 +113,29 @@ describe("speakable normalization", () => {
     // "minimum" must not become "minimumutes" etc.
     expect(speakable("the minimum is fine")).toBe("the minimum is fine");
   });
+
+  it("speaks phone numbers as grouped digits, not one giant number", () => {
+    expect(speakable("call me at 555-123-4567")).toContain("five five five, one two three, four five six seven");
+    expect(speakable("ring (555) 867 5309")).toContain("five five five, eight six seven, five three zero nine");
+    expect(speakable("dial +15551234567 today")).toContain("one five five five one two three four five six seven");
+  });
+
+  it("leaves large plain numbers (money) intact — only phone-shaped tokens convert", () => {
+    // No separators / no leading + → not a phone, stays as voiced money.
+    expect(speakable("you'd recover $150,000,000")).toContain("150000000 dollars");
+    expect(speakable("you'd recover $150,000,000")).not.toContain("one five zero");
+  });
+
+  it("speaks email addresses naturally", () => {
+    const out = speakable("email me at sales@acme.com");
+    expect(out).toContain("sales at acme dot com");
+    expect(out).not.toContain("@");
+  });
+
+  it("voices etc. and # the way they're said", () => {
+    expect(speakable("forms, docs, etc.")).toContain("and so on");
+    expect(speakable("you're #1 on my list")).toContain("number 1");
+  });
 });
 
 describe("voice prefs", () => {
