@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Icon } from "@/components/icons";
 
 export function VoiceStudio({
   initial,
@@ -47,7 +48,7 @@ export function VoiceStudio({
 
   return (
     <div className="card">
-      <h2 className="flex items-center gap-2 font-semibold text-fg">✨ Your voice</h2>
+      <h2 className="flex items-center gap-2 font-semibold text-fg"><Icon name="autopilot" size={16} className="text-brand" /> Your voice</h2>
       <p className="mt-1 text-sm text-muted">
         No forms. Just describe how you sound, or paste a few of your real emails/texts — the AI learns your voice so every
         message reads like <em>you</em>, never like an AI.

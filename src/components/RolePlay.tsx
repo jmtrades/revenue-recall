@@ -307,8 +307,8 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
           </div>
           <div className="mt-2 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button onClick={coachMe} disabled={busy} className="text-xs text-brand hover:underline disabled:opacity-50">💡 Coach me</button>
-              <button onClick={() => setScore(analyzeCall(turns))} disabled={turns.length < 2} className="text-xs text-brand hover:underline disabled:opacity-50">📊 Score call</button>
+              <button onClick={coachMe} disabled={busy} className="text-xs text-brand hover:underline disabled:opacity-50">Coach me</button>
+              <button onClick={() => setScore(analyzeCall(turns))} disabled={turns.length < 2} className="text-xs text-brand hover:underline disabled:opacity-50">Score call</button>
             </div>
             <button onClick={reset} className="text-xs text-muted hover:text-fg">Reset</button>
           </div>

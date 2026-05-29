@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { MessageTemplate } from "@/lib/templates";
+import { ChannelIcon } from "@/components/ui";
 
 export function TemplatesView({ templates }: { templates: MessageTemplate[] }) {
   const [activeId, setActiveId] = useState(templates[0]?.id ?? "");
@@ -28,7 +29,7 @@ export function TemplatesView({ templates }: { templates: MessageTemplate[] }) {
             >
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-fg">{t.name}</span>
-                <span className="pill bg-surface-2 text-muted">{t.channel === "email" ? "✉" : "💬"} {t.channel}</span>
+                <span className="pill gap-1 bg-surface-2 capitalize text-muted"><ChannelIcon channel={t.channel} size={12} /> {t.channel}</span>
               </div>
               <p className="mt-0.5 text-xs text-muted">{t.category}</p>
             </button>

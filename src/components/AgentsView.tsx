@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Icon } from "@/components/icons";
 import type { AgentRun, AgentTask } from "@/lib/agent/types";
 
 const RESULT_STYLE: Record<string, string> = {
@@ -87,7 +88,7 @@ export function AgentsView({
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_1fr]">
       <div className="space-y-6">
         <section className="card border-brand/30">
-          <h2 className="flex items-center gap-2 font-semibold text-fg">✨ New autopilot task</h2>
+          <h2 className="flex items-center gap-2 font-semibold text-fg"><Icon name="autopilot" size={16} className="text-brand" /> New autopilot task</h2>
           <p className="mt-1 text-xs text-muted">Describe what you want done in plain English. The AI works each deal for you.</p>
           <div className="mt-3 space-y-2.5">
             <input className={input} placeholder="Task name (e.g. Re-engage cold deals)" value={name} onChange={(e) => setName(e.target.value)} />

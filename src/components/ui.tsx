@@ -142,6 +142,12 @@ export function ReasonBadge({ reason }: { reason: string }) {
   return <span className={`pill ${s.cls}`}>{s.label}</span>;
 }
 
+const CHANNEL_ICON: Record<string, IconName> = { call: "dialer", email: "mail", sms: "message", note: "note" };
+
+export function ChannelIcon({ channel, size = 13, className = "" }: { channel: string; size?: number; className?: string }) {
+  return <Icon name={CHANNEL_ICON[channel] ?? "recall"} size={size} className={`inline-block shrink-0 ${className}`} />;
+}
+
 export function ChannelBadge({ channel }: { channel: string }) {
   const map: Record<string, { icon: IconName; label: string }> = {
     call: { icon: "dialer", label: "Call" },

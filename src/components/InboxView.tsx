@@ -4,9 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { InboxThread } from "@/lib/queries";
-import { Avatar } from "@/components/ui";
-
-const CHANNEL: Record<string, string> = { email: "✉", sms: "💬", call: "📞", note: "📝" };
+import { Avatar, ChannelIcon } from "@/components/ui";
 
 function timeAgo(iso: string): string {
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
@@ -67,7 +65,7 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
                     <span className="truncate text-sm font-medium text-fg">{t.contactName}</span>
                     <span className="shrink-0 text-xs text-muted">{timeAgo(t.lastAt)}</span>
                   </div>
-                  <p className="truncate text-xs text-muted">{CHANNEL[t.channel]} {t.snippet}</p>
+                  <p className="truncate text-xs text-muted"><ChannelIcon channel={t.channel} size={12} className="mr-1 align-[-2px] text-muted/80" />{t.snippet}</p>
                 </div>
                 {t.unread && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand" />}
               </button>
@@ -96,7 +94,7 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
                 <div key={m.id} className={`flex ${m.direction === "outbound" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm ${m.direction === "outbound" ? "bg-brand text-white" : "bg-surface-2 text-white"}`}>
                     <p>{m.body}</p>
-                    <p className={`mt-1 text-[10px] ${m.direction === "outbound" ? "text-fg/70" : "text-muted"}`}>{CHANNEL[m.channel]} · {timeAgo(m.at)} ago</p>
+                    <p className={`mt-1 flex items-center gap-1 text-[10px] ${m.direction === "outbound" ? "text-fg/70" : "text-muted"}`}><ChannelIcon channel={m.channel} size={11} /> · {timeAgo(m.at)} ago</p>
                   </div>
                 </div>
               ))}

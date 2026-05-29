@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ReasonBadge, ChannelBadge, ScoreDot } from "@/components/ui";
+import { Icon } from "@/components/icons";
 import { money, relativeDays } from "@/lib/format";
 
 export interface RecallRow {
@@ -164,9 +165,9 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
                       )}
                       <button
                         onClick={(e) => { e.stopPropagation(); openDraft(r); }}
-                        className="rounded-lg border border-brand/40 bg-brand-soft/30 px-2 py-0.5 text-xs font-medium text-brand transition hover:bg-brand-soft/50"
+                        className="inline-flex items-center gap-1 rounded-lg border border-brand/40 bg-brand-soft/30 px-2 py-0.5 text-xs font-medium text-brand transition hover:bg-brand-soft/50"
                       >
-                        ✨ Draft
+                        <Icon name="autopilot" size={12} /> Draft
                       </button>
                     </div>
                     <p className="max-w-md text-xs leading-relaxed text-muted">{r.recommendation}</p>
@@ -182,7 +183,7 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setDraft(null)}>
           <div role="dialog" aria-modal="true" aria-label="AI draft" className="w-full max-w-lg rounded-xl border border-border bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-semibold text-fg">✨ Drafted outreach</h3>
+              <h3 className="flex items-center gap-2 font-semibold text-fg"><Icon name="autopilot" size={15} className="text-brand" /> Drafted outreach</h3>
               <button onClick={() => setDraft(null)} className="text-muted hover:text-fg">✕</button>
             </div>
             <p className="mb-3 text-xs text-muted">{draft.row.title} · {draft.row.contactLabel}</p>

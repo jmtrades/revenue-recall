@@ -47,7 +47,7 @@ export function Notifications() {
             <div className="border-b border-border px-4 py-2.5 text-sm font-medium text-fg">Needs attention</div>
             <div className="max-h-96 overflow-y-auto">
               {items.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-muted">{loaded ? "All clear 🎉" : "Loading…"}</p>
+                <p className="px-4 py-8 text-center text-sm text-muted">{loaded ? "All clear" : "Loading…"}</p>
               ) : (
                 items.map((n) => (
                   <button

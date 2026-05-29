@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { TaskItem } from "@/lib/queries";
+import { ChannelBadge } from "@/components/ui";
 
-const CHANNEL: Record<string, string> = { call: "📞 Call", email: "✉ Email", sms: "💬 SMS" };
 const PRIORITY: Record<string, string> = {
   high: "bg-danger/15 text-danger",
   medium: "bg-warn/15 text-warn",
@@ -54,7 +54,7 @@ export function TaskList({ tasks }: { tasks: TaskItem[] }) {
                       <p className="mt-1 text-xs text-muted">{t.note}</p>
                       {t.contactName && <p className="mt-0.5 text-xs text-muted">{t.contactName}</p>}
                     </div>
-                    <span className="pill shrink-0 bg-surface-2 text-muted">{CHANNEL[t.channel]}</span>
+                    <span className="shrink-0"><ChannelBadge channel={t.channel} /></span>
                   </li>
                 ))}
               </ul>

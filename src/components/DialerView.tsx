@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { CallQueueItem } from "@/lib/queries";
+import { Icon } from "@/components/icons";
 import { Avatar, ReasonBadge, ScoreDot } from "@/components/ui";
 import { RolePlay } from "@/components/RolePlay";
 import { SpeakButton } from "@/components/SpeakButton";
@@ -141,14 +142,14 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
               <ReasonBadge reason={active.reason} />
             </div>
             <div className="mt-4 flex items-center gap-3">
-              <button onClick={call} className="rounded-lg bg-success px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-success/90">📞 Call</button>
+              <button onClick={call} className="inline-flex items-center gap-1.5 rounded-lg bg-success px-5 py-2.5 text-sm font-semibold text-white transition active:scale-[0.97] hover:bg-success/90"><Icon name="dialer" size={15} /> Call</button>
               {callStatus && <span className="text-sm text-muted">{callStatus}</span>}
             </div>
           </div>
 
           <div className="card border-brand/30">
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="font-semibold text-fg">✨ AI call prep</h2>
+              <h2 className="flex items-center gap-2 font-semibold text-fg"><Icon name="autopilot" size={16} className="text-brand" /> AI call prep</h2>
               <div className="flex items-center gap-2">
                 {brief && <SpeakButton text={`${brief.summary} ${brief.talkingPoints.join(". ")}. Goal: ${brief.nextStep}`} label="Prep" />}
                 <button onClick={loadBrief} disabled={briefBusy} className="text-xs text-brand hover:underline disabled:opacity-50">{briefBusy ? "Preparing…" : brief ? "Refresh" : "Prepare"}</button>
