@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { recordRecallTouch, listRecallTouches, earliestTouchByDeal, __resetRecallEventsForTests, type RecallTouch } from "@/lib/recall/events";
+import { recordRecallTouch, listRecallTouches, earliestTouchByDeal, touchesByWeek, __resetRecallEventsForTests, type RecallTouch } from "@/lib/recall/events";
 import { computeRecallOutcomes, type RecallEnrollmentRef } from "@/lib/recall/engine";
 import type { Opportunity, Stage } from "@/lib/crm/types";
 
@@ -30,6 +30,28 @@ describe("earliestTouchByDeal", () => {
     const m = earliestTouchByDeal(touches);
     expect(m.get("d1")).toBe("2026-02-01T00:00:00Z");
     expect(m.size).toBe(1);
+  });
+});
+
+describe("touchesByWeek", () => {
+  const now = new Date("2026-03-15T12:00:00Z");
+  const t = (occurredAt: string): RecallTouch => ({ id: occurredAt, dealId: "d", channel: "email", source: "cadence", occurredAt });
+
+  it("buckets touches into trailing 7-day windows, oldest→newest", () => {
+    const trend = touchesByWeek([
+      t("2026-03-14T00:00:00Z"), // within 7 days → most recent window
+      t("2026-03-13T00:00:00Z"), // most recent window
+      t("2026-03-05T00:00:00Z"), // 10 days ago → previous window
+    ], now, 6);
+    expect(trend).toHaveLength(6);
+    expect(trend[5].value).toBe(2); // most recent window
+    expect(trend[4].value).toBe(1); // previous window
+    expect(trend.slice(0, 4).every((w) => w.value === 0)).toBe(true);
+  });
+
+  it("ignores touches outside the window and bad dates", () => {
+    const trend = touchesByWeek([t("2025-01-01T00:00:00Z"), t("not-a-date")], now, 6);
+    expect(trend.reduce((s, w) => s + w.value, 0)).toBe(0);
   });
 });
 

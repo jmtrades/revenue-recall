@@ -96,3 +96,22 @@ export function earliestTouchByDeal(touches: RecallTouch[]): Map<string, string>
   }
   return map;
 }
+
+/** Recall touches bucketed into the last `weeks` 7-day windows, oldest→newest. */
+export function touchesByWeek(touches: RecallTouch[], now: Date = new Date(), weeks = 6): { label: string; value: number }[] {
+  const DAY = 86_400_000;
+  const end = now.getTime();
+  const out: { label: string; value: number }[] = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const start = end - (i + 1) * 7 * DAY;
+    const stop = end - i * 7 * DAY;
+    let value = 0;
+    for (const t of touches) {
+      const ts = Date.parse(t.occurredAt);
+      if (!Number.isNaN(ts) && ts >= start && ts < stop) value += 1;
+    }
+    const d = new Date(start);
+    out.push({ label: `${d.getUTCMonth() + 1}/${d.getUTCDate()}`, value });
+  }
+  return out;
+}

@@ -33,11 +33,19 @@ export default async function ReportsPage() {
         {r.recallOutcomes.recalled === 0 ? (
           <p className="text-sm text-muted">No deals recalled yet. Enroll the recall queue to start winning revenue back.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <Stat label="Recalled" value={String(r.recallOutcomes.recalled)} hint="deals worked" />
-            <Stat label="Re-engaged" value={String(r.recallOutcomes.reEngaged)} hint="got a touch" />
-            <Stat label="Won back" value={String(r.recallOutcomes.wonBack)} tone="success" hint="closed after recall" />
-            <Stat label="Recovered" value={money(r.recallOutcomes.recoveredValue, r.currency)} tone="success" hint="revenue won back" />
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <Stat label="Recalled" value={String(r.recallOutcomes.recalled)} hint="deals worked" />
+              <Stat label="Re-engaged" value={String(r.recallOutcomes.reEngaged)} hint="got a touch" />
+              <Stat label="Won back" value={String(r.recallOutcomes.wonBack)} tone="success" hint="closed after recall" />
+              <Stat label="Recovered" value={money(r.recallOutcomes.recoveredValue, r.currency)} tone="success" hint="revenue won back" />
+            </div>
+            {r.recallTrend.some((w) => w.value > 0) && (
+              <div>
+                <p className="stat-label mb-2">Recall outreach (6 weeks)</p>
+                <BarChart data={r.recallTrend} height={120} color="rgb(var(--brand-rgb))" />
+              </div>
+            )}
           </div>
         )}
       </Card>
