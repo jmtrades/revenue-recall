@@ -87,7 +87,7 @@ function CrossMini() {
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen">
+    <div className="landing min-h-screen">
       <MarketingNav />
 
       {/* Hero */}

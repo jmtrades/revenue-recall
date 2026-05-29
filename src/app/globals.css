@@ -251,6 +251,31 @@ textarea:focus-visible {
   animation: rr-float 6s ease-in-out infinite;
 }
 
+/* Scroll-reveal (motion design): each section's content rises + fades as it
+   enters the viewport. Pure CSS scroll-driven animation — no JS, runs off the
+   main thread. Inert where unsupported (Safari/FF today) or under reduced
+   motion: elements simply stay visible. Hero (first section) is excluded so it
+   keeps its load-time fade-up. Decorative grid layers are excluded. */
+@keyframes rr-reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .landing > section:not(:first-of-type) > div:not(.surface-grid) {
+      animation: rr-reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry 4% cover 32%;
+    }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
   .animate-float {
