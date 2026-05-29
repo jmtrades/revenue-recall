@@ -77,10 +77,10 @@ export default function LandingPage() {
               Revenue Recall doesn&apos;t just draft messages — it <strong className="text-fg">runs your outbound end to end</strong>. It finds the deals slipping away, works them across email, SMS, and the phone, follows up until they reply, and recovers the revenue you&apos;re losing. A sales force that never sleeps — for any industry, on any CRM, or none.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link href="/signup" className="rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand/90">
+              <Link href="/signup" className="cta rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white hover:bg-brand/90">
                 Start free — no card
               </Link>
-              <Link href="/dashboard" className="rounded-xl border border-border bg-surface/60 px-6 py-3 text-sm font-semibold text-fg transition hover:bg-surface-2">
+              <Link href="/dashboard" className="cta rounded-xl border border-border bg-surface/60 px-6 py-3 text-sm font-semibold text-fg hover:bg-surface-2">
                 Watch it run live →
               </Link>
             </div>
@@ -313,8 +313,8 @@ export default function LandingPage() {
             <h2 className="text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Your pipeline is full of revenue you&apos;re not working.</h2>
             <p className="mx-auto mt-4 max-w-xl text-muted">Turn on Revenue Recall in minutes — connect your CRM or start fresh — and let it go win it back.</p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <Link href="/signup" className="rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand/90">Start free</Link>
-              <Link href="/dashboard" className="rounded-xl border border-border bg-surface/60 px-6 py-3 text-sm font-semibold text-fg transition hover:bg-surface-2">Watch it run</Link>
+              <Link href="/signup" className="cta rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white hover:bg-brand/90">Start free</Link>
+              <Link href="/dashboard" className="cta rounded-xl border border-border bg-surface/60 px-6 py-3 text-sm font-semibold text-fg hover:bg-surface-2">Watch it run</Link>
             </div>
             <p className="mt-4 text-xs text-muted">Free forever to start · No credit card · Cancel anytime</p>
           </div>
