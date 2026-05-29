@@ -71,7 +71,7 @@ export function PricingPlans() {
                 {cadence && <span className="mb-1 text-sm text-muted">{cadence}</span>}
               </div>
               <p className="mt-1 h-4 text-xs text-success">
-                {cycle === "annual" && !isCustom && !isFree ? `Billed annually — save $${((p.monthly as number) - (shown as number)) * 12}/user/yr` : ""}
+                {cycle === "annual" && !isCustom && !isFree ? `Billed annually — save $${((p.monthly as number) - (shown as number)) * 12}${p.perSeat ? "/user/yr" : "/yr"}` : ""}
               </p>
               <Link href={p.href} className={`mt-5 block rounded-xl px-4 py-2.5 text-center text-sm font-semibold transition ${p.featured ? "bg-brand text-white hover:bg-brand/90" : "border border-border text-white hover:bg-surface-2"}`}>
                 {p.cta}

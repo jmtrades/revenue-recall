@@ -12,15 +12,17 @@ create table if not exists invitations (
   status      text not null default 'pending' check (status in ('pending','accepted','revoked')),
   invited_by  uuid,
   created_at  timestamptz not null default now(),
-  accepted_at timestamptz
+  accepted_at timestamptz,
+  -- One row per (org, email): re-inviting upserts on this real constraint, which
+  -- ON CONFLICT can infer (a partial/expression index cannot). Emails are always
+  -- lowercased before insert, so this is effectively case-insensitive.
+  unique (org_id, email)
 );
 
--- One live invite per email per org; lets re-inviting upsert cleanly.
-create unique index if not exists idx_invitations_org_email_pending
-  on invitations(org_id, lower(email)) where status = 'pending';
 -- Fast lookup at sign-in time ("is there a pending invite for this email?").
+-- Stored emails are lowercased, matching the lowercased lookup query.
 create index if not exists idx_invitations_email_pending
-  on invitations(lower(email)) where status = 'pending';
+  on invitations(email) where status = 'pending';
 
 alter table invitations enable row level security;
 drop policy if exists org_rw_invitations on invitations;

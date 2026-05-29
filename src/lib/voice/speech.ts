@@ -195,7 +195,7 @@ export function speakable(text: string): string {
   // Phone numbers → grouped, spoken digits so a callback number isn't read as one
   // giant integer. Matched only on phone-SHAPED tokens (separators or a leading +),
   // so plain large numbers (money, already voiced above) are left intact.
-  s = s.replace(/\(?\b(\d{3})\)?[\s.-](\d{3})[\s.-](\d{4})\b/g, (_m, a: string, b: string, c: string) => `${sayDigits(a)}, ${sayDigits(b)}, ${sayDigits(c)}`);
+  s = s.replace(/(?:\+(\d{1,3})[\s.-]?)?\(?\b(\d{3})\)?[\s.-](\d{3})[\s.-](\d{4})\b/g, (_m, cc: string | undefined, a: string, b: string, c: string) => `${cc ? `${sayDigits(cc)}, ` : ""}${sayDigits(a)}, ${sayDigits(b)}, ${sayDigits(c)}`);
   s = s.replace(/\+(\d[\d\s.-]{8,16}\d)/g, (_m, d: string) => sayDigits(d));
   // Emails: speak "@" and "." inside the address ("sales@acme.com" → "sales at acme dot com").
   s = s.replace(/\b([\w.+-]+)@([\w-]+(?:\.[\w-]+)+)\b/g, (_m, user: string, host: string) => {

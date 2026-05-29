@@ -118,6 +118,7 @@ describe("speakable normalization", () => {
     expect(speakable("call me at 555-123-4567")).toContain("five five five, one two three, four five six seven");
     expect(speakable("ring (555) 867 5309")).toContain("five five five, eight six seven, five three zero nine");
     expect(speakable("dial +15551234567 today")).toContain("one five five five one two three four five six seven");
+    expect(speakable("reach me on +1 555 123 4567")).toContain("one, five five five, one two three, four five six seven");
   });
 
   it("leaves large plain numbers (money) intact — only phone-shaped tokens convert", () => {
