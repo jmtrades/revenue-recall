@@ -37,7 +37,7 @@ const SENTIMENT: Record<string, string> = {
   negative: "bg-danger/15 text-danger",
 };
 
-export function DialerView({ queue }: { queue: CallQueueItem[] }) {
+export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?: string }) {
   const [idx, setIdx] = useState(0);
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [brief, setBrief] = useState<Brief | null>(null);
@@ -169,7 +169,7 @@ export function DialerView({ queue }: { queue: CallQueueItem[] }) {
             )}
           </div>
 
-          <RolePlay contactName={active.contactName} company={active.company} dealTitle={active.title} />
+          <RolePlay contactName={active.contactName} company={active.company} dealTitle={active.title} locale={locale} />
 
           <div className="card">
             <h2 className="mb-2 font-semibold text-fg">Call notes</h2>

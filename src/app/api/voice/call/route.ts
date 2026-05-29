@@ -35,6 +35,7 @@ export async function POST(req: Request) {
     industryId: industry.id,
     industryLabel: industry.label,
     tone: isToneId(parsed.data.tone) ? parsed.data.tone : undefined,
+    language: org.language,
     voice: { senderName: voice.senderName, profile: voice.profile, customNextSteps: voice.customNextSteps },
     turns: [],
   };

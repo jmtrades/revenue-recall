@@ -29,7 +29,8 @@ interface Turn {
  * speaking, and the conversation engine can coach the ideal next line. All voice
  * I/O is browser-native — no audio leaves the device, no provider key.
  */
-export function RolePlay({ contactName, company, dealTitle }: { contactName: string; company?: string; dealTitle: string }) {
+export function RolePlay({ contactName, company, dealTitle, locale }: { contactName: string; company?: string; dealTitle: string; locale?: string }) {
+  const speechLang = locale ?? "en-US";
   const [turns, setTurns] = useState<Turn[]>([]);
   const [tone, setTone] = useState<ToneId>(DEFAULT_TONE);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
@@ -67,8 +68,8 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
   const canListen = typeof window !== "undefined" && isRecognitionSupported();
 
   useEffect(() => {
-    if (canSpeak) loadVoices().then((v) => (voiceRef.current = pickVoice(v, toVoicePrefs(loadVoicePrefs()))));
-  }, [canSpeak]);
+    if (canSpeak) loadVoices().then((v) => (voiceRef.current = pickVoice(v, { ...toVoicePrefs(loadVoicePrefs()), lang: speechLang })));
+  }, [canSpeak, speechLang]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -110,7 +111,7 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
     liveListenRef.current?.stop();
     setListening(true);
     liveListenRef.current = listenContinuous({
-      lang: "en-US",
+      lang: speechLang,
       onSpeechStart: () => {
         if (shouldBargeIn(speakingRef.current, 2)) {
           speakHandleRef.current?.stop();
@@ -199,7 +200,7 @@ export function RolePlay({ contactName, company, dealTitle }: { contactName: str
         setListening(false);
         void send(t);
       },
-      { lang: "en-US", onError: (e) => { setListening(false); setError(`mic: ${e}`); } },
+      { lang: speechLang, onError: (e) => { setListening(false); setError(`mic: ${e}`); } },
     );
   }
 

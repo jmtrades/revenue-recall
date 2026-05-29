@@ -1,5 +1,6 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
 import { getPlaybook } from "@/lib/industries";
+import { languageDirective } from "@/lib/languages";
 import { getTone, type ToneId } from "@/lib/tones";
 import { detectIntent, type Intent } from "@/lib/ai/intent";
 import { reactTo, reactToText, detectSentiment, sentimentToEmotion, type Sentiment } from "@/lib/voice/reactive";
@@ -34,6 +35,8 @@ export interface ConversationState {
   industryId?: string;
   industryLabel?: string;
   tone?: ToneId;
+  /** ISO 639-1 language the call is conducted in (default English). */
+  language?: string;
   voice?: { senderName?: string; profile?: string; customNextSteps?: string[] };
   /** Full transcript so far, oldest first. */
   turns: Turn[];
@@ -204,8 +207,7 @@ Prospect: ${state.contactName}${state.company ? ` at ${state.company}` : ""}
 About: "${state.dealTitle}"
 Their likely natural next-steps: ${pb.nextSteps.call.join(" / ")}
 Phase: ${phase}${phase === "closing" ? " (ask for a concrete next step with a day/time)" : ""}
-${state.voice?.profile ? `Speak in this rep's voice:\n"""${state.voice.profile}"""\n` : ""}
-TRANSCRIPT SO FAR:
+${state.voice?.profile ? `Speak in this rep's voice:\n"""${state.voice.profile}"""\n` : ""}${languageDirective(state.language) ? `${languageDirective(state.language)}\n` : ""}TRANSCRIPT SO FAR:
 ${transcript(state.turns, "rep")}
 
 Say the next line out loud, as the rep. Set done=true only if the call should naturally end now.`;
@@ -252,7 +254,7 @@ function fallbackProspectTurn(state: ConversationState, difficulty: Difficulty):
 export async function simulateProspect(state: ConversationState, difficulty: Difficulty = "medium"): Promise<ProspectTurn> {
   if (!isAiConfigured()) return fallbackProspectTurn(state, difficulty);
   const user = `Role-play a ${difficulty} prospect for "${state.dealTitle}" in ${state.industryLabel ?? "sales"}.
-TRANSCRIPT SO FAR:
+${languageDirective(state.language) ? `${languageDirective(state.language)}\n` : ""}TRANSCRIPT SO FAR:
 ${transcript(state.turns, "prospect")}
 
 Say the prospect's next line out loud. React to what the rep just said.`;
