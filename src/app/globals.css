@@ -4,19 +4,17 @@
 
 :root {
   color-scheme: dark;
-  /* Accent (overridden per-org on the app shell). RGB triplets so Tailwind's
-     `rgb(var(--brand-rgb) / <alpha>)` tokens and these effects share one source. */
-  --brand-rgb: 99 132 255;
-  --brand-soft-rgb: 38 51 92;
-  /* Neutral surface + text palette (dark default). Deeper background and softer,
-     lower-contrast borders read more premium than flat slate. */
-  --bg-rgb: 8 10 16;
-  --surface-rgb: 15 19 29;
-  --surface-2-rgb: 23 28 42;
-  --border-rgb: 32 39 54;
-  --muted-rgb: 145 154 173;
+  /* Money-green accent (white button text stays legible). Warm-neutral darks —
+     deliberately NOT the blue-black that reads as generic "AI SaaS". */
+  --brand-rgb: 5 150 105;
+  --brand-soft-rgb: 12 45 33;
+  --bg-rgb: 10 11 10;
+  --surface-rgb: 17 19 17;
+  --surface-2-rgb: 25 28 25;
+  --border-rgb: 38 42 39;
+  --muted-rgb: 148 154 148;
   --fg-rgb: 255 255 255;
-  --body-rgb: 226 230 238;
+  --body-rgb: 223 227 223;
 }
 
 [data-theme="light"] {
@@ -32,13 +30,13 @@
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg-rgb: 8 10 16;
-  --surface-rgb: 15 19 29;
-  --surface-2-rgb: 23 28 42;
-  --border-rgb: 32 39 54;
-  --muted-rgb: 145 154 173;
+  --bg-rgb: 10 11 10;
+  --surface-rgb: 17 19 17;
+  --surface-2-rgb: 25 28 25;
+  --border-rgb: 38 42 39;
+  --muted-rgb: 148 154 148;
   --fg-rgb: 255 255 255;
-  --body-rgb: 226 230 238;
+  --body-rgb: 223 227 223;
 }
 
 html {
@@ -63,10 +61,13 @@ body {
   background-attachment: fixed;
 }
 
-/* Crisp headings: tighter tracking + balanced wrapping, the way premium SaaS sets type. */
+/* Headings use a distinctive display face (Space Grotesk) — the single biggest
+   break from the Inter/Roboto "AI SaaS" sameness. Body stays Inter. */
 h1, h2, h3 {
-  letter-spacing: -0.022em;
+  font-family: var(--font-display), var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.02em;
   text-wrap: balance;
+  font-weight: 600;
 }
 h1 { letter-spacing: -0.035em; }
 p { text-wrap: pretty; }
@@ -129,22 +130,19 @@ textarea:focus-visible {
 }
 
 @layer utilities {
-  /* Brand gradient text — warm white into brand, weighted toward legible white. */
+  /* Accent highlight — a confident SOLID accent, not a shimmer gradient
+     (the gradient headline is a tired AI-slop tell). Class name kept so all
+     existing usages flip to the cleaner treatment automatically. */
   .gradient-text {
-    background-image: linear-gradient(105deg, #fff 0%, #fff 35%, rgb(var(--brand-rgb)) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: rgb(var(--brand-rgb));
   }
-  /* Ambient hero glow — a soft brand aurora with a hint of teal, no hard edges. */
+  /* Hero ambience: barely-there single glow. Flat reads more premium than aurora. */
   .hero-glow {
-    background:
-      radial-gradient(48rem 28rem at 50% -6rem, rgb(var(--brand-rgb) / 0.20) 0%, transparent 65%),
-      radial-gradient(36rem 24rem at 85% 4rem, rgb(52 211 153 / 0.08) 0%, transparent 70%);
+    background: radial-gradient(56rem 26rem at 50% -8rem, rgb(var(--brand-rgb) / 0.07) 0%, transparent 68%);
   }
-  /* Featured-card halo: crisp brand ring + soft lift. */
+  /* Featured-card emphasis: a crisp accent border + a neutral lift, not a colored halo. */
   .ring-glow {
-    box-shadow: 0 0 0 1px rgb(var(--brand-rgb) / 0.35), 0 24px 70px -28px rgb(var(--brand-rgb) / 0.5);
+    box-shadow: 0 0 0 1px rgb(var(--brand-rgb) / 0.45), 0 30px 60px -34px rgb(0 0 0 / 0.85);
   }
   /* Faint blueprint grid that FADES out via a radial mask, so it never tiles
      harshly to the edges (that hard repeat is what reads as "itchy"). */
