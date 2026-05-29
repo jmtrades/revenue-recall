@@ -1,6 +1,7 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
 import { refineForHumanness } from "@/lib/ai/refine";
 import { getPlaybook } from "@/lib/industries";
+import { getLanguage, DEFAULT_LANGUAGE } from "@/lib/languages";
 import { getTone, type ToneId } from "@/lib/tones";
 import { capitalize, firstName, pickVariant, pick, seeded, sentence, GREETINGS_EMAIL } from "@/lib/copy";
 
@@ -15,6 +16,8 @@ export interface ReplyInput {
   history?: string[];
   voice?: { senderName?: string; profile?: string; signature?: string; customNextSteps?: string[]; customReengage?: string[] };
   tone?: ToneId;
+  /** ISO 639-1 language the workspace sells in (default English). See lib/languages. */
+  language?: string;
 }
 
 export interface ReplyResult {
@@ -177,6 +180,14 @@ function fallback(input: ReplyInput): ReplyResult {
   return { subject: sms ? undefined : `Re: ${input.dealTitle}`, body, source: "template" };
 }
 
+/** Reply in the language the prospect wrote in; bias to the org's language when
+ *  their message is too short/ambiguous to tell. */
+function replyLanguageDirective(code?: string): string {
+  const lang = getLanguage(code);
+  const base = "Reply in the SAME language the prospect wrote their message in — match it exactly and idiomatically, like a native speaker.";
+  return lang.code === DEFAULT_LANGUAGE ? base : `${base} If their language is unclear or it's only a greeting, default to ${lang.label} (${lang.native}).`;
+}
+
 export async function draftReply(input: ReplyInput): Promise<ReplyResult> {
   if (!isAiConfigured() || !input.incoming.trim()) return fallback(input);
   const pb = getPlaybook(input.industryId ?? "generic");
@@ -199,7 +210,7 @@ How a real ${input.industryLabel ?? "sales"} rep talks (match the spirit, don't 
   • Skeptical: ${pb.objectionAngles.trust}
   • "Just send info": ${pb.objectionAngles.info}
 ${input.voice?.customNextSteps?.length ? `\nThis rep's own go-to next steps (prefer one when it fits): ${input.voice.customNextSteps.join(" / ")}` : ""}${input.voice?.profile ? `\nWrite in THIS person's voice — match it so it sounds like them, not an AI:\n"""${input.voice.profile}"""` : ""}
-
+${replyLanguageDirective(input.language)}
 Write the reply now, as this human. Answer what they actually said.`;
   try {
     const raw = await completeJson<{ subject?: string; body: string }>({ system: SYSTEM, user, schema: SCHEMA, maxTokens: 900, temperature: 0.9, feature: "reply" });

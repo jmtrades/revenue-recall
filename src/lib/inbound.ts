@@ -114,6 +114,7 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     incoming: body,
     history,
     voice,
+    language: org.language,
   });
 
   // Auto-send or queue for approval.
