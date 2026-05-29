@@ -353,16 +353,18 @@ export default function LandingPage() {
 
       {/* FAQ */}
       <section className="mx-auto max-w-3xl px-5 py-20">
-        <div className="text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-brand">FAQ</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Questions, answered</h2>
+        <div className="flex flex-col items-center text-center">
+          <span className="eyebrow">FAQ</span>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Questions, answered</h2>
         </div>
         <div className="mt-10 space-y-3">
           {FAQ.map((f) => (
-            <details key={f.q} className="group rounded-xl border border-border bg-surface p-5 [&_summary]:cursor-pointer">
-              <summary className="flex items-center justify-between text-sm font-medium text-fg marker:content-['']">
+            <details key={f.q} className="group rounded-xl border border-border bg-surface p-5 transition-colors open:border-brand/30 [&_summary]:cursor-pointer">
+              <summary className="flex items-center justify-between gap-4 text-[15px] font-medium text-fg marker:content-['']">
                 {f.q}
-                <span className="text-muted transition group-open:rotate-45">+</span>
+                <span className="grid h-6 w-6 flex-none place-items-center rounded-full border border-border text-muted transition-transform duration-200 ease-out group-open:rotate-45 group-open:border-brand/40 group-open:text-brand">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                </span>
               </summary>
               <p className="mt-3 text-sm leading-relaxed text-muted">{f.a}</p>
             </details>
@@ -372,14 +374,22 @@ export default function LandingPage() {
 
       {/* Final CTA */}
       <section className="mx-auto max-w-6xl px-5 pb-24">
-        <div className="hero-glow relative overflow-hidden rounded-3xl border border-border bg-surface px-8 py-16 text-center">
+        <div className="hero-glow bezel relative overflow-hidden rounded-3xl border border-border bg-surface px-8 py-20 text-center">
           <div className="surface-grid absolute inset-0 opacity-30" />
-          <div className="relative">
-            <h2 className="text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Your pipeline is full of revenue you&apos;re not working.</h2>
-            <p className="mx-auto mt-4 max-w-xl text-muted">Turn on Revenue Recall in minutes — connect your CRM or start fresh — and let it go win it back.</p>
+          <div className="relative mx-auto max-w-2xl">
+            <h2 className="text-3xl font-semibold tracking-tight text-fg sm:text-[2.75rem] sm:leading-[1.08]">Your pipeline is full of revenue you&apos;re not working.</h2>
+            <p className="mx-auto mt-5 max-w-xl text-lg text-muted">Turn on Revenue Recall in minutes — connect your CRM or start fresh — and let it go win it back.</p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <Link href="/signup" className="cta rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white hover:bg-brand/90">Start free</Link>
-              <Link href="/dashboard" className="cta rounded-xl border border-border bg-surface/60 px-6 py-3 text-sm font-semibold text-fg hover:bg-surface-2">Watch it run</Link>
+              <Link href="/signup" className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-2 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand/90">
+                Start free
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20 transition-transform duration-200 ease-out group-hover:translate-x-0.5">
+                  <Arrow />
+                </span>
+              </Link>
+              <Link href="/dashboard" className="cta inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-5 py-2.5 text-sm font-semibold text-fg transition-colors hover:bg-surface-2">
+                Watch it run
+                <Arrow className="text-muted" />
+              </Link>
             </div>
             <p className="mt-4 text-xs text-muted">Free forever to start · No credit card · Cancel anytime</p>
           </div>
