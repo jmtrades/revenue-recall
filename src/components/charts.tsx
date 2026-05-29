@@ -3,23 +3,35 @@
  * BRAND resolves to the org's accent via the --brand-rgb CSS variable set on the
  * app shell, so charts re-color with the chosen theme.
  */
+import { useId } from "react";
 
 const BRAND = "rgb(var(--brand-rgb))";
 const GRID = "rgb(var(--border-rgb))";
 
 export function Sparkline({ data, width = 120, height = 32, color = BRAND }: { data: number[]; width?: number; height?: number; color?: string }) {
+  const gid = useId();
   if (data.length < 2) return <svg width={width} height={height} />;
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = max - min || 1;
   const step = width / (data.length - 1);
-  const points = data.map((d, i) => `${i * step},${height - ((d - min) / range) * (height - 4) - 2}`);
+  const pts = data.map((d, i) => [i * step, height - ((d - min) / range) * (height - 6) - 3] as const);
+  const points = pts.map(([x, y]) => `${x},${y}`);
   const path = `M ${points.join(" L ")}`;
   const area = `${path} L ${width},${height} L 0,${height} Z`;
+  const [lx, ly] = pts[pts.length - 1];
   return (
     <svg width={width} height={height} className="overflow-visible">
-      <path d={area} fill={color} opacity={0.12} />
-      <path d={path} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.28} />
+          <stop offset="100%" stopColor={color} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${gid})`} />
+      <path d={path} fill="none" stroke={color} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={lx} cy={ly} r={2.75} fill={color} />
+      <circle cx={lx} cy={ly} r={5} fill={color} opacity={0.18} />
     </svg>
   );
 }
@@ -96,10 +108,14 @@ export function Funnel({ stages }: { stages: { label: string; value: number; cou
             <span className="w-32 shrink-0 truncate text-xs text-muted">{s.label}</span>
             <div className="flex h-9 flex-1 items-center">
               <div
-                className="flex h-full items-center justify-end rounded bg-gradient-to-r from-brand/40 to-brand/80 px-2"
-                style={{ width: `${w}%` }}
+                className="flex h-full items-center justify-end rounded-md px-2.5"
+                style={{
+                  width: `${w}%`,
+                  background: "linear-gradient(to right, rgb(var(--brand-rgb) / 0.4), rgb(var(--brand-rgb) / 0.9))",
+                  boxShadow: "inset 0 1px 0 0 rgb(255 255 255 / 0.12)",
+                }}
               >
-                <span className="text-xs font-medium tabular-nums text-fg">{s.count}</span>
+                <span className="text-xs font-semibold tabular-nums text-white">{s.count}</span>
               </div>
             </div>
             <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted">{conv !== null ? `${conv}%` : ""}</span>
@@ -113,10 +129,18 @@ export function Funnel({ stages }: { stages: { label: string; value: number; cou
 export function BarChart({ data, height = 160, color = BRAND }: { data: { label: string; value: number }[]; height?: number; color?: string }) {
   const max = Math.max(1, ...data.map((d) => d.value));
   return (
-    <div className="flex items-end gap-2" style={{ height }}>
+    <div className="flex items-end gap-2.5" style={{ height }}>
       {data.map((d) => (
-        <div key={d.label} className="flex flex-1 flex-col items-center justify-end gap-1.5">
-          <div className="w-full rounded-t transition-all" style={{ height: `${(d.value / max) * (height - 24)}px`, background: color, opacity: 0.85 }} title={String(d.value)} />
+        <div key={d.label} className="flex flex-1 flex-col items-center justify-end gap-2">
+          <div
+            className="w-full rounded-t-md"
+            style={{
+              height: `${Math.max(2, (d.value / max) * (height - 26))}px`,
+              background: `linear-gradient(to top, color-mix(in srgb, ${color} 32%, transparent), ${color})`,
+              boxShadow: "inset 0 1px 0 0 rgb(255 255 255 / 0.18)",
+            }}
+            title={String(d.value)}
+          />
           <span className="truncate text-[10px] text-muted">{d.label}</span>
         </div>
       ))}
