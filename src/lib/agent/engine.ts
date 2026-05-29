@@ -11,6 +11,7 @@ import { compactMoney } from "@/lib/format";
 import { createRun, createOutboxItem, touchTask } from "@/lib/agent/store";
 import { batchActivities } from "@/lib/crm/activities";
 import { contactInsights, reachHint } from "@/lib/insights";
+import { contactPreferredLanguage } from "@/lib/languages";
 import { isEntitled } from "@/lib/billing/enforce";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
 import type { AgentAction, AgentRun, AgentTask } from "@/lib/agent/types";
@@ -155,7 +156,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
         daysSinceContact: t.days ?? daysSince(t.opp.lastActivityAt),
         history,
         instruction: task.goal,
-        language: org.language,
+        language: contactPreferredLanguage(contact?.attributes, org.language),
         timingHint: reachHint(insights) ?? undefined,
         voice,
       });

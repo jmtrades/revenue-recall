@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
+import { toLanguageCode } from "@/lib/languages";
 import type { ContactPoint, Stage } from "@/lib/crm/types";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,7 @@ const Row = z.object({
   company: z.string().max(200).optional(),
   value: z.number().nonnegative().max(1_000_000_000).optional(),
   stage: z.string().max(120).optional(),
+  language: z.string().max(40).optional(),
 });
 
 const Body = z.object({ rows: z.array(Row).min(1).max(2000) });
@@ -58,7 +60,8 @@ export async function POST(req: Request) {
         ...(r.email ? [{ channel: "email" as const, value: r.email }] : []),
         ...(r.phone ? [{ channel: "phone" as const, value: r.phone }] : []),
       ];
-      const contact = await provider.createContact({ name: r.name, company: r.company, points, attributes: {} });
+      const lang = toLanguageCode(r.language);
+      const contact = await provider.createContact({ name: r.name, company: r.company, points, attributes: lang ? { preferredLanguage: lang } : {} });
       contacts++;
 
       if (r.value !== undefined || r.stage) {

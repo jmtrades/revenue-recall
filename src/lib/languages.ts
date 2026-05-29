@@ -44,6 +44,36 @@ export function isLanguageCode(code: string): boolean {
   return LANGUAGES.some((l) => l.code === code);
 }
 
+/**
+ * Coerce a loosely-formatted value (a code, English label, native name, or
+ * BCP-47 locale like "es" / "Spanish" / "Español" / "es-MX") to a supported
+ * language code, or undefined if it matches none. For tolerant CSV/CRM import.
+ */
+export function toLanguageCode(raw?: string | null): string | undefined {
+  if (!raw) return undefined;
+  const v = raw.trim().toLowerCase();
+  if (!v) return undefined;
+  const short = v.split(/[-_]/)[0]; // "es-mx" -> "es"
+  const hit = LANGUAGES.find(
+    (l) => l.code === v || l.code === short || l.label.toLowerCase() === v || l.native.toLowerCase() === v || l.locale.toLowerCase() === v,
+  );
+  return hit?.code;
+}
+
+/**
+ * The language to use for a specific contact: their stored preference
+ * (attributes.preferredLanguage / attributes.language) when it's a supported
+ * code, otherwise the workspace fallback. Lets outreach honor a person's own
+ * language even when it differs from the org default.
+ */
+export function contactPreferredLanguage(
+  attributes: Record<string, string | number | boolean | null> | undefined,
+  fallback: string,
+): string {
+  const raw = attributes?.preferredLanguage ?? attributes?.language;
+  return (typeof raw === "string" && toLanguageCode(raw)) || fallback;
+}
+
 /** BCP-47 locale for the TTS voice, e.g. "es" → "es-ES". */
 export function localeFor(code?: string | null): string {
   return getLanguage(code).locale;

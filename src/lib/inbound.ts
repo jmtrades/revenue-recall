@@ -2,6 +2,7 @@ import { getProvider } from "@/lib/crm/registry";
 import { getActiveVoice } from "@/lib/voice";
 import { getOrgSettings } from "@/lib/org";
 import { getIndustry } from "@/lib/industries";
+import { contactPreferredLanguage } from "@/lib/languages";
 import { draftReply } from "@/lib/ai/reply";
 import { detectIntent } from "@/lib/ai/intent";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
@@ -114,7 +115,7 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     incoming: body,
     history,
     voice,
-    language: org.language,
+    language: contactPreferredLanguage(contact.attributes, org.language),
   });
 
   // Auto-send or queue for approval.

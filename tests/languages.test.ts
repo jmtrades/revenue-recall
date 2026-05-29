@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { LANGUAGES, getLanguage, isLanguageCode, localeFor, languageDirective, DEFAULT_LANGUAGE } from "@/lib/languages";
+import { LANGUAGES, getLanguage, isLanguageCode, localeFor, languageDirective, toLanguageCode, contactPreferredLanguage, DEFAULT_LANGUAGE } from "@/lib/languages";
 
 describe("languages", () => {
   it("validates known and unknown codes", () => {
@@ -27,6 +27,26 @@ describe("languages", () => {
     expect(es).toContain("Spanish");
     expect(es).toContain("Español");
     expect(es.toLowerCase()).toContain("idiomatic");
+  });
+
+  it("coerces codes, labels, native names, and locales to a code", () => {
+    expect(toLanguageCode("es")).toBe("es");
+    expect(toLanguageCode("Spanish")).toBe("es");
+    expect(toLanguageCode("Español")).toBe("es");
+    expect(toLanguageCode("es-MX")).toBe("es"); // locale variant → base code
+    expect(toLanguageCode("PT")).toBe("pt");
+    expect(toLanguageCode("Klingon")).toBeUndefined();
+    expect(toLanguageCode("")).toBeUndefined();
+    expect(toLanguageCode(null)).toBeUndefined();
+  });
+
+  it("resolves a contact's preferred language with org fallback", () => {
+    expect(contactPreferredLanguage({ preferredLanguage: "fr" }, "en")).toBe("fr");
+    expect(contactPreferredLanguage({ language: "Spanish" }, "en")).toBe("es"); // coerced
+    expect(contactPreferredLanguage({ preferredLanguage: "bogus" }, "de")).toBe("de"); // invalid → fallback
+    expect(contactPreferredLanguage({}, "pt")).toBe("pt");
+    expect(contactPreferredLanguage(undefined, "en")).toBe("en");
+    expect(contactPreferredLanguage({ preferredLanguage: 42 }, "en")).toBe("en"); // non-string → fallback
   });
 
   it("every language has a distinct code and a non-empty locale/native name", () => {

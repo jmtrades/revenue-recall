@@ -5,6 +5,7 @@ import { getProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
 import { getActiveVoice } from "@/lib/voice";
 import { getIndustry } from "@/lib/industries";
+import { contactPreferredLanguage } from "@/lib/languages";
 import { buildRecallQueue } from "@/lib/recall/engine";
 import { draftMessage } from "@/lib/ai/draft";
 import { isAiConfigured } from "@/lib/ai/client";
@@ -318,7 +319,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
         recallReason: seq.id === "recall" ? "lost_winnable" : undefined,
         daysSinceContact: daysSince(deal?.lastActivityAt),
         instruction: `This is step ${e.stepIndex + 1} of the "${seq.name}" cadence. Intent: ${step.body}`,
-        language: org.language,
+        language: contactPreferredLanguage(contact?.attributes, org.language),
         voice,
       });
 

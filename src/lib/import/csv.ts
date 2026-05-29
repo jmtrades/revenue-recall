@@ -14,6 +14,8 @@ export interface ImportRow {
   company?: string;
   value?: number;
   stage?: string;
+  /** Preferred outreach language (code/label/locale; resolved server-side). */
+  language?: string;
 }
 
 export interface ParseResult {
@@ -57,6 +59,10 @@ const HEADER_ALIASES: Record<string, Field> = {
   status: "stage",
   "deal stage": "stage",
   "pipeline stage": "stage",
+  language: "language",
+  "preferred language": "language",
+  lang: "language",
+  locale: "language",
 };
 
 /** Tokenize raw CSV text into a grid of cells, honoring RFC-4180 quoting. */

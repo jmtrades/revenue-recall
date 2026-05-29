@@ -105,7 +105,7 @@ export function ImportCsv({ writable }: { writable: boolean }) {
           >
             <div className="text-3xl text-muted/60">⬆</div>
             <p className="mt-2 text-sm text-fg">{fileName ?? "Drop a CSV here or click to upload"}</p>
-            <p className="mt-1 text-xs text-muted">Columns: name, email, phone, company, value, stage</p>
+            <p className="mt-1 text-xs text-muted">Columns: name, email, phone, company, value, stage, language</p>
           </button>
           <input
             ref={inputRef}
