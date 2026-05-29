@@ -88,7 +88,7 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
       const res = await fetch("/api/messages/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channel, dealId: draft.row.opportunityId, subject: draft.subject, body: draft.body }),
+        body: JSON.stringify({ channel, dealId: draft.row.opportunityId, subject: draft.subject, body: draft.body, recall: true }),
       });
       if (res.ok) {
         setSent(true);

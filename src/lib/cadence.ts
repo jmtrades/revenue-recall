@@ -15,6 +15,7 @@ import { hasOptedOut, quietHoursNow } from "@/lib/agent/guardrails";
 import { batchActivities } from "@/lib/crm/activities";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
 import { getSequence } from "@/lib/sequences";
+import { recordRecallTouch } from "@/lib/recall/events";
 import type { Contact, Opportunity, Pipeline } from "@/lib/crm/types";
 
 /**
@@ -367,6 +368,11 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
         await createOutboxItem({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, subject: draft.subject, body: draft.body, source: draft.source });
         result.queued += 1;
       }
+    }
+
+    // Log a recall touch for attribution (any acted step of a recall sequence).
+    if (address && seq.id === "recall") {
+      await recordRecallTouch({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, source: "cadence", occurredAt: now });
     }
 
     // Advance to the next step (or complete the enrollment).

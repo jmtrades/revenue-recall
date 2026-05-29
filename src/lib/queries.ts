@@ -6,6 +6,7 @@ import { getIndustry, recallThresholdsFor } from "@/lib/industries";
 import { computeMetrics, type PipelineMetrics } from "@/lib/analytics";
 import { buildRecallQueue, summarizeRecall, computeRecallOutcomes, recallByOwner, type RecallItem, type RecallSummary, type RecallOutcomes } from "@/lib/recall/engine";
 import { listEnrollments } from "@/lib/cadence";
+import { listRecallTouches, earliestTouchByDeal } from "@/lib/recall/events";
 import type { Activity, Contact, Opportunity, Pipeline, Stage, User } from "@/lib/crm/types";
 
 /** Everything the dashboard needs in one round trip. */
@@ -97,14 +98,15 @@ export async function getRecallQueue(): Promise<{ items: RecallItem[]; summary: 
 /** Recall ROI — did re-engaging cold/lost deals actually win them back? */
 export async function getRecallOutcomes(): Promise<RecallOutcomes> {
   const provider = getProvider();
-  const [pipelines, opportunities, enrollments] = await Promise.all([
+  const [pipelines, opportunities, enrollments, touches] = await Promise.all([
     provider.listPipelines(),
     provider.listOpportunities(),
     listEnrollments(undefined, 1000),
+    listRecallTouches(),
   ]);
   const stages = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
   const oppById = new Map(opportunities.map((o) => [o.id, o]));
-  return computeRecallOutcomes(enrollments, oppById, stages, opportunities[0]?.currency ?? "USD");
+  return computeRecallOutcomes(enrollments, oppById, stages, opportunities[0]?.currency ?? "USD", earliestTouchByDeal(touches));
 }
 
 export async function getLeads(): Promise<{ contacts: Contact[]; opps: Map<string, Opportunity>; owners: Map<string, User> }> {
@@ -548,8 +550,8 @@ export async function getReports(): Promise<Reports> {
     recoverableValue: s.recoverableValue,
   }));
   const stagesById = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
-  const enrollments = await listEnrollments(undefined, 1000);
-  const recallOutcomes = computeRecallOutcomes(enrollments, new Map(opps.map((o) => [o.id, o])), stagesById, metrics.currency);
+  const [enrollments, touches] = await Promise.all([listEnrollments(undefined, 1000), listRecallTouches()]);
+  const recallOutcomes = computeRecallOutcomes(enrollments, new Map(opps.map((o) => [o.id, o])), stagesById, metrics.currency, earliestTouchByDeal(touches));
 
   return { currency: metrics.currency, metrics, funnel, sources, monthlyWon, leaderboard, recallByOwner: recallOwners, recallOutcomes };
 }

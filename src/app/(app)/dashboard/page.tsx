@@ -105,6 +105,12 @@ export default async function DashboardPage() {
               ))}
             </ul>
           )}
+          {reports.recallOutcomes.wonBack > 0 && (
+            <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3 text-sm">
+              <span className="text-muted">Won back so far</span>
+              <span className="font-medium text-success">{money(reports.recallOutcomes.recoveredValue, m.currency)} · {reports.recallOutcomes.wonBack} deals</span>
+            </div>
+          )}
         </Card>
       </div>
 

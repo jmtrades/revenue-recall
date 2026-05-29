@@ -236,30 +236,55 @@ export function computeRecallOutcomes(
   oppById: Map<string, Opportunity>,
   stages: Map<string, Stage>,
   currency: string,
+  /** Earliest recorded recall touch per deal id — captures manual/extra touches
+   *  beyond sequence enrollment. A win counts only if it landed on/after it. */
+  touchedAt?: Map<string, string>,
 ): RecallOutcomes {
   let recalled = 0;
   let reEngaged = 0;
   let wonBack = 0;
   let recoveredValue = 0;
   let inProgress = 0;
-  for (const e of enrollments) {
-    if (!RECALL_SEQUENCE_IDS.has(e.sequenceId)) continue;
-    recalled += 1;
-    if (e.stepIndex > 0 || e.lastStepAt) reEngaged += 1;
-    const deal = e.dealId ? oppById.get(e.dealId) : undefined;
-    if (!deal) continue;
+  const seenDeals = new Set<string>();
+
+  // Credit a recalled deal against the moment recall began for it.
+  const credit = (deal: Opportunity, recalledSince: string): void => {
     const stage = stages.get(deal.stageId);
     if (stage?.type === "won") {
-      // Only credit recall when the win landed on/after enrollment.
       const wonAt = deal.closedAt ?? deal.updatedAt;
-      if (!wonAt || wonAt >= e.enrolledAt) {
+      if (!wonAt || wonAt >= recalledSince) {
         wonBack += 1;
         recoveredValue += deal.value;
       }
     } else if (stage?.type === "open") {
       inProgress += 1;
     }
+  };
+
+  for (const e of enrollments) {
+    if (!RECALL_SEQUENCE_IDS.has(e.sequenceId)) continue;
+    recalled += 1;
+    if (e.stepIndex > 0 || e.lastStepAt) reEngaged += 1;
+    const deal = e.dealId ? oppById.get(e.dealId) : undefined;
+    if (!deal) continue;
+    seenDeals.add(deal.id);
+    credit(deal, e.enrolledAt);
   }
+
+  // Deals with a recorded recall touch that weren't already counted via an
+  // enrollment (e.g. a manual send from the recall queue).
+  if (touchedAt) {
+    for (const [dealId, firstTouch] of touchedAt) {
+      if (seenDeals.has(dealId)) continue;
+      const deal = oppById.get(dealId);
+      if (!deal) continue;
+      seenDeals.add(dealId);
+      recalled += 1;
+      reEngaged += 1; // a logged touch is, by definition, re-engagement
+      credit(deal, firstTouch);
+    }
+  }
+
   return { recalled, reEngaged, wonBack, recoveredValue, inProgress, currency };
 }
 
