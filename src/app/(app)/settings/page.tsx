@@ -140,8 +140,11 @@ export default async function SettingsPage() {
   const channelsTab = (
     <Card>
       <p className="mb-3 text-sm text-muted">
-        How outbound email, SMS, and calls are delivered. Until a provider is configured, messages are recorded to the
-        timeline so every flow works end-to-end. Configure via env (Resend/SendGrid for email, Twilio for SMS &amp; voice).
+        How outbound email, SMS, and calls are delivered. Provider-agnostic: point a webhook
+        (<code className="text-fg">EMAIL_WEBHOOK_URL</code> / <code className="text-fg">SMS_WEBHOOK_URL</code> /{" "}
+        <code className="text-fg">VOICE_WEBHOOK_URL</code>) at any provider or automation tool — no vendor lock-in — or
+        register a transport in code. Built-in adapters (Resend/SendGrid, optional Twilio) work via env too. Until something
+        is connected, messages are recorded to the timeline so every flow works end-to-end.
       </p>
       <ul className="divide-y divide-border">
         {([
