@@ -113,6 +113,21 @@ Three ways, in increasing effort:
    recall engine, board, analytics — works unchanged because it only ever talks
    to the interface.
 
+Each adapter is verified two ways: **offline integration tests** (`tests/*.integration.test.ts`)
+drive it through realistic API payloads with a mocked `fetch`, asserting both the
+requests sent and the universal shape mapped back; and a **live smoke** you run
+against a real account to confirm end to end:
+
+```bash
+# export the relevant creds first (HUBSPOT_ACCESS_TOKEN, PIPEDRIVE_API_TOKEN,
+# SALESFORCE_ACCESS_TOKEN + SALESFORCE_INSTANCE_URL, CLOSE_API_KEY)
+npm run smoke:crm                  # read-only: users, pipelines, contacts, deals
+CRM_SMOKE_WRITE=1 npm run smoke:crm  # also create a throwaway contact/deal + note
+```
+
+The live smoke is skipped unless `CRM_LIVE_SMOKE=1` and a provider's creds are
+present, so the normal suite stays offline.
+
 ### Adding an industry
 
 Append an `IndustryTemplate` to `INDUSTRIES` in `src/lib/industries/index.ts`.
