@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getProvider } from "@/lib/crm/registry";
-import { getConfig } from "@/lib/config";
-import { getIndustry } from "@/lib/industries";
+import { getOrgSettings } from "@/lib/org";
 import type { ContactPoint, Stage } from "@/lib/crm/types";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +34,7 @@ export async function POST(req: Request) {
   }
   if (!pipeline) return NextResponse.json({ error: "No pipeline configured" }, { status: 409 });
 
-  const currency = getIndustry(getConfig().industryId).currency;
+  const currency = (await getOrgSettings()).currency;
   const stages = pipeline.stages;
   const defaultStage = stages.find((s) => s.type === "open") ?? stages[0];
 

@@ -186,7 +186,7 @@ export async function getLeadRows(): Promise<{ rows: LeadRow[]; owners: string[]
   return {
     rows,
     owners: [...new Set(rows.map((r) => r.owner).filter((o) => o !== "—"))].sort(),
-    valueLabel: getIndustry(getConfig().industryId).terminology.value,
+    valueLabel: getIndustry((await getOrgSettings()).industryId).terminology.value,
   };
 }
 
@@ -269,7 +269,7 @@ export async function getDealDetail(id: string): Promise<DealDetail | null> {
   ]);
   const pipeline = pipelines.find((p) => p.id === opp.pipelineId) ?? pipelines[0];
   const stage = pipeline.stages.find((s) => s.id === opp.stageId);
-  const industry = getIndustry(getConfig().industryId);
+  const industry = getIndustry((await getOrgSettings()).industryId);
   return {
     opp,
     contact,

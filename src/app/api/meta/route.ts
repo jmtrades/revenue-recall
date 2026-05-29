@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProvider } from "@/lib/crm/registry";
-import { getConfig } from "@/lib/config";
+import { getOrgSettings } from "@/lib/org";
 import { getIndustry } from "@/lib/industries";
 
 export const dynamic = "force-dynamic";
@@ -14,13 +14,14 @@ export async function GET() {
     provider.listUsers(),
   ]);
   const pipeline = pipelines[0];
-  const industry = getIndustry(getConfig().industryId);
+  const org = await getOrgSettings();
+  const industry = getIndustry(org.industryId);
   const firstOpen = pipeline.stages.find((s) => s.type === "open") ?? pipeline.stages[0];
 
   return NextResponse.json({
     pipelineId: pipeline.id,
     defaultStageId: firstOpen?.id,
-    currency: industry.currency,
+    currency: org.currency,
     terminology: industry.terminology,
     stages: pipeline.stages.map((s) => ({ id: s.id, label: s.label, type: s.type })),
     contacts: contacts.map((c) => ({ id: c.id, name: c.name, company: c.company ?? "" })),
