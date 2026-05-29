@@ -104,9 +104,9 @@ Three ways, in increasing effort:
    `src/lib/crm/providers/http.ts`). Auto-selected when set. Point it at your CRM,
    an automation tool, or a small proxy you host — connect *anything* without
    touching the app.
-2. **Built-in adapters** — Supabase, Close, and HubSpot ship ready (set
-   `HUBSPOT_ACCESS_TOKEN` — a Private App token — and it's auto-selected);
-   Salesforce / Pipedrive are stubbed with the exact interface to fill in.
+2. **Built-in adapters** — Supabase, Close, HubSpot, and Pipedrive ship ready
+   (set `HUBSPOT_ACCESS_TOKEN` or `PIPEDRIVE_API_TOKEN` and it's auto-selected);
+   Salesforce is stubbed with the exact interface to fill in.
 3. **Native adapter** — implement `CrmProvider` (`src/lib/crm/types.ts`) and
    register it in `src/lib/crm/registry.ts`. The rest of the app — dashboard,
    recall engine, board, analytics — works unchanged because it only ever talks
