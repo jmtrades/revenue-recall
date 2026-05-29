@@ -56,8 +56,8 @@ async function distill(input: { senderName?: string; role?: string; samples: str
       user: `Name: ${input.senderName ?? "(unknown)"}\nRole: ${input.role ?? "(unknown)"}\nTheir words (self-description and/or example messages):\n"""${input.samples}"""\n\nProduce the voice profile now.`,
       schema: SCHEMA,
       maxTokens: 800,
-      // Analysis, not creative writing — keep it consistent run to run.
-      temperature: 0.4,
+      think: true,
+      effort: "high", // careful analysis of the rep's writing voice
       feature: "voice",
     });
     return out.profile;

@@ -27,7 +27,15 @@ export function aiModel(): string {
 }
 
 export type EffortLevel = "low" | "medium" | "high" | "xhigh" | "max";
-const EFFORTS: ReadonlySet<string> = new Set(["low", "medium", "high", "xhigh", "max"]);
+const EFFORT_ORDER: readonly EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
+const EFFORTS: ReadonlySet<string> = new Set(EFFORT_ORDER);
+
+/** The higher of two effort levels (so a floor can raise, never lower). */
+export function maxEffort(a?: EffortLevel, b?: EffortLevel): EffortLevel | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return EFFORT_ORDER.indexOf(a) >= EFFORT_ORDER.indexOf(b) ? a : b;
+}
 
 /**
  * Org-wide effort floor from ANTHROPIC_EFFORT (low|medium|high|xhigh|max).
@@ -84,7 +92,8 @@ export async function completeJson<T>(opts: {
   };
   // NB: temperature/top_p/top_k are intentionally NOT sent — Opus 4.7/4.8 reject
   // sampling params with a 400. Steer variation via the prompt instead.
-  const effort = opts.effort ?? aiEffort();
+  // ANTHROPIC_EFFORT acts as a floor that raises (never lowers) the per-call effort.
+  const effort = maxEffort(opts.effort, aiEffort());
   if (opts.think || effort) {
     params.thinking = { type: "adaptive" };
     (params.output_config as Record<string, unknown>).effort = effort ?? "medium";

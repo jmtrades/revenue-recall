@@ -455,8 +455,11 @@ Write the ${input.channel} message now, as this human. Make it impossible to tel
       user,
       schema: SCHEMA,
       maxTokens: 1024,
-      // Higher temperature → the natural variation that makes copy read human.
-      temperature: 0.9,
+      // Adaptive thinking at xhigh for the sharpest, most human-sounding copy.
+      // (Variation comes from the per-variant prompt directive, not temperature —
+      // sampling params are rejected on Opus 4.7/4.8.)
+      think: true,
+      effort: "xhigh",
       feature: "draft",
     });
     // Score locally and let the model fix its own tells once if needed.

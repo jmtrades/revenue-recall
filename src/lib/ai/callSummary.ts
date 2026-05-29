@@ -81,7 +81,7 @@ ${input.notes}
 ${languageDirective(input.language) ? `\n${languageDirective(input.language)} (Keep the "outcome" and "sentiment" enum values exactly as specified — only the prose is translated.)\n` : ""}
 Summarize the call now.`;
   try {
-    const out = await completeJson<Omit<CallSummaryResult, "source">>({ system: SYSTEM, user, schema: SCHEMA, maxTokens: 700 });
+    const out = await completeJson<Omit<CallSummaryResult, "source">>({ system: SYSTEM, user, schema: SCHEMA, maxTokens: 700, think: true, effort: "max", feature: "call_summary" });
     return { ...out, source: "ai" };
   } catch {
     return fallback(input);

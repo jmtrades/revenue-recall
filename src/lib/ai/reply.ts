@@ -213,7 +213,7 @@ ${input.voice?.customNextSteps?.length ? `\nThis rep's own go-to next steps (pre
 ${replyLanguageDirective(input.language)}
 Write the reply now, as this human. Answer what they actually said.`;
   try {
-    const raw = await completeJson<{ subject?: string; body: string }>({ system: SYSTEM, user, schema: SCHEMA, maxTokens: 900, temperature: 0.9, feature: "reply" });
+    const raw = await completeJson<{ subject?: string; body: string }>({ system: SYSTEM, user, schema: SCHEMA, maxTokens: 900, think: true, effort: "xhigh", feature: "reply" });
     const out = await refineForHumanness({ system: SYSTEM, schema: SCHEMA, draft: raw, maxTokens: 900, feature: "reply" });
     return { subject: input.channel === "email" ? out.subject : undefined, body: out.body, source: "ai" };
   } catch {

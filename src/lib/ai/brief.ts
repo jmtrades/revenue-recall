@@ -79,6 +79,7 @@ Brief the rep now.`;
       schema: SCHEMA,
       maxTokens: 1200,
       think: true,
+      effort: "max", // deal brief: infrequent, high-value analysis — worth the deepest reasoning
       feature: "brief",
     });
     return { ...out, source: "ai" };

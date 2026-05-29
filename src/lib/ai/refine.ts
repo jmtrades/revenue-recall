@@ -42,7 +42,8 @@ Return the improved version as JSON — no commentary.`;
       user,
       schema: opts.schema,
       maxTokens: opts.maxTokens ?? 1024,
-      temperature: opts.temperature ?? 0.85,
+      think: true,
+      effort: "high",
       feature: opts.feature ? `${opts.feature}.refine` : "refine",
     });
     // Keep the revision only if it actually scores at least as human.
