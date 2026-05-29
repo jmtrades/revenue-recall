@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { LANGUAGES } from "@/lib/languages";
 
 interface IndustryOption { id: string; label: string; blurb: string }
 
@@ -11,6 +12,7 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
   const [industry, setIndustry] = useState("real_estate");
   const [org, setOrg] = useState("");
   const [quota, setQuota] = useState("250000");
+  const [language, setLanguage] = useState("en");
   const [invites, setInvites] = useState("");
   const [yourName, setYourName] = useState("");
   const [role, setRole] = useState("");
@@ -32,7 +34,7 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
       await fetch("/api/org", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ industryId: industry, name: org || undefined, monthlyQuota: Number(quota) || undefined }),
+        body: JSON.stringify({ industryId: industry, language, name: org || undefined, monthlyQuota: Number(quota) || undefined }),
       });
       if (yourName.trim() || samples.trim()) {
         await fetch("/api/voice/learn", {
@@ -107,6 +109,15 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
               <div>
                 <label className="stat-label">Monthly revenue goal</label>
                 <input className={`${input} mt-1`} type="number" value={quota} onChange={(e) => setQuota(e.target.value)} />
+              </div>
+              <div>
+                <label className="stat-label">Language you sell in</label>
+                <select className={`${input} mt-1`} value={language} onChange={(e) => setLanguage(e.target.value)}>
+                  {LANGUAGES.map((l) => (
+                    <option key={l.code} value={l.code}>{l.label} — {l.native}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-muted">Every email, text, and call script is written in this language.</p>
               </div>
             </div>
           </div>

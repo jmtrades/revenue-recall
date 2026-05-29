@@ -1,6 +1,7 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
 import { refineForHumanness } from "@/lib/ai/refine";
 import { getPlaybook } from "@/lib/industries";
+import { languageDirective } from "@/lib/languages";
 import { getTone, type ToneId } from "@/lib/tones";
 import {
   AI_TELLS,
@@ -40,6 +41,8 @@ export interface DraftInput {
   scenario?: "voicemail" | "breakup" | "referral" | "recap" | "renewal" | "reschedule";
   /** Optional extra instruction from a user-defined Autopilot task. */
   instruction?: string;
+  /** ISO 639-1 language to write in (default English). See lib/languages. */
+  language?: string;
   /** What we know about how/when this person engages (see lib/insights.reachHint).
    *  Used only to make live-AI copy feel naturally timed — never stated mechanically. */
   timingHint?: string;
@@ -441,6 +444,7 @@ ${input.voice?.customNextSteps?.length ? `\nThis rep's own go-to next steps (pre
 ${input.recallReason ? `\nRe-engagement openers (for inspiration): ${(input.voice?.customReengage?.length ? input.voice.customReengage : pb.reengage).join(" / ")}` : ""}
 ${input.voice?.profile ? `\nWrite in THIS person's voice — match it exactly so it sounds like them, not an AI:\n"""${input.voice.profile}"""` : ""}${input.timingHint ? `\nHow they engage: ${input.timingHint} Let this quietly shape the framing if it helps — never say it out loud or sound like you're profiling them.` : ""}${input.instruction ? `\nAlso follow this instruction for this message:\n"""${input.instruction}"""` : ""}${input.variant ? `\nThis is alternative take #${input.variant + 1}. Open differently and restructure it so it reads as a genuinely distinct message from a default version — same intent, fresh wording.` : ""}
 
+${languageDirective(input.language) ? `\n${languageDirective(input.language)}` : ""}
 Write the ${input.channel} message now, as this human. Make it impossible to tell AI was involved.`;
 
   try {

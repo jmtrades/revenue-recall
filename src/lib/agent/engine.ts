@@ -155,6 +155,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
         daysSinceContact: t.days ?? daysSince(t.opp.lastActivityAt),
         history,
         instruction: task.goal,
+        language: org.language,
         timingHint: reachHint(insights) ?? undefined,
         voice,
       });

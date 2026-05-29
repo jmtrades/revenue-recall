@@ -1,5 +1,6 @@
 import { getConfig } from "@/lib/config";
 import { INDUSTRIES, getIndustry } from "@/lib/industries";
+import { getLanguage } from "@/lib/languages";
 import { listIntegrations, getProvider } from "@/lib/crm/registry";
 import { isAiConfigured } from "@/lib/ai/client";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
@@ -72,12 +73,14 @@ export default async function SettingsPage() {
       <OrgSettingsForm
         initialName={org.name}
         initialQuota={org.monthlyQuota}
+        initialLanguage={org.language}
         initialSenderName={org.compliance.senderName ?? ""}
         initialAddress={org.compliance.address ?? ""}
         persisted={org.persisted}
       />
       <div className="mt-5 border-t border-border pt-4">
         <InfoRow label="Industry">{active.label}</InfoRow>
+        <InfoRow label="Language">{getLanguage(org.language).label}</InfoRow>
         <InfoRow label="Currency">{org.currency}</InfoRow>
         <InfoRow label="Active CRM">{getProvider().info().label}</InfoRow>
         <InfoRow label="AI assistant">

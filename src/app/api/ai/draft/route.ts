@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDealDetail } from "@/lib/queries";
 import { getConfig } from "@/lib/config";
+import { getOrgSettings } from "@/lib/org";
 import { getIndustry } from "@/lib/industries";
 import { draftMessage, draftVariations, type DraftInput } from "@/lib/ai/draft";
 import { getActiveVoice } from "@/lib/voice";
@@ -36,6 +37,7 @@ export async function POST(req: Request) {
   if (!detail) return NextResponse.json({ error: "Deal not found" }, { status: 404 });
 
   const industry = getIndustry(getConfig().industryId);
+  const org = await getOrgSettings();
   const voice = await getActiveVoice();
   const days = daysSince(detail.opp.lastActivityAt);
   const recallReason = detail.opp.lossReason ? "lost_winnable" : undefined;
@@ -57,6 +59,7 @@ export async function POST(req: Request) {
     stageLabel: detail.stage?.label ?? "open",
     industryLabel: industry.label,
     industryId: industry.id,
+    language: org.language,
     recallReason,
     daysSinceContact: days,
     history: detail.activities.map((a) => `${a.kind}: ${a.summary}`),
