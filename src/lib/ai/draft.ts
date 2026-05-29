@@ -40,6 +40,9 @@ export interface DraftInput {
   scenario?: "voicemail" | "breakup" | "referral" | "recap" | "renewal" | "reschedule";
   /** Optional extra instruction from a user-defined Autopilot task. */
   instruction?: string;
+  /** What we know about how/when this person engages (see lib/insights.reachHint).
+   *  Used only to make live-AI copy feel naturally timed — never stated mechanically. */
+  timingHint?: string;
   /** The rep's distilled writing voice + sign-off, so messages sound like them. */
   voice?: { senderName?: string; profile?: string; signature?: string; customNextSteps?: string[]; customReengage?: string[] };
 }
@@ -436,7 +439,7 @@ ${input.recallReason ? `Recall reason: ${input.recallReason} (re-engagement — 
 ${playbookBlock(input)}
 ${input.voice?.customNextSteps?.length ? `\nThis rep's own go-to next steps (prefer one of these when it fits): ${input.voice.customNextSteps.join(" / ")}` : ""}
 ${input.recallReason ? `\nRe-engagement openers (for inspiration): ${(input.voice?.customReengage?.length ? input.voice.customReengage : pb.reengage).join(" / ")}` : ""}
-${input.voice?.profile ? `\nWrite in THIS person's voice — match it exactly so it sounds like them, not an AI:\n"""${input.voice.profile}"""` : ""}${input.instruction ? `\nAlso follow this instruction for this message:\n"""${input.instruction}"""` : ""}${input.variant ? `\nThis is alternative take #${input.variant + 1}. Open differently and restructure it so it reads as a genuinely distinct message from a default version — same intent, fresh wording.` : ""}
+${input.voice?.profile ? `\nWrite in THIS person's voice — match it exactly so it sounds like them, not an AI:\n"""${input.voice.profile}"""` : ""}${input.timingHint ? `\nHow they engage: ${input.timingHint} Let this quietly shape the framing if it helps — never say it out loud or sound like you're profiling them.` : ""}${input.instruction ? `\nAlso follow this instruction for this message:\n"""${input.instruction}"""` : ""}${input.variant ? `\nThis is alternative take #${input.variant + 1}. Open differently and restructure it so it reads as a genuinely distinct message from a default version — same intent, fresh wording.` : ""}
 
 Write the ${input.channel} message now, as this human. Make it impossible to tell AI was involved.`;
 

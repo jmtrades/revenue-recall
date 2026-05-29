@@ -10,6 +10,7 @@ import { sendGate, type SkipReason } from "@/lib/agent/guardrails";
 import { compactMoney } from "@/lib/format";
 import { createRun, createOutboxItem, touchTask } from "@/lib/agent/store";
 import { batchActivities } from "@/lib/crm/activities";
+import { contactInsights, reachHint } from "@/lib/insights";
 import { isEntitled } from "@/lib/billing/enforce";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
 import type { AgentAction, AgentRun, AgentTask } from "@/lib/agent/types";
@@ -121,9 +122,26 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
         continue;
       }
 
+      // What we know about reaching this person (channel they reply on, timing).
+      const insights = contactInsights(activities);
+      const emailTo = contact?.points.find((p) => p.channel === "email")?.value;
+      const phoneTo = contact?.points.find((p) => p.channel === "phone")?.value;
+      const reachOn = (ch: "email" | "sms" | "call") => (ch === "email" ? emailTo : phoneTo);
+
+      // Effective channel. In auto mode, if the requested channel can't reach them
+      // (no address/number on file), fall back to one that can — preferring the
+      // channel they actually reply on — so the touch isn't silently wasted.
+      // Review mode always keeps the rep's chosen channel (they send by hand).
+      let channel = task.channel as "email" | "sms" | "call";
+      if (autonomy === "auto" && !reachOn(channel)) {
+        const order: ("email" | "sms" | "call")[] = [insights.bestChannel ?? "sms", "sms", "call", "email"];
+        const alt = order.find((c) => c !== channel && reachOn(c));
+        if (alt) channel = alt;
+      }
+
       const history = activities.map((a) => `${a.kind}: ${a.summary}`);
       const draft = await draftMessage({
-        channel: task.channel === "call" ? "call" : task.channel,
+        channel,
         contactName: name,
         company: contact?.company,
         dealTitle: t.opp.title,
@@ -137,16 +155,14 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
         daysSinceContact: t.days ?? daysSince(t.opp.lastActivityAt),
         history,
         instruction: task.goal,
+        timingHint: reachHint(insights) ?? undefined,
         voice,
       });
 
-      const to =
-        task.channel === "email"
-          ? contact?.points.find((p) => p.channel === "email")?.value
-          : contact?.points.find((p) => p.channel === "phone")?.value;
+      const to = reachOn(channel);
 
       let result: AgentAction["result"] = "drafted";
-      if (task.channel === "call") {
+      if (channel === "call") {
         if (autonomy === "auto" && to) {
           // Place the call autonomously (real dial when Twilio is set; logged otherwise).
           const res = await placeCall(to);
@@ -170,7 +186,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
           result = "skipped";
         } else {
           const res =
-            task.channel === "email"
+            channel === "email"
               ? await sendEmail(to, draft.subject ?? "", draft.body, {
                   unsubscribeUrl: unsubscribeUrl(t.opp.contactId),
                   compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address },
@@ -182,7 +198,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
             await provider.logActivity({
               opportunityId: t.opp.id,
               contactId: t.opp.contactId,
-              kind: task.channel,
+              kind: channel,
               summary: draft.subject ? `${draft.subject}\n\n${draft.body}` : draft.body,
               direction: "outbound",
               occurredAt: new Date().toISOString(),
@@ -193,12 +209,12 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
       if (result === "drafted" || result === "queued") drafted += 1;
 
       // Review-mode email/SMS drafts become approval-inbox items.
-      if (result === "drafted" && (task.channel === "email" || task.channel === "sms")) {
-        pending.push({ dealId: t.opp.id, contactId: t.opp.contactId, channel: task.channel, subject: draft.subject, body: draft.body, source: draft.source });
+      if (result === "drafted" && (channel === "email" || channel === "sms")) {
+        pending.push({ dealId: t.opp.id, contactId: t.opp.contactId, channel, subject: draft.subject, body: draft.body, source: draft.source });
       }
 
       actions.push({
-        type: task.channel,
+        type: channel,
         dealId: t.opp.id,
         title: name,
         detail: draft.subject ? `${draft.subject} — ${draft.body.slice(0, 140)}` : draft.body.slice(0, 180),

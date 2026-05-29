@@ -70,3 +70,18 @@ export function contactInsights(activities: Activity[]): ContactInsights {
 
   return { bestChannel, bestTime, responsiveness, note };
 }
+
+/**
+ * A short, drafter-facing hint about how this person engages — fed to the AI
+ * writer so outreach can feel naturally timed (never stated mechanically).
+ * Returns null when there's no signal worth acting on.
+ */
+export function reachHint(insights: ContactInsights): string | null {
+  if (insights.responsiveness === "unknown") return null;
+  if (insights.responsiveness === "low") {
+    return "They haven't replied to past outreach — keep it light, low-pressure, and genuinely easy to ignore.";
+  }
+  const channelWord = insights.bestChannel === "call" ? "a call" : insights.bestChannel === "sms" ? "a text" : "email";
+  const time = insights.bestTime ? `, usually in the ${insights.bestTime}` : "";
+  return `They tend to engage over ${channelWord}${time}.`;
+}

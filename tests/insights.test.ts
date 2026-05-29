@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { contactInsights } from "@/lib/insights";
+import { contactInsights, reachHint } from "@/lib/insights";
 import type { Activity } from "@/lib/crm/types";
 
 const act = (over: Partial<Activity>): Activity => ({ id: Math.random().toString(36), kind: "email", summary: "", occurredAt: new Date().toISOString(), ...over });
@@ -53,5 +53,27 @@ describe("contactInsights", () => {
       act({ direction: "inbound", kind: "stage_change", occurredAt: at(9) }),
     ]);
     expect(r.bestChannel).toBeNull();
+  });
+});
+
+describe("reachHint", () => {
+  it("has no hint when we know nothing", () => {
+    expect(reachHint(contactInsights([]))).toBeNull();
+  });
+
+  it("nudges toward a light touch when they never reply", () => {
+    const hint = reachHint(contactInsights([act({ direction: "outbound", kind: "email" })]));
+    expect(hint).toMatch(/light|low-pressure/i);
+  });
+
+  it("names the channel and time they engage on", () => {
+    const hint = reachHint(
+      contactInsights([
+        act({ direction: "inbound", kind: "sms", occurredAt: at(9) }),
+        act({ direction: "inbound", kind: "sms", occurredAt: at(10) }),
+      ]),
+    );
+    expect(hint).toContain("a text");
+    expect(hint).toContain("mornings");
   });
 });
