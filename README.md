@@ -73,7 +73,7 @@ supabase/migrations/        Org-scoped Postgres schema (RLS) for the built-in CR
 - **Inbox** — unified email/SMS/call threads with real send (logs to timeline until a provider is configured). **Calendar** — month grid + agenda.
 - **Sequences** — multi-step, multi-channel cadences per industry, with a real runtime: enroll the recall queue, all open deals, or a specific deal/contact, and the cron tick works each step on its scheduled day (drafts in-voice → Approvals, or auto-sends under `SEQUENCE_AUTOPILOT`). Closed-won deals drop out; closed-lost stay enrolled for re-engagement. **Templates**, **Automations** — engagement tooling per industry.
 - **Reports** & **Forecast** — funnel, sources, leaderboard, commit/best-case/weighted.
-- **Settings** — general, **appearance** (per-org accent that re-themes the whole UI chrome, saved to the org), industry, pipeline, integrations, team, fields, notifications (saved per-org; the toggles gate the in-app "needs attention" feed — recall flags, new deals, stage moves — and the scheduled emails: daily pipeline digest and task reminders, sent once a day by the cron when an email provider is configured), CSV import (creates contacts + deals via the active provider), and **billing** — real Stripe Checkout + customer portal + a signature-verified webhook that syncs subscription state per org. Inactive (shows the current plan/seat summary) until `STRIPE_*` keys are set; then self-serve upgrades go live.
+- **Settings** — general (incl. the **language** the workspace sells in — drives AI drafting + voice locale), **appearance** (per-org accent that re-themes the whole UI chrome, saved to the org), industry, pipeline, integrations, **team** (invite teammates by email; a matching pending invite joins them to your workspace as a member on first sign-in, instead of provisioning a new org), fields, notifications (saved per-org; the toggles gate the in-app "needs attention" feed — recall flags, new deals, stage moves — and the scheduled emails: daily pipeline digest and task reminders, sent once a day by the cron when an email provider is configured), CSV import (creates contacts + deals via the active provider), and **billing** — real Stripe Checkout + customer portal + a signature-verified webhook that syncs subscription state per org. Inactive (shows the current plan/seat summary) until `STRIPE_*` keys are set; then self-serve upgrades go live.
 - Global ⌘K search, quick-create, notifications, responsive mobile nav.
 
 > Every surface works with zero setup on the seeded in-memory store. The real
@@ -147,6 +147,10 @@ The voice layer goes well past "no clichés":
   budget, confused, **gatekeeper**, and hard opt-out; each reframed in
   industry-true language. Unknown input still gets a sensible human reply.
 - **Scenarios** — voicemail drops and gracious breakup / last-touch messages.
+- **Multilingual** (`src/lib/languages.ts`) — pick the language the workspace
+  sells in (13 supported) and every email, text, and call script is written
+  idiomatically in it, not translated; the voice synth speaks with a matching
+  locale. Inbound auto-replies mirror the language the prospect wrote in.
 - **Spoken voice, in-house** (`src/lib/voice/*`) — browser-native TTS + speech
   recognition (no third-party provider, nothing leaves the device), with text
   normalization, prosody, and **emotional delivery** that shifts speed/pitch/
