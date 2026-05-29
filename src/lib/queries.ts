@@ -1,4 +1,5 @@
 import { getProvider } from "@/lib/crm/registry";
+import { cachedOpportunities, cachedPipelines, cachedContacts, cachedUsers } from "@/lib/crm/cached";
 import { getConfig } from "@/lib/config";
 import { getOrgSettings } from "@/lib/org";
 import { getIndustry } from "@/lib/industries";
@@ -23,7 +24,7 @@ export async function getOverview(): Promise<Overview> {
   const cfg = getConfig();
   const industry = getIndustry(cfg.industryId);
 
-  const [pipelines, opportunities] = await Promise.all([provider.listPipelines(), provider.listOpportunities()]);
+  const [pipelines, opportunities] = await Promise.all([cachedPipelines(), cachedOpportunities()]);
   const pipeline = pipelines[0];
   const metrics = computeMetrics(opportunities, pipeline);
   const recall = buildRecallQueue(opportunities, pipelines);
@@ -199,8 +200,8 @@ export async function getActivityFeed(limit = 12): Promise<FeedEntry[]> {
   const provider = getProvider();
   const [activities, contacts, opps] = await Promise.all([
     provider.listRecentActivities(limit),
-    provider.listContacts(),
-    provider.listOpportunities(),
+    cachedContacts(),
+    cachedOpportunities(),
   ]);
   const cById = new Map(contacts.map((c) => [c.id, c]));
   const oById = new Map(opps.map((o) => [o.id, o]));
@@ -452,9 +453,9 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 export async function getReports(): Promise<Reports> {
   const provider = getProvider();
   const [pipelines, opps, users] = await Promise.all([
-    provider.listPipelines(),
-    provider.listOpportunities(),
-    provider.listUsers(),
+    cachedPipelines(),
+    cachedOpportunities(),
+    cachedUsers(),
   ]);
   const pipeline = pipelines[0];
   const metrics = computeMetrics(opps, pipeline);
