@@ -6,6 +6,7 @@ import { money, relativeDays } from "@/lib/format";
 import { Card, Avatar, InfoRow, ActivityIcon, EmptyState } from "@/components/ui";
 import { DealActions } from "@/components/DealActions";
 import { AiBrief } from "@/components/AiBrief";
+import { contactInsights } from "@/lib/insights";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,13 @@ export default async function DealPage({ params }: { params: { id: string } }) {
   const canWrite = getProvider().info().capabilities.write;
   const openStages = pipeline.stages.filter((s) => s.type === "open");
   const currentIdx = openStages.findIndex((s) => s.id === stage?.id);
+  const insights = contactInsights(activities);
+  const responsivenessStyle: Record<string, string> = {
+    high: "bg-success/15 text-success",
+    medium: "bg-brand-soft text-brand",
+    low: "bg-warn/15 text-warn",
+    unknown: "bg-surface-2 text-muted",
+  };
 
   return (
     <div className="space-y-6">
@@ -102,6 +110,17 @@ export default async function DealPage({ params }: { params: { id: string } }) {
               </div>
             </Card>
           )}
+
+          <Card title="Best way to reach them">
+            <div className="flex items-center gap-2">
+              <span className={`pill capitalize ${responsivenessStyle[insights.responsiveness]}`}>{insights.responsiveness} responsiveness</span>
+              {insights.bestChannel && (
+                <span className="pill bg-brand-soft text-brand capitalize">{insights.bestChannel === "sms" ? "text" : insights.bestChannel}</span>
+              )}
+              {insights.bestTime && <span className="pill bg-surface-2 text-muted">{insights.bestTime}</span>}
+            </div>
+            <p className="mt-3 text-sm text-muted">{insights.note}</p>
+          </Card>
 
           <Card title="Details">
             <InfoRow label="Owner">{owner ? <span className="flex items-center gap-2"><Avatar name={owner.name} size={22} />{owner.name}</span> : "—"}</InfoRow>
