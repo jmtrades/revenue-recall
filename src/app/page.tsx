@@ -59,6 +59,15 @@ const FAQ = [
   { q: "How fast can I be live?", a: "Two minutes. Sign up, pick your industry, connect a CRM or start fresh — your pipeline, sequences, and autonomous outbound are ready immediately." },
 ];
 
+function Arrow({ className = "" }: { className?: string }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M5 12h14" />
+      <path d="m13 6 6 6-6 6" />
+    </svg>
+  );
+}
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen">
@@ -69,24 +78,29 @@ export default function LandingPage() {
         <div className="surface-grid absolute inset-0 opacity-40" />
         <div className="relative mx-auto grid max-w-6xl gap-12 px-5 pb-20 pt-14 lg:grid-cols-2 lg:items-center lg:pb-28 lg:pt-20">
           <div className="animate-fade-up">
-            <span className="pill border border-border bg-surface/60 text-muted">Autonomous outbound · every industry</span>
-            <h1 className="mt-5 text-4xl font-semibold leading-[1.1] tracking-tight text-fg sm:text-5xl lg:text-6xl">
+            <span className="eyebrow">Autonomous outbound · every industry</span>
+            <h1 className="mt-5 text-[2.6rem] font-semibold leading-[1.05] tracking-tight text-fg sm:text-5xl lg:text-[3.75rem]">
               Put your entire sales operation <span className="gradient-text">on autopilot.</span>
             </h1>
-            <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
-              Revenue Recall doesn&apos;t just draft messages — it <strong className="text-fg">runs your outbound end to end</strong>. It finds the deals slipping away, works them across email, SMS, and the phone, follows up until they reply, and recovers the revenue you&apos;re losing. A sales force that never sleeps — for any industry, on any CRM, or none.
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-body">
+              Revenue Recall doesn&apos;t just draft messages — it <strong className="font-semibold text-fg">runs your outbound end to end</strong>. It finds the deals slipping away, works them across email, SMS, and the phone, follows up until they reply, and recovers the revenue you&apos;re losing. A sales force that never sleeps — for any industry, on any CRM, or none.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link href="/signup" className="cta rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white hover:bg-brand/90">
+              <Link href="/signup" className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-2 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand/90">
                 Start free — no card
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20 transition-transform duration-200 ease-out group-hover:translate-x-0.5">
+                  <Arrow />
+                </span>
               </Link>
-              <Link href="/dashboard" className="cta rounded-xl border border-border bg-surface/60 px-6 py-3 text-sm font-semibold text-fg hover:bg-surface-2">
-                Watch it run live →
+              <Link href="/dashboard" className="cta inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-5 py-2.5 text-sm font-semibold text-fg transition-colors hover:bg-surface-2">
+                Watch it run live
+                <Arrow className="text-muted" />
               </Link>
             </div>
             <p className="mt-3 text-xs text-muted">Free to start · No credit card · Live in 2 minutes</p>
-            <div className="mt-8 border-t border-border/60 pt-6">
-              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">Runs closing teams in</p>
+            <div className="mt-10 pt-6">
+              <div className="hairline" />
+              <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Runs closing teams in</p>
               <p className="mt-2 text-sm text-body">Real estate · SaaS · Insurance · Mortgage · Agencies · Auto · Home services</p>
             </div>
           </div>

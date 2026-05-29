@@ -129,6 +129,20 @@ textarea:focus-visible {
   .pill {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
+  /* Section eyebrow — a refined pill badge with a lit dot. Replaces the plain
+     repeated green caps so the accent stays special instead of diluted. */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border border-border bg-surface/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-body;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 9999px;
+    background: rgb(var(--brand-rgb));
+    box-shadow: 0 0 0 3px rgb(var(--brand-rgb) / 0.18);
+    flex: none;
+  }
   .nav-link {
     @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-surface-2 hover:text-fg;
   }
@@ -165,6 +179,44 @@ textarea:focus-visible {
   /* Soft elevation for non-.card surfaces. */
   .shadow-soft {
     box-shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 12px 32px -18px rgb(0 0 0 / 0.7);
+  }
+  /* A surface that reads as a real, lifted material: hairline top highlight
+     (catches "light" from above) + layered ambient shadow. The premium tell is
+     depth hierarchy, not a flat 1px box. */
+  .raised {
+    background-image: linear-gradient(rgb(255 255 255 / 0.035), transparent 38%);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.06),
+      0 1px 2px rgb(0 0 0 / 0.3),
+      0 18px 40px -24px rgb(0 0 0 / 0.8);
+  }
+  /* Double-bezel outer shell (machined-hardware look): content sits in a tray. */
+  .bezel {
+    background: rgb(255 255 255 / 0.04);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.07),
+      0 40px 90px -40px rgb(0 0 0 / 0.95);
+  }
+  /* Tasteful card hover lift — gated to fine pointers so touch never sticks. */
+  .lift {
+    transition:
+      transform 220ms var(--ease-out),
+      border-color 220ms var(--ease-out),
+      box-shadow 220ms var(--ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .lift:hover {
+      transform: translateY(-3px);
+      box-shadow:
+        inset 0 1px 0 0 rgb(255 255 255 / 0.07),
+        0 1px 2px rgb(0 0 0 / 0.3),
+        0 28px 50px -28px rgb(0 0 0 / 0.85);
+    }
+  }
+  /* Hairline divider that fades at both ends — softer than a hard 1px rule. */
+  .hairline {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(var(--border-rgb)), transparent);
   }
 }
 
@@ -203,6 +255,9 @@ textarea:focus-visible {
   .animate-fade-up,
   .animate-float {
     animation: none;
+  }
+  .lift:hover {
+    transform: none;
   }
   html {
     scroll-behavior: auto;
