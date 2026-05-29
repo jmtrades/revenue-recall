@@ -212,8 +212,8 @@ export default function LandingPage() {
       {/* Autonomy spectrum */}
       <section className="mx-auto max-w-5xl px-5 py-20">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-brand">You set the leash</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">From co-pilot to fully hands-off</h2>
+          <span className="eyebrow">You set the leash</span>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">From co-pilot to fully hands-off</h2>
           <p className="mt-4 text-muted">Start with everything queued for your approval. Trust it more, hand it more — all the way to running your outbound while you sleep.</p>
         </div>
         <div className="mt-10 grid gap-5 md:grid-cols-3">
@@ -222,9 +222,17 @@ export default function LandingPage() {
             { tag: "Scheduled", title: "It runs on a cadence", body: "Sequences fire on schedule across channels. You stay in the loop on the outcomes, not the busywork." },
             { tag: "Autopilot", title: "It runs the operation", body: "Full end-to-end autonomy — sends, calls, follows up, and recovers deals with guardrails on quiet hours, opt-outs, and caps." },
           ].map((s, i) => (
-            <div key={s.tag} className={`rounded-2xl border p-6 ${i === 2 ? "border-brand/40 bg-surface ring-glow" : "border-border bg-surface"}`}>
-              <span className={`pill ${i === 2 ? "bg-brand-soft text-brand" : "bg-surface-2 text-muted"}`}>{s.tag}</span>
-              <h3 className="mt-3 font-semibold text-fg">{s.title}</h3>
+            <div key={s.tag} className={`raised rounded-2xl border p-6 ${i === 2 ? "border-brand/40 bg-surface ring-glow" : "border-border bg-surface"}`}>
+              <div className="flex items-center justify-between">
+                <span className={`pill ${i === 2 ? "bg-brand-soft text-brand" : "bg-surface-2 text-muted"}`}>{s.tag}</span>
+                {/* escalating autonomy level — visualizes "you set the leash" */}
+                <span className="flex items-center gap-1" aria-label={`Autonomy level ${i + 1} of 3`}>
+                  {[0, 1, 2].map((j) => (
+                    <span key={j} className={`h-1.5 w-5 rounded-full ${j <= i ? "bg-brand" : "bg-border"}`} />
+                  ))}
+                </span>
+              </div>
+              <h3 className="mt-4 font-semibold text-fg">{s.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted">{s.body}</p>
             </div>
           ))}
@@ -235,14 +243,22 @@ export default function LandingPage() {
       <section id="how" className="border-y border-border bg-surface/30">
         <div className="mx-auto max-w-6xl px-5 py-20">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-brand">How it works</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Live in minutes. Recovering by day one.</h2>
+            <span className="eyebrow">How it works</span>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Live in minutes. Recovering by day one.</h2>
           </div>
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
-            {STEPS.map((s) => (
-              <div key={s.n} className="rounded-2xl border border-border bg-surface p-6">
-                <div className="text-3xl font-semibold text-brand/40">{s.n}</div>
-                <h3 className="mt-3 font-semibold text-fg">{s.title}</h3>
+          {/* Open process timeline — numbered nodes + fading connectors, not more boxes. */}
+          <div className="mt-14 grid gap-x-8 gap-y-10 md:grid-cols-3">
+            {STEPS.map((s, i) => (
+              <div key={s.n} className="relative">
+                <div className="flex items-center gap-4">
+                  <span className="grid h-11 w-11 flex-none place-items-center rounded-full border border-brand/30 bg-brand-soft font-display text-sm font-semibold tabular-nums text-brand shadow-[inset_0_1px_0_0_rgb(255_255_255/0.06)]">
+                    {s.n}
+                  </span>
+                  {i < STEPS.length - 1 && (
+                    <span className="hidden h-px flex-1 bg-gradient-to-r from-border to-transparent md:block" aria-hidden />
+                  )}
+                </div>
+                <h3 className="mt-5 font-semibold text-fg">{s.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">{s.body}</p>
               </div>
             ))}
@@ -253,13 +269,13 @@ export default function LandingPage() {
       {/* Industries */}
       <section id="industries" className="mx-auto max-w-6xl px-5 py-20">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-brand">Tuned to your world</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Built for every industry</h2>
+          <span className="eyebrow">Tuned to your world</span>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Built for every industry</h2>
           <p className="mt-4 text-muted">It knows the terminology, the objections, and the way deals actually close in your business — out of the box.</p>
         </div>
-        <div className="mt-10 flex flex-wrap justify-center gap-3">
+        <div className="mx-auto mt-10 flex max-w-3xl flex-wrap justify-center gap-2.5">
           {INDUSTRIES.filter((i) => i.id !== "generic").map((i) => (
-            <span key={i.id} className="rounded-full border border-border bg-surface px-4 py-2 text-sm text-fg transition hover:border-brand/40">
+            <span key={i.id} className="lift rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium text-body transition-colors hover:border-brand/40 hover:text-fg">
               {i.label}
             </span>
           ))}
