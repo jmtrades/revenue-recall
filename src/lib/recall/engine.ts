@@ -263,6 +263,30 @@ export function computeRecallOutcomes(
   return { recalled, reEngaged, wonBack, recoveredValue, inProgress, currency };
 }
 
+/** Per-owner slipping-revenue stat for the recall leaderboard. */
+export interface RecallOwnerStat {
+  ownerId: string;
+  atRisk: number;
+  recoverableValue: number;
+}
+
+/**
+ * Group a recall queue by owner — who is letting the most recoverable revenue
+ * slip. `ownerOf` resolves an opportunity id to its owner id (unowned deals
+ * collapse into "unassigned"). Sorted by recoverable value, descending.
+ */
+export function recallByOwner(items: RecallItem[], ownerOf: (oppId: string) => string | undefined): RecallOwnerStat[] {
+  const map = new Map<string, RecallOwnerStat>();
+  for (const it of items) {
+    const ownerId = ownerOf(it.opportunityId) ?? "unassigned";
+    const row = map.get(ownerId) ?? { ownerId, atRisk: 0, recoverableValue: 0 };
+    row.atRisk += 1;
+    row.recoverableValue += it.weightedValue;
+    map.set(ownerId, row);
+  }
+  return [...map.values()].sort((a, b) => b.recoverableValue - a.recoverableValue);
+}
+
 export function summarizeRecall(items: RecallItem[], currency: string): RecallSummary {
   const byReason = {
     going_cold: { count: 0, value: 0 },

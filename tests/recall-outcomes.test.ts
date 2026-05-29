@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeRecallOutcomes, type RecallEnrollmentRef } from "@/lib/recall/engine";
+import { computeRecallOutcomes, recallByOwner, type RecallEnrollmentRef, type RecallItem } from "@/lib/recall/engine";
 import type { Opportunity, Stage } from "@/lib/crm/types";
 
 const stages: Stage[] = [
@@ -60,5 +60,24 @@ describe("computeRecallOutcomes", () => {
     expect(o.reEngaged).toBe(1);
     expect(o.wonBack).toBe(0);
     expect(o.inProgress).toBe(0);
+  });
+});
+
+describe("recallByOwner", () => {
+  const item = (opportunityId: string, weightedValue: number): RecallItem => ({
+    opportunityId, title: "t", value: weightedValue * 2, currency: "USD", weightedValue,
+    daysSinceActivity: 20, reason: "going_cold", score: 50, recommendation: "", channel: "email", engaged: false, overdue: false,
+  });
+  const owners: Record<string, string | undefined> = { d1: "u1", d2: "u1", d3: "u2", d4: undefined };
+
+  it("sums recoverable value and at-risk count per owner, sorted desc", () => {
+    const rows = recallByOwner([item("d1", 3000), item("d2", 1000), item("d3", 5000), item("d4", 200)], (id) => owners[id]);
+    expect(rows[0]).toEqual({ ownerId: "u2", atRisk: 1, recoverableValue: 5000 });
+    expect(rows[1]).toEqual({ ownerId: "u1", atRisk: 2, recoverableValue: 4000 });
+    expect(rows[2]).toEqual({ ownerId: "unassigned", atRisk: 1, recoverableValue: 200 });
+  });
+
+  it("returns an empty list when nothing is at risk", () => {
+    expect(recallByOwner([], () => undefined)).toEqual([]);
   });
 });

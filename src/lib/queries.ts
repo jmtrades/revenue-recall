@@ -4,7 +4,7 @@ import { getConfig } from "@/lib/config";
 import { getOrgSettings } from "@/lib/org";
 import { getIndustry, recallThresholdsFor } from "@/lib/industries";
 import { computeMetrics, type PipelineMetrics } from "@/lib/analytics";
-import { buildRecallQueue, summarizeRecall, computeRecallOutcomes, type RecallItem, type RecallSummary, type RecallOutcomes } from "@/lib/recall/engine";
+import { buildRecallQueue, summarizeRecall, computeRecallOutcomes, recallByOwner, type RecallItem, type RecallSummary, type RecallOutcomes } from "@/lib/recall/engine";
 import { listEnrollments } from "@/lib/cadence";
 import type { Activity, Contact, Opportunity, Pipeline, Stage, User } from "@/lib/crm/types";
 
@@ -470,6 +470,10 @@ export interface Reports {
   sources: { label: string; value: number; color: string }[];
   monthlyWon: { label: string; value: number }[];
   leaderboard: { name: string; won: number; value: number; openValue: number }[];
+  /** Who's letting the most recoverable revenue slip (recall queue, per owner). */
+  recallByOwner: { name: string; atRisk: number; recoverableValue: number }[];
+  /** Org-wide recall ROI (recalled → re-engaged → won back). */
+  recallOutcomes: RecallOutcomes;
 }
 
 const PALETTE = ["#5b8cff", "#34d399", "#fbbf24", "#f87171", "#a78bfa", "#22d3ee", "#fb923c", "#94a3b8"];
@@ -533,5 +537,19 @@ export async function getReports(): Promise<Reports> {
     .map((u) => ({ name: u.name, ...board.get(u.id)! }))
     .sort((a, b) => b.value - a.value);
 
-  return { currency: metrics.currency, metrics, funnel, sources, monthlyWon, leaderboard };
+  // Recall: revenue slipping per owner + org-wide recall ROI.
+  const thresholds = recallThresholdsFor((await getOrgSettings()).industryId);
+  const recallItems = buildRecallQueue(opps, pipelines, undefined, thresholds);
+  const ownerByOpp = new Map(opps.map((o) => [o.id, o.ownerId]));
+  const userName = new Map(users.map((u) => [u.id, u.name]));
+  const recallOwners = recallByOwner(recallItems, (oppId) => ownerByOpp.get(oppId)).map((s) => ({
+    name: s.ownerId === "unassigned" ? "Unassigned" : userName.get(s.ownerId) ?? "Unknown",
+    atRisk: s.atRisk,
+    recoverableValue: s.recoverableValue,
+  }));
+  const stagesById = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
+  const enrollments = await listEnrollments(undefined, 1000);
+  const recallOutcomes = computeRecallOutcomes(enrollments, new Map(opps.map((o) => [o.id, o])), stagesById, metrics.currency);
+
+  return { currency: metrics.currency, metrics, funnel, sources, monthlyWon, leaderboard, recallByOwner: recallOwners, recallOutcomes };
 }
