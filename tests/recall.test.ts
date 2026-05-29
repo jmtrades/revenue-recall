@@ -110,6 +110,28 @@ describe("engagement signals", () => {
   });
 });
 
+describe("overdue close date", () => {
+  it("flags an open deal past its expected close date and boosts its score", () => {
+    const onTime = scoreOpportunity(opp({ stageId: "open_hi", lastActivityAt: daysAgo(20), expectedCloseAt: daysAgo(-10) }), stageMap);
+    const overdue = scoreOpportunity(opp({ stageId: "open_hi", lastActivityAt: daysAgo(20), expectedCloseAt: daysAgo(20) }), stageMap);
+    expect(onTime?.overdue).toBe(false);
+    expect(overdue?.overdue).toBe(true);
+    expect(overdue!.score).toBeGreaterThan(onTime!.score);
+    expect(overdue?.recommendation).toContain("Close date slipped");
+  });
+
+  it("does not mark a deal with no close date as overdue", () => {
+    const r = scoreOpportunity(opp({ stageId: "open_hi", lastActivityAt: daysAgo(20), expectedCloseAt: undefined }), stageMap);
+    expect(r?.overdue).toBe(false);
+  });
+
+  it("ignores close dates on lost deals (they have their own path)", () => {
+    const r = scoreOpportunity(opp({ stageId: "lost", value: 8000, lastActivityAt: daysAgo(20), expectedCloseAt: daysAgo(40) }), stageMap);
+    expect(r?.reason).toBe("lost_winnable");
+    expect(r?.overdue).toBe(false);
+  });
+});
+
 describe("buildRecallQueue", () => {
   const opps: Opportunity[] = [
     opp({ id: "a", stageId: "open_hi", value: 50000, lastActivityAt: daysAgo(30) }),

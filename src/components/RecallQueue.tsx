@@ -19,6 +19,8 @@ export interface RecallRow {
   recommendation: string;
   /** Buyer replied at least once before going quiet. */
   engaged?: boolean;
+  /** Open deal whose expected close date has passed. */
+  overdue?: boolean;
 }
 
 const FILTERS = [
@@ -153,6 +155,11 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
                       {r.engaged && (
                         <span className="pill bg-brand-soft/40 text-brand" title="This buyer replied before going quiet — a warmer, more recoverable deal.">
                           ↩ Replied before
+                        </span>
+                      )}
+                      {r.overdue && (
+                        <span className="pill bg-rose-500/15 text-rose-400" title="This deal's expected close date has already passed.">
+                          ⏰ Past close date
                         </span>
                       )}
                       <button

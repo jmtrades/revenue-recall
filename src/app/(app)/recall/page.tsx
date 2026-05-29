@@ -31,6 +31,7 @@ export default async function RecallPage() {
       channel: r.channel,
       recommendation: r.recommendation,
       engaged: r.engaged,
+      overdue: r.overdue,
     };
   });
 

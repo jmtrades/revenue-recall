@@ -25,6 +25,8 @@ export interface RecallItem {
   channel: "call" | "email" | "sms";
   /** The contact replied at least once before going quiet — a hotter recall. */
   engaged: boolean;
+  /** An open deal whose expected close date has already passed. */
+  overdue: boolean;
 }
 
 /** Optional per-opportunity signals that sharpen scoring and channel choice. */
@@ -56,6 +58,8 @@ const REASON_COPY: Record<RecallReason, { rec: (d: number) => string; channel: R
 const CHANNELS: ReadonlySet<RecallItem["channel"]> = new Set(["call", "email", "sms"]);
 /** Priority bump for deals where the buyer actually replied before going quiet. */
 const ENGAGEMENT_BOOST = 10;
+/** Max priority bump for an open deal whose close date has slipped. */
+const OVERDUE_BOOST_CAP = 15;
 
 /** The messaging channel the contact most recently replied on, if any. */
 export function preferredChannel(activities?: Activity[]): RecallItem["channel"] | null {
@@ -71,12 +75,11 @@ export function hasEngaged(activities?: Activity[]): boolean {
   return Boolean(activities?.some((a) => a.direction === "inbound"));
 }
 
-function recommend(reason: RecallReason, days: number, engaged: boolean, channel: RecallItem["channel"], overrode: boolean): string {
-  if (engaged && overrode) {
-    const verb = channel === "call" ? "call them back" : channel === "sms" ? "text them" : "email them";
-    return `They went quiet after replying by ${channel} — ${verb} on the thread they actually answer.`;
-  }
-  return REASON_COPY[reason].rec(days);
+function recommend(reason: RecallReason, days: number, engaged: boolean, channel: RecallItem["channel"], overrode: boolean, daysOverdue: number): string {
+  const base = engaged && overrode
+    ? `They went quiet after replying by ${channel} — ${(channel === "call" ? "call them back" : channel === "sms" ? "text them" : "email them")} on the thread they actually answer.`
+    : REASON_COPY[reason].rec(days);
+  return daysOverdue > 0 ? `${base} Close date slipped ${daysOverdue}d ago.` : base;
 }
 
 /**
@@ -121,11 +124,17 @@ export function scoreOpportunity(opp: Opportunity, stages: Map<string, Stage>, s
   const channel = preferred ?? REASON_COPY[reason].channel;
   const overrode = preferred !== null && preferred !== REASON_COPY[reason].channel;
 
-  // Score blends recoverable value (log-scaled) with urgency (inactivity),
-  // plus a boost for deals with proven two-way engagement.
+  // An open deal past its expected close date is a distinct, urgent signal:
+  // it was forecast to land and didn't. (Lost deals already have their own path.)
+  const daysOverdue = reason !== "lost_winnable" && opp.expectedCloseAt ? daysSince(opp.expectedCloseAt) : 0;
+  const overdue = daysOverdue > 0;
+
+  // Score blends recoverable value (log-scaled) with urgency (inactivity), plus
+  // boosts for proven two-way engagement and a slipped close date.
   const valueScore = Math.min(60, Math.log10(Math.max(10, weightedValue)) * 14);
   const urgency = Math.min(40, days * (reason === "lost_winnable" ? 0.15 : 0.6));
-  const score = Math.round(Math.min(100, valueScore + urgency + (engaged ? ENGAGEMENT_BOOST : 0)));
+  const overdueBoost = Math.min(OVERDUE_BOOST_CAP, daysOverdue * 0.5);
+  const score = Math.round(Math.min(100, valueScore + urgency + (engaged ? ENGAGEMENT_BOOST : 0) + overdueBoost));
 
   return {
     opportunityId: opp.id,
@@ -136,9 +145,10 @@ export function scoreOpportunity(opp: Opportunity, stages: Map<string, Stage>, s
     daysSinceActivity: days,
     reason,
     score,
-    recommendation: recommend(reason, days, engaged, channel, overrode),
+    recommendation: recommend(reason, days, engaged, channel, overrode, daysOverdue),
     channel,
     engaged,
+    overdue,
   };
 }
 
