@@ -113,7 +113,19 @@ export async function completeJson<T>(opts: {
   const outTok = usage?.output_tokens ?? 0;
   void recordUsage({ model: aiModel(), inputTokens: inTok, outputTokens: outTok, costUsd: costOf(aiModel(), inTok, outTok), feature: opts.feature });
 
+  // With adaptive thinking + high effort, responses are larger and likelier to
+  // hit the cap or refuse — give the caller a precise reason instead of an
+  // opaque JSON.parse throw, so the template fallback is an informed decision.
+  const stop = (res as { stop_reason?: string }).stop_reason;
+  if (stop === "refusal") throw new Error("AI declined to answer (refusal)");
+
   const block = res.content.find((b): b is Anthropic.TextBlock => b.type === "text");
-  if (!block) throw new Error("No content returned");
-  return JSON.parse(block.text) as T;
+  if (!block) {
+    throw new Error(stop === "max_tokens" ? `AI response truncated before any text (raise maxTokens above ${opts.maxTokens ?? 1500})` : "No content returned");
+  }
+  try {
+    return JSON.parse(block.text) as T;
+  } catch {
+    throw new Error(stop === "max_tokens" ? `AI response truncated mid-JSON (raise maxTokens above ${opts.maxTokens ?? 1500})` : "AI returned malformed JSON");
+  }
 }
