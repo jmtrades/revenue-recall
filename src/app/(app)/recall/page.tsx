@@ -30,6 +30,7 @@ export default async function RecallPage() {
       daysSinceActivity: r.daysSinceActivity,
       channel: r.channel,
       recommendation: r.recommendation,
+      engaged: r.engaged,
     };
   });
 

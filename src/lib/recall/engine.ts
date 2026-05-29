@@ -1,4 +1,4 @@
-import type { Opportunity, Pipeline, Stage } from "@/lib/crm/types";
+import type { Activity, Opportunity, Pipeline, Stage } from "@/lib/crm/types";
 
 /**
  * Revenue Recall engine.
@@ -23,6 +23,14 @@ export interface RecallItem {
   score: number;
   recommendation: string;
   channel: "call" | "email" | "sms";
+  /** The contact replied at least once before going quiet — a hotter recall. */
+  engaged: boolean;
+}
+
+/** Optional per-opportunity signals that sharpen scoring and channel choice. */
+export interface RecallSignals {
+  /** Recent activities for this opportunity (any order). */
+  activities?: Activity[];
 }
 
 const DAY = 1000 * 60 * 60 * 24;
@@ -45,11 +53,39 @@ const REASON_COPY: Record<RecallReason, { rec: (d: number) => string; channel: R
   no_activity: { rec: () => `Never properly worked — make first contact before it ages out.`, channel: "sms" },
 };
 
+const CHANNELS: ReadonlySet<RecallItem["channel"]> = new Set(["call", "email", "sms"]);
+/** Priority bump for deals where the buyer actually replied before going quiet. */
+const ENGAGEMENT_BOOST = 10;
+
+/** The messaging channel the contact most recently replied on, if any. */
+export function preferredChannel(activities?: Activity[]): RecallItem["channel"] | null {
+  if (!activities?.length) return null;
+  const inbound = activities
+    .filter((a) => a.direction === "inbound" && CHANNELS.has(a.kind as RecallItem["channel"]))
+    .sort((a, b) => (b.occurredAt ?? "").localeCompare(a.occurredAt ?? ""));
+  return (inbound[0]?.kind as RecallItem["channel"]) ?? null;
+}
+
+/** Whether the contact ever replied — two-way engagement is a strong recall cue. */
+export function hasEngaged(activities?: Activity[]): boolean {
+  return Boolean(activities?.some((a) => a.direction === "inbound"));
+}
+
+function recommend(reason: RecallReason, days: number, engaged: boolean, channel: RecallItem["channel"], overrode: boolean): string {
+  if (engaged && overrode) {
+    const verb = channel === "call" ? "call them back" : channel === "sms" ? "text them" : "email them";
+    return `They went quiet after replying by ${channel} — ${verb} on the thread they actually answer.`;
+  }
+  return REASON_COPY[reason].rec(days);
+}
+
 /**
  * Score a single opportunity. Open deals decay with inactivity; lost deals are
- * scored on recoverable value and how recently they died.
+ * scored on recoverable value and how recently they died. When activity signals
+ * are supplied, a deal the buyer previously engaged on ranks higher and is
+ * routed to the channel they actually reply on.
  */
-export function scoreOpportunity(opp: Opportunity, stages: Map<string, Stage>): RecallItem | null {
+export function scoreOpportunity(opp: Opportunity, stages: Map<string, Stage>, signals?: RecallSignals): RecallItem | null {
   const stage = stages.get(opp.stageId);
   const days = daysSince(opp.lastActivityAt ?? opp.updatedAt);
   const prob = stage?.probability ?? 0.2;
@@ -78,10 +114,18 @@ export function scoreOpportunity(opp: Opportunity, stages: Map<string, Stage>): 
 
   const weightedValue = Math.round(opp.value * recoverable);
 
-  // Score blends recoverable value (log-scaled) with urgency (inactivity).
+  // Channel: prefer the channel the buyer actually replies on; else the
+  // reason's default. Engagement (a prior inbound reply) raises priority.
+  const engaged = hasEngaged(signals?.activities);
+  const preferred = preferredChannel(signals?.activities);
+  const channel = preferred ?? REASON_COPY[reason].channel;
+  const overrode = preferred !== null && preferred !== REASON_COPY[reason].channel;
+
+  // Score blends recoverable value (log-scaled) with urgency (inactivity),
+  // plus a boost for deals with proven two-way engagement.
   const valueScore = Math.min(60, Math.log10(Math.max(10, weightedValue)) * 14);
   const urgency = Math.min(40, days * (reason === "lost_winnable" ? 0.15 : 0.6));
-  const score = Math.round(Math.min(100, valueScore + urgency));
+  const score = Math.round(Math.min(100, valueScore + urgency + (engaged ? ENGAGEMENT_BOOST : 0)));
 
   return {
     opportunityId: opp.id,
@@ -92,15 +136,20 @@ export function scoreOpportunity(opp: Opportunity, stages: Map<string, Stage>): 
     daysSinceActivity: days,
     reason,
     score,
-    recommendation: REASON_COPY[reason].rec(days),
-    channel: REASON_COPY[reason].channel,
+    recommendation: recommend(reason, days, engaged, channel, overrode),
+    channel,
+    engaged,
   };
 }
 
-export function buildRecallQueue(opportunities: Opportunity[], pipelines: Pipeline[]): RecallItem[] {
+export function buildRecallQueue(
+  opportunities: Opportunity[],
+  pipelines: Pipeline[],
+  activitiesByOpp?: Map<string, Activity[]>,
+): RecallItem[] {
   const stages = stageMap(pipelines);
   return opportunities
-    .map((o) => scoreOpportunity(o, stages))
+    .map((o) => scoreOpportunity(o, stages, activitiesByOpp ? { activities: activitiesByOpp.get(o.id) } : undefined))
     .filter((x): x is RecallItem => x !== null)
     .sort((a, b) => b.score - a.score);
 }

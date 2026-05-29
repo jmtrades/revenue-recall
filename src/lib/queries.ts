@@ -67,12 +67,22 @@ export async function getBoard(): Promise<BoardData> {
 
 export async function getRecallQueue(): Promise<{ items: RecallItem[]; summary: RecallSummary; contacts: Map<string, Contact>; opps: Map<string, Opportunity> }> {
   const provider = getProvider();
-  const [pipelines, opportunities, contacts] = await Promise.all([
+  const [pipelines, opportunities, contacts, recent] = await Promise.all([
     provider.listPipelines(),
     provider.listOpportunities(),
     provider.listContacts(),
+    provider.listRecentActivities(250).catch(() => [] as Activity[]),
   ]);
-  const items = buildRecallQueue(opportunities, pipelines);
+  // Group recent activities by opportunity so the engine can route to the
+  // channel the buyer replies on and prioritize deals that engaged.
+  const activitiesByOpp = new Map<string, Activity[]>();
+  for (const a of recent) {
+    if (!a.opportunityId) continue;
+    const list = activitiesByOpp.get(a.opportunityId) ?? [];
+    list.push(a);
+    activitiesByOpp.set(a.opportunityId, list);
+  }
+  const items = buildRecallQueue(opportunities, pipelines, activitiesByOpp);
   const currency = opportunities[0]?.currency ?? "USD";
   return {
     items,

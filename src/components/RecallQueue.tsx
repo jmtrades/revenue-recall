@@ -17,6 +17,8 @@ export interface RecallRow {
   daysSinceActivity: number;
   channel: string;
   recommendation: string;
+  /** Buyer replied at least once before going quiet. */
+  engaged?: boolean;
 }
 
 const FILTERS = [
@@ -148,6 +150,11 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
                   <td className="px-4 py-4">
                     <div className="mb-2 flex items-center gap-2">
                       <ChannelBadge channel={r.channel} />
+                      {r.engaged && (
+                        <span className="pill bg-brand-soft/40 text-brand" title="This buyer replied before going quiet — a warmer, more recoverable deal.">
+                          ↩ Replied before
+                        </span>
+                      )}
                       <button
                         onClick={(e) => { e.stopPropagation(); openDraft(r); }}
                         className="rounded-lg border border-brand/40 bg-brand-soft/30 px-2 py-0.5 text-xs font-medium text-brand transition hover:bg-brand-soft/50"
