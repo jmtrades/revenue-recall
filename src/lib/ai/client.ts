@@ -52,8 +52,14 @@ export function aiEffort(): EffortLevel | undefined {
 
 /**
  * Run a structured-output completion and return the parsed JSON object.
- * The system prompt is marked cacheable (stable across calls); per-request
- * context belongs in the user message.
+ *
+ * The system block carries `cache_control`, but note: prompt caching only
+ * engages once the cached prefix clears the model's minimum (~4096 tokens on
+ * Opus). Our system prompts are all well under that (~100–650 tokens), so the
+ * marker is currently INERT — no cache write/read, no premium, no savings. It's
+ * kept as harmless forward-compat (auto-engages if a prompt grows past the
+ * floor). The real cost levers here are model choice and `effort`, not caching.
+ * Per-request context belongs in the user message.
  */
 export async function completeJson<T>(opts: {
   system: string;
