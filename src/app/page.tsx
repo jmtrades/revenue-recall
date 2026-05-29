@@ -68,6 +68,23 @@ function Arrow({ className = "" }: { className?: string }) {
   );
 }
 
+function CheckMini() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
+function CrossMini() {
+  return (
+    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
+  );
+}
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen">
@@ -112,11 +129,11 @@ export default function LandingPage() {
 
       {/* Metrics strip */}
       <section className="border-y border-border bg-surface/30">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-5 py-10 sm:grid-cols-3">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 divide-y divide-border px-5 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           {METRICS.map((m) => (
-            <div key={m.label} className="text-center sm:text-left">
-              <div className="text-3xl font-semibold gradient-text">{m.stat}</div>
-              <p className="mt-1 text-sm text-muted">{m.label}</p>
+            <div key={m.label} className="px-2 py-10 text-center sm:px-8 sm:text-left">
+              <div className="font-display text-4xl font-semibold tabular-nums tracking-tight text-fg sm:text-5xl">{m.stat}</div>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{m.label}</p>
             </div>
           ))}
         </div>
@@ -124,11 +141,11 @@ export default function LandingPage() {
 
       {/* Integrations / works-with bar */}
       <section className="border-b border-border">
-        <div className="mx-auto max-w-6xl px-5 py-8">
-          <p className="text-center text-xs font-semibold uppercase tracking-wider text-muted">Runs on the stack you already use — or none of it</p>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm font-medium text-muted/80">
+        <div className="mx-auto max-w-6xl px-5 py-10">
+          <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Runs on the stack you already use — or none of it</p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
             {["Salesforce", "HubSpot", "Close", "Pipedrive", "Gmail", "Outlook", "Twilio", "Slack"].map((n) => (
-              <span key={n} className="transition hover:text-fg">{n}</span>
+              <span key={n} className="font-display text-[15px] font-medium tracking-tight text-muted/70 transition-colors hover:text-body">{n}</span>
             ))}
           </div>
         </div>
@@ -137,8 +154,8 @@ export default function LandingPage() {
       {/* Objection killer: not a drafting tool */}
       <section className="mx-auto max-w-5xl px-5 py-20">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-brand">The difference</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">
+          <span className="eyebrow">The difference</span>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">
             You don&apos;t need another AI that writes. You need the work <span className="gradient-text">done.</span>
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
@@ -147,22 +164,28 @@ export default function LandingPage() {
         </div>
         <div className="mt-12 grid gap-5 md:grid-cols-2">
           <div className="rounded-2xl border border-border bg-surface p-7">
-            <p className="text-sm font-semibold uppercase tracking-wider text-muted">AI writing tools</p>
-            <ul className="mt-4 space-y-3 text-sm text-muted">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">AI writing tools</p>
+            <ul className="mt-5 space-y-3.5 text-sm text-muted">
               {["You decide who to contact", "You paste in the context", "You copy the draft out", "You send it — once", "You remember to follow up (or don't)", "You log it in the CRM later"].map((t) => (
-                <li key={t} className="flex gap-2"><span className="text-danger">✕</span> {t}</li>
+                <li key={t} className="flex items-start gap-3">
+                  <span className="mt-0.5 grid h-[18px] w-[18px] flex-none place-items-center rounded-full border border-border text-muted/70"><CrossMini /></span>
+                  {t}
+                </li>
               ))}
             </ul>
-            <p className="mt-5 text-xs text-muted">You still do all the work. It just types faster.</p>
+            <p className="mt-6 text-xs text-muted">You still do all the work. It just types faster.</p>
           </div>
-          <div className="rounded-2xl border border-brand/40 bg-surface p-7 ring-glow">
-            <p className="text-sm font-semibold uppercase tracking-wider text-brand">Revenue Recall</p>
-            <ul className="mt-4 space-y-3 text-sm text-fg">
+          <div className="raised rounded-2xl border border-brand/40 bg-surface p-7 ring-glow">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand">Revenue Recall</p>
+            <ul className="mt-5 space-y-3.5 text-sm text-body">
               {["Finds the deals worth working, ranked by $ recoverable", "Pulls the context from your CRM itself", "Writes in your voice — across email, SMS & calls", "Sends, dials, and leaves voicemails autonomously", "Follows up on a cadence until they reply", "Logs every touch and reports what it recovered"].map((t) => (
-                <li key={t} className="flex gap-2"><span className="text-success">✓</span> {t}</li>
+                <li key={t} className="flex items-start gap-3">
+                  <span className="mt-0.5 grid h-[18px] w-[18px] flex-none place-items-center rounded-full bg-brand/15 text-brand"><CheckMini /></span>
+                  {t}
+                </li>
               ))}
             </ul>
-            <p className="mt-5 text-xs text-brand">It does the job. You collect the wins.</p>
+            <p className="mt-6 text-xs font-medium text-brand">It does the job. You collect the wins.</p>
           </div>
         </div>
       </section>
@@ -171,13 +194,13 @@ export default function LandingPage() {
       <section id="features" className="border-y border-border bg-surface/30">
         <div className="mx-auto max-w-6xl px-5 py-20">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-brand">One system, the whole motion</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">An autonomous sales force, not a feature</h2>
+            <span className="eyebrow">One system, the whole motion</span>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">An autonomous sales force, not a feature</h2>
           </div>
           <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {PILLARS.map((f) => (
-              <div key={f.title} className="group rounded-2xl border border-border bg-surface p-6 transition hover:border-brand/40 hover:bg-surface-2/40">
-                <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand-soft text-brand transition group-hover:scale-105"><Icon name={f.icon} size={22} /></div>
+              <div key={f.title} className="group raised lift rounded-2xl border border-border bg-surface p-6 hover:border-brand/40">
+                <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20 transition-transform duration-200 ease-out group-hover:scale-105"><Icon name={f.icon} size={22} /></div>
                 <h3 className="mt-4 font-semibold text-fg">{f.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">{f.body}</p>
               </div>
