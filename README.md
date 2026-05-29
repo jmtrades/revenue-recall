@@ -95,11 +95,21 @@ supabase/migrations/        Org-scoped Postgres schema (RLS) for the built-in CR
 > Supabase; or, on local/self-hosted node, set `BUILTIN_PERSIST=true` to write the
 > demo store through to disk (`.data/`) so edits survive restarts.
 
-### Adding a CRM
+### Connecting any CRM
 
-Implement `CrmProvider` (see `src/lib/crm/types.ts`), then register it in
-`src/lib/crm/registry.ts`. The rest of the app — dashboard, recall engine,
-board, analytics — works unchanged because it only ever talks to the interface.
+Three ways, in increasing effort:
+
+1. **Zero code** — set `CRM_HTTP_BASE_URL` (+ optional `CRM_HTTP_TOKEN`) to a thin
+   REST adapter that returns the universal shape (endpoints documented in
+   `src/lib/crm/providers/http.ts`). Auto-selected when set. Point it at your CRM,
+   an automation tool, or a small proxy you host — connect *anything* without
+   touching the app.
+2. **Built-in adapters** — Supabase and Close ship ready; HubSpot / Salesforce /
+   Pipedrive are stubbed with the exact interface to fill in.
+3. **Native adapter** — implement `CrmProvider` (`src/lib/crm/types.ts`) and
+   register it in `src/lib/crm/registry.ts`. The rest of the app — dashboard,
+   recall engine, board, analytics — works unchanged because it only ever talks
+   to the interface.
 
 ### Adding an industry
 
