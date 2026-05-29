@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getConfig } from "@/lib/config";
+import { getOrgSettings } from "@/lib/org";
 import { getIndustry } from "@/lib/industries";
 import { getActiveVoice } from "@/lib/voice";
 import { isToneId } from "@/lib/tones";
@@ -26,8 +26,8 @@ export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 
-  const industry = getIndustry(getConfig().industryId);
-  const voice = await getActiveVoice();
+  const [org, voice] = await Promise.all([getOrgSettings(), getActiveVoice()]);
+  const industry = getIndustry(org.industryId);
   const state: ConversationState = {
     contactName: parsed.data.contactName,
     company: parsed.data.company,

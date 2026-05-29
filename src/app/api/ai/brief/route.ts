@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDealDetail } from "@/lib/queries";
-import { getConfig } from "@/lib/config";
+import { getOrgSettings } from "@/lib/org";
 import { getIndustry } from "@/lib/industries";
 import { summarizeDeal } from "@/lib/ai/brief";
 import { aiRateLimit } from "@/lib/ratelimit";
@@ -24,7 +24,8 @@ export async function POST(req: Request) {
   const detail = await getDealDetail(parsed.data.dealId);
   if (!detail) return NextResponse.json({ error: "Deal not found" }, { status: 404 });
 
-  const industry = getIndustry(getConfig().industryId);
+  const org = await getOrgSettings();
+  const industry = getIndustry(org.industryId);
   const result = await summarizeDeal({
     contactName: detail.contact?.name ?? detail.opp.title,
     company: detail.contact?.company,
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
     industryLabel: industry.label,
     daysSinceContact: daysSince(detail.opp.lastActivityAt),
     history: detail.activities.map((a) => `${a.kind}: ${a.summary}`),
+    language: org.language,
   });
 
   return NextResponse.json(result);

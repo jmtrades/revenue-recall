@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDealDetail } from "@/lib/queries";
+import { getOrgSettings } from "@/lib/org";
 import { summarizeCall } from "@/lib/ai/callSummary";
 import { aiRateLimit } from "@/lib/ratelimit";
 
@@ -17,10 +18,12 @@ export async function POST(req: Request) {
   const detail = await getDealDetail(parsed.data.dealId);
   if (!detail) return NextResponse.json({ error: "Deal not found" }, { status: 404 });
 
+  const org = await getOrgSettings();
   const result = await summarizeCall({
     contactName: detail.contact?.name ?? detail.opp.title,
     dealTitle: detail.opp.title,
     notes: parsed.data.notes,
+    language: org.language,
   });
   return NextResponse.json(result);
 }

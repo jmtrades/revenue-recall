@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProvider } from "@/lib/crm/registry";
-import { getConfig } from "@/lib/config";
-import { getIndustry } from "@/lib/industries";
+import { getOrgSettings } from "@/lib/org";
 import { z } from "zod";
 
 const Body = z.object({
@@ -29,7 +28,7 @@ export async function POST(req: Request) {
     const opp = await provider.createOpportunity({
       ...parsed.data,
       pipelineId: pipeline.id,
-      currency: getIndustry(getConfig().industryId).currency,
+      currency: (await getOrgSettings()).currency,
     });
     return NextResponse.json({ opportunity: opp }, { status: 201 });
   } catch (err) {
