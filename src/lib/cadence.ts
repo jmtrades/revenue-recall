@@ -12,6 +12,7 @@ import { sendEmail, sendSms } from "@/lib/comms";
 import { createOutboxItem } from "@/lib/agent/store";
 import { hasOptedOut } from "@/lib/agent/guardrails";
 import { batchActivities } from "@/lib/crm/activities";
+import { unsubscribeUrl } from "@/lib/unsubscribe";
 import { getSequence } from "@/lib/sequences";
 import type { Contact, Opportunity, Pipeline } from "@/lib/crm/types";
 
@@ -326,7 +327,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
           : contact?.points.find((p) => p.channel === "phone" || p.channel === "sms")?.value;
 
       if (autoSend && to) {
-        const res = step.channel === "email" ? await sendEmail(to, draft.subject ?? "", draft.body) : await sendSms(to, draft.body);
+        const res = step.channel === "email" ? await sendEmail(to, draft.subject ?? "", draft.body, { unsubscribeUrl: unsubscribeUrl(e.contactId) }) : await sendSms(to, draft.body);
         if (res.status !== "failed") {
           await provider.logActivity({
             opportunityId: deal?.id,

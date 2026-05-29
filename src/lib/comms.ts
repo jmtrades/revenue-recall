@@ -210,11 +210,11 @@ export function channelStatus(): ChannelStatus {
   };
 }
 
-export async function sendEmail(to: string, subject: string, body: string): Promise<SendResult> {
+export async function sendEmail(to: string, subject: string, body: string, opts?: { unsubscribeUrl?: string | null }): Promise<SendResult> {
   const t = resolveEmail();
   // Compliance footer (unsubscribe + address) applied at the single send boundary,
   // so every outbound path is covered regardless of who composed the message.
-  const compliant = appendEmailCompliance(body);
+  const compliant = appendEmailCompliance(body, opts?.unsubscribeUrl);
   return t ? t.send({ to, subject, body: compliant }) : logResult();
 }
 

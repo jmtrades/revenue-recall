@@ -4,6 +4,7 @@ import { getOrgSettings } from "@/lib/org";
 import { getIndustry } from "@/lib/industries";
 import { draftReply } from "@/lib/ai/reply";
 import { detectIntent } from "@/lib/ai/intent";
+import { unsubscribeUrl } from "@/lib/unsubscribe";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { createOutboxItem } from "@/lib/agent/store";
 import type { Contact, CrmProvider, Opportunity } from "@/lib/crm/types";
@@ -119,7 +120,7 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
   if (process.env.REPLY_AUTOPILOT === "true") {
     const to = channel === "email" ? contact.points.find((p) => p.channel === "email")?.value : contact.points.find((p) => p.channel === "phone")?.value;
     if (to) {
-      const res = channel === "email" ? await sendEmail(to, reply.subject ?? "", reply.body) : await sendSms(to, reply.body);
+      const res = channel === "email" ? await sendEmail(to, reply.subject ?? "", reply.body, { unsubscribeUrl: unsubscribeUrl(contact.id) }) : await sendSms(to, reply.body);
       if (res.status !== "failed") {
         await provider.logActivity({
           opportunityId: deal?.id,

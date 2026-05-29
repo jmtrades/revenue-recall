@@ -10,6 +10,7 @@ import { sendGate, type SkipReason } from "@/lib/agent/guardrails";
 import { compactMoney } from "@/lib/format";
 import { createRun, createOutboxItem, touchTask } from "@/lib/agent/store";
 import { batchActivities } from "@/lib/crm/activities";
+import { unsubscribeUrl } from "@/lib/unsubscribe";
 import type { AgentAction, AgentRun, AgentTask } from "@/lib/agent/types";
 import type { Contact, Opportunity, Pipeline } from "@/lib/crm/types";
 
@@ -163,7 +164,10 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
         if (!to) {
           result = "skipped";
         } else {
-          const res = task.channel === "email" ? await sendEmail(to, draft.subject ?? "", draft.body) : await sendSms(to, draft.body);
+          const res =
+            task.channel === "email"
+              ? await sendEmail(to, draft.subject ?? "", draft.body, { unsubscribeUrl: unsubscribeUrl(t.opp.contactId) })
+              : await sendSms(to, draft.body);
           result = res.status === "failed" ? "skipped" : res.status === "sent" ? "sent" : "logged";
           if (result !== "skipped") {
             sent += 1;

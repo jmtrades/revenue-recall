@@ -28,14 +28,15 @@ export function complianceConfig(): ComplianceConfig {
   };
 }
 
-/** Append a CAN-SPAM footer (org name, postal address, unsubscribe) to an email body. */
-export function appendEmailCompliance(body: string, cfg: ComplianceConfig = complianceConfig()): string {
+/** Append a CAN-SPAM footer (org name, postal address, unsubscribe) to an email body.
+ *  Pass a per-contact unsubscribeUrl for one-click opt-out, else it falls back to reply-based. */
+export function appendEmailCompliance(body: string, unsubscribeUrl?: string | null, cfg: ComplianceConfig = complianceConfig()): string {
   if (!cfg.enabled) return body;
   if (/\bunsubscribe\b|\bopt[\s-]?out\b/i.test(body)) return body; // already compliant
   const lines = ["—"];
   if (cfg.orgName) lines.push(cfg.orgName);
   if (cfg.address) lines.push(cfg.address);
-  lines.push('Reply "unsubscribe" and I\'ll take you off my list.');
+  lines.push(unsubscribeUrl ? `Unsubscribe: ${unsubscribeUrl}` : 'Reply "unsubscribe" and I\'ll take you off my list.');
   return `${body}\n\n${lines.join("\n")}`;
 }
 
