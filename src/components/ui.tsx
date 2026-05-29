@@ -69,12 +69,27 @@ export function Button({
   return <button type={type} onClick={onClick} disabled={disabled} className={cls}>{children}</button>;
 }
 
-export function EmptyState({ icon = "◌", title, hint }: { icon?: string; title: string; hint?: string }) {
+export function EmptyState({
+  iconName,
+  icon,
+  title,
+  hint,
+  action,
+}: {
+  iconName?: IconName;
+  icon?: string;
+  title: string;
+  hint?: string;
+  action?: ReactNode;
+}) {
   return (
-    <div className="grid place-items-center rounded-xl border border-dashed border-border py-12 text-center">
-      <div className="text-3xl text-muted/60">{icon}</div>
-      <p className="mt-2 text-sm font-medium text-fg">{title}</p>
-      {hint && <p className="mt-1 max-w-sm text-xs text-muted">{hint}</p>}
+    <div className="grid place-items-center rounded-2xl border border-dashed border-border bg-surface/40 px-6 py-14 text-center">
+      <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20">
+        {iconName ? <Icon name={iconName} size={22} /> : <span className="text-xl text-muted/70">{icon ?? "○"}</span>}
+      </span>
+      <p className="mt-4 text-sm font-semibold text-fg">{title}</p>
+      {hint && <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-muted">{hint}</p>}
+      {action && <div className="mt-5">{action}</div>}
     </div>
   );
 }

@@ -65,7 +65,7 @@ export default async function DealPage({ params }: { params: { id: string } }) {
         <div className="space-y-6 lg:col-span-2">
           <Card title="Activity timeline">
             {activities.length === 0 ? (
-              <EmptyState icon="📋" title="No activity yet" hint="Log a call, email, or note to start the history." />
+              <EmptyState iconName="note" title="No activity yet" hint="Log a call, email, or note to start the history." />
             ) : (
               <ol className="relative space-y-4 before:absolute before:left-4 before:top-2 before:h-full before:w-px before:bg-border">
                 {activities.map((a) => (
