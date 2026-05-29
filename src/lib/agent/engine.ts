@@ -10,6 +10,7 @@ import { sendGate, type SkipReason } from "@/lib/agent/guardrails";
 import { compactMoney } from "@/lib/format";
 import { createRun, createOutboxItem, touchTask } from "@/lib/agent/store";
 import { batchActivities } from "@/lib/crm/activities";
+import { isEntitled } from "@/lib/billing/enforce";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
 import type { AgentAction, AgentRun, AgentTask } from "@/lib/agent/types";
 import type { Contact, Opportunity, Pipeline } from "@/lib/crm/types";
@@ -83,6 +84,10 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
     // Prefetch every target's activities in one batch (avoids N+1 in the loop).
     const actByOpp = await batchActivities(provider, targets.map((t) => t.opp.id));
 
+    // When billing enforcement is on, a plan without autopilot can't auto-send —
+    // it still drafts to Approvals. Compute the effective autonomy once.
+    const autonomy: AgentTask["autonomy"] = task.autonomy === "auto" && !(await isEntitled("autopilot")) ? "review" : task.autonomy;
+
     const actions: AgentAction[] = [];
     const pending: { dealId: string; contactId: string; channel: "email" | "sms"; subject?: string; body: string; source: "ai" | "template" }[] = [];
     let recoverable = 0;
@@ -110,7 +115,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
       // Guardrails: never message someone who opted out; in auto mode also respect
       // cooldown, quiet hours, and the daily cap. Checked before drafting to save cost.
       const activities = actByOpp.get(t.opp.id) ?? [];
-      const gate = sendGate({ contact, opp: t.opp, activities, autonomy: task.autonomy, sentSoFar: sent });
+      const gate = sendGate({ contact, opp: t.opp, activities, autonomy, sentSoFar: sent });
       if (gate) {
         actions.push({ type: task.channel, dealId: t.opp.id, title: name, detail: SKIP_LABEL[gate], result: "skipped", source: "template", value: t.recoverable });
         continue;
@@ -142,7 +147,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
 
       let result: AgentAction["result"] = "drafted";
       if (task.channel === "call") {
-        if (task.autonomy === "auto" && to) {
+        if (autonomy === "auto" && to) {
           // Place the call autonomously (real dial when Twilio is set; logged otherwise).
           const res = await placeCall(to);
           result = res.status === "failed" ? "skipped" : res.status === "sent" ? "sent" : "logged";
@@ -160,7 +165,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
         } else {
           result = "queued"; // talk track prepared for the dialer (review mode / no number)
         }
-      } else if (task.autonomy === "auto") {
+      } else if (autonomy === "auto") {
         if (!to) {
           result = "skipped";
         } else {
@@ -204,7 +209,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
     }
 
     const skipped = actions.filter((a) => a.result === "skipped").length;
-    const verb = task.autonomy === "auto" && task.channel !== "none" ? `${sent} sent` : `${drafted} prepared`;
+    const verb = autonomy === "auto" && task.channel !== "none" ? `${sent} sent` : `${drafted} prepared`;
     const summary =
       targets.length === 0
         ? "No matching deals to work right now."
