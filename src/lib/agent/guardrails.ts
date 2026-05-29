@@ -82,6 +82,20 @@ export function cooldownDays(): number {
   return Number.isFinite(n) && n >= 0 ? n : 3;
 }
 
+/** Current guardrail configuration, for showing operators what's in effect. */
+export function guardrailConfig(): { cooldownDays: number; declineCooldownDays: number; dailyCap: number | null; quietHours: string | null } {
+  const cap = dailySendCap();
+  const start = Number(process.env.AGENT_QUIET_START_UTC);
+  const end = Number(process.env.AGENT_QUIET_END_UTC);
+  const quiet = Number.isInteger(start) && Number.isInteger(end) && start !== end ? `${start}:00–${end}:00 UTC` : null;
+  return {
+    cooldownDays: cooldownDays(),
+    declineCooldownDays: declineCooldownDays(),
+    dailyCap: Number.isFinite(cap) ? cap : null,
+    quietHours: quiet,
+  };
+}
+
 export type SkipReason = "opted_out" | "recently_declined" | "recently_contacted" | "quiet_hours" | "daily_cap" | null;
 
 /**

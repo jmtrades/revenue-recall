@@ -185,6 +185,21 @@ export default async function SettingsPage() {
           <InfoRow label="Calls">{aiUsage.calls.toLocaleString()}</InfoRow>
           <InfoRow label="Tokens">{(aiUsage.inputTokens + aiUsage.outputTokens).toLocaleString()}</InfoRow>
         </div>
+        {Object.keys(aiUsage.byFeature).length > 0 && (
+          <div className="mt-3 border-t border-border/60 pt-3">
+            <p className="text-xs font-medium text-muted">By feature</p>
+            <div className="mt-1 space-y-1">
+              {Object.entries(aiUsage.byFeature)
+                .sort((a, b) => b[1] - a[1])
+                .map(([feature, cost]) => (
+                  <div key={feature} className="flex items-center justify-between text-xs">
+                    <span className="text-muted">{feature}</span>
+                    <span className="tabular-nums text-fg">${cost.toFixed(2)}</span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
       </div>
     </Card>
   );
