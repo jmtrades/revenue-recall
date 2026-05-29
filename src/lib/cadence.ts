@@ -318,6 +318,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
         recallReason: seq.id === "recall" ? "lost_winnable" : undefined,
         daysSinceContact: daysSince(deal?.lastActivityAt),
         instruction: `This is step ${e.stepIndex + 1} of the "${seq.name}" cadence. Intent: ${step.body}`,
+        language: org.language,
         voice,
       });
 
