@@ -19,6 +19,7 @@ import { AppearanceSettings } from "@/components/AppearanceSettings";
 import { BillingSettings } from "@/components/BillingSettings";
 import { NumbersManager } from "@/components/NumbersManager";
 import { TestSend } from "@/components/TestSend";
+import { AiHealthCheck } from "@/components/AiHealthCheck";
 import { VoiceStudio } from "@/components/VoiceStudio";
 import { VoiceControls } from "@/components/VoiceControls";
 import { getSubscription } from "@/lib/billing/store";
@@ -262,6 +263,7 @@ export default async function SettingsPage() {
           </div>
         )}
       </div>
+      <AiHealthCheck />
     </Card>
   );
 
