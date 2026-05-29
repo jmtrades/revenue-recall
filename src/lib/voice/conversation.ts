@@ -3,6 +3,7 @@ import { getPlaybook } from "@/lib/industries";
 import { getTone, type ToneId } from "@/lib/tones";
 import { detectIntent, type Intent } from "@/lib/ai/intent";
 import { reactTo, reactToText, detectSentiment, sentimentToEmotion, type Sentiment } from "@/lib/voice/reactive";
+import { analyzeCall, type CallScore } from "@/lib/voice/scorecard";
 import type { Emotion } from "@/lib/voice/speech";
 import { firstName, pick, pickVariant, seeded, sentence } from "@/lib/copy";
 
@@ -135,7 +136,7 @@ const SPOKEN: Partial<Record<Intent, (f: string) => string[]>> = {
   ],
   timing: (f) => [
     `Totally fair, no rush at all. When's realistically a better time for you — few weeks out?`,
-    `Makes sense, ${f}. Want me to circle back early next month when things calm down?`,
+    `Makes sense, ${f}. Want me to check back early next month when things calm down?`,
   ],
   trust: (f) => [
     `Fair to be skeptical — I would be too. What would you need to see to believe it actually works?`,
@@ -262,4 +263,51 @@ Say the prospect's next line out loud. React to what the rep just said.`;
   } catch {
     return fallbackProspectTurn(state, difficulty);
   }
+}
+
+// ---- full-call driver ----
+export interface CallResult {
+  turns: Turn[];
+  /** How the call wrapped: a booked next step, a graceful end, or the safety cap. */
+  endedBy: "closed" | "ended" | "capped";
+  repTurns: number;
+  /** Each rep turn's reactive read, for a turn-by-turn coaching view. */
+  beats: { tone: ToneId; emotion: Emotion; phase: CallPhase; coachNote: string }[];
+  score: CallScore;
+}
+
+/**
+ * Drive a complete call end to end: the rep opens, the prospect reacts, and the
+ * two alternate — the rep adapting tone/emotion and handling each objection —
+ * until the call naturally wraps (a booked next step, a gracious exit) or a
+ * safety cap. Returns the transcript, the per-turn coaching beats, and the
+ * post-call scorecard. Pure of side effects; works with or without an API key,
+ * which makes the whole call loop testable. This is the backbone a live
+ * telephony bridge drives (STT in → runCall step → TTS out).
+ */
+export async function runCall(
+  state: ConversationState,
+  opts: { difficulty?: Difficulty; maxRepTurns?: number } = {},
+): Promise<CallResult> {
+  const difficulty = opts.difficulty ?? "medium";
+  const maxRep = Math.max(2, Math.min(opts.maxRepTurns ?? 12, 30));
+  const turns: Turn[] = [...state.turns];
+  const beats: CallResult["beats"] = [];
+  let endedBy: CallResult["endedBy"] = "capped";
+  let repTurns = 0;
+
+  while (repTurns < maxRep) {
+    const rep = await nextRepTurn({ ...state, turns });
+    turns.push({ speaker: "rep", text: rep.text });
+    beats.push({ tone: rep.tone, emotion: rep.emotion, phase: rep.phase, coachNote: rep.coachNote });
+    repTurns += 1;
+    if (rep.done) {
+      endedBy = rep.phase === "closing" ? "closed" : "ended";
+      break;
+    }
+    const prospect = await simulateProspect({ ...state, turns }, difficulty);
+    turns.push({ speaker: "prospect", text: prospect.text });
+  }
+
+  return { turns, endedBy, repTurns, beats, score: analyzeCall(turns) };
 }
