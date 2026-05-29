@@ -327,7 +327,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
           : contact?.points.find((p) => p.channel === "phone" || p.channel === "sms")?.value;
 
       if (autoSend && to) {
-        const res = step.channel === "email" ? await sendEmail(to, draft.subject ?? "", draft.body, { unsubscribeUrl: unsubscribeUrl(e.contactId) }) : await sendSms(to, draft.body);
+        const res = step.channel === "email" ? await sendEmail(to, draft.subject ?? "", draft.body, { unsubscribeUrl: unsubscribeUrl(e.contactId), compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address } }) : await sendSms(to, draft.body);
         if (res.status !== "failed") {
           await provider.logActivity({
             opportunityId: deal?.id,

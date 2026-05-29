@@ -8,6 +8,13 @@ import { defaultTheme, mergeTheme, type Theme } from "@/lib/theme";
 
 export { NOTIFICATION_OPTIONS, defaultNotificationPrefs, mergeNotificationPrefs, type NotificationPrefs } from "@/lib/notifications";
 
+export interface OrgCompliance {
+  /** Sender name shown in the email footer (defaults to the org name). */
+  senderName?: string;
+  /** Physical postal address — legally required in commercial email (CAN-SPAM). */
+  address?: string;
+}
+
 export interface OrgSettings {
   id?: string;
   name: string;
@@ -16,8 +23,17 @@ export interface OrgSettings {
   monthlyQuota: number;
   notificationPrefs: NotificationPrefs;
   theme: Theme;
+  compliance: OrgCompliance;
   /** true when backed by a database row (editable), false when env-derived. */
   persisted: boolean;
+}
+
+function mergeCompliance(stored?: Record<string, unknown> | null): OrgCompliance {
+  const s = (stored && typeof stored === "object" ? stored : {}) as Record<string, unknown>;
+  return {
+    senderName: typeof s.senderName === "string" && s.senderName ? s.senderName : undefined,
+    address: typeof s.address === "string" && s.address ? s.address : undefined,
+  };
 }
 
 function envFallback(): OrgSettings {
@@ -29,6 +45,7 @@ function envFallback(): OrgSettings {
     monthlyQuota: cfg.monthlyQuota,
     notificationPrefs: defaultNotificationPrefs(),
     theme: defaultTheme(),
+    compliance: {},
     persisted: false,
   };
 }
@@ -40,7 +57,7 @@ async function read(): Promise<OrgSettings> {
   if (!orgId) return envFallback();
   const { data } = await client
     .from("orgs")
-    .select("id,name,industry_id,currency,monthly_quota,notification_prefs,theme")
+    .select("id,name,industry_id,currency,monthly_quota,notification_prefs,theme,compliance")
     .eq("id", orgId)
     .maybeSingle();
   if (!data) return envFallback();
@@ -52,6 +69,7 @@ async function read(): Promise<OrgSettings> {
     monthlyQuota: Number(data.monthly_quota ?? getConfig().monthlyQuota),
     notificationPrefs: mergeNotificationPrefs(data.notification_prefs as Record<string, unknown> | null),
     theme: mergeTheme(data.theme as Record<string, unknown> | null),
+    compliance: mergeCompliance(data.compliance as Record<string, unknown> | null),
     persisted: true,
   };
 }
@@ -64,6 +82,7 @@ export async function updateOrgSettings(patch: {
   monthlyQuota?: number;
   notificationPrefs?: NotificationPrefs;
   theme?: Partial<Theme>;
+  compliance?: OrgCompliance;
 }): Promise<OrgSettings> {
   const client = getSupabase();
   if (!client) throw new Error("Settings are read-only without a database.");
@@ -78,6 +97,10 @@ export async function updateOrgSettings(patch: {
   if (patch.theme !== undefined) {
     const current = await read();
     update.theme = mergeTheme({ ...current.theme, ...patch.theme });
+  }
+  if (patch.compliance !== undefined) {
+    const current = await read();
+    update.compliance = mergeCompliance({ ...current.compliance, ...patch.compliance });
   }
   if (Object.keys(update).length === 0) return read();
   const { error } = await client.from("orgs").update(update).eq("id", orgId);

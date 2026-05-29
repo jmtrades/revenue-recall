@@ -35,7 +35,8 @@ export default async function SettingsPage() {
   const active = getIndustry(org.industryId);
 
   const ch = channelStatus();
-  const compliance = complianceConfig();
+  // Org-level compliance wins over env (multi-tenant identity).
+  const compliance = complianceConfig({ orgName: org.compliance.senderName ?? org.name, address: org.compliance.address });
   const setupItems: SetupItem[] = [
     { label: "Database connected", ok: isSupabaseConfigured(), required: true, detail: "Persist data across restarts and support multi-tenant accounts (SUPABASE_*)." },
     { label: "AI drafting live", ok: isAiConfigured(), required: false, detail: "Set ANTHROPIC_API_KEY for live, in-voice drafts; otherwise high-quality templates." },
@@ -66,7 +67,13 @@ export default async function SettingsPage() {
 
   const general = (
     <Card>
-      <OrgSettingsForm initialName={org.name} initialQuota={org.monthlyQuota} persisted={org.persisted} />
+      <OrgSettingsForm
+        initialName={org.name}
+        initialQuota={org.monthlyQuota}
+        initialSenderName={org.compliance.senderName ?? ""}
+        initialAddress={org.compliance.address ?? ""}
+        persisted={org.persisted}
+      />
       <div className="mt-5 border-t border-border pt-4">
         <InfoRow label="Industry">{active.label}</InfoRow>
         <InfoRow label="Currency">{org.currency}</InfoRow>

@@ -20,11 +20,12 @@ export interface ComplianceConfig {
   address?: string;
 }
 
-export function complianceConfig(): ComplianceConfig {
+/** Per-org overrides win over env (multi-tenant: each org sets its own identity). */
+export function complianceConfig(override?: { orgName?: string; address?: string }): ComplianceConfig {
   return {
     enabled: env("OUTBOUND_COMPLIANCE") !== "false",
-    orgName: env("OUTBOUND_ORG_NAME") ?? env("NEXT_PUBLIC_ORG_NAME"),
-    address: env("COMPLIANCE_ADDRESS"),
+    orgName: override?.orgName || env("OUTBOUND_ORG_NAME") || env("NEXT_PUBLIC_ORG_NAME"),
+    address: override?.address || env("COMPLIANCE_ADDRESS"),
   };
 }
 

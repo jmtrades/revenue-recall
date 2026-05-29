@@ -166,7 +166,10 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
         } else {
           const res =
             task.channel === "email"
-              ? await sendEmail(to, draft.subject ?? "", draft.body, { unsubscribeUrl: unsubscribeUrl(t.opp.contactId) })
+              ? await sendEmail(to, draft.subject ?? "", draft.body, {
+                  unsubscribeUrl: unsubscribeUrl(t.opp.contactId),
+                  compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address },
+                })
               : await sendSms(to, draft.body);
           result = res.status === "failed" ? "skipped" : res.status === "sent" ? "sent" : "logged";
           if (result !== "skipped") {

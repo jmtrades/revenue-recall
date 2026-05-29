@@ -14,6 +14,7 @@ const Patch = z.object({
   monthlyQuota: z.number().nonnegative().max(1_000_000_000).optional(),
   notificationPrefs: z.record(z.boolean()).optional(),
   theme: z.object({ accent: z.enum(ACCENT_KEYS).optional(), mode: z.enum(THEME_MODES).optional() }).optional(),
+  compliance: z.object({ senderName: z.string().max(160).optional(), address: z.string().max(300).optional() }).optional(),
 });
 
 export async function PATCH(req: Request) {

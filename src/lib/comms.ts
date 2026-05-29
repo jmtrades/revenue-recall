@@ -13,7 +13,7 @@
  * connect a transport — no upstream changes.
  */
 
-import { appendEmailCompliance, appendSmsCompliance } from "@/lib/compliance";
+import { appendEmailCompliance, appendSmsCompliance, complianceConfig } from "@/lib/compliance";
 
 export type ChannelKind = "email" | "sms" | "voice";
 
@@ -210,11 +210,16 @@ export function channelStatus(): ChannelStatus {
   };
 }
 
-export async function sendEmail(to: string, subject: string, body: string, opts?: { unsubscribeUrl?: string | null }): Promise<SendResult> {
+export async function sendEmail(
+  to: string,
+  subject: string,
+  body: string,
+  opts?: { unsubscribeUrl?: string | null; compliance?: { orgName?: string; address?: string } },
+): Promise<SendResult> {
   const t = resolveEmail();
-  // Compliance footer (unsubscribe + address) applied at the single send boundary,
-  // so every outbound path is covered regardless of who composed the message.
-  const compliant = appendEmailCompliance(body, opts?.unsubscribeUrl);
+  // Compliance footer (unsubscribe + per-org address) applied at the single send
+  // boundary, so every outbound path is covered regardless of who composed it.
+  const compliant = appendEmailCompliance(body, opts?.unsubscribeUrl, complianceConfig(opts?.compliance));
   return t ? t.send({ to, subject, body: compliant }) : logResult();
 }
 

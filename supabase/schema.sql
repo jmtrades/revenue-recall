@@ -383,3 +383,10 @@ alter table ai_usage enable row level security;
 drop policy if exists org_rw_ai_usage on ai_usage;
 create policy org_rw_ai_usage on ai_usage
   using (org_id = current_org_id()) with check (org_id = current_org_id());
+
+-- ===== supabase/migrations/0014_org_compliance.sql =====
+-- Per-org compliance identity (CAN-SPAM): the sender name and physical postal
+-- address that appear in the outbound email footer. Each tenant sets their own,
+-- so multi-tenant sending is lawful per org rather than one global value.
+
+alter table orgs add column if not exists compliance jsonb not null default '{}'::jsonb;

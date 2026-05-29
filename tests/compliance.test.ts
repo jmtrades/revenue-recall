@@ -29,6 +29,24 @@ describe("email compliance footer", () => {
     process.env.OUTBOUND_COMPLIANCE = "false";
     expect(appendEmailCompliance("hi")).toBe("hi");
   });
+
+  it("per-org override wins over env (multi-tenant identity)", () => {
+    process.env.OUTBOUND_ORG_NAME = "Global Co";
+    process.env.COMPLIANCE_ADDRESS = "1 Global Plaza";
+    const cfg = complianceConfig({ orgName: "Tenant Realty", address: "9 Tenant Way" });
+    expect(cfg.orgName).toBe("Tenant Realty");
+    expect(cfg.address).toBe("9 Tenant Way");
+    const out = appendEmailCompliance("Hi.", null, cfg);
+    expect(out).toContain("Tenant Realty");
+    expect(out).toContain("9 Tenant Way");
+    expect(out).not.toContain("Global Co");
+  });
+
+  it("falls back to env when the org override is empty", () => {
+    process.env.OUTBOUND_ORG_NAME = "Global Co";
+    expect(complianceConfig({}).orgName).toBe("Global Co");
+    expect(complianceConfig({ orgName: "" }).orgName).toBe("Global Co");
+  });
 });
 
 describe("sms compliance", () => {

@@ -120,7 +120,7 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
   if (process.env.REPLY_AUTOPILOT === "true") {
     const to = channel === "email" ? contact.points.find((p) => p.channel === "email")?.value : contact.points.find((p) => p.channel === "phone")?.value;
     if (to) {
-      const res = channel === "email" ? await sendEmail(to, reply.subject ?? "", reply.body, { unsubscribeUrl: unsubscribeUrl(contact.id) }) : await sendSms(to, reply.body);
+      const res = channel === "email" ? await sendEmail(to, reply.subject ?? "", reply.body, { unsubscribeUrl: unsubscribeUrl(contact.id), compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address } }) : await sendSms(to, reply.body);
       if (res.status !== "failed") {
         await provider.logActivity({
           opportunityId: deal?.id,
