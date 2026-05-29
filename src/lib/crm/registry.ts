@@ -4,8 +4,8 @@ import { SupabaseProvider } from "@/lib/crm/providers/supabase";
 import { CloseProvider } from "@/lib/crm/providers/close";
 import { HubspotProvider } from "@/lib/crm/providers/hubspot";
 import { PipedriveProvider } from "@/lib/crm/providers/pipedrive";
+import { SalesforceProvider } from "@/lib/crm/providers/salesforce";
 import { HttpCrmProvider } from "@/lib/crm/providers/http";
-import { makeStub } from "@/lib/crm/providers/stub";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { getConfig } from "@/lib/config";
 
@@ -30,7 +30,7 @@ function build(id: string): CrmProvider {
     case "hubspot":
       return new HubspotProvider();
     case "salesforce":
-      return makeStub("salesforce", "Salesforce");
+      return new SalesforceProvider();
     case "pipedrive":
       return new PipedriveProvider();
     default:
@@ -38,6 +38,7 @@ function build(id: string): CrmProvider {
       if (httpCrmConfigured()) return new HttpCrmProvider();
       if (process.env.HUBSPOT_ACCESS_TOKEN) return new HubspotProvider();
       if (process.env.PIPEDRIVE_API_TOKEN) return new PipedriveProvider();
+      if (process.env.SALESFORCE_ACCESS_TOKEN && process.env.SALESFORCE_INSTANCE_URL) return new SalesforceProvider();
       if (process.env.CLOSE_API_KEY) return new CloseProvider();
       return isSupabaseConfigured() ? new SupabaseProvider() : new BuiltinProvider();
   }
@@ -70,8 +71,8 @@ export function listIntegrations(): ProviderInfo[] {
     new CloseProvider().info(),
     new HubspotProvider().info(),
     new PipedriveProvider().info(),
+    new SalesforceProvider().info(),
     new HttpCrmProvider().info(),
-    makeStub("salesforce", "Salesforce").info(),
   ];
 }
 
