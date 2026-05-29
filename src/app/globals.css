@@ -6,19 +6,17 @@
   color-scheme: dark;
   /* Accent (overridden per-org on the app shell). RGB triplets so Tailwind's
      `rgb(var(--brand-rgb) / <alpha>)` tokens and these effects share one source. */
-  --brand-rgb: 91 140 255;
-  --brand-soft-rgb: 42 58 102;
-  /* Neutral surface + text palette (dark default). The app shell flips these
-     to light via [data-theme="light"]; marketing/auth never set data-theme so
-     they always render dark. --fg stays pure white in dark, so converting
-     text-fg → text-fg is a no-op visually in dark mode. */
-  --bg-rgb: 11 14 20;
-  --surface-rgb: 18 23 34;
-  --surface-2-rgb: 26 32 48;
-  --border-rgb: 35 43 61;
-  --muted-rgb: 138 147 166;
+  --brand-rgb: 99 132 255;
+  --brand-soft-rgb: 38 51 92;
+  /* Neutral surface + text palette (dark default). Deeper background and softer,
+     lower-contrast borders read more premium than flat slate. */
+  --bg-rgb: 8 10 16;
+  --surface-rgb: 15 19 29;
+  --surface-2-rgb: 23 28 42;
+  --border-rgb: 32 39 54;
+  --muted-rgb: 145 154 173;
   --fg-rgb: 255 255 255;
-  --body-rgb: 231 234 240;
+  --body-rgb: 226 230 238;
 }
 
 [data-theme="light"] {
@@ -34,13 +32,13 @@
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg-rgb: 11 14 20;
-  --surface-rgb: 18 23 34;
-  --surface-2-rgb: 26 32 48;
-  --border-rgb: 35 43 61;
-  --muted-rgb: 138 147 166;
+  --bg-rgb: 8 10 16;
+  --surface-rgb: 15 19 29;
+  --surface-2-rgb: 23 28 42;
+  --border-rgb: 32 39 54;
+  --muted-rgb: 145 154 173;
   --fg-rgb: 255 255 255;
-  --body-rgb: 231 234 240;
+  --body-rgb: 226 230 238;
 }
 
 html {
@@ -52,13 +50,26 @@ body {
   background-color: rgb(var(--bg-rgb));
   color: rgb(var(--body-rgb));
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  font-feature-settings: "cv11", "ss01";
+  line-height: 1.6;
 }
 
-/* Crisp headings + tighter tracking, the way premium SaaS sites set type. */
-h1, h2, h3 {
-  letter-spacing: -0.02em;
+/* Ambient depth behind the whole page — subtle, keeps dark from reading flat. */
+body {
+  background-image:
+    radial-gradient(50rem 30rem at 50% -10%, rgb(var(--brand-rgb) / 0.06), transparent 70%);
+  background-attachment: fixed;
 }
+
+/* Crisp headings: tighter tracking + balanced wrapping, the way premium SaaS sets type. */
+h1, h2, h3 {
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+}
+h1 { letter-spacing: -0.035em; }
+p { text-wrap: pretty; }
 
 ::selection {
   background: rgb(var(--brand-rgb) / 0.3);
@@ -97,6 +108,8 @@ textarea:focus-visible {
 @layer components {
   .card {
     @apply rounded-xl border border-border bg-surface p-5;
+    /* Subtle elevation + a hairline top highlight so cards feel lifted, not flat. */
+    box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.04) inset, 0 1px 2px rgb(0 0 0 / 0.25), 0 8px 24px -16px rgb(0 0 0 / 0.6);
   }
   .stat-label {
     @apply text-xs font-medium uppercase tracking-wide text-muted;
@@ -116,26 +129,36 @@ textarea:focus-visible {
 }
 
 @layer utilities {
-  /* Brand gradient text */
+  /* Brand gradient text — warm white into brand, weighted toward legible white. */
   .gradient-text {
-    background-image: linear-gradient(100deg, #fff 10%, rgb(var(--brand-rgb) / 0.65) 50%, rgb(var(--brand-rgb)) 90%);
+    background-image: linear-gradient(105deg, #fff 0%, #fff 35%, rgb(var(--brand-rgb)) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
-  /* Ambient hero glow */
+  /* Ambient hero glow — a soft brand aurora with a hint of teal, no hard edges. */
   .hero-glow {
     background:
-      radial-gradient(60% 50% at 50% 0%, rgb(var(--brand-rgb) / 0.18) 0%, transparent 70%),
-      radial-gradient(40% 40% at 80% 10%, rgba(52, 211, 153, 0.1) 0%, transparent 70%);
+      radial-gradient(48rem 28rem at 50% -6rem, rgb(var(--brand-rgb) / 0.20) 0%, transparent 65%),
+      radial-gradient(36rem 24rem at 85% 4rem, rgb(52 211 153 / 0.08) 0%, transparent 70%);
   }
+  /* Featured-card halo: crisp brand ring + soft lift. */
   .ring-glow {
-    box-shadow: 0 0 0 1px rgb(var(--brand-rgb) / 0.25), 0 20px 60px -20px rgb(var(--brand-rgb) / 0.45);
+    box-shadow: 0 0 0 1px rgb(var(--brand-rgb) / 0.35), 0 24px 70px -28px rgb(var(--brand-rgb) / 0.5);
   }
+  /* Faint blueprint grid that FADES out via a radial mask, so it never tiles
+     harshly to the edges (that hard repeat is what reads as "itchy"). */
   .surface-grid {
-    background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-    background-size: 32px 32px;
+    background-image:
+      linear-gradient(rgb(255 255 255 / 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(255 255 255 / 0.025) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: radial-gradient(closest-side at 50% 0%, #000 0%, transparent 100%);
+    mask-image: radial-gradient(closest-side at 50% 0%, #000 0%, transparent 100%);
+  }
+  /* Soft elevation for non-.card surfaces. */
+  .shadow-soft {
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 12px 32px -18px rgb(0 0 0 / 0.7);
   }
 }
 
