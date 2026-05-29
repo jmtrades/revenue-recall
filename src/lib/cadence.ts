@@ -10,6 +10,7 @@ import { draftMessage } from "@/lib/ai/draft";
 import { isAiConfigured } from "@/lib/ai/client";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { createOutboxItem } from "@/lib/agent/store";
+import { hasOptedOut } from "@/lib/agent/guardrails";
 import { getSequence } from "@/lib/sequences";
 import type { Contact, Opportunity, Pipeline } from "@/lib/crm/types";
 
@@ -265,6 +266,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
       continue;
     }
     const deal = e.dealId ? oppById.get(e.dealId) : undefined;
+    const contact = contactById.get(e.contactId);
 
     // Stop selling to a deal that's already closed-won. (Closed-lost deals are
     // intentionally left in re-engagement cadences — winning them back is the
@@ -275,8 +277,16 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
       continue;
     }
 
+    // Honor opt-outs: stop the cadence for anyone who unsubscribed or asked us to
+    // stop. (A soft "not now" is left enrolled — re-engagement is the point.)
+    const optOutActs = deal ? await provider.listActivities(deal.id) : [];
+    if (hasOptedOut(contact, deal, optOutActs)) {
+      await updateEnrollment(e.id, { status: "stopped" });
+      result.stopped += 1;
+      continue;
+    }
+
     const step = seq.steps[e.stepIndex];
-    const contact = contactById.get(e.contactId);
     const name = contact?.name ?? deal?.title ?? "there";
     const stageLabel = deal ? stageById.get(deal.stageId)?.label ?? "open" : "open";
 

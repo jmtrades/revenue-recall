@@ -121,6 +121,60 @@ shows with no API key) pull natural, industry-true phrasing and vary per deal.
 no fallback, template, or sequence ever emits one — across every industry and
 channel.
 
+The voice layer goes well past "no clichés":
+
+- **Selectable tones + auto-tone** (`src/lib/tones.ts`, `src/lib/voice/autotone.ts`)
+  — warm / direct / consultative / friendly / reassuring / confident / upbeat,
+  or "Auto" which picks one from each deal's signals (cold → reassuring,
+  late-stage → confident, high-value → consultative …).
+- **Self-revision loop** (`src/lib/ai/refine.ts`) — every live draft is scored
+  locally and, if it trips any tell, the model rewrites it once; the
+  human-ness detector (`src/lib/humanness.ts`) also catches rhythm/burstiness,
+  uniform sentences, repetitive openers, and timid hedges.
+- **"3 takes" variations** so a rep can pick the most natural draft.
+- **Any objection or situation** (`src/lib/ai/intent.ts`) — 15 intents incl.
+  price/timing/competitor/skeptic/"just send info", plus busy, authority,
+  budget, confused, **gatekeeper**, and hard opt-out; each reframed in
+  industry-true language. Unknown input still gets a sensible human reply.
+- **Scenarios** — voicemail drops and gracious breakup / last-touch messages.
+- **Spoken voice, in-house** (`src/lib/voice/*`) — browser-native TTS + speech
+  recognition (no third-party provider, nothing leaves the device), with text
+  normalization, prosody, and **emotional delivery** that shifts speed/pitch/
+  pauses by mood. Live **role-play** in the dialer with **reactive tone**, real
+  turn-taking, natural pauses, and **barge-in** (talk over it and it stops).
+  A higher-fidelity neural voice drops in behind the same `setSynth()` seam
+  (`docs/neural-voice.md`).
+- **Post-call scorecard** (`src/lib/voice/scorecard.ts`) — grades talk ratio,
+  questions, objection handling, sentiment arc, and whether a next step was
+  booked, with coaching tips.
+- **Per-user voice** — onboarding distills each rep's writing voice from samples;
+  every message then sounds like that person.
+
+### Autonomous outreach (no human in the loop)
+
+**Autopilot** (`src/lib/agent/`) works deals end to end — drafts and **sends
+email/SMS and places calls** in auto mode, logging every action to an immutable
+run ledger. **Inbound** (`src/lib/inbound.ts`) replies to anything, **takes a
+message** (creates a contact + follow-up task) when the sender is unknown or
+unavailable, and never drops a lead.
+
+Hands-off outreach is made safe by guardrails (`src/lib/agent/guardrails.ts`):
+
+- **Opt-out suppression** — never contacts a hard opt-out (unsubscribe / "stop"
+  / do-not-contact / hostility).
+- **Re-engagement, not abandonment** — a soft "not interested / not now" is
+  *paused* for `AGENT_DECLINE_COOLDOWN_DAYS` (default 30) then followed up again.
+  A no today isn't a no forever; that's the whole point of Revenue Recall.
+- **Cooldown / quiet hours / daily cap** so it can't re-spam, message at 3am, or
+  blast volume. The Autopilot page shows the active guardrails.
+
+### Cost & margins
+
+Every live AI call is metered (`src/lib/ai/cost.ts`, `usage.ts`): tokens + USD
+cost by model and **per feature**, shown in Settings → Billing. Set
+`AI_MONTHLY_BUDGET_USD` to cap spend per org — when hit, drafting transparently
+falls back to the free templates, so costs never run away.
+
 ## Going live with Supabase
 
 Three secrets are needed (none are derivable for you): the **anon key** and
