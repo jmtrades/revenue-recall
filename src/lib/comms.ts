@@ -136,7 +136,7 @@ const webhookSms: SmsTransport = {
   available: () => Boolean(env("SMS_WEBHOOK_URL")),
   async send({ to, body }) {
     try {
-      const r = await postWebhook(env("SMS_WEBHOOK_URL")!, { channel: "sms", to, body });
+      const r = await postWebhook(env("SMS_WEBHOOK_URL")!, { channel: "sms", to, body, from: env("OUTBOUND_FROM_NUMBER") });
       return { id: r.id ?? "webhook", status: "sent", provider: "webhook" };
     } catch (e) {
       return { id: "", status: "failed", provider: "webhook", detail: e instanceof Error ? e.message : "send failed" };
@@ -162,7 +162,7 @@ const webhookVoice: VoiceTransport = {
   available: () => Boolean(env("VOICE_WEBHOOK_URL")),
   async place({ to }) {
     try {
-      const r = await postWebhook(env("VOICE_WEBHOOK_URL")!, { channel: "voice", to });
+      const r = await postWebhook(env("VOICE_WEBHOOK_URL")!, { channel: "voice", to, from: env("OUTBOUND_FROM_NUMBER") });
       return { id: r.id ?? "webhook", status: "queued", provider: "webhook" };
     } catch (e) {
       return { id: "", status: "failed", provider: "webhook", detail: e instanceof Error ? e.message : "call failed" };

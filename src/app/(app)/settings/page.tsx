@@ -3,6 +3,7 @@ import { INDUSTRIES, getIndustry } from "@/lib/industries";
 import { listIntegrations, getProvider } from "@/lib/crm/registry";
 import { isAiConfigured } from "@/lib/ai/client";
 import { channelStatus } from "@/lib/comms";
+import { listOwnedNumbers, numbersConfigured, numbersProviderId, outboundFromNumber } from "@/lib/numbers";
 import { getTeamAndPipeline } from "@/lib/queries";
 import { getOrgSettings } from "@/lib/org";
 import { getActiveVoice } from "@/lib/voice";
@@ -164,6 +165,40 @@ export default async function SettingsPage() {
     </Card>
   );
 
+  const ownedNumbers = await listOwnedNumbers().catch(() => []);
+  const numbersTab = (
+    <Card>
+      <p className="mb-3 text-sm text-muted">
+        Use your own number, or connect a provider to search and buy new ones. Bring your own by setting{" "}
+        <code className="text-fg">OUTBOUND_FROM_NUMBER</code> (used as the caller ID on outbound SMS and calls). To buy/manage,
+        register a provider or point <code className="text-fg">NUMBERS_WEBHOOK_URL</code> at your telephony account — no vendor lock-in.
+      </p>
+      <div className="mb-3 flex items-center justify-between rounded-lg border border-border bg-surface-2/40 p-3 text-sm">
+        <span className="text-muted">Buy / manage numbers</span>
+        <span className={`pill ${numbersConfigured() ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>
+          {numbersConfigured() ? `Connected · ${numbersProviderId()}` : "Not connected"}
+        </span>
+      </div>
+      {ownedNumbers.length === 0 ? (
+        <p className="text-sm text-muted">No numbers yet. {outboundFromNumber() ? "" : "Set OUTBOUND_FROM_NUMBER to use your own."}</p>
+      ) : (
+        <ul className="divide-y divide-border">
+          {ownedNumbers.map((n) => (
+            <li key={n.number} className="flex items-center justify-between py-2.5">
+              <div>
+                <span className="font-mono text-sm text-fg">{n.number}</span>
+                {n.label && <span className="ml-2 text-xs text-muted">{n.label}</span>}
+              </div>
+              <span className="text-xs text-muted">
+                {[n.capabilities?.sms && "SMS", n.capabilities?.voice && "Voice"].filter(Boolean).join(" · ") || "owned"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+
   const notificationsTab = (
     <Card>
       <NotificationSettings initial={org.notificationPrefs} persisted={org.persisted} />
@@ -251,6 +286,7 @@ export default async function SettingsPage() {
           { id: "pipeline", label: "Pipeline", content: pipelineTab },
           { id: "integrations", label: "Integrations", content: integrationsTab },
           { id: "channels", label: "Channels", content: channelsTab },
+          { id: "numbers", label: "Numbers", content: numbersTab },
           { id: "team", label: "Team", content: teamTab },
           { id: "fields", label: "Fields", content: fieldsTab },
           { id: "notifications", label: "Notifications", content: notificationsTab },
