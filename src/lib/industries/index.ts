@@ -1,4 +1,5 @@
 import type { Pipeline } from "@/lib/crm/types";
+import { DEFAULT_RECALL_THRESHOLDS, type RecallThresholds } from "@/lib/recall/engine";
 
 /**
  * Industry templates. Each industry remaps terminology and ships a default
@@ -61,6 +62,13 @@ export interface IndustryTemplate {
   fields: { key: string; label: string; type: "text" | "number" | "currency" | "date" | "select"; options?: string[] }[];
   /** How reps in this vertical communicate. */
   playbook: IndustryPlaybook;
+  /** Sales-cycle-aware recall thresholds. Omitted fields fall back to defaults. */
+  recall?: Partial<RecallThresholds>;
+}
+
+/** Resolve full recall thresholds for an industry, merging over the defaults. */
+export function recallThresholdsFor(industryId: string): RecallThresholds {
+  return { ...DEFAULT_RECALL_THRESHOLDS, ...getIndustry(industryId).recall };
 }
 
 function stages(
@@ -75,6 +83,7 @@ export const INDUSTRIES: IndustryTemplate[] = [
     label: "Real Estate",
     blurb: "Agents & brokerages — buyers, sellers, listings and closings.",
     terminology: { contact: "Client", opportunity: "Deal", value: "Commission" },
+    recall: { goingColdDays: 21, stalledDays: 45, lostWindowDays: 240 },
     currency: "USD",
     pipeline: {
       id: "real_estate_default",
@@ -126,6 +135,7 @@ export const INDUSTRIES: IndustryTemplate[] = [
     label: "Mortgage & Lending",
     blurb: "Loan officers — applications, underwriting and funding.",
     terminology: { contact: "Borrower", opportunity: "Loan", value: "Loan Amount" },
+    recall: { goingColdDays: 7, stalledDays: 14, noActivityDays: 4, lostWindowDays: 120 },
     currency: "USD",
     pipeline: {
       id: "mortgage_default",
@@ -174,6 +184,7 @@ export const INDUSTRIES: IndustryTemplate[] = [
     label: "Insurance",
     blurb: "Agencies — quotes, policies and renewals.",
     terminology: { contact: "Prospect", opportunity: "Policy", value: "Annual Premium" },
+    recall: { goingColdDays: 21, stalledDays: 45, lostWindowDays: 270 },
     currency: "USD",
     pipeline: {
       id: "insurance_default",
@@ -315,6 +326,7 @@ export const INDUSTRIES: IndustryTemplate[] = [
     label: "Automotive",
     blurb: "Dealerships — test drives, trade-ins and deliveries.",
     terminology: { contact: "Shopper", opportunity: "Sale", value: "Vehicle Price" },
+    recall: { goingColdDays: 5, stalledDays: 10, noActivityDays: 3, lostWindowDays: 60 },
     currency: "USD",
     pipeline: {
       id: "auto_default",
@@ -362,6 +374,7 @@ export const INDUSTRIES: IndustryTemplate[] = [
     label: "Home Services",
     blurb: "HVAC, roofing, solar & remodeling — estimates to installs.",
     terminology: { contact: "Homeowner", opportunity: "Job", value: "Job Value" },
+    recall: { goingColdDays: 4, stalledDays: 8, noActivityDays: 2, lostWindowDays: 45 },
     currency: "USD",
     pipeline: {
       id: "home_services_default",

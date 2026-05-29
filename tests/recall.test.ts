@@ -110,6 +110,24 @@ describe("engagement signals", () => {
   });
 });
 
+describe("industry-tuned thresholds", () => {
+  // 10 days, high prob: healthy under the default 14-day going-cold cutoff…
+  it("respects custom day thresholds", () => {
+    const o = opp({ stageId: "open_hi", lastActivityAt: daysAgo(10) });
+    expect(scoreOpportunity(o, stageMap)).toBeNull(); // default: still healthy
+    // …but a fast-cycle vertical (going cold at 5 days) flags it.
+    const fast = scoreOpportunity(o, stageMap, undefined, { goingColdDays: 5, stalledDays: 10, noActivityDays: 3, lostWindowDays: 60 });
+    expect(fast?.reason).toBe("going_cold");
+  });
+
+  it("widens the lost-recovery window for long-cycle verticals", () => {
+    const o = opp({ stageId: "lost", value: 8000, lastActivityAt: daysAgo(200) });
+    expect(scoreOpportunity(o, stageMap)).toBeNull(); // default 180-day window: too cold
+    const slow = scoreOpportunity(o, stageMap, undefined, { goingColdDays: 21, stalledDays: 45, noActivityDays: 7, lostWindowDays: 240 });
+    expect(slow?.reason).toBe("lost_winnable");
+  });
+});
+
 describe("overdue close date", () => {
   it("flags an open deal past its expected close date and boosts its score", () => {
     const onTime = scoreOpportunity(opp({ stageId: "open_hi", lastActivityAt: daysAgo(20), expectedCloseAt: daysAgo(-10) }), stageMap);

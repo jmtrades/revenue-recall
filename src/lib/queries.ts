@@ -2,7 +2,7 @@ import { getProvider } from "@/lib/crm/registry";
 import { cachedOpportunities, cachedPipelines, cachedContacts, cachedUsers } from "@/lib/crm/cached";
 import { getConfig } from "@/lib/config";
 import { getOrgSettings } from "@/lib/org";
-import { getIndustry } from "@/lib/industries";
+import { getIndustry, recallThresholdsFor } from "@/lib/industries";
 import { computeMetrics, type PipelineMetrics } from "@/lib/analytics";
 import { buildRecallQueue, summarizeRecall, type RecallItem, type RecallSummary } from "@/lib/recall/engine";
 import type { Activity, Contact, Opportunity, Pipeline, Stage, User } from "@/lib/crm/types";
@@ -82,7 +82,8 @@ export async function getRecallQueue(): Promise<{ items: RecallItem[]; summary: 
     list.push(a);
     activitiesByOpp.set(a.opportunityId, list);
   }
-  const items = buildRecallQueue(opportunities, pipelines, activitiesByOpp);
+  const thresholds = recallThresholdsFor((await getOrgSettings()).industryId);
+  const items = buildRecallQueue(opportunities, pipelines, activitiesByOpp, thresholds);
   const currency = opportunities[0]?.currency ?? "USD";
   return {
     items,

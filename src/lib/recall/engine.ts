@@ -35,6 +35,28 @@ export interface RecallSignals {
   activities?: Activity[];
 }
 
+/**
+ * Day thresholds that define "slipping" — tunable per industry so a months-long
+ * enterprise deal isn't flagged as fast as a same-week home-services job.
+ */
+export interface RecallThresholds {
+  /** A live (prob ≥ 0.5) deal with no touch in this many days is going cold. */
+  goingColdDays: number;
+  /** Any open deal untouched this long is stalled. */
+  stalledDays: number;
+  /** A low-probability deal untouched this long was never properly worked. */
+  noActivityDays: number;
+  /** Lost deals older than this are too cold to bother re-approaching. */
+  lostWindowDays: number;
+}
+
+export const DEFAULT_RECALL_THRESHOLDS: RecallThresholds = {
+  goingColdDays: 14,
+  stalledDays: 30,
+  noActivityDays: 7,
+  lostWindowDays: 180,
+};
+
 const DAY = 1000 * 60 * 60 * 24;
 
 function daysSince(iso?: string): number {
@@ -88,7 +110,12 @@ function recommend(reason: RecallReason, days: number, engaged: boolean, channel
  * are supplied, a deal the buyer previously engaged on ranks higher and is
  * routed to the channel they actually reply on.
  */
-export function scoreOpportunity(opp: Opportunity, stages: Map<string, Stage>, signals?: RecallSignals): RecallItem | null {
+export function scoreOpportunity(
+  opp: Opportunity,
+  stages: Map<string, Stage>,
+  signals?: RecallSignals,
+  thresholds: RecallThresholds = DEFAULT_RECALL_THRESHOLDS,
+): RecallItem | null {
   const stage = stages.get(opp.stageId);
   const days = daysSince(opp.lastActivityAt ?? opp.updatedAt);
   const prob = stage?.probability ?? 0.2;
@@ -99,16 +126,16 @@ export function scoreOpportunity(opp: Opportunity, stages: Map<string, Stage>, s
   if (stage?.type === "won") return null;
 
   if (stage?.type === "lost") {
-    if (days > 180 || opp.value < 1000) return null; // too cold / too small
+    if (days > thresholds.lostWindowDays || opp.value < 1000) return null; // too cold / too small
     reason = "lost_winnable";
     recoverable = 0.25;
-  } else if (days >= 14 && prob >= 0.5) {
+  } else if (days >= thresholds.goingColdDays && prob >= 0.5) {
     reason = "going_cold";
     recoverable = prob;
-  } else if (days >= 30) {
+  } else if (days >= thresholds.stalledDays) {
     reason = "stalled";
     recoverable = Math.max(0.15, prob * 0.6);
-  } else if (days >= 7 && prob <= 0.2) {
+  } else if (days >= thresholds.noActivityDays && prob <= 0.2) {
     reason = "no_activity";
     recoverable = 0.2;
   } else {
@@ -156,10 +183,11 @@ export function buildRecallQueue(
   opportunities: Opportunity[],
   pipelines: Pipeline[],
   activitiesByOpp?: Map<string, Activity[]>,
+  thresholds: RecallThresholds = DEFAULT_RECALL_THRESHOLDS,
 ): RecallItem[] {
   const stages = stageMap(pipelines);
   return opportunities
-    .map((o) => scoreOpportunity(o, stages, activitiesByOpp ? { activities: activitiesByOpp.get(o.id) } : undefined))
+    .map((o) => scoreOpportunity(o, stages, activitiesByOpp ? { activities: activitiesByOpp.get(o.id) } : undefined, thresholds))
     .filter((x): x is RecallItem => x !== null)
     .sort((a, b) => b.score - a.score);
 }
