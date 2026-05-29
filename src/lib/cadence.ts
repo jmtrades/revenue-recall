@@ -11,7 +11,7 @@ import { draftMessage } from "@/lib/ai/draft";
 import { isAiConfigured } from "@/lib/ai/client";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { createOutboxItem } from "@/lib/agent/store";
-import { hasOptedOut } from "@/lib/agent/guardrails";
+import { hasOptedOut, quietHoursNow } from "@/lib/agent/guardrails";
 import { batchActivities } from "@/lib/crm/activities";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
 import { getSequence } from "@/lib/sequences";
@@ -59,6 +59,15 @@ export interface CadenceTickResult {
   queued: number;
   completed: number;
   stopped: number;
+  /** Steps advanced without a touch because the contact was unreachable on that channel. */
+  skipped: number;
+}
+
+/** The address to reach a contact on a given channel (email vs phone), if any. */
+export function addressFor(contact: Contact | undefined, channel: "email" | "sms" | "call"): string | undefined {
+  if (!contact) return undefined;
+  if (channel === "email") return contact.points.find((p) => p.channel === "email")?.value;
+  return contact.points.find((p) => p.channel === "phone" || p.channel === "sms")?.value;
 }
 
 function addDays(iso: string, days: number): string {
@@ -73,6 +82,11 @@ async function orgId(): Promise<string> {
 
 // ---- in-memory fallback (demo) ----
 const memEnrollments: Enrollment[] = [];
+
+/** Test-only: clear in-memory enrollments so suites don't leak state. */
+export function __resetEnrollmentsForTests(): void {
+  memEnrollments.length = 0;
+}
 
 function mapEnrollment(r: Record<string, unknown>): Enrollment {
   return {
@@ -261,7 +275,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
   // Prefetch activities for every due deal in one batch (avoids N+1 opt-out lookups).
   const actByOpp = await batchActivities(provider, due.map((e) => e.dealId).filter((id): id is string => Boolean(id)));
 
-  const result: CadenceTickResult = { due: due.length, processed: 0, sent: 0, queued: 0, completed: 0, stopped: 0 };
+  const result: CadenceTickResult = { due: due.length, processed: 0, sent: 0, queued: 0, completed: 0, stopped: 0, skipped: 0 };
 
   for (const e of due) {
     const seq = getSequence(e.sequenceId);
@@ -294,8 +308,14 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
     const step = seq.steps[e.stepIndex];
     const name = contact?.name ?? deal?.title ?? "there";
     const stageLabel = deal ? stageById.get(deal.stageId)?.label ?? "open" : "open";
+    const address = addressFor(contact, step.channel);
 
-    if (step.channel === "call") {
+    if (!address) {
+      // No way to reach them on this channel (e.g. a call/SMS step with no phone
+      // on file) — skip the step rather than burn an AI draft or queue a
+      // dead-end message. Advance so the enrollment doesn't get stuck.
+      result.skipped += 1;
+    } else if (step.channel === "call") {
       // Calls can't be auto-dialed from a cadence — drop a task on the timeline.
       await provider.logActivity({
         opportunityId: deal?.id,
@@ -323,27 +343,25 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
         voice,
       });
 
-      const to =
-        step.channel === "email"
-          ? contact?.points.find((p) => p.channel === "email")?.value
-          : contact?.points.find((p) => p.channel === "phone" || p.channel === "sms")?.value;
+      // Hold auto-sends during quiet hours — queue for review instead of firing
+      // a message at 2am. (Outside autopilot we always queue to Approvals.)
+      const canSend = autoSend && !quietHoursNow(new Date(now));
+      const res = canSend
+        ? step.channel === "email"
+          ? await sendEmail(address, draft.subject ?? "", draft.body, { unsubscribeUrl: unsubscribeUrl(e.contactId), compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address } })
+          : await sendSms(address, draft.body)
+        : null;
 
-      if (autoSend && to) {
-        const res = step.channel === "email" ? await sendEmail(to, draft.subject ?? "", draft.body, { unsubscribeUrl: unsubscribeUrl(e.contactId), compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address } }) : await sendSms(to, draft.body);
-        if (res.status !== "failed") {
-          await provider.logActivity({
-            opportunityId: deal?.id,
-            contactId: e.contactId,
-            kind: step.channel,
-            summary: draft.subject ? `${draft.subject}\n\n${draft.body}` : draft.body,
-            direction: "outbound",
-            occurredAt: now,
-          });
-          result.sent += 1;
-        } else {
-          await createOutboxItem({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, subject: draft.subject, body: draft.body, source: draft.source });
-          result.queued += 1;
-        }
+      if (res && res.status !== "failed") {
+        await provider.logActivity({
+          opportunityId: deal?.id,
+          contactId: e.contactId,
+          kind: step.channel,
+          summary: draft.subject ? `${draft.subject}\n\n${draft.body}` : draft.body,
+          direction: "outbound",
+          occurredAt: now,
+        });
+        result.sent += 1;
       } else {
         await createOutboxItem({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, subject: draft.subject, body: draft.body, source: draft.source });
         result.queued += 1;
