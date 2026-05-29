@@ -37,7 +37,7 @@ export function Footer() {
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2">
               <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand text-sm font-bold text-white">RR</span>
-              <span className="font-semibold text-white">Revenue Recall</span>
+              <span className="font-semibold text-fg">Revenue Recall</span>
             </div>
             <p className="mt-3 max-w-xs text-sm text-muted">The universal sales OS that recovers the revenue you&apos;re about to lose — for any CRM, any industry.</p>
           </div>
@@ -47,7 +47,7 @@ export function Footer() {
               <ul className="mt-3 space-y-2">
                 {col.links.map((l) => (
                   <li key={l.label}>
-                    <Link href={l.href} className="text-sm text-muted transition hover:text-white">{l.label}</Link>
+                    <Link href={l.href} className="text-sm text-muted transition hover:text-fg">{l.label}</Link>
                   </li>
                 ))}
               </ul>
@@ -57,9 +57,9 @@ export function Footer() {
         <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 text-xs text-muted sm:flex-row">
           <span>© {new Date().getFullYear()} Revenue Recall. All rights reserved.</span>
           <span className="flex gap-5">
-            <a href="#" className="transition hover:text-white">Privacy</a>
-            <a href="#" className="transition hover:text-white">Terms</a>
-            <a href="#" className="transition hover:text-white">Security</a>
+            <Link href="/privacy" className="transition hover:text-fg">Privacy</Link>
+            <Link href="/terms" className="transition hover:text-fg">Terms</Link>
+            <Link href="/security" className="transition hover:text-fg">Security</Link>
           </span>
         </div>
       </div>

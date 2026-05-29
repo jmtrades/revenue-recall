@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { buildRecallQueue, scoreOpportunity, summarizeRecall } from "@/lib/recall/engine";
-import type { Opportunity, Pipeline, Stage } from "@/lib/crm/types";
+import { buildRecallQueue, scoreOpportunity, summarizeRecall, preferredChannel, hasEngaged } from "@/lib/recall/engine";
+import type { Activity, Opportunity, Pipeline, Stage } from "@/lib/crm/types";
 
 const stages: Stage[] = [
   { id: "open_hi", label: "Negotiation", probability: 0.6, type: "open" },
@@ -57,6 +57,96 @@ describe("scoreOpportunity", () => {
   it("drops lost deals that are too old or too small", () => {
     expect(scoreOpportunity(opp({ stageId: "lost", value: 8000, lastActivityAt: daysAgo(200) }), stageMap)).toBeNull();
     expect(scoreOpportunity(opp({ stageId: "lost", value: 500, lastActivityAt: daysAgo(30) }), stageMap)).toBeNull();
+  });
+});
+
+function act(p: Partial<Activity>): Activity {
+  return { id: "a", kind: "email", summary: "", occurredAt: daysAgo(5), ...p };
+}
+
+describe("engagement signals", () => {
+  it("preferredChannel returns the most recent inbound messaging channel", () => {
+    const acts = [
+      act({ kind: "email", direction: "inbound", occurredAt: daysAgo(20) }),
+      act({ kind: "sms", direction: "inbound", occurredAt: daysAgo(3) }),
+      act({ kind: "call", direction: "outbound", occurredAt: daysAgo(1) }),
+    ];
+    expect(preferredChannel(acts)).toBe("sms"); // newest inbound
+  });
+
+  it("preferredChannel ignores outbound-only and non-messaging activity", () => {
+    expect(preferredChannel([act({ kind: "email", direction: "outbound" })])).toBeNull();
+    expect(preferredChannel([act({ kind: "note", direction: "inbound" })])).toBeNull();
+    expect(preferredChannel(undefined)).toBeNull();
+  });
+
+  it("hasEngaged is true only with an inbound activity", () => {
+    expect(hasEngaged([act({ direction: "outbound" })])).toBe(false);
+    expect(hasEngaged([act({ kind: "meeting", direction: "inbound" })])).toBe(true);
+  });
+
+  it("routes a recall to the channel the buyer last replied on, overriding the reason default", () => {
+    // stalled defaults to "call"; here the buyer last replied by SMS.
+    const signals = { activities: [act({ kind: "sms", direction: "inbound", occurredAt: daysAgo(35) })] };
+    const r = scoreOpportunity(opp({ stageId: "open_mid", lastActivityAt: daysAgo(40) }), stageMap, signals);
+    expect(r?.reason).toBe("stalled");
+    expect(r?.channel).toBe("sms");
+    expect(r?.engaged).toBe(true);
+    expect(r?.recommendation).toContain("sms");
+  });
+
+  it("boosts the priority of an engaged deal over an identical un-engaged one", () => {
+    const base = opp({ stageId: "open_hi", lastActivityAt: daysAgo(20) });
+    const cold = scoreOpportunity(base, stageMap);
+    const warm = scoreOpportunity(base, stageMap, { activities: [act({ kind: "email", direction: "inbound", occurredAt: daysAgo(22) })] });
+    expect(warm!.score).toBeGreaterThan(cold!.score);
+    expect(cold!.engaged).toBe(false);
+  });
+
+  it("keeps the reason default channel when there is no inbound reply", () => {
+    const r = scoreOpportunity(opp({ stageId: "open_mid", lastActivityAt: daysAgo(40) }), stageMap, { activities: [act({ direction: "outbound" })] });
+    expect(r?.channel).toBe("call"); // stalled default
+    expect(r?.engaged).toBe(false);
+  });
+});
+
+describe("industry-tuned thresholds", () => {
+  // 10 days, high prob: healthy under the default 14-day going-cold cutoff…
+  it("respects custom day thresholds", () => {
+    const o = opp({ stageId: "open_hi", lastActivityAt: daysAgo(10) });
+    expect(scoreOpportunity(o, stageMap)).toBeNull(); // default: still healthy
+    // …but a fast-cycle vertical (going cold at 5 days) flags it.
+    const fast = scoreOpportunity(o, stageMap, undefined, { goingColdDays: 5, stalledDays: 10, noActivityDays: 3, lostWindowDays: 60 });
+    expect(fast?.reason).toBe("going_cold");
+  });
+
+  it("widens the lost-recovery window for long-cycle verticals", () => {
+    const o = opp({ stageId: "lost", value: 8000, lastActivityAt: daysAgo(200) });
+    expect(scoreOpportunity(o, stageMap)).toBeNull(); // default 180-day window: too cold
+    const slow = scoreOpportunity(o, stageMap, undefined, { goingColdDays: 21, stalledDays: 45, noActivityDays: 7, lostWindowDays: 240 });
+    expect(slow?.reason).toBe("lost_winnable");
+  });
+});
+
+describe("overdue close date", () => {
+  it("flags an open deal past its expected close date and boosts its score", () => {
+    const onTime = scoreOpportunity(opp({ stageId: "open_hi", lastActivityAt: daysAgo(20), expectedCloseAt: daysAgo(-10) }), stageMap);
+    const overdue = scoreOpportunity(opp({ stageId: "open_hi", lastActivityAt: daysAgo(20), expectedCloseAt: daysAgo(20) }), stageMap);
+    expect(onTime?.overdue).toBe(false);
+    expect(overdue?.overdue).toBe(true);
+    expect(overdue!.score).toBeGreaterThan(onTime!.score);
+    expect(overdue?.recommendation).toContain("Close date slipped");
+  });
+
+  it("does not mark a deal with no close date as overdue", () => {
+    const r = scoreOpportunity(opp({ stageId: "open_hi", lastActivityAt: daysAgo(20), expectedCloseAt: undefined }), stageMap);
+    expect(r?.overdue).toBe(false);
+  });
+
+  it("ignores close dates on lost deals (they have their own path)", () => {
+    const r = scoreOpportunity(opp({ stageId: "lost", value: 8000, lastActivityAt: daysAgo(20), expectedCloseAt: daysAgo(40) }), stageMap);
+    expect(r?.reason).toBe("lost_winnable");
+    expect(r?.overdue).toBe(false);
   });
 });
 

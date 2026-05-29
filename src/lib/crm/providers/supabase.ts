@@ -221,6 +221,26 @@ export class SupabaseProvider implements CrmProvider {
     return rows.map(mapActivity);
   }
 
+  async listActivitiesByOpps(opportunityIds: Id[]): Promise<Record<Id, Activity[]>> {
+    const out: Record<Id, Activity[]> = {};
+    for (const id of opportunityIds) out[id] = [];
+    if (opportunityIds.length === 0) return out;
+    const orgId = await this.orgId();
+    const rows = await this.q<ActivityRow[]>(
+      this.client
+        .from("activities")
+        .select("*")
+        .eq("org_id", orgId)
+        .in("opportunity_id", opportunityIds)
+        .order("occurred_at", { ascending: false }),
+    );
+    for (const row of rows) {
+      const a = mapActivity(row);
+      if (a.opportunityId && out[a.opportunityId]) out[a.opportunityId].push(a);
+    }
+    return out;
+  }
+
   async logActivity(input: Omit<Activity, "id">): Promise<Activity> {
     const orgId = await this.orgId();
     const { data, error } = await this.client

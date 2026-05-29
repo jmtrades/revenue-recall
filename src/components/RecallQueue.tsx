@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ReasonBadge, ChannelBadge, ScoreDot } from "@/components/ui";
 import { money, relativeDays } from "@/lib/format";
@@ -17,6 +17,10 @@ export interface RecallRow {
   daysSinceActivity: number;
   channel: string;
   recommendation: string;
+  /** Buyer replied at least once before going quiet. */
+  engaged?: boolean;
+  /** Open deal whose expected close date has passed. */
+  overdue?: boolean;
 }
 
 const FILTERS = [
@@ -41,6 +45,14 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
   const [draft, setDraft] = useState<DraftState | null>(null);
   const [copied, setCopied] = useState(false);
   const filtered = filter === "all" ? rows : rows.filter((r) => r.reason === filter);
+
+  // Close the draft modal on Escape.
+  useEffect(() => {
+    if (!draft) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setDraft(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [draft]);
 
   async function openDraft(row: RecallRow) {
     setCopied(false);
@@ -76,7 +88,7 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
       const res = await fetch("/api/messages/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channel, dealId: draft.row.opportunityId, subject: draft.subject, body: draft.body }),
+        body: JSON.stringify({ channel, dealId: draft.row.opportunityId, subject: draft.subject, body: draft.body, recall: true }),
       });
       if (res.ok) {
         setSent(true);
@@ -128,11 +140,11 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
                 >
                   <td className="px-4 py-4"><ScoreDot score={r.score} /></td>
                   <td className="px-4 py-4">
-                    <div className="font-medium text-white">{r.title}</div>
+                    <div className="font-medium text-fg">{r.title}</div>
                     <div className="text-xs text-muted">{r.contactLabel}</div>
                   </td>
                   <td className="px-4 py-4"><ReasonBadge reason={r.reason} /></td>
-                  <td className="px-4 py-4 tabular-nums text-white">
+                  <td className="px-4 py-4 tabular-nums text-fg">
                     {money(r.weightedValue, r.currency)}
                     <div className="text-xs text-muted">of {money(r.value, r.currency)}</div>
                   </td>
@@ -140,6 +152,16 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
                   <td className="px-4 py-4">
                     <div className="mb-2 flex items-center gap-2">
                       <ChannelBadge channel={r.channel} />
+                      {r.engaged && (
+                        <span className="pill bg-brand-soft/40 text-brand" title="This buyer replied before going quiet — a warmer, more recoverable deal.">
+                          ↩ Replied before
+                        </span>
+                      )}
+                      {r.overdue && (
+                        <span className="pill bg-rose-500/15 text-rose-400" title="This deal's expected close date has already passed.">
+                          ⏰ Past close date
+                        </span>
+                      )}
                       <button
                         onClick={(e) => { e.stopPropagation(); openDraft(r); }}
                         className="rounded-lg border border-brand/40 bg-brand-soft/30 px-2 py-0.5 text-xs font-medium text-brand transition hover:bg-brand-soft/50"
@@ -158,10 +180,10 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
 
       {draft && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setDraft(null)}>
-          <div className="w-full max-w-lg rounded-xl border border-border bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-label="AI draft" className="w-full max-w-lg rounded-xl border border-border bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-semibold text-white">✨ Drafted outreach</h3>
-              <button onClick={() => setDraft(null)} className="text-muted hover:text-white">✕</button>
+              <h3 className="font-semibold text-fg">✨ Drafted outreach</h3>
+              <button onClick={() => setDraft(null)} className="text-muted hover:text-fg">✕</button>
             </div>
             <p className="mb-3 text-xs text-muted">{draft.row.title} · {draft.row.contactLabel}</p>
             {draft.busy ? (
@@ -171,15 +193,15 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
                 {draft.subject && (
                   <div className="mb-2">
                     <p className="stat-label">Subject</p>
-                    <p className="mt-1 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-white">{draft.subject}</p>
+                    <p className="mt-1 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-fg">{draft.subject}</p>
                   </div>
                 )}
-                <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-lg border border-border bg-surface-2 px-3 py-3 font-sans text-sm leading-relaxed text-white">{draft.body}</pre>
+                <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-lg border border-border bg-surface-2 px-3 py-3 font-sans text-sm leading-relaxed text-fg">{draft.body}</pre>
                 <div className="mt-3 flex items-center justify-between">
                   <span className="text-[11px] text-muted">{draft.source === "ai" ? "Generated by Claude" : draft.source === "error" ? "" : "Template — connect AI for tailored drafts"}</span>
                   <div className="flex gap-2">
-                    <button onClick={() => openDraft(draft.row)} className="rounded-lg border border-border px-3 py-1.5 text-sm text-white hover:bg-surface-2">Regenerate</button>
-                    <button onClick={copy} className="rounded-lg border border-border px-3 py-1.5 text-sm text-white hover:bg-surface-2">{copied ? "Copied ✓" : "Copy"}</button>
+                    <button onClick={() => openDraft(draft.row)} className="rounded-lg border border-border px-3 py-1.5 text-sm text-fg hover:bg-surface-2">Regenerate</button>
+                    <button onClick={copy} className="rounded-lg border border-border px-3 py-1.5 text-sm text-fg hover:bg-surface-2">{copied ? "Copied ✓" : "Copy"}</button>
                     {draft.source !== "error" && (
                       <button onClick={send} disabled={sending || sent} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand/90 disabled:opacity-60">
                         {sent ? "Sent ✓" : sending ? "Sending…" : draft.row.channel === "sms" ? "Send SMS" : "Send"}

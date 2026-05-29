@@ -2,24 +2,36 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { LANGUAGES } from "@/lib/languages";
 
 export function OrgSettingsForm({
   initialName,
   initialQuota,
+  initialLanguage,
+  initialSenderName,
+  initialAddress,
   persisted,
 }: {
   initialName: string;
   initialQuota: number;
+  initialLanguage: string;
+  initialSenderName: string;
+  initialAddress: string;
   persisted: boolean;
 }) {
   const router = useRouter();
   const [name, setName] = useState(initialName);
   const [quota, setQuota] = useState(String(initialQuota));
+  const [language, setLanguage] = useState(initialLanguage);
+  const [senderName, setSenderName] = useState(initialSenderName);
+  const [address, setAddress] = useState(initialAddress);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
-  const dirty = name !== initialName || Number(quota) !== initialQuota;
-  const input = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand disabled:opacity-60";
+  const dirty =
+    name !== initialName || Number(quota) !== initialQuota || language !== initialLanguage || senderName !== initialSenderName || address !== initialAddress;
+  const input = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand disabled:opacity-60";
+  const touched = () => setStatus("idle");
 
   async function save() {
     setStatus("saving");
@@ -28,7 +40,7 @@ export function OrgSettingsForm({
       const res = await fetch("/api/org", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, monthlyQuota: Number(quota) || 0 }),
+        body: JSON.stringify({ name, language, monthlyQuota: Number(quota) || 0, compliance: { senderName, address } }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Save failed");
       setStatus("saved");
@@ -43,11 +55,35 @@ export function OrgSettingsForm({
     <div className="space-y-4">
       <div>
         <label className="stat-label">Organization name</label>
-        <input className={`${input} mt-1`} value={name} disabled={!persisted} onChange={(e) => { setName(e.target.value); setStatus("idle"); }} />
+        <input className={`${input} mt-1`} value={name} disabled={!persisted} onChange={(e) => { setName(e.target.value); touched(); }} />
       </div>
       <div>
         <label className="stat-label">Monthly revenue goal</label>
-        <input className={`${input} mt-1`} type="number" min={0} value={quota} disabled={!persisted} onChange={(e) => { setQuota(e.target.value); setStatus("idle"); }} />
+        <input className={`${input} mt-1`} type="number" min={0} value={quota} disabled={!persisted} onChange={(e) => { setQuota(e.target.value); touched(); }} />
+      </div>
+      <div>
+        <label className="stat-label">Language you sell in</label>
+        <select className={`${input} mt-1`} value={language} disabled={!persisted} onChange={(e) => { setLanguage(e.target.value); touched(); }}>
+          {LANGUAGES.map((l) => (
+            <option key={l.code} value={l.code}>{l.label} — {l.native}</option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-muted">AI writes every email, text, and call script in this language.</p>
+      </div>
+
+      <div className="border-t border-border pt-4">
+        <p className="text-sm font-medium text-fg">Sending identity (compliance)</p>
+        <p className="mt-0.5 text-xs text-muted">Appears in the unsubscribe footer of every outbound email. A real postal address is legally required (CAN-SPAM).</p>
+        <div className="mt-3 space-y-3">
+          <div>
+            <label className="stat-label">Sender name</label>
+            <input className={`${input} mt-1`} value={senderName} disabled={!persisted} placeholder={name} onChange={(e) => { setSenderName(e.target.value); touched(); }} />
+          </div>
+          <div>
+            <label className="stat-label">Postal address</label>
+            <input className={`${input} mt-1`} value={address} disabled={!persisted} placeholder="123 Main St, Springfield, IL 62701" onChange={(e) => { setAddress(e.target.value); touched(); }} />
+          </div>
+        </div>
       </div>
 
       {persisted ? (

@@ -1,0 +1,44 @@
+import { NextResponse } from "next/server";
+import { getProvider } from "@/lib/crm/registry";
+import { verifyUnsubToken } from "@/lib/unsubscribe";
+import { rateLimit, clientKey } from "@/lib/ratelimit";
+
+export const dynamic = "force-dynamic";
+
+function page(title: string, message: string, status: number): Response {
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>
+<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0b0e14;color:#e7eaf0;display:grid;place-items:center;min-height:100vh;margin:0}
+.card{max-width:28rem;padding:2rem;text-align:center}h1{font-size:1.25rem;margin:0 0 .5rem}p{color:#8a93a6;line-height:1.5}</style></head>
+<body><div class="card"><h1>${title}</h1><p>${message}</p></div></body></html>`;
+  return new NextResponse(html, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
+}
+
+/** One-click unsubscribe. Verifies the signed token, then records a hard opt-out
+ *  (an inbound "unsubscribe" activity) the guardrails honor — no auth needed. */
+export async function GET(req: Request) {
+  if (!rateLimit(clientKey(req, "unsub"), 60, 60_000).ok) return page("Slow down", "Too many requests — try again shortly.", 429);
+
+  const url = new URL(req.url);
+  const contactId = url.searchParams.get("c") ?? "";
+  const token = url.searchParams.get("t");
+  if (!verifyUnsubToken(contactId, token)) {
+    return page("Link expired", "This unsubscribe link is invalid or expired. Reply with “unsubscribe” to opt out.", 400);
+  }
+
+  try {
+    const provider = getProvider();
+    const contact = await provider.getContact(contactId);
+    if (!contact) return page("Already removed", "We couldn't find that contact — you may already be unsubscribed.", 404);
+    await provider.logActivity({
+      contactId,
+      kind: "note",
+      // The word "unsubscribe" here is what the opt-out guardrail keys on.
+      summary: "Opted out via the unsubscribe link.",
+      direction: "inbound",
+      occurredAt: new Date().toISOString(),
+    });
+    return page("You're unsubscribed", "Done — you won't hear from us again. Sorry to see you go.", 200);
+  } catch {
+    return page("Something went wrong", "We couldn't process that right now. Reply with “unsubscribe” and we'll handle it.", 500);
+  }
+}

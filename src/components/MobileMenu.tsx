@@ -8,7 +8,7 @@ export function MobileMenu({ orgName }: { orgName: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="lg:hidden">
-      <button onClick={() => setOpen(true)} className="grid h-9 w-9 place-items-center rounded-lg border border-border text-muted hover:bg-surface-2 hover:text-white" aria-label="Menu">
+      <button onClick={() => setOpen(true)} className="grid h-9 w-9 place-items-center rounded-lg border border-border text-muted hover:bg-surface-2 hover:text-fg" aria-label="Menu">
         ☰
       </button>
       {open && (
@@ -18,7 +18,7 @@ export function MobileMenu({ orgName }: { orgName: string }) {
             <Link href="/dashboard" onClick={() => setOpen(false)} className="px-3 pb-6">
               <div className="flex items-center gap-2">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand text-sm font-bold text-white">RR</span>
-                <span className="text-sm font-semibold text-white">Revenue Recall</span>
+                <span className="text-sm font-semibold text-fg">Revenue Recall</span>
               </div>
               <p className="mt-3 truncate text-xs text-muted">{orgName}</p>
             </Link>

@@ -10,7 +10,7 @@ export function UserMenu({ name, email, signedIn }: { name: string; email?: stri
     <div className="relative">
       <button onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 rounded-lg border border-border px-2 py-1 transition hover:bg-surface-2">
         <Avatar name={name} size={26} />
-        <span className="hidden text-sm text-white sm:inline">{name}</span>
+        <span className="hidden text-sm text-fg sm:inline">{name}</span>
         <span className="hidden text-muted sm:inline">▾</span>
       </button>
       {open && (
@@ -18,10 +18,10 @@ export function UserMenu({ name, email, signedIn }: { name: string; email?: stri
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
             <div className="border-b border-border px-4 py-3">
-              <div className="text-sm font-medium text-white">{name}</div>
+              <div className="text-sm font-medium text-fg">{name}</div>
               {email && <div className="truncate text-xs text-muted">{email}</div>}
             </div>
-            <a href="/settings" className="block px-4 py-2.5 text-sm text-muted transition hover:bg-surface-2 hover:text-white">Settings</a>
+            <a href="/settings" className="block px-4 py-2.5 text-sm text-muted transition hover:bg-surface-2 hover:text-fg">Settings</a>
             {signedIn ? (
               <form action={signOut}>
                 <button type="submit" className="block w-full px-4 py-2.5 text-left text-sm text-danger transition hover:bg-surface-2">Sign out</button>

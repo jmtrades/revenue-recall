@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Icon } from "@/components/icons";
 
 interface Meta {
   defaultStageId: string;
@@ -94,20 +95,20 @@ export function QuickCreate() {
     }
   }
 
-  const inputCls = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand";
+  const inputCls = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand";
 
   return (
     <>
       <button onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90">
-        <span className="text-base leading-none">＋</span> New
+        <Icon name="plus" size={16} /> New
       </button>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-24" onClick={() => setOpen(false)}>
-          <div className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-label="Quick create" className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex border-b border-border">
               {(["deal", "contact"] as const).map((t) => (
-                <button key={t} onClick={() => setTab(t)} className={`flex-1 px-4 py-3 text-sm font-medium capitalize ${tab === t ? "border-b-2 border-brand text-white" : "text-muted hover:text-white"}`}>
+                <button key={t} onClick={() => setTab(t)} className={`flex-1 px-4 py-3 text-sm font-medium capitalize ${tab === t ? "border-b-2 border-brand text-fg" : "text-muted hover:text-fg"}`}>
                   New {t === "deal" ? meta?.terminology.opportunity ?? "Deal" : meta?.terminology.contact ?? "Contact"}
                 </button>
               ))}

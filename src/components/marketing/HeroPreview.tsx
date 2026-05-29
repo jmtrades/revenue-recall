@@ -21,7 +21,7 @@ export function HeroPreview() {
         <div className="grid grid-cols-3 gap-3">
           {[
             { label: "Recoverable", value: "$82,400", tone: "text-warn" },
-            { label: "Weighted forecast", value: "$214K", tone: "text-white" },
+            { label: "Weighted forecast", value: "$214K", tone: "text-fg" },
             { label: "Win rate", value: "41%", tone: "text-success" },
           ].map((s) => (
             <div key={s.label} className="rounded-xl border border-border bg-surface-2/50 p-3">
@@ -34,7 +34,7 @@ export function HeroPreview() {
         {/* recall list */}
         <div className="rounded-xl border border-border bg-surface-2/30 p-3">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-sm font-medium text-white">Revenue Recall queue</span>
+            <span className="text-sm font-medium text-fg">Revenue Recall queue</span>
             <span className="pill bg-brand-soft text-brand">4 at risk</span>
           </div>
           <div className="space-y-1.5">
@@ -42,9 +42,9 @@ export function HeroPreview() {
               <div key={r.name} className="flex items-center gap-3 rounded-lg border border-border/60 bg-surface px-3 py-2">
                 <span className="flex items-center gap-2">
                   <span className={`h-2 w-2 rounded-full ${r.tone}`} />
-                  <span className="tabular-nums text-xs text-white">{r.score}</span>
+                  <span className="tabular-nums text-xs text-fg">{r.score}</span>
                 </span>
-                <span className="min-w-0 flex-1 truncate text-sm text-white">{r.name}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-fg">{r.name}</span>
                 <span className="hidden text-[11px] text-muted sm:inline">{r.reason}</span>
                 <span className="text-sm font-medium tabular-nums text-brand">{r.value}</span>
                 <span className="rounded-md bg-brand px-2 py-0.5 text-[10px] font-medium text-white">✨ Draft</span>

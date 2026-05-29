@@ -2,9 +2,14 @@ import type { CrmProvider, ProviderInfo } from "@/lib/crm/types";
 import { BuiltinProvider } from "@/lib/crm/providers/builtin";
 import { SupabaseProvider } from "@/lib/crm/providers/supabase";
 import { CloseProvider } from "@/lib/crm/providers/close";
-import { makeStub } from "@/lib/crm/providers/stub";
+import { HubspotProvider } from "@/lib/crm/providers/hubspot";
+import { PipedriveProvider } from "@/lib/crm/providers/pipedrive";
+import { SalesforceProvider } from "@/lib/crm/providers/salesforce";
+import { HttpCrmProvider } from "@/lib/crm/providers/http";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { getConfig } from "@/lib/config";
+
+const httpCrmConfigured = (): boolean => Boolean(process.env.CRM_HTTP_BASE_URL);
 
 /**
  * Provider registry. Resolves the active CrmProvider from config, and lists all
@@ -20,13 +25,21 @@ function build(id: string): CrmProvider {
       return new SupabaseProvider();
     case "close":
       return new CloseProvider();
+    case "http":
+      return new HttpCrmProvider();
     case "hubspot":
-      return makeStub("hubspot", "HubSpot");
+      return new HubspotProvider();
     case "salesforce":
-      return makeStub("salesforce", "Salesforce");
+      return new SalesforceProvider();
     case "pipedrive":
-      return makeStub("pipedrive", "Pipedrive");
+      return new PipedriveProvider();
     default:
+      // Auto-select a connected CRM when one's configured, before the built-in.
+      if (httpCrmConfigured()) return new HttpCrmProvider();
+      if (process.env.HUBSPOT_ACCESS_TOKEN) return new HubspotProvider();
+      if (process.env.PIPEDRIVE_API_TOKEN) return new PipedriveProvider();
+      if ((process.env.SALESFORCE_ACCESS_TOKEN && process.env.SALESFORCE_INSTANCE_URL) || (process.env.SALESFORCE_REFRESH_TOKEN && process.env.SALESFORCE_CLIENT_ID)) return new SalesforceProvider();
+      if (process.env.CLOSE_API_KEY) return new CloseProvider();
       return isSupabaseConfigured() ? new SupabaseProvider() : new BuiltinProvider();
   }
 }
@@ -56,9 +69,10 @@ export function listIntegrations(): ProviderInfo[] {
       ready: false,
     }),
     new CloseProvider().info(),
-    makeStub("hubspot", "HubSpot").info(),
-    makeStub("salesforce", "Salesforce").info(),
-    makeStub("pipedrive", "Pipedrive").info(),
+    new HubspotProvider().info(),
+    new PipedriveProvider().info(),
+    new SalesforceProvider().info(),
+    new HttpCrmProvider().info(),
   ];
 }
 

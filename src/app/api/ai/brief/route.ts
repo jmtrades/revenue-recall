@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDealDetail } from "@/lib/queries";
-import { getConfig } from "@/lib/config";
+import { getOrgSettings } from "@/lib/org";
 import { getIndustry } from "@/lib/industries";
 import { summarizeDeal } from "@/lib/ai/brief";
+import { aiRateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -16,13 +17,15 @@ function daysSince(iso?: string): number | undefined {
 }
 
 export async function POST(req: Request) {
+  if (!aiRateLimit(req, "ai-brief").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "dealId required" }, { status: 400 });
 
   const detail = await getDealDetail(parsed.data.dealId);
   if (!detail) return NextResponse.json({ error: "Deal not found" }, { status: 404 });
 
-  const industry = getIndustry(getConfig().industryId);
+  const org = await getOrgSettings();
+  const industry = getIndustry(org.industryId);
   const result = await summarizeDeal({
     contactName: detail.contact?.name ?? detail.opp.title,
     company: detail.contact?.company,
@@ -35,6 +38,7 @@ export async function POST(req: Request) {
     industryLabel: industry.label,
     daysSinceContact: daysSince(detail.opp.lastActivityAt),
     history: detail.activities.map((a) => `${a.kind}: ${a.summary}`),
+    language: org.language,
   });
 
   return NextResponse.json(result);

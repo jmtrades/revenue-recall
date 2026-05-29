@@ -59,7 +59,7 @@ export function Board({ pipeline, opportunities, contacts, owners, canWrite }: P
         {columns.map((stage) => {
           const colItems = items.filter((o) => o.stageId === stage.id);
           const total = colItems.reduce((s, o) => s + o.value, 0);
-          const tone = stage.type === "won" ? "text-success" : stage.type === "lost" ? "text-danger" : "text-white";
+          const tone = stage.type === "won" ? "text-success" : stage.type === "lost" ? "text-danger" : "text-fg";
           return (
             <div
               key={stage.id}
@@ -89,7 +89,7 @@ export function Board({ pipeline, opportunities, contacts, owners, canWrite }: P
                       className={`group rounded-lg border border-border bg-surface-2 p-3 ${canWrite ? "cursor-grab active:cursor-grabbing" : ""} ${dragId === o.id ? "opacity-40" : ""}`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <Link href={`/deals/${o.id}`} className="truncate text-sm font-medium text-white hover:underline">
+                        <Link href={`/deals/${o.id}`} className="truncate text-sm font-medium text-fg hover:underline">
                           {c?.name ?? o.title}
                         </Link>
                         {o.ownerId && owners[o.ownerId] && <Avatar name={owners[o.ownerId]} size={20} />}

@@ -55,7 +55,7 @@ export default async function CalendarPage() {
                     {dayEvents.slice(0, 3).map((e, j) => (
                       <div key={j} className="flex items-center gap-1">
                         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${TYPE_COLOR[e.type]}`} />
-                        <span className="truncate text-[10px] text-white">{e.title.split(" · ")[1] ?? e.title}</span>
+                        <span className="truncate text-[10px] text-fg">{e.title.split(" · ")[1] ?? e.title}</span>
                       </div>
                     ))}
                     {dayEvents.length > 3 && <span className="text-[10px] text-muted">+{dayEvents.length - 3} more</span>}
@@ -71,17 +71,28 @@ export default async function CalendarPage() {
             <p className="text-sm text-muted">Nothing scheduled.</p>
           ) : (
             <ul className="space-y-2">
-              {agenda.map((e, i) => (
-                <li key={i}>
-                  <Link href={e.dealId ? `/deals/${e.dealId}` : "#"} className="flex items-start gap-3 rounded-lg border border-border bg-surface-2 p-3 transition hover:border-brand/50">
+              {agenda.map((e, i) => {
+                const inner = (
+                  <>
                     <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${TYPE_COLOR[e.type]}`} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm text-white">{e.title}</p>
+                      <p className="truncate text-sm text-fg">{e.title}</p>
                       <p className="text-xs text-muted">{new Date(e.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</p>
                     </div>
-                  </Link>
-                </li>
-              ))}
+                  </>
+                );
+                return (
+                  <li key={i}>
+                    {e.dealId ? (
+                      <Link href={`/deals/${e.dealId}`} className="flex items-start gap-3 rounded-lg border border-border bg-surface-2 p-3 transition hover:border-brand/50">
+                        {inner}
+                      </Link>
+                    ) : (
+                      <div className="flex items-start gap-3 rounded-lg border border-border bg-surface-2 p-3">{inner}</div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </Card>

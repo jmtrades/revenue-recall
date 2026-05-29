@@ -12,7 +12,7 @@ export function Tabs({ tabs }: { tabs: { id: string; label: string; content: Rea
             key={t.id}
             onClick={() => setActive(t.id)}
             className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition ${
-              active === t.id ? "border-brand text-white" : "border-transparent text-muted hover:text-white"
+              active === t.id ? "border-brand text-fg" : "border-transparent text-muted hover:text-fg"
             }`}
           >
             {t.label}

@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import type { CallQueueItem } from "@/lib/queries";
 import { Avatar, ReasonBadge, ScoreDot } from "@/components/ui";
+import { RolePlay } from "@/components/RolePlay";
+import { SpeakButton } from "@/components/SpeakButton";
 
 interface Brief {
   summary: string;
@@ -35,7 +37,7 @@ const SENTIMENT: Record<string, string> = {
   negative: "bg-danger/15 text-danger",
 };
 
-export function DialerView({ queue }: { queue: CallQueueItem[] }) {
+export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?: string }) {
   const [idx, setIdx] = useState(0);
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [brief, setBrief] = useState<Brief | null>(null);
@@ -105,7 +107,7 @@ export function DialerView({ queue }: { queue: CallQueueItem[] }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
       <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface">
-        <div className="border-b border-border px-4 py-2.5 text-sm font-medium text-white">Call queue · {remaining} left</div>
+        <div className="border-b border-border px-4 py-2.5 text-sm font-medium text-fg">Call queue · {remaining} left</div>
         <div className="max-h-[70vh] flex-1 overflow-y-auto">
           {queue.map((q, i) => (
             <button
@@ -115,7 +117,7 @@ export function DialerView({ queue }: { queue: CallQueueItem[] }) {
             >
               <ScoreDot score={q.score} />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm text-white">{q.contactName}</div>
+                <div className="truncate text-sm text-fg">{q.contactName}</div>
                 <div className="truncate text-xs text-muted">{q.phone}</div>
               </div>
               {done[q.dealId] && <span className="text-success">✓</span>}
@@ -131,9 +133,9 @@ export function DialerView({ queue }: { queue: CallQueueItem[] }) {
               <div className="flex items-center gap-3">
                 <Avatar name={active.contactName} size={44} />
                 <div>
-                  <Link href={`/deals/${active.dealId}`} className="font-semibold text-white hover:underline">{active.contactName}</Link>
+                  <Link href={`/deals/${active.dealId}`} className="font-semibold text-fg hover:underline">{active.contactName}</Link>
                   <div className="text-sm text-muted">{active.company || active.title}</div>
-                  <div className="mt-1 font-mono text-sm text-white">{active.phone}</div>
+                  <div className="mt-1 font-mono text-sm text-fg">{active.phone}</div>
                 </div>
               </div>
               <ReasonBadge reason={active.reason} />
@@ -146,14 +148,17 @@ export function DialerView({ queue }: { queue: CallQueueItem[] }) {
 
           <div className="card border-brand/30">
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="font-semibold text-white">✨ AI call prep</h2>
-              <button onClick={loadBrief} disabled={briefBusy} className="text-xs text-brand hover:underline disabled:opacity-50">{briefBusy ? "Preparing…" : brief ? "Refresh" : "Prepare"}</button>
+              <h2 className="font-semibold text-fg">✨ AI call prep</h2>
+              <div className="flex items-center gap-2">
+                {brief && <SpeakButton text={`${brief.summary} ${brief.talkingPoints.join(". ")}. Goal: ${brief.nextStep}`} label="Prep" />}
+                <button onClick={loadBrief} disabled={briefBusy} className="text-xs text-brand hover:underline disabled:opacity-50">{briefBusy ? "Preparing…" : brief ? "Refresh" : "Prepare"}</button>
+              </div>
             </div>
             {!brief ? (
               <p className="text-sm text-muted">Generate a talk track before you dial.</p>
             ) : (
               <div className="space-y-2 text-sm">
-                <p className="text-white">{brief.summary}</p>
+                <p className="text-fg">{brief.summary}</p>
                 <ul className="space-y-1">
                   {brief.talkingPoints.map((p, i) => (
                     <li key={i} className="flex gap-2 text-muted"><span className="text-brand">•</span>{p}</li>
@@ -164,14 +169,16 @@ export function DialerView({ queue }: { queue: CallQueueItem[] }) {
             )}
           </div>
 
+          <RolePlay contactName={active.contactName} company={active.company} dealTitle={active.title} locale={locale} />
+
           <div className="card">
-            <h2 className="mb-2 font-semibold text-white">Call notes</h2>
+            <h2 className="mb-2 font-semibold text-fg">Call notes</h2>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={4}
               placeholder="Jot down what happened — AI will summarize, set the outcome, and log it."
-              className="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-brand"
+              className="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
             />
             <button onClick={endCall} disabled={summarizing} className="mt-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
               {summarizing ? "Summarizing…" : "End & summarize"}
@@ -184,14 +191,14 @@ export function DialerView({ queue }: { queue: CallQueueItem[] }) {
                   <span className={`pill ${SENTIMENT[summary.sentiment]}`}>{summary.sentiment}</span>
                   {saved && <span className="text-xs text-success">✓ logged to timeline</span>}
                 </div>
-                <p className="text-sm text-white">{summary.summary}</p>
+                <p className="text-sm text-fg">{summary.summary}</p>
                 <p className="mt-1 text-xs text-muted">Next: {summary.nextStep}</p>
               </div>
             )}
           </div>
 
           <div className="flex justify-end">
-            <button onClick={() => selectIndex(Math.min(queue.length - 1, idx + 1))} className="rounded-lg border border-border px-4 py-2 text-sm text-white hover:bg-surface-2">Next call →</button>
+            <button onClick={() => selectIndex(Math.min(queue.length - 1, idx + 1))} className="rounded-lg border border-border px-4 py-2 text-sm text-fg hover:bg-surface-2">Next call →</button>
           </div>
         </div>
       )}

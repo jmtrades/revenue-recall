@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SpeakButton } from "@/components/SpeakButton";
 
 interface Brief {
   summary: string;
@@ -43,8 +44,11 @@ export function AiBrief({ dealId }: { dealId: string }) {
   return (
     <section className="card border-brand/30">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 font-semibold text-white">✨ AI Brief</h2>
-        {brief && <span className={`pill ${RISK[brief.risk]}`}>{brief.risk} risk</span>}
+        <h2 className="flex items-center gap-2 font-semibold text-fg">✨ AI Brief</h2>
+        <div className="flex items-center gap-2">
+          {brief && <SpeakButton text={`${brief.summary} Next step: ${brief.nextStep}. ${brief.talkingPoints.join(". ")}`} label="Brief" />}
+          {brief && <span className={`pill ${RISK[brief.risk]}`}>{brief.risk} risk</span>}
+        </div>
       </div>
 
       {!brief ? (
@@ -57,10 +61,10 @@ export function AiBrief({ dealId }: { dealId: string }) {
         </button>
       ) : (
         <div className="space-y-3 text-sm">
-          <p className="text-white">{brief.summary}</p>
+          <p className="text-fg">{brief.summary}</p>
           <div>
             <p className="stat-label">Next best step</p>
-            <p className="mt-1 text-white">{brief.nextStep}</p>
+            <p className="mt-1 text-fg">{brief.nextStep}</p>
           </div>
           <div>
             <p className="stat-label">Talking points</p>

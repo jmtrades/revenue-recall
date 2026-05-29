@@ -2,41 +2,42 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Icon, type IconName } from "@/components/icons";
 
-export const NAV_GROUPS: { heading: string; items: { href: string; label: string; icon: string }[] }[] = [
+export const NAV_GROUPS: { heading: string; items: { href: string; label: string; icon: IconName }[] }[] = [
   {
     heading: "Sell",
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: "◧" },
-      { href: "/recall", label: "Revenue Recall", icon: "↺" },
-      { href: "/pipeline", label: "Pipeline", icon: "▤" },
-      { href: "/leads", label: "Leads", icon: "☷" },
+      { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+      { href: "/recall", label: "Revenue Recall", icon: "recall" },
+      { href: "/pipeline", label: "Pipeline", icon: "pipeline" },
+      { href: "/leads", label: "Leads", icon: "leads" },
     ],
   },
   {
     heading: "Work",
     items: [
-      { href: "/tasks", label: "Tasks", icon: "✓" },
-      { href: "/approvals", label: "Approvals", icon: "☑" },
-      { href: "/inbox", label: "Inbox", icon: "✉" },
-      { href: "/dialer", label: "Power Dialer", icon: "☎" },
-      { href: "/calendar", label: "Calendar", icon: "▦" },
+      { href: "/tasks", label: "Tasks", icon: "tasks" },
+      { href: "/approvals", label: "Approvals", icon: "approvals" },
+      { href: "/inbox", label: "Inbox", icon: "inbox" },
+      { href: "/dialer", label: "Power Dialer", icon: "dialer" },
+      { href: "/calendar", label: "Calendar", icon: "calendar" },
     ],
   },
   {
     heading: "Engage",
     items: [
-      { href: "/agents", label: "Autopilot", icon: "✦" },
-      { href: "/sequences", label: "Sequences", icon: "⇉" },
-      { href: "/templates", label: "Templates", icon: "❏" },
-      { href: "/automations", label: "Automations", icon: "⚡" },
+      { href: "/agents", label: "Autopilot", icon: "autopilot" },
+      { href: "/sequences", label: "Sequences", icon: "sequences" },
+      { href: "/templates", label: "Templates", icon: "templates" },
+      { href: "/automations", label: "Automations", icon: "automations" },
     ],
   },
   {
     heading: "Insights",
     items: [
-      { href: "/reports", label: "Reports", icon: "▦" },
-      { href: "/forecast", label: "Forecast", icon: "◴" },
+      { href: "/reports", label: "Reports", icon: "reports" },
+      { href: "/forecast", label: "Forecast", icon: "forecast" },
     ],
   },
 ];
@@ -53,7 +54,7 @@ export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
               return (
                 <Link key={item.href} href={item.href} onClick={onNavigate} className={`nav-link ${active ? "nav-link-active" : ""}`}>
-                  <span className="w-4 text-center text-base leading-none">{item.icon}</span>
+                  <Icon name={item.icon} className="shrink-0" />
                   {item.label}
                 </Link>
               );
@@ -63,7 +64,7 @@ export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
       ))}
       <div className="mt-auto">
         <Link href="/settings" onClick={onNavigate} className={`nav-link ${pathname.startsWith("/settings") ? "nav-link-active" : ""}`}>
-          <span className="w-4 text-center text-base leading-none">⚙</span>
+          <Icon name="settings" className="shrink-0" />
           Settings
         </Link>
       </div>

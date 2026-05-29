@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getProvider } from "@/lib/crm/registry";
 import { sendEmail, sendSms } from "@/lib/comms";
+import { writeRateLimit } from "@/lib/ratelimit";
+import { recordRecallTouch } from "@/lib/recall/events";
 
 export const dynamic = "force-dynamic";
 
@@ -12,9 +14,12 @@ const Body = z.object({
   to: z.string().optional(),
   subject: z.string().optional(),
   body: z.string().min(1).max(4000),
+  /** Set by the recall queue so the send is attributed to the recall effort. */
+  recall: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {
+  if (!writeRateLimit(req, "send").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid message" }, { status: 400 });
   const { channel, dealId, body, subject } = parsed.data;
@@ -47,6 +52,9 @@ export async function POST(req: Request) {
     direction: "outbound",
     occurredAt: new Date().toISOString(),
   });
+
+  // Attribute manual recall-queue sends so won-back ROI captures them too.
+  if (parsed.data.recall) await recordRecallTouch({ dealId, contactId, channel, source: "manual" });
 
   return NextResponse.json({ ok: true, ...result });
 }

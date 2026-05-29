@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Icon } from "@/components/icons";
 
-interface Note { id: string; title: string; reason: string; score: number; recommendation: string }
+interface Note { id: string; kind: "recall" | "new_lead" | "stage_change"; title: string; detail: string; href: string }
 
-const REASON_LABEL: Record<string, string> = {
-  going_cold: "Going cold",
-  stalled: "Stalled",
-  lost_winnable: "Winnable loss",
-  no_activity: "Untouched",
+const KIND_LABEL: Record<Note["kind"], string> = {
+  recall: "At risk",
+  new_lead: "New deal",
+  stage_change: "Moved",
 };
 
 export function Notifications() {
@@ -29,10 +29,10 @@ export function Notifications() {
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative grid h-9 w-9 place-items-center rounded-lg border border-border text-muted transition hover:bg-surface-2 hover:text-white"
+        className="relative grid h-9 w-9 place-items-center rounded-lg border border-border text-muted transition hover:bg-surface-2 hover:text-fg"
         aria-label="Notifications"
       >
-        ◔
+        <Icon name="bell" size={17} />
         {loaded && items.length > 0 && (
           <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-danger px-1 text-[10px] font-semibold text-white">
             {items.length}
@@ -44,7 +44,7 @@ export function Notifications() {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
-            <div className="border-b border-border px-4 py-2.5 text-sm font-medium text-white">Needs attention</div>
+            <div className="border-b border-border px-4 py-2.5 text-sm font-medium text-fg">Needs attention</div>
             <div className="max-h-96 overflow-y-auto">
               {items.length === 0 ? (
                 <p className="px-4 py-8 text-center text-sm text-muted">{loaded ? "All clear 🎉" : "Loading…"}</p>
@@ -52,14 +52,14 @@ export function Notifications() {
                 items.map((n) => (
                   <button
                     key={n.id}
-                    onClick={() => { setOpen(false); router.push(`/deals/${n.id}`); }}
+                    onClick={() => { setOpen(false); router.push(n.href); }}
                     className="block w-full border-b border-border/60 px-4 py-3 text-left transition last:border-0 hover:bg-surface-2"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm text-white">{n.title}</span>
-                      <span className="shrink-0 text-xs text-muted">{REASON_LABEL[n.reason] ?? n.reason}</span>
+                      <span className="truncate text-sm text-fg">{n.title}</span>
+                      <span className="shrink-0 text-xs text-muted">{KIND_LABEL[n.kind]}</span>
                     </div>
-                    <p className="mt-0.5 line-clamp-2 text-xs text-muted">{n.recommendation}</p>
+                    <p className="mt-0.5 line-clamp-2 text-xs text-muted">{n.detail}</p>
                   </button>
                 ))
               )}

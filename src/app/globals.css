@@ -4,6 +4,43 @@
 
 :root {
   color-scheme: dark;
+  /* Accent (overridden per-org on the app shell). RGB triplets so Tailwind's
+     `rgb(var(--brand-rgb) / <alpha>)` tokens and these effects share one source. */
+  --brand-rgb: 91 140 255;
+  --brand-soft-rgb: 42 58 102;
+  /* Neutral surface + text palette (dark default). The app shell flips these
+     to light via [data-theme="light"]; marketing/auth never set data-theme so
+     they always render dark. --fg stays pure white in dark, so converting
+     text-fg → text-fg is a no-op visually in dark mode. */
+  --bg-rgb: 11 14 20;
+  --surface-rgb: 18 23 34;
+  --surface-2-rgb: 26 32 48;
+  --border-rgb: 35 43 61;
+  --muted-rgb: 138 147 166;
+  --fg-rgb: 255 255 255;
+  --body-rgb: 231 234 240;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg-rgb: 246 247 249;
+  --surface-rgb: 255 255 255;
+  --surface-2-rgb: 240 242 246;
+  --border-rgb: 225 229 236;
+  --muted-rgb: 90 100 118;
+  --fg-rgb: 17 24 39;
+  --body-rgb: 31 41 55;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-rgb: 11 14 20;
+  --surface-rgb: 18 23 34;
+  --surface-2-rgb: 26 32 48;
+  --border-rgb: 35 43 61;
+  --muted-rgb: 138 147 166;
+  --fg-rgb: 255 255 255;
+  --body-rgb: 231 234 240;
 }
 
 html {
@@ -12,8 +49,8 @@ html {
 
 html,
 body {
-  background-color: #0b0e14;
-  color: #e7eaf0;
+  background-color: rgb(var(--bg-rgb));
+  color: rgb(var(--body-rgb));
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -24,7 +61,7 @@ h1, h2, h3 {
 }
 
 ::selection {
-  background: rgba(91, 140, 255, 0.3);
+  background: rgb(var(--brand-rgb) / 0.3);
   color: #fff;
 }
 
@@ -34,7 +71,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #5b8cff;
+  outline: 2px solid rgb(var(--brand-rgb));
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -42,19 +79,19 @@ textarea:focus-visible {
 /* Refined scrollbars */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #2a3346 transparent;
+  scrollbar-color: rgb(var(--border-rgb)) transparent;
 }
 *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 *::-webkit-scrollbar-thumb {
-  background: #232b3d;
+  background: rgb(var(--border-rgb));
   border-radius: 8px;
-  border: 2px solid #0b0e14;
+  border: 2px solid rgb(var(--bg-rgb));
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: #2f3a52;
+  background: rgb(var(--muted-rgb) / 0.6);
 }
 
 @layer components {
@@ -65,23 +102,23 @@ textarea:focus-visible {
     @apply text-xs font-medium uppercase tracking-wide text-muted;
   }
   .stat-value {
-    @apply mt-1 text-2xl font-semibold text-white;
+    @apply mt-1 text-2xl font-semibold text-fg;
   }
   .pill {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .nav-link {
-    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-surface-2 hover:text-white;
+    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-surface-2 hover:text-fg;
   }
   .nav-link-active {
-    @apply bg-surface-2 text-white;
+    @apply bg-surface-2 text-fg;
   }
 }
 
 @layer utilities {
   /* Brand gradient text */
   .gradient-text {
-    background-image: linear-gradient(100deg, #fff 10%, #9cc0ff 50%, #5b8cff 90%);
+    background-image: linear-gradient(100deg, #fff 10%, rgb(var(--brand-rgb) / 0.65) 50%, rgb(var(--brand-rgb)) 90%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -89,11 +126,11 @@ textarea:focus-visible {
   /* Ambient hero glow */
   .hero-glow {
     background:
-      radial-gradient(60% 50% at 50% 0%, rgba(91, 140, 255, 0.18) 0%, transparent 70%),
+      radial-gradient(60% 50% at 50% 0%, rgb(var(--brand-rgb) / 0.18) 0%, transparent 70%),
       radial-gradient(40% 40% at 80% 10%, rgba(52, 211, 153, 0.1) 0%, transparent 70%);
   }
   .ring-glow {
-    box-shadow: 0 0 0 1px rgba(91, 140, 255, 0.25), 0 20px 60px -20px rgba(91, 140, 255, 0.45);
+    box-shadow: 0 0 0 1px rgb(var(--brand-rgb) / 0.25), 0 20px 60px -20px rgb(var(--brand-rgb) / 0.45);
   }
   .surface-grid {
     background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),

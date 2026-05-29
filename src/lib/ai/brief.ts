@@ -1,4 +1,5 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
+import { languageDirective } from "@/lib/languages";
 
 export interface BriefInput {
   contactName: string;
@@ -12,6 +13,8 @@ export interface BriefInput {
   industryLabel: string;
   daysSinceContact?: number;
   history?: string[];
+  /** ISO 639-1 language to write the brief in (default English). */
+  language?: string;
 }
 
 export interface BriefResult {
@@ -66,7 +69,7 @@ Prospect: ${input.contactName}${input.company ? ` at ${input.company}` : ""}
 Deal: "${input.dealTitle}" — ${input.valueLabel} ${input.value} ${input.currency}
 Stage: ${input.stageLabel} (${input.stageType})
 ${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.history && input.history.length ? `History (newest first):\n- ${input.history.slice(0, 8).join("\n- ")}` : "No activity logged."}
-
+${languageDirective(input.language) ? `\n${languageDirective(input.language)}\n` : ""}
 Brief the rep now.`;
 
   try {
@@ -76,6 +79,8 @@ Brief the rep now.`;
       schema: SCHEMA,
       maxTokens: 1200,
       think: true,
+      effort: "max", // deal brief: infrequent, high-value analysis — worth the deepest reasoning
+      feature: "brief",
     });
     return { ...out, source: "ai" };
   } catch {

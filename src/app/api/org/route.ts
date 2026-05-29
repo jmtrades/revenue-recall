@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getOrgSettings, updateOrgSettings } from "@/lib/org";
+import { isIndustryId } from "@/lib/industries";
+import { isLanguageCode } from "@/lib/languages";
+import { ACCENT_KEYS, THEME_MODES } from "@/lib/theme";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +13,12 @@ export async function GET() {
 
 const Patch = z.object({
   name: z.string().min(1).max(120).optional(),
+  industryId: z.string().refine(isIndustryId, "Unknown industry").optional(),
+  language: z.string().refine(isLanguageCode, "Unsupported language").optional(),
   monthlyQuota: z.number().nonnegative().max(1_000_000_000).optional(),
+  notificationPrefs: z.record(z.boolean()).optional(),
+  theme: z.object({ accent: z.enum(ACCENT_KEYS).optional(), mode: z.enum(THEME_MODES).optional() }).optional(),
+  compliance: z.object({ senderName: z.string().max(160).optional(), address: z.string().max(300).optional() }).optional(),
 });
 
 export async function PATCH(req: Request) {

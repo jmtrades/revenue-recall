@@ -1,9 +1,14 @@
 import { getProvider } from "@/lib/crm/registry";
 import { getActiveVoice } from "@/lib/voice";
+import { getOrgSettings } from "@/lib/org";
+import { getIndustry } from "@/lib/industries";
+import { contactPreferredLanguage } from "@/lib/languages";
 import { draftReply } from "@/lib/ai/reply";
+import { detectIntent } from "@/lib/ai/intent";
+import { unsubscribeUrl } from "@/lib/unsubscribe";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { createOutboxItem } from "@/lib/agent/store";
-import type { Contact, Opportunity } from "@/lib/crm/types";
+import type { Contact, CrmProvider, Opportunity } from "@/lib/crm/types";
 
 function digits(s: string): string {
   return s.replace(/\D/g, "");
@@ -27,6 +32,35 @@ export interface InboundResult {
   dealId?: string;
   action: "queued" | "sent" | "logged" | "unmatched";
   source?: string;
+  /** A callback/message was captured as a task so nothing is lost. */
+  messageTaken?: boolean;
+  /** What the inbound message was (so callers can route/report). */
+  intent?: string;
+}
+
+/**
+ * Take a message from an unknown sender (no matching contact). Like a good
+ * receptionist: create the contact, log what they said, and raise a follow-up
+ * task so it's never dropped. Best-effort — needs a writable provider.
+ */
+async function captureUnmatched(
+  provider: CrmProvider,
+  channel: "email" | "sms",
+  from: string,
+  body: string,
+  subject?: string,
+): Promise<InboundResult> {
+  if (!provider.info().capabilities.write) return { matched: false, action: "unmatched" };
+  const now = new Date().toISOString();
+  const name = channel === "email" ? from.split("@")[0] || "New contact" : `Caller ${digits(from).slice(-4) || ""}`.trim();
+  try {
+    const contact = await provider.createContact({ name, points: [{ channel: channel === "email" ? "email" : "phone", value: from }] });
+    await provider.logActivity({ contactId: contact.id, kind: channel, summary: subject ? `${subject}\n\n${body}` : body, direction: "inbound", occurredAt: now });
+    await provider.logActivity({ contactId: contact.id, kind: "task", summary: `New inbound from ${name} — follow up`, occurredAt: now });
+    return { matched: false, contactId: contact.id, action: "logged", messageTaken: true, intent: detectIntent(body) };
+  } catch {
+    return { matched: false, action: "unmatched" };
+  }
 }
 
 /**
@@ -38,7 +72,7 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
   const provider = getProvider();
   const [contacts, opps] = await Promise.all([provider.listContacts(), provider.listOpportunities()]);
   const contact = matchContact(contacts, channel, from);
-  if (!contact) return { matched: false, action: "unmatched" };
+  if (!contact) return captureUnmatched(provider, channel, from, body, subject);
 
   const deal: Opportunity | undefined =
     opps.filter((o) => o.contactId === contact.id).sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))[0];
@@ -53,23 +87,42 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     occurredAt: new Date().toISOString(),
   });
 
-  const voice = await getActiveVoice();
+  // If they're unavailable / it's a gatekeeper, take a message: capture a
+  // callback task so the follow-up is never lost (and still reply below).
+  const intent = detectIntent(body);
+  let messageTaken = false;
+  if (intent === "busy" || intent === "gatekeeper") {
+    await provider.logActivity({
+      opportunityId: deal?.id,
+      contactId: contact.id,
+      kind: "task",
+      summary: `Message taken — call ${contact.name} back about ${deal?.title ?? "their enquiry"}`,
+      occurredAt: new Date().toISOString(),
+    });
+    messageTaken = true;
+  }
+
+  const [voice, org] = await Promise.all([getActiveVoice(), getOrgSettings()]);
+  const industry = getIndustry(org.industryId);
   const history = deal ? (await provider.listActivities(deal.id)).map((a) => `${a.direction ?? "out"} ${a.kind}: ${a.summary}`) : [];
   const reply = await draftReply({
     channel,
     contactName: contact.name,
     company: contact.company,
     dealTitle: deal?.title ?? `${contact.name}`,
+    industryLabel: industry.label,
+    industryId: industry.id,
     incoming: body,
     history,
     voice,
+    language: contactPreferredLanguage(contact.attributes, org.language),
   });
 
   // Auto-send or queue for approval.
   if (process.env.REPLY_AUTOPILOT === "true") {
     const to = channel === "email" ? contact.points.find((p) => p.channel === "email")?.value : contact.points.find((p) => p.channel === "phone")?.value;
     if (to) {
-      const res = channel === "email" ? await sendEmail(to, reply.subject ?? "", reply.body) : await sendSms(to, reply.body);
+      const res = channel === "email" ? await sendEmail(to, reply.subject ?? "", reply.body, { unsubscribeUrl: unsubscribeUrl(contact.id), compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address } }) : await sendSms(to, reply.body);
       if (res.status !== "failed") {
         await provider.logActivity({
           opportunityId: deal?.id,
@@ -79,7 +132,7 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
           direction: "outbound",
           occurredAt: new Date().toISOString(),
         });
-        return { matched: true, contactId: contact.id, dealId: deal?.id, action: res.status === "sent" ? "sent" : "logged", source: reply.source };
+        return { matched: true, contactId: contact.id, dealId: deal?.id, action: res.status === "sent" ? "sent" : "logged", source: reply.source, messageTaken, intent };
       }
     }
   }
@@ -92,5 +145,5 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     body: reply.body,
     source: reply.source,
   });
-  return { matched: true, contactId: contact.id, dealId: deal?.id, action: "queued", source: reply.source };
+  return { matched: true, contactId: contact.id, dealId: deal?.id, action: "queued", source: reply.source, messageTaken, intent };
 }

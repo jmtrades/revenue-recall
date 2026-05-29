@@ -268,3 +268,125 @@ drop policy if exists org_rw_personas on personas;
 create policy org_rw_personas on personas
   using (org_id = current_org_id()) with check (org_id = current_org_id());
 
+
+-- ===== supabase/migrations/0007_notification_prefs.sql =====
+-- Per-org notification preferences (was a static, non-functional UI).
+-- A JSON map of { settingKey: boolean }; unknown keys are ignored on read and
+-- missing keys fall back to their defaults in the app layer (lib/org.ts).
+
+alter table orgs add column if not exists notification_prefs jsonb not null default '{}'::jsonb;
+
+-- ===== supabase/migrations/0008_voice_playbook.sql =====
+-- Per-workspace playbook tuning, stored alongside the org's voice persona.
+-- Newline-separated lists the rep can edit in Settings → Voice; when set, they
+-- override the industry defaults in drafts/replies. Empty = use industry playbook.
+
+alter table personas add column if not exists custom_next_steps text;
+alter table personas add column if not exists custom_reengage  text;
+
+-- ===== supabase/migrations/0009_sequence_enrollments.sql =====
+-- Cadence runtime: sequence enrollments. Sequences were static definitions;
+-- this table makes them executable. A contact/deal is enrolled in a sequence
+-- and the scheduler (the Autopilot cron) advances each enrollment through its
+-- steps on schedule. Contact/deal ids are stored as text because they reference
+-- provider-level ids (which may belong to a non-Supabase CRM), so no FK.
+
+create table if not exists sequence_enrollments (
+  id            uuid primary key default gen_random_uuid(),
+  org_id        uuid not null references orgs(id) on delete cascade,
+  sequence_id   text not null,
+  contact_id    text not null,
+  deal_id       text,
+  step_index    int not null default 0,
+  status        text not null default 'active' check (status in ('active','completed','stopped')),
+  enrolled_at   timestamptz not null default now(),
+  next_due_at   timestamptz not null,
+  last_step_at  timestamptz,
+  created_at    timestamptz not null default now()
+);
+
+create index if not exists idx_enrollments_org_status on sequence_enrollments(org_id, status);
+create index if not exists idx_enrollments_due on sequence_enrollments(org_id, status, next_due_at);
+
+alter table sequence_enrollments enable row level security;
+drop policy if exists org_rw_sequence_enrollments on sequence_enrollments;
+create policy org_rw_sequence_enrollments on sequence_enrollments
+  using (org_id = current_org_id()) with check (org_id = current_org_id());
+
+-- ===== supabase/migrations/0010_digest_runs.sql =====
+-- Scheduled-email de-duplication. The cron tick may fire many times a day, but
+-- a daily digest / task-reminder email should go out at most once per calendar
+-- day per org. This table records the last day each kind was sent so runDigests
+-- stays idempotent.
+
+create table if not exists digest_runs (
+  org_id   uuid not null references orgs(id) on delete cascade,
+  kind     text not null check (kind in ('daily_digest','task_reminders')),
+  sent_on  date not null,
+  primary key (org_id, kind)
+);
+
+alter table digest_runs enable row level security;
+drop policy if exists org_rw_digest_runs on digest_runs;
+create policy org_rw_digest_runs on digest_runs
+  using (org_id = current_org_id()) with check (org_id = current_org_id());
+
+-- ===== supabase/migrations/0011_org_theme.sql =====
+-- Per-org appearance. Stores the chosen accent (and room for future appearance
+-- options) as a small JSON blob; the app reads it to theme the UI chrome.
+
+alter table orgs add column if not exists theme jsonb not null default '{}'::jsonb;
+
+-- ===== supabase/migrations/0012_subscriptions.sql =====
+-- Billing subscriptions, one row per org. Populated by Stripe Checkout
+-- completion and kept in sync by the Stripe webhook. Orgs with no row are
+-- treated as the free plan. The Stripe ids let the webhook map events back to
+-- the right org.
+
+create table if not exists subscriptions (
+  org_id                 uuid primary key references orgs(id) on delete cascade,
+  plan                   text not null default 'free' check (plan in ('free','growth','scale')),
+  status                 text not null default 'none' check (status in ('none','trialing','active','past_due','canceled')),
+  seats                  int not null default 1,
+  stripe_customer_id     text,
+  stripe_subscription_id text,
+  current_period_end     timestamptz,
+  updated_at             timestamptz not null default now()
+);
+
+create index if not exists idx_subscriptions_customer on subscriptions(stripe_customer_id);
+
+alter table subscriptions enable row level security;
+drop policy if exists org_rw_subscriptions on subscriptions;
+create policy org_rw_subscriptions on subscriptions
+  using (org_id = current_org_id()) with check (org_id = current_org_id());
+
+-- ===== supabase/migrations/0013_ai_usage.sql =====
+-- AI usage ledger. One row per live AI completion, so spend is visible per org
+-- and the monthly budget cap can be enforced. Costs are recorded in USD at the
+-- time of the call (prices can change), with token counts for auditing.
+
+create table if not exists ai_usage (
+  id            uuid primary key default gen_random_uuid(),
+  org_id        uuid not null references orgs(id) on delete cascade,
+  model         text not null,
+  input_tokens  int not null default 0,
+  output_tokens int not null default 0,
+  cost_usd      numeric not null default 0,
+  feature       text,
+  created_at    timestamptz not null default now()
+);
+
+create index if not exists idx_ai_usage_org_time on ai_usage(org_id, created_at);
+
+alter table ai_usage enable row level security;
+drop policy if exists org_rw_ai_usage on ai_usage;
+create policy org_rw_ai_usage on ai_usage
+  using (org_id = current_org_id()) with check (org_id = current_org_id());
+
+-- ===== supabase/migrations/0014_org_compliance.sql =====
+-- Per-org compliance identity (CAN-SPAM): the sender name and physical postal
+-- address that appear in the outbound email footer. Each tenant sets their own,
+-- so multi-tenant sending is lawful per org rather than one global value.
+
+alter table orgs add column if not exists compliance jsonb not null default '{}'::jsonb;

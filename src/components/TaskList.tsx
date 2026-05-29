@@ -46,7 +46,7 @@ export function TaskList({ tasks }: { tasks: TaskItem[] }) {
                     </button>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <Link href={`/deals/${t.dealId}`} className={`truncate text-sm font-medium text-white hover:underline ${done[t.id] ? "line-through" : ""}`}>
+                        <Link href={`/deals/${t.dealId}`} className={`truncate text-sm font-medium text-fg hover:underline ${done[t.id] ? "line-through" : ""}`}>
                           {t.title}
                         </Link>
                         <span className={`pill ${PRIORITY[t.priority]}`}>{t.priority}</span>

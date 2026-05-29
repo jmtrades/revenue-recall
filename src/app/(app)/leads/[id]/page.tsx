@@ -19,19 +19,19 @@ export default async function ContactPage({ params }: { params: { id: string } }
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 text-sm text-muted">
-        <Link href="/leads" className="hover:text-white">Leads</Link>
+        <Link href="/leads" className="hover:text-fg">Leads</Link>
         <span>/</span>
-        <span className="text-white">{contact.name}</span>
+        <span className="text-fg">{contact.name}</span>
       </div>
 
       <div className="flex items-center gap-4">
         <Avatar name={contact.name} size={56} />
         <div>
-          <h1 className="text-2xl font-semibold text-white">{contact.name}</h1>
+          <h1 className="text-2xl font-semibold text-fg">{contact.name}</h1>
           <p className="text-sm text-muted">{[contact.title, contact.company].filter(Boolean).join(" · ") || "—"}</p>
         </div>
         <div className="ml-auto text-right">
-          <div className="text-xl font-semibold text-white">{money(totalValue, deals[0]?.currency ?? "USD")}</div>
+          <div className="text-xl font-semibold text-fg">{money(totalValue, deals[0]?.currency ?? "USD")}</div>
           <div className="text-xs text-muted">{deals.length} deal{deals.length === 1 ? "" : "s"}</div>
         </div>
       </div>
@@ -61,7 +61,7 @@ export default async function ContactPage({ params }: { params: { id: string } }
                 {deals.map((d) => (
                   <li key={d.id}>
                     <Link href={`/deals/${d.id}`} className="flex items-center justify-between rounded-lg border border-border bg-surface-2 p-3 transition hover:border-brand/50">
-                      <span className="truncate text-sm text-white">{d.title}</span>
+                      <span className="truncate text-sm text-fg">{d.title}</span>
                       <span className="text-sm tabular-nums text-brand">{money(d.value, d.currency)}</span>
                     </Link>
                   </li>
@@ -80,7 +80,7 @@ export default async function ContactPage({ params }: { params: { id: string } }
                     <ActivityIcon kind={a.kind} />
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm capitalize text-white">{a.kind.replace("_", " ")}</span>
+                        <span className="text-sm capitalize text-fg">{a.kind.replace("_", " ")}</span>
                         <span className="text-xs text-muted">{relativeDays(daysAgo(a.occurredAt))}</span>
                       </div>
                       <p className="text-sm text-muted">{a.summary}</p>

@@ -1,10 +1,11 @@
 /**
  * Dependency-free SVG charts. Server-renderable, theme-aware, deterministic.
+ * BRAND resolves to the org's accent via the --brand-rgb CSS variable set on the
+ * app shell, so charts re-color with the chosen theme.
  */
 
-const BRAND = "#5b8cff";
-const GRID = "#232b3d";
-const MUTED = "#8a93a6";
+const BRAND = "rgb(var(--brand-rgb))";
+const GRID = "rgb(var(--border-rgb))";
 
 export function Sparkline({ data, width = 120, height = 32, color = BRAND }: { data: number[]; width?: number; height?: number; color?: string }) {
   if (data.length < 2) return <svg width={width} height={height} />;
@@ -67,7 +68,7 @@ export function Donut({
       <div className="space-y-1.5">
         {centerLabel && (
           <div className="mb-2">
-            <div className="text-xl font-semibold text-white">{centerLabel}</div>
+            <div className="text-xl font-semibold text-fg">{centerLabel}</div>
             {centerSub && <div className="text-xs text-muted">{centerSub}</div>}
           </div>
         )}
@@ -75,7 +76,7 @@ export function Donut({
           <div key={i} className="flex items-center gap-2 text-xs">
             <span className="h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />
             <span className="text-muted">{s.label}</span>
-            <span className="ml-auto tabular-nums text-white">{s.value}</span>
+            <span className="ml-auto tabular-nums text-fg">{s.value}</span>
           </div>
         ))}
       </div>
@@ -98,7 +99,7 @@ export function Funnel({ stages }: { stages: { label: string; value: number; cou
                 className="flex h-full items-center justify-end rounded bg-gradient-to-r from-brand/40 to-brand/80 px-2"
                 style={{ width: `${w}%` }}
               >
-                <span className="text-xs font-medium tabular-nums text-white">{s.count}</span>
+                <span className="text-xs font-medium tabular-nums text-fg">{s.count}</span>
               </div>
             </div>
             <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted">{conv !== null ? `${conv}%` : ""}</span>
@@ -132,7 +133,7 @@ export function ProgressRing({ value, size = 64, thickness = 7, color = BRAND }:
     <svg width={size} height={size} className="-rotate-90">
       <circle cx={c} cy={c} r={r} fill="none" stroke={GRID} strokeWidth={thickness} />
       <circle cx={c} cy={c} r={r} fill="none" stroke={color} strokeWidth={thickness} strokeLinecap="round" strokeDasharray={`${circ * pct} ${circ}`} />
-      <text x={c} y={c} transform={`rotate(90 ${c} ${c})`} textAnchor="middle" dominantBaseline="central" fill="#fff" fontSize={size * 0.24} fontWeight={600}>
+      <text x={c} y={c} transform={`rotate(90 ${c} ${c})`} textAnchor="middle" dominantBaseline="central" fill="rgb(var(--fg-rgb))" fontSize={size * 0.24} fontWeight={600}>
         {Math.round(pct * 100)}%
       </text>
     </svg>
@@ -152,7 +153,7 @@ export function MiniLegendBar({ segments }: { segments: { label: string; value: 
         {segments.map((s, i) => (
           <span key={i} className="flex items-center gap-1.5 text-xs text-muted">
             <span className="h-2 w-2 rounded-sm" style={{ background: s.color }} />
-            {s.label} <span className="text-white">{s.value}</span>
+            {s.label} <span className="text-fg">{s.value}</span>
           </span>
         ))}
       </div>

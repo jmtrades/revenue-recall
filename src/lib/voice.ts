@@ -9,6 +9,18 @@ export interface Voice {
   signature?: string;
   profile?: string;
   samples?: string;
+  /** Workspace's own go-to next-step lines; override the industry defaults. */
+  customNextSteps?: string[];
+  /** Workspace's own re-engagement openers; override the industry defaults. */
+  customReengage?: string[];
+}
+
+/** Split a newline/textarea blob into clean, non-empty lines. */
+function lines(raw?: string | null): string[] {
+  return (raw ?? "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
 }
 
 /** The active writing voice for this org (drives how every message sounds). */
@@ -25,6 +37,8 @@ export const getActiveVoice = cache(async (): Promise<Voice> => {
     signature: data.signature ?? undefined,
     profile: data.profile ?? undefined,
     samples: data.samples ?? undefined,
+    customNextSteps: lines(data.custom_next_steps),
+    customReengage: lines(data.custom_reengage),
   };
 });
 
@@ -42,6 +56,9 @@ async function distill(input: { senderName?: string; role?: string; samples: str
       user: `Name: ${input.senderName ?? "(unknown)"}\nRole: ${input.role ?? "(unknown)"}\nTheir words (self-description and/or example messages):\n"""${input.samples}"""\n\nProduce the voice profile now.`,
       schema: SCHEMA,
       maxTokens: 800,
+      think: true,
+      effort: "high", // careful analysis of the rep's writing voice
+      feature: "voice",
     });
     return out.profile;
   } catch {
@@ -49,27 +66,53 @@ async function distill(input: { senderName?: string; role?: string; samples: str
   }
 }
 
-export async function learnVoice(input: { senderName?: string; role?: string; signature?: string; samples: string }): Promise<Voice & { aiDistilled: boolean }> {
-  const profile = await distill(input);
-  const aiDistilled = isAiConfigured() && Boolean(input.samples.trim()) && profile !== input.samples.trim();
-  if (isSupabaseConfigured()) {
-    const client = getSupabase()!;
-    const orgId = await resolveActiveOrgId();
-    if (orgId) {
-      const { error } = await client.from("personas").upsert(
-        {
-          org_id: orgId,
-          sender_name: input.senderName ?? null,
-          role: input.role ?? null,
-          signature: input.signature ?? null,
-          samples: input.samples,
-          profile,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "org_id" },
-      );
-      if (error) throw new Error(error.message);
-    }
+export async function learnVoice(input: {
+  senderName?: string;
+  role?: string;
+  signature?: string;
+  samples?: string;
+  customNextSteps?: string;
+  customReengage?: string;
+}): Promise<Voice & { aiDistilled: boolean }> {
+  const samples = input.samples?.trim() ?? "";
+  const client = isSupabaseConfigured() ? getSupabase() : null;
+  const orgId = client ? await resolveActiveOrgId() : null;
+
+  // Re-distill the profile only when new samples are given; otherwise preserve
+  // the existing one so a rep can tweak just their playbook lines.
+  let profile = samples;
+  if (samples) {
+    profile = await distill({ senderName: input.senderName, role: input.role, samples });
+  } else if (client && orgId) {
+    const { data } = await client.from("personas").select("profile,samples").eq("org_id", orgId).maybeSingle();
+    profile = (data?.profile as string) ?? "";
   }
-  return { ...input, profile, aiDistilled };
+  const aiDistilled = isAiConfigured() && Boolean(samples) && profile !== samples;
+
+  if (client && orgId) {
+    const row: Record<string, unknown> = {
+      org_id: orgId,
+      sender_name: input.senderName ?? null,
+      role: input.role ?? null,
+      signature: input.signature ?? null,
+      profile,
+      custom_next_steps: input.customNextSteps ?? null,
+      custom_reengage: input.customReengage ?? null,
+      updated_at: new Date().toISOString(),
+    };
+    if (samples) row.samples = samples; // don't wipe samples when only tuning the playbook
+    const { error } = await client.from("personas").upsert(row, { onConflict: "org_id" });
+    if (error) throw new Error(error.message);
+  }
+
+  return {
+    senderName: input.senderName,
+    role: input.role,
+    signature: input.signature,
+    samples,
+    profile,
+    customNextSteps: lines(input.customNextSteps),
+    customReengage: lines(input.customReengage),
+    aiDistilled,
+  };
 }

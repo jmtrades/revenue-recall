@@ -3,6 +3,7 @@ import type {
   Contact,
   CrmProvider,
   Id,
+  NewOpportunity,
   Opportunity,
   OpportunityFilter,
   Pipeline,
@@ -10,6 +11,7 @@ import type {
   Stage,
   User,
 } from "@/lib/crm/types";
+import { fetchWithRetry } from "@/lib/crm/net";
 
 /**
  * Close CRM adapter (https://developer.close.com). Reads CLOSE_API_KEY from the
@@ -26,17 +28,63 @@ interface CloseStatus {
   type?: string;
 }
 
+interface CloseOpportunity {
+  id: string;
+  status_id: string;
+  status_type?: string;
+  value?: number;
+  value_currency?: string;
+  contact_id?: string;
+  lead_id?: string;
+  user_id?: string;
+  date_created: string;
+  date_updated: string;
+  date_won?: string;
+  confidence?: number;
+}
+
+interface CloseContact {
+  id: string;
+  name: string;
+  lead_id?: string;
+  emails?: { email: string }[];
+  phones?: { phone: string }[];
+}
+
 export class CloseProvider implements CrmProvider {
   private key = process.env.CLOSE_API_KEY ?? "";
 
-  private async req<T>(path: string): Promise<T> {
+  private async req<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
     const auth = Buffer.from(`${this.key}:`).toString("base64");
-    const res = await fetch(`${API}${path}`, {
-      headers: { Authorization: `Basic ${auth}`, Accept: "application/json" },
+    const res = await fetchWithRetry(`${API}${path}`, {
+      method: init?.method ?? "GET",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        Accept: "application/json",
+        ...(init?.body !== undefined ? { "Content-Type": "application/json" } : {}),
+      },
+      body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
       cache: "no-store",
     });
     if (!res.ok) throw new Error(`Close API ${res.status}: ${await res.text()}`);
     return res.json() as Promise<T>;
+  }
+
+  private mapOpp(o: CloseOpportunity): Opportunity {
+    return {
+      id: o.id,
+      title: o.lead_id ?? o.id,
+      pipelineId: "close",
+      stageId: o.status_id,
+      value: (o.value ?? 0) / 100,
+      currency: o.value_currency ?? "USD",
+      contactId: o.contact_id ?? "",
+      ownerId: o.user_id,
+      createdAt: o.date_created,
+      updatedAt: o.date_updated,
+      lastActivityAt: o.date_updated,
+      closedAt: o.date_won,
+    };
   }
 
   info(): ProviderInfo {
@@ -98,36 +146,8 @@ export class CloseProvider implements CrmProvider {
   }
 
   async listOpportunities(filter?: OpportunityFilter): Promise<Opportunity[]> {
-    const data = await this.req<{
-      data: {
-        id: string;
-        status_id: string;
-        status_type?: string;
-        value?: number;
-        value_currency?: string;
-        contact_id?: string;
-        lead_id?: string;
-        user_id?: string;
-        date_created: string;
-        date_updated: string;
-        date_won?: string;
-        confidence?: number;
-      }[];
-    }>("/opportunity/");
-    let out: Opportunity[] = data.data.map((o) => ({
-      id: o.id,
-      title: o.lead_id ?? o.id,
-      pipelineId: "close",
-      stageId: o.status_id,
-      value: (o.value ?? 0) / 100,
-      currency: o.value_currency ?? "USD",
-      contactId: o.contact_id ?? "",
-      ownerId: o.user_id,
-      createdAt: o.date_created,
-      updatedAt: o.date_updated,
-      lastActivityAt: o.date_updated,
-      closedAt: o.date_won,
-    }));
+    const data = await this.req<{ data: CloseOpportunity[] }>("/opportunity/");
+    let out: Opportunity[] = data.data.map((o) => this.mapOpp(o));
     if (filter?.staleSince) out = out.filter((o) => !o.lastActivityAt || o.lastActivityAt <= filter.staleSince!);
     if (filter?.ownerId) out = out.filter((o) => o.ownerId === filter.ownerId);
     return out;
@@ -138,16 +158,51 @@ export class CloseProvider implements CrmProvider {
     return all.find((o) => o.id === id) ?? null;
   }
 
-  async createContact(): Promise<never> {
-    throw new Error("Close write operations are not enabled in this build.");
+  async createContact(input: Omit<Contact, "id">): Promise<Contact> {
+    // Close contacts always belong to a lead, so creating a standalone contact
+    // means creating a lead that contains it. We name the lead after the
+    // company (falling back to the contact's name).
+    const emails = input.points.filter((p) => p.channel === "email").map((p) => ({ email: p.value, type: "office" }));
+    const phones = input.points.filter((p) => p.channel === "phone").map((p) => ({ phone: p.value, type: "office" }));
+    const lead = await this.req<{ id: string; contacts?: CloseContact[] }>("/lead/", {
+      method: "POST",
+      body: { name: input.company ?? input.name, contacts: [{ name: input.name, emails, phones }] },
+    });
+    const created = lead.contacts?.[0];
+    return {
+      id: created?.id ?? lead.id,
+      name: created?.name ?? input.name,
+      company: input.company,
+      points: input.points,
+    };
   }
 
-  async createOpportunity(): Promise<never> {
-    throw new Error("Close write operations are not enabled in this build.");
+  async createOpportunity(input: NewOpportunity): Promise<Opportunity> {
+    // Resolve the contact's lead — Close opportunities hang off a lead, not a
+    // contact — then create the opportunity in the requested status (stage).
+    const contact = await this.req<CloseContact>(`/contact/${encodeURIComponent(input.contactId)}/`);
+    if (!contact.lead_id) throw new Error("Contact is not attached to a Close lead.");
+    const created = await this.req<CloseOpportunity>("/opportunity/", {
+      method: "POST",
+      body: {
+        lead_id: contact.lead_id,
+        contact_id: input.contactId,
+        status_id: input.stageId,
+        value: Math.round(input.value * 100),
+        value_period: "one_time",
+        value_currency: input.currency,
+        user_id: input.ownerId,
+      },
+    });
+    return this.mapOpp(created);
   }
 
-  async moveOpportunity(): Promise<Opportunity> {
-    throw new Error("Close write operations require a configured webhook/OAuth flow — not enabled in this build.");
+  async moveOpportunity(id: Id, stageId: Id): Promise<Opportunity> {
+    const updated = await this.req<CloseOpportunity>(`/opportunity/${encodeURIComponent(id)}/`, {
+      method: "PUT",
+      body: { status_id: stageId },
+    });
+    return this.mapOpp(updated);
   }
 
   async listActivities(opportunityId: Id): Promise<Activity[]> {
@@ -176,7 +231,30 @@ export class CloseProvider implements CrmProvider {
     }));
   }
 
-  async logActivity(): Promise<Activity> {
-    throw new Error("Close write operations are not enabled in this build.");
+  async logActivity(input: Omit<Activity, "id">): Promise<Activity> {
+    // Close activities attach to a lead. Resolve the lead from the opportunity
+    // (or contact) the activity belongs to, then record it as a note.
+    let leadId: string | undefined;
+    if (input.opportunityId) {
+      const opp = await this.req<CloseOpportunity>(`/opportunity/${encodeURIComponent(input.opportunityId)}/`);
+      leadId = opp.lead_id;
+    } else if (input.contactId) {
+      const contact = await this.req<CloseContact>(`/contact/${encodeURIComponent(input.contactId)}/`);
+      leadId = contact.lead_id;
+    }
+    if (!leadId) throw new Error("Could not resolve a Close lead for this activity.");
+    const note = await this.req<{ id: string; date_created?: string }>("/activity/note/", {
+      method: "POST",
+      body: { lead_id: leadId, note: input.summary },
+    });
+    return {
+      id: note.id,
+      opportunityId: input.opportunityId,
+      contactId: input.contactId,
+      kind: input.kind,
+      summary: input.summary,
+      occurredAt: note.date_created ?? input.occurredAt,
+      direction: input.direction,
+    };
   }
 }

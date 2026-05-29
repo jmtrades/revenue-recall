@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Icon } from "@/components/icons";
 
 interface Results {
   contacts: { id: string; name: string; company: string }[];
@@ -58,20 +59,20 @@ export function CommandSearch() {
         onClick={() => setOpen(true)}
         className="flex w-44 items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-muted transition hover:border-brand/50 sm:w-72"
       >
-        <span>⌕</span>
+        <Icon name="search" size={16} className="shrink-0" />
         <span className="flex-1 truncate text-left">Search…</span>
         <kbd className="hidden rounded border border-border px-1.5 text-[10px] sm:inline">⌘K</kbd>
       </button>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-28" onClick={() => setOpen(false)}>
-          <div className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-label="Search contacts and deals" className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <input
               ref={inputRef}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search contacts and deals…"
-              className="w-full border-b border-border bg-transparent px-4 py-3.5 text-sm text-white outline-none placeholder:text-muted"
+              className="w-full border-b border-border bg-transparent px-4 py-3.5 text-sm text-fg outline-none placeholder:text-muted"
             />
             <div className="max-h-80 overflow-y-auto p-2">
               {results.contacts.length === 0 && results.deals.length === 0 && (
@@ -81,7 +82,7 @@ export function CommandSearch() {
                 <div className="mb-1">
                   <p className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-muted">Contacts</p>
                   {results.contacts.map((c) => (
-                    <button key={c.id} onClick={() => go(`/leads/${c.id}`)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-white hover:bg-surface-2">
+                    <button key={c.id} onClick={() => go(`/leads/${c.id}`)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-fg hover:bg-surface-2">
                       <span>{c.name}</span>
                       <span className="text-xs text-muted">{c.company}</span>
                     </button>
@@ -92,7 +93,7 @@ export function CommandSearch() {
                 <div>
                   <p className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-muted">Deals</p>
                   {results.deals.map((d) => (
-                    <button key={d.id} onClick={() => go(`/deals/${d.id}`)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-white hover:bg-surface-2">
+                    <button key={d.id} onClick={() => go(`/deals/${d.id}`)} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-fg hover:bg-surface-2">
                       <span className="truncate">{d.title}</span>
                       <span className="shrink-0 text-xs text-muted">{new Intl.NumberFormat("en-US", { style: "currency", currency: d.currency, notation: "compact" }).format(d.value)}</span>
                     </button>

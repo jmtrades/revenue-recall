@@ -1,9 +1,12 @@
 import { getProvider } from "@/lib/crm/registry";
+import { cachedOpportunities, cachedPipelines, cachedContacts, cachedUsers } from "@/lib/crm/cached";
 import { getConfig } from "@/lib/config";
 import { getOrgSettings } from "@/lib/org";
-import { getIndustry } from "@/lib/industries";
+import { getIndustry, recallThresholdsFor } from "@/lib/industries";
 import { computeMetrics, type PipelineMetrics } from "@/lib/analytics";
-import { buildRecallQueue, summarizeRecall, type RecallItem, type RecallSummary } from "@/lib/recall/engine";
+import { buildRecallQueue, summarizeRecall, computeRecallOutcomes, recallByOwner, type RecallItem, type RecallSummary, type RecallOutcomes } from "@/lib/recall/engine";
+import { listEnrollments } from "@/lib/cadence";
+import { listRecallTouches, earliestTouchByDeal, touchesByWeek } from "@/lib/recall/events";
 import type { Activity, Contact, Opportunity, Pipeline, Stage, User } from "@/lib/crm/types";
 
 /** Everything the dashboard needs in one round trip. */
@@ -23,7 +26,7 @@ export async function getOverview(): Promise<Overview> {
   const cfg = getConfig();
   const industry = getIndustry(cfg.industryId);
 
-  const [pipelines, opportunities] = await Promise.all([provider.listPipelines(), provider.listOpportunities()]);
+  const [pipelines, opportunities] = await Promise.all([cachedPipelines(), cachedOpportunities()]);
   const pipeline = pipelines[0];
   const metrics = computeMetrics(opportunities, pipeline);
   const recall = buildRecallQueue(opportunities, pipelines);
@@ -66,12 +69,23 @@ export async function getBoard(): Promise<BoardData> {
 
 export async function getRecallQueue(): Promise<{ items: RecallItem[]; summary: RecallSummary; contacts: Map<string, Contact>; opps: Map<string, Opportunity> }> {
   const provider = getProvider();
-  const [pipelines, opportunities, contacts] = await Promise.all([
+  const [pipelines, opportunities, contacts, recent] = await Promise.all([
     provider.listPipelines(),
     provider.listOpportunities(),
     provider.listContacts(),
+    provider.listRecentActivities(250).catch(() => [] as Activity[]),
   ]);
-  const items = buildRecallQueue(opportunities, pipelines);
+  // Group recent activities by opportunity so the engine can route to the
+  // channel the buyer replies on and prioritize deals that engaged.
+  const activitiesByOpp = new Map<string, Activity[]>();
+  for (const a of recent) {
+    if (!a.opportunityId) continue;
+    const list = activitiesByOpp.get(a.opportunityId) ?? [];
+    list.push(a);
+    activitiesByOpp.set(a.opportunityId, list);
+  }
+  const thresholds = recallThresholdsFor((await getOrgSettings()).industryId);
+  const items = buildRecallQueue(opportunities, pipelines, activitiesByOpp, thresholds);
   const currency = opportunities[0]?.currency ?? "USD";
   return {
     items,
@@ -79,6 +93,20 @@ export async function getRecallQueue(): Promise<{ items: RecallItem[]; summary: 
     contacts: new Map(contacts.map((c) => [c.id, c])),
     opps: new Map(opportunities.map((o) => [o.id, o])),
   };
+}
+
+/** Recall ROI — did re-engaging cold/lost deals actually win them back? */
+export async function getRecallOutcomes(): Promise<RecallOutcomes> {
+  const provider = getProvider();
+  const [pipelines, opportunities, enrollments, touches] = await Promise.all([
+    provider.listPipelines(),
+    provider.listOpportunities(),
+    listEnrollments(undefined, 1000),
+    listRecallTouches(),
+  ]);
+  const stages = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
+  const oppById = new Map(opportunities.map((o) => [o.id, o]));
+  return computeRecallOutcomes(enrollments, oppById, stages, opportunities[0]?.currency ?? "USD", earliestTouchByDeal(touches));
 }
 
 export async function getLeads(): Promise<{ contacts: Contact[]; opps: Map<string, Opportunity>; owners: Map<string, User> }> {
@@ -185,7 +213,7 @@ export async function getLeadRows(): Promise<{ rows: LeadRow[]; owners: string[]
   return {
     rows,
     owners: [...new Set(rows.map((r) => r.owner).filter((o) => o !== "—"))].sort(),
-    valueLabel: getIndustry(getConfig().industryId).terminology.value,
+    valueLabel: getIndustry((await getOrgSettings()).industryId).terminology.value,
   };
 }
 
@@ -199,8 +227,8 @@ export async function getActivityFeed(limit = 12): Promise<FeedEntry[]> {
   const provider = getProvider();
   const [activities, contacts, opps] = await Promise.all([
     provider.listRecentActivities(limit),
-    provider.listContacts(),
-    provider.listOpportunities(),
+    cachedContacts(),
+    cachedOpportunities(),
   ]);
   const cById = new Map(contacts.map((c) => [c.id, c]));
   const oById = new Map(opps.map((o) => [o.id, o]));
@@ -268,7 +296,7 @@ export async function getDealDetail(id: string): Promise<DealDetail | null> {
   ]);
   const pipeline = pipelines.find((p) => p.id === opp.pipelineId) ?? pipelines[0];
   const stage = pipeline.stages.find((s) => s.id === opp.stageId);
-  const industry = getIndustry(getConfig().industryId);
+  const industry = getIndustry((await getOrgSettings()).industryId);
   return {
     opp,
     contact,
@@ -444,6 +472,12 @@ export interface Reports {
   sources: { label: string; value: number; color: string }[];
   monthlyWon: { label: string; value: number }[];
   leaderboard: { name: string; won: number; value: number; openValue: number }[];
+  /** Who's letting the most recoverable revenue slip (recall queue, per owner). */
+  recallByOwner: { name: string; atRisk: number; recoverableValue: number }[];
+  /** Org-wide recall ROI (recalled → re-engaged → won back). */
+  recallOutcomes: RecallOutcomes;
+  /** Recall outreach volume over the last 6 weeks. */
+  recallTrend: { label: string; value: number }[];
 }
 
 const PALETTE = ["#5b8cff", "#34d399", "#fbbf24", "#f87171", "#a78bfa", "#22d3ee", "#fb923c", "#94a3b8"];
@@ -452,9 +486,9 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 export async function getReports(): Promise<Reports> {
   const provider = getProvider();
   const [pipelines, opps, users] = await Promise.all([
-    provider.listPipelines(),
-    provider.listOpportunities(),
-    provider.listUsers(),
+    cachedPipelines(),
+    cachedOpportunities(),
+    cachedUsers(),
   ]);
   const pipeline = pipelines[0];
   const metrics = computeMetrics(opps, pipeline);
@@ -507,5 +541,20 @@ export async function getReports(): Promise<Reports> {
     .map((u) => ({ name: u.name, ...board.get(u.id)! }))
     .sort((a, b) => b.value - a.value);
 
-  return { currency: metrics.currency, metrics, funnel, sources, monthlyWon, leaderboard };
+  // Recall: revenue slipping per owner + org-wide recall ROI.
+  const thresholds = recallThresholdsFor((await getOrgSettings()).industryId);
+  const recallItems = buildRecallQueue(opps, pipelines, undefined, thresholds);
+  const ownerByOpp = new Map(opps.map((o) => [o.id, o.ownerId]));
+  const userName = new Map(users.map((u) => [u.id, u.name]));
+  const recallOwners = recallByOwner(recallItems, (oppId) => ownerByOpp.get(oppId)).map((s) => ({
+    name: s.ownerId === "unassigned" ? "Unassigned" : userName.get(s.ownerId) ?? "Unknown",
+    atRisk: s.atRisk,
+    recoverableValue: s.recoverableValue,
+  }));
+  const stagesById = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
+  const [enrollments, touches] = await Promise.all([listEnrollments(undefined, 1000), listRecallTouches()]);
+  const recallOutcomes = computeRecallOutcomes(enrollments, new Map(opps.map((o) => [o.id, o])), stagesById, metrics.currency, earliestTouchByDeal(touches));
+  const recallTrend = touchesByWeek(touches);
+
+  return { currency: metrics.currency, metrics, funnel, sources, monthlyWon, leaderboard, recallByOwner: recallOwners, recallOutcomes, recallTrend };
 }

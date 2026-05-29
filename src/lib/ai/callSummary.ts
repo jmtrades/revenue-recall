@@ -1,4 +1,5 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
+import { languageDirective } from "@/lib/languages";
 
 export type CallOutcome = "connected" | "voicemail" | "no_answer" | "callback_scheduled" | "not_interested" | "meeting_booked";
 
@@ -6,6 +7,8 @@ export interface CallSummaryInput {
   contactName: string;
   dealTitle: string;
   notes: string;
+  /** ISO 639-1 language to write the summary/next-step in (default English). */
+  language?: string;
 }
 
 export interface CallSummaryResult {
@@ -75,10 +78,10 @@ export async function summarizeCall(input: CallSummaryInput): Promise<CallSummar
 Deal: "${input.dealTitle}"
 Raw call notes:
 ${input.notes}
-
+${languageDirective(input.language) ? `\n${languageDirective(input.language)} (Keep the "outcome" and "sentiment" enum values exactly as specified — only the prose is translated.)\n` : ""}
 Summarize the call now.`;
   try {
-    const out = await completeJson<Omit<CallSummaryResult, "source">>({ system: SYSTEM, user, schema: SCHEMA, maxTokens: 700 });
+    const out = await completeJson<Omit<CallSummaryResult, "source">>({ system: SYSTEM, user, schema: SCHEMA, maxTokens: 700, think: true, effort: "max", feature: "call_summary" });
     return { ...out, source: "ai" };
   } catch {
     return fallback(input);
