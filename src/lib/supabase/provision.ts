@@ -1,6 +1,7 @@
 import { cache } from "@/lib/cache";
 import { getSupabase } from "@/lib/supabase/client";
 import { bootstrapOrg } from "@/lib/supabase/bootstrap";
+import { acceptPendingInvite } from "@/lib/invites-server";
 import type { SessionUser } from "@/lib/auth";
 
 function workspaceName(email: string): string {
@@ -25,6 +26,10 @@ export const ensureOrgForUser = cache(async (user: SessionUser): Promise<string 
     .limit(1)
     .maybeSingle();
   if (data?.org_id) return data.org_id as string;
+
+  // Invited? Join the inviting org as a member instead of getting a fresh one.
+  const invitedOrgId = await acceptPendingInvite(user);
+  if (invitedOrgId) return invitedOrgId;
 
   const res = await bootstrapOrg({
     demo: false,

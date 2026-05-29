@@ -46,6 +46,13 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
           }),
         });
       }
+      if (invites.trim()) {
+        await fetch("/api/invites", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ emails: invites }),
+        });
+      }
     } catch {
       /* non-blocking */
     }

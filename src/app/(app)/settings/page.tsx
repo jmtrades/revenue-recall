@@ -25,6 +25,8 @@ import { billingConfigured } from "@/lib/billing/stripe";
 import { usageSummary, monthlyBudgetUsd } from "@/lib/ai/usage";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { ImportCsv } from "@/components/ImportCsv";
+import { TeamInvites } from "@/components/TeamInvites";
+import { listInvites } from "@/lib/invites-server";
 
 export const dynamic = "force-dynamic";
 
@@ -150,9 +152,11 @@ export default async function SettingsPage() {
     </Card>
   );
 
+  const invites = await listInvites();
   const teamTab = (
     <Card>
-      <ul className="divide-y divide-border">
+      <p className="stat-label">Members</p>
+      <ul className="mt-2 divide-y divide-border">
         {users.map((u) => (
           <li key={u.id} className="flex items-center gap-3 py-3">
             <Avatar name={u.name} size={36} />
@@ -163,6 +167,9 @@ export default async function SettingsPage() {
           </li>
         ))}
       </ul>
+      <div className="mt-5 border-t border-border pt-5">
+        <TeamInvites initial={invites} persisted={org.persisted} />
+      </div>
     </Card>
   );
 
