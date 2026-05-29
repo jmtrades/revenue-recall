@@ -452,6 +452,11 @@ export function getIndustry(id: string): IndustryTemplate {
   return INDUSTRIES.find((i) => i.id === id) ?? INDUSTRIES[INDUSTRIES.length - 1];
 }
 
+/** True when `id` is a known industry template (for validating user input). */
+export function isIndustryId(id: string): boolean {
+  return INDUSTRIES.some((i) => i.id === id);
+}
+
 export function getPlaybook(id: string): IndustryPlaybook {
   return getIndustry(id).playbook;
 }

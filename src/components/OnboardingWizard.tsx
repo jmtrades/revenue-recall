@@ -32,7 +32,7 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
       await fetch("/api/org", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: org || undefined, monthlyQuota: Number(quota) || undefined }),
+        body: JSON.stringify({ industryId: industry, name: org || undefined, monthlyQuota: Number(quota) || undefined }),
       });
       if (yourName.trim() || samples.trim()) {
         await fetch("/api/voice/learn", {

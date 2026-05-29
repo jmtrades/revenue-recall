@@ -79,6 +79,7 @@ export const getOrgSettings = cache(read);
 
 export async function updateOrgSettings(patch: {
   name?: string;
+  industryId?: string;
   monthlyQuota?: number;
   notificationPrefs?: NotificationPrefs;
   theme?: Partial<Theme>;
@@ -90,6 +91,12 @@ export async function updateOrgSettings(patch: {
   if (!orgId) throw new Error("No active org.");
   const update: Record<string, unknown> = {};
   if (patch.name !== undefined) update.name = patch.name;
+  // Switching industry re-tunes pipeline terminology/playbooks and follows the
+  // template's native currency.
+  if (patch.industryId !== undefined) {
+    update.industry_id = patch.industryId;
+    update.currency = getIndustry(patch.industryId).currency;
+  }
   if (patch.monthlyQuota !== undefined) update.monthly_quota = patch.monthlyQuota;
   if (patch.notificationPrefs !== undefined) update.notification_prefs = mergeNotificationPrefs(patch.notificationPrefs);
   // Merge a partial theme patch over the org's current theme so changing the
