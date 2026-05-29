@@ -235,3 +235,23 @@ Deployable to Vercel as a standard Next.js app. Set the env vars from
 migrations in `supabase/migrations/` (see *Going live with Supabase*) and set
 the `SUPABASE_*` vars.
 
+## Go-live checklist (selling to real customers)
+
+1. **Database** — `SUPABASE_*` set, migrations applied, an org bootstrapped;
+   `NEXT_PUBLIC_AUTH_REQUIRED=true` for real multi-tenant accounts.
+2. **AI** — `ANTHROPIC_API_KEY` set; set `AI_MONTHLY_BUDGET_USD` (margin cap) and
+   leave `AI_RATE_LIMIT_PER_MIN` at a sane default.
+3. **Sending** — connect email/SMS/voice (webhook or built-in adapter) and a
+   from number (`OUTBOUND_FROM_NUMBER` or a connected number provider).
+4. **Compliance (required before any real send)** — `OUTBOUND_COMPLIANCE=true`
+   (default), `OUTBOUND_ORG_NAME`, and `COMPLIANCE_ADDRESS` (a real postal
+   address — CAN-SPAM). Outbound email then carries an unsubscribe + address
+   footer, SMS carries "Reply STOP", and inbound STOP/UNSUBSCRIBE permanently
+   suppresses the contact. Autonomy guardrails (opt-out, re-engagement cooldown,
+   quiet hours, daily cap) are on in auto mode.
+5. **Billing** — `STRIPE_*` set if you're charging via self-serve checkout.
+6. **Security** — HTTPS (HSTS + CSP ship by default), `CRON_SECRET` for the
+   scheduler, secrets only in env (never in the repo — `npm run scan:secrets`).
+7. **Verify** — `npm run build && npm run smoke` (every route renders) and
+   `npm test` green.
+

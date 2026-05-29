@@ -13,6 +13,8 @@
  * connect a transport — no upstream changes.
  */
 
+import { appendEmailCompliance, appendSmsCompliance } from "@/lib/compliance";
+
 export type ChannelKind = "email" | "sms" | "voice";
 
 export interface SendResult {
@@ -210,12 +212,16 @@ export function channelStatus(): ChannelStatus {
 
 export async function sendEmail(to: string, subject: string, body: string): Promise<SendResult> {
   const t = resolveEmail();
-  return t ? t.send({ to, subject, body }) : logResult();
+  // Compliance footer (unsubscribe + address) applied at the single send boundary,
+  // so every outbound path is covered regardless of who composed the message.
+  const compliant = appendEmailCompliance(body);
+  return t ? t.send({ to, subject, body: compliant }) : logResult();
 }
 
 export async function sendSms(to: string, body: string): Promise<SendResult> {
   const t = resolveSms();
-  return t ? t.send({ to, body }) : logResult();
+  const compliant = appendSmsCompliance(body);
+  return t ? t.send({ to, body: compliant }) : logResult();
 }
 
 /** Place an outbound call via the resolved voice transport, else log it. */
