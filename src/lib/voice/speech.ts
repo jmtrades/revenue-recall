@@ -168,15 +168,25 @@ const DAYS: Record<string, string> = {
 };
 
 /**
- * Normalize text so a synth reads it like a person, not a symbol-reader: turn
- * dashes into natural pauses, expand the abbreviations people skim past in
- * writing but would say in full ("15 min" → "15 minutes", "e.g." → "for
- * example"), voice symbols (& % ), and strip bullets/markdown. Pure and tested.
+ * Normalize text so a synth reads it like a person, not a symbol-reader: voice
+ * money/large numbers/times the way they're spoken, turn dashes into natural
+ * pauses, expand the abbreviations people skim past in writing but would say in
+ * full ("15 min" → "15 minutes", "e.g." → "for example"), voice symbols (& %),
+ * and strip bullets/markdown. Pure and tested.
  */
+const SCALE: Record<string, string> = { k: "thousand", m: "million", b: "billion" };
+
 export function speakable(text: string): string {
   let s = text;
   s = s.replace(/[•*]|^[\s]*[-–]\s+/gm, " "); // bullets / markdown leaders
   s = s.replace(/\s*[—–]\s*/g, ", "); // dashes → spoken pause
+
+  // Money: "$2.5M" → "2.5 million dollars"; "$1,200" → "1200 dollars".
+  s = s.replace(/\$\s?([\d,]+(?:\.\d+)?)\s*([kmb])\b/gi, (_m, n: string, scale: string) => `${n.replace(/,/g, "")} ${SCALE[scale.toLowerCase()]} dollars`);
+  s = s.replace(/\$\s?([\d,]+(?:\.\d+)?)/g, (_m, n: string) => `${n.replace(/,/g, "")} dollars`);
+  // Times: "2pm"/"2:30 p.m." → "2 PM"/"2:30 PM" (synths read the spelled form better).
+  s = s.replace(/\b(\d{1,2})(:\d{2})?\s*([ap])\.?m\.?\b/gi, (_m, h: string, min: string | undefined, ap: string) => `${h}${min ?? ""} ${ap.toLowerCase() === "a" ? "AM" : "PM"}`);
+
   s = s.replace(/\s*&\s*/g, " and ");
   s = s.replace(/(\d)\s*%/g, "$1 percent").replace(/%/g, " percent");
   s = s.replace(/\bw\//gi, "with ");

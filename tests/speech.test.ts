@@ -96,6 +96,19 @@ describe("speakable normalization", () => {
     expect(speakable("free Thu or Fri?")).toBe("free Thursday or Friday?");
   });
 
+  it("voices money the way it's spoken", () => {
+    expect(speakable("it's $1,200/mo")).toContain("1200 dollars");
+    expect(speakable("saves you $2.5M a year")).toContain("2.5 million dollars");
+    expect(speakable("about $3k")).toContain("3 thousand dollars");
+    expect(speakable("$500")).toContain("500 dollars");
+  });
+
+  it("voices times as spelled meridiems", () => {
+    expect(speakable("call at 2pm")).toContain("2 PM");
+    expect(speakable("how about 11am")).toContain("11 AM");
+    expect(speakable("at 2:30 p.m. works")).toContain("2:30 PM");
+  });
+
   it("does not mangle ordinary words containing unit substrings", () => {
     // "minimum" must not become "minimumutes" etc.
     expect(speakable("the minimum is fine")).toBe("the minimum is fine");
