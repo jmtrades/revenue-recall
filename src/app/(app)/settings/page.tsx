@@ -2,8 +2,11 @@ import { getConfig } from "@/lib/config";
 import { INDUSTRIES, getIndustry } from "@/lib/industries";
 import { listIntegrations, getProvider } from "@/lib/crm/registry";
 import { isAiConfigured } from "@/lib/ai/client";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { channelStatus } from "@/lib/comms";
+import { complianceConfig } from "@/lib/compliance";
 import { listOwnedNumbers, numbersConfigured, numbersProviderId, outboundFromNumber } from "@/lib/numbers";
+import { SetupChecklist, type SetupItem } from "@/components/SetupChecklist";
 import { getTeamAndPipeline } from "@/lib/queries";
 import { getOrgSettings } from "@/lib/org";
 import { getActiveVoice } from "@/lib/voice";
@@ -29,6 +32,23 @@ export default async function SettingsPage() {
   const org = await getOrgSettings();
   const voice = await getActiveVoice();
   const active = getIndustry(org.industryId);
+
+  const ch = channelStatus();
+  const compliance = complianceConfig();
+  const setupItems: SetupItem[] = [
+    { label: "Database connected", ok: isSupabaseConfigured(), required: true, detail: "Persist data across restarts and support multi-tenant accounts (SUPABASE_*)." },
+    { label: "AI drafting live", ok: isAiConfigured(), required: false, detail: "Set ANTHROPIC_API_KEY for live, in-voice drafts; otherwise high-quality templates." },
+    { label: "Email sending", ok: ch.email.live, required: true, detail: `Provider: ${ch.email.provider}. Connect a transport/webhook to send (else logged).` },
+    { label: "SMS sending", ok: ch.sms.live, required: false, detail: `Provider: ${ch.sms.provider}. Connect a transport/webhook for live texts.` },
+    { label: "A from number", ok: (await listOwnedNumbers().catch(() => [])).length > 0, required: false, detail: "Bring your own (OUTBOUND_FROM_NUMBER) or buy one in the Numbers tab." },
+    { label: "Compliance address", ok: Boolean(compliance.address), required: true, detail: "A real postal address is legally required in commercial email (CAN-SPAM)." },
+    { label: "Billing connected", ok: billingConfigured(), required: false, detail: "Set STRIPE_* to charge customers via self-serve checkout." },
+  ];
+  const setupTab = (
+    <Card>
+      <SetupChecklist items={setupItems} />
+    </Card>
+  );
   const voiceTab = (
     <>
       <VoiceStudio initial={voice} persisted={org.persisted} />
@@ -138,7 +158,7 @@ export default async function SettingsPage() {
     </Card>
   );
 
-  const channels = channelStatus();
+  const channels = ch;
   const channelsTab = (
     <Card>
       <p className="mb-3 text-sm text-muted">
@@ -263,6 +283,7 @@ export default async function SettingsPage() {
       <PageHeader title="Settings" subtitle="Organization, industry profile, pipeline, integrations, and team." />
       <Tabs
         tabs={[
+          { id: "setup", label: "Setup", content: setupTab },
           { id: "general", label: "General", content: general },
           { id: "appearance", label: "Appearance", content: appearanceTab },
           { id: "voice", label: "Voice", content: voiceTab },
