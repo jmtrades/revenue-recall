@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ReasonBadge, ChannelBadge, ScoreDot } from "@/components/ui";
 import { money, relativeDays } from "@/lib/format";
@@ -41,6 +41,14 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
   const [draft, setDraft] = useState<DraftState | null>(null);
   const [copied, setCopied] = useState(false);
   const filtered = filter === "all" ? rows : rows.filter((r) => r.reason === filter);
+
+  // Close the draft modal on Escape.
+  useEffect(() => {
+    if (!draft) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setDraft(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [draft]);
 
   async function openDraft(row: RecallRow) {
     setCopied(false);
@@ -158,7 +166,7 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
 
       {draft && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setDraft(null)}>
-          <div className="w-full max-w-lg rounded-xl border border-border bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-label="AI draft" className="w-full max-w-lg rounded-xl border border-border bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
               <h3 className="font-semibold text-fg">✨ Drafted outreach</h3>
               <button onClick={() => setDraft(null)} className="text-muted hover:text-fg">✕</button>
