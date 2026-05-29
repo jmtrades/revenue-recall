@@ -356,7 +356,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
       if (batchMode) {
         // Defer the draft to the async batch; it'll be queued to Approvals when
         // the batch is collected on a later tick. Enrollment still advances.
-        batchRequests.push({ item: { customId: `${e.id}:${e.stepIndex}`, dealId: deal?.id, contactId: e.contactId, channel: step.channel }, input: draftInput });
+        batchRequests.push({ item: { customId: `${e.id}_${e.stepIndex}`, dealId: deal?.id, contactId: e.contactId, channel: step.channel }, input: draftInput });
         result.batched += 1;
         // Skip the synchronous draft/send below.
         if (seq.id === "recall") await recordRecallTouch({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, source: "cadence", occurredAt: now });

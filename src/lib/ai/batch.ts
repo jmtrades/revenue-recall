@@ -45,6 +45,12 @@ export interface CollectedDraft {
   body: string;
 }
 
+/** Anthropic requires custom_id to match ^[a-zA-Z0-9_-]{1,64}$. Coerce any id
+ *  (e.g. provider ids with ':' or '/') into a valid, length-bounded one. */
+export function sanitizeCustomId(id: string): string {
+  return (id.replace(/[^a-zA-Z0-9_-]/g, "_") || "id").slice(0, 64);
+}
+
 const mem: PendingBatch[] = [];
 
 /** Test-only: clear the in-memory batch store. */
@@ -67,17 +73,23 @@ export async function submitDraftBatch(requests: BatchDraftRequest[]): Promise<s
   if (!client) return null;
   try {
     if ((await budgetFraction()) >= 1) return null; // budget exhausted
-    const apiRequests = requests.map((r) => ({
-      custom_id: r.item.customId,
+    // Sanitize custom_ids to the API's allowed pattern, and store the SAME
+    // sanitized id in the routing map so collect-time lookup matches.
+    const items = requests.map((r) => ({ ...r.item, customId: sanitizeCustomId(r.item.customId) }));
+    const apiRequests = requests.map((r, i) => ({
+      custom_id: items[i].customId,
       // Batched drafts: thinking at medium (no refine pass), shared param builder
       // so model/schema/output_config match the synchronous path exactly.
       params: buildMessageParams({ system: DRAFT_SYSTEM, user: buildDraftUserPrompt(r.input), schema: DRAFT_SCHEMA, maxTokens: 1024, think: true, effort: "medium" }),
     }));
     // messages.batches is GA; params shape is built untyped (current API fields).
     const batch = await (client as unknown as { messages: { batches: { create: (b: unknown) => Promise<{ id: string }> } } }).messages.batches.create({ requests: apiRequests } as unknown);
-    await recordBatch(batch.id, requests.map((r) => r.item));
+    await recordBatch(batch.id, items);
     return batch.id;
-  } catch {
+  } catch (e) {
+    // Don't drop a whole batch of drafts silently — surface it in server logs so
+    // a misconfig (auth, params) or outage is debuggable. Caller falls back.
+    console.error(`[batch] submit failed (${requests.length} drafts):`, e instanceof Error ? e.message : e);
     return null;
   }
 }
@@ -101,27 +113,33 @@ export async function collectBatch(providerBatchId: string): Promise<CollectedDr
   const api = client as unknown as {
     messages: { batches: { retrieve: (id: string) => Promise<{ processing_status: string }>; results: (id: string) => Promise<AsyncIterable<BatchResultRow>> } };
   };
-  const meta = await api.messages.batches.retrieve(providerBatchId);
-  if (meta.processing_status !== "ended") return null;
+  try {
+    const meta = await api.messages.batches.retrieve(providerBatchId);
+    if (meta.processing_status !== "ended") return null; // still processing — retry next tick
 
-  const out: CollectedDraft[] = [];
-  const model = aiModel();
-  for await (const row of await api.messages.batches.results(providerBatchId)) {
-    if (row.result?.type !== "succeeded") continue;
-    const msg = row.result.message;
-    const usage = msg?.usage;
-    if (usage) void recordUsage({ model, inputTokens: usage.input_tokens ?? 0, outputTokens: usage.output_tokens ?? 0, costUsd: costOf(model, usage.input_tokens ?? 0, usage.output_tokens ?? 0), feature: "draft.batch" });
-    const text = msg?.content?.find((b) => b.type === "text")?.text;
-    const item = itemById.get(row.custom_id);
-    if (!text || !item) continue;
-    try {
-      const parsed = JSON.parse(text) as { subject?: string; body: string };
-      if (parsed.body) out.push({ item, subject: item.channel === "email" ? parsed.subject : undefined, body: parsed.body });
-    } catch {
-      /* drop malformed entries */
+    const out: CollectedDraft[] = [];
+    const model = aiModel();
+    for await (const row of await api.messages.batches.results(providerBatchId)) {
+      if (row.result?.type !== "succeeded") continue;
+      const msg = row.result.message;
+      const usage = msg?.usage;
+      if (usage) void recordUsage({ model, inputTokens: usage.input_tokens ?? 0, outputTokens: usage.output_tokens ?? 0, costUsd: costOf(model, usage.input_tokens ?? 0, usage.output_tokens ?? 0), feature: "draft.batch" });
+      const text = msg?.content?.find((b) => b.type === "text")?.text;
+      const item = itemById.get(row.custom_id);
+      if (!text || !item) continue;
+      try {
+        const parsed = JSON.parse(text) as { subject?: string; body: string };
+        if (parsed.body) out.push({ item, subject: item.channel === "email" ? parsed.subject : undefined, body: parsed.body });
+      } catch {
+        /* drop malformed entries */
+      }
     }
+    return out;
+  } catch (e) {
+    // Transient retrieve/results error — leave the batch pending and try next tick.
+    console.error(`[batch] collect failed for ${providerBatchId}:`, e instanceof Error ? e.message : e);
+    return null;
   }
-  return out;
 }
 
 // ---- persisted store (dual-mode) ----
