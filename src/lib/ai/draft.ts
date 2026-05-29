@@ -32,6 +32,8 @@ export interface DraftInput {
   recallReason?: string;
   daysSinceContact?: number;
   history?: string[];
+  /** The buyer's most recent inbound message — the strongest anchor for a reply. */
+  lastInbound?: string;
   repName?: string;
   /** Selectable voice/tone preset for this message (see lib/tones). */
   tone?: ToneId;
@@ -437,7 +439,7 @@ Industry: ${input.industryLabel}
 Tone for this message: ${tone.label} — ${tone.directive}${scenarioCoaching}${callCoaching}
 Prospect: ${input.contactName}${input.company ? ` at ${input.company}` : ""}
 Deal: "${input.dealTitle}" — ${input.valueLabel} ${input.value} ${input.currency}, currently at stage "${input.stageLabel}"
-${input.recallReason ? `Recall reason: ${input.recallReason} (re-engagement — they've gone quiet)\n` : ""}${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.voice?.senderName || input.repName ? `You are: ${input.voice?.senderName ?? input.repName}\n` : ""}${input.voice?.signature ? `Sign off as: ${input.voice.signature}\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).join("\n- ")}` : "No prior activity logged."}
+${input.recallReason ? `Recall reason: ${input.recallReason} (re-engagement — they've gone quiet)\n` : ""}${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.voice?.senderName || input.repName ? `You are: ${input.voice?.senderName ?? input.repName}\n` : ""}${input.voice?.signature ? `Sign off as: ${input.voice.signature}\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).join("\n- ")}` : "No prior activity logged."}${input.lastInbound ? `\n\nThe last thing THEY said to you (anchor your message to this — acknowledge or build on it, never ignore it):\n"""${input.lastInbound}"""` : ""}
 
 ${playbookBlock(input)}
 ${input.voice?.customNextSteps?.length ? `\nThis rep's own go-to next steps (prefer one of these when it fits): ${input.voice.customNextSteps.join(" / ")}` : ""}

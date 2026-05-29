@@ -44,6 +44,14 @@ describe("draftMessage live AI path", () => {
     expect(mockComplete).toHaveBeenCalledOnce();
   });
 
+  it("anchors the prompt to the buyer's last inbound message", async () => {
+    mockComplete.mockResolvedValue({ subject: "re", body: "got it — sending the revised quote today." });
+    await draftMessage({ ...baseDraft, channel: "email", lastInbound: "Can you send a revised quote with the discount applied?" });
+    const prompt = mockComplete.mock.calls[0][0].user as string;
+    expect(prompt).toContain("The last thing THEY said");
+    expect(prompt).toContain("revised quote with the discount applied");
+  });
+
   it("drops the subject for non-email channels even if the model returns one", async () => {
     mockComplete.mockResolvedValue({ subject: "ignored", body: "hey, free for a quick call this week?" });
     const out = await draftMessage({ ...baseDraft, channel: "sms", daysSinceContact: 3 });

@@ -36,6 +36,12 @@ export async function POST(req: Request) {
   const detail = await getDealDetail(parsed.data.dealId);
   if (!detail) return NextResponse.json({ error: "Deal not found" }, { status: 404 });
 
+  // Newest-first, so the prompt's "recent history" and the buyer's last inbound
+  // message are accurate regardless of how a given CRM orders activities.
+  const activities = [...detail.activities].sort((a, b) => (b.occurredAt ?? "").localeCompare(a.occurredAt ?? ""));
+  const lastInbound = activities.find((a) => a.direction === "inbound" && a.summary?.trim())?.summary;
+  const tag = (d?: string) => (d === "inbound" ? " (they wrote)" : d === "outbound" ? " (you sent)" : "");
+
   const org = await getOrgSettings();
   const industry = getIndustry(org.industryId);
   const voice = await getActiveVoice();
@@ -62,7 +68,8 @@ export async function POST(req: Request) {
     language: contactPreferredLanguage(detail.contact?.attributes, org.language),
     recallReason,
     daysSinceContact: days,
-    history: detail.activities.map((a) => `${a.kind}: ${a.summary}`),
+    history: activities.map((a) => `${a.kind}${tag(a.direction)}: ${a.summary}`),
+    lastInbound,
     repName: detail.owner?.name === "You" ? "" : detail.owner?.name,
   };
 
