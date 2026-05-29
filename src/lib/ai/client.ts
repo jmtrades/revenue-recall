@@ -23,7 +23,23 @@ export function isAiConfigured(): boolean {
 
 /** Default to the most capable model; operators may pin a faster one via env. */
 export function aiModel(): string {
-  return process.env.ANTHROPIC_MODEL ?? "claude-opus-4-7";
+  return process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8";
+}
+
+export type EffortLevel = "low" | "medium" | "high" | "xhigh" | "max";
+const EFFORTS: ReadonlySet<string> = new Set(["low", "medium", "high", "xhigh", "max"]);
+
+/**
+ * Org-wide effort floor from ANTHROPIC_EFFORT (low|medium|high|xhigh|max).
+ * Controls thinking depth + token spend on Opus 4.6+. Unset = let each call
+ * decide. NOTE: higher effort = more thinking tokens = more cost; with a
+ * monthly budget cap configured, a blanket "xhigh" can exhaust it quickly and
+ * force the template fallback — prefer per-call effort for intelligence-heavy
+ * work and leave short drafts at the default.
+ */
+export function aiEffort(): EffortLevel | undefined {
+  const v = process.env.ANTHROPIC_EFFORT;
+  return v && EFFORTS.has(v) ? (v as EffortLevel) : undefined;
 }
 
 /**
@@ -36,10 +52,17 @@ export async function completeJson<T>(opts: {
   user: string;
   schema: Record<string, unknown>;
   maxTokens?: number;
-  /** Sampling temperature. Higher = more natural variation (good for human-voice
-   *  drafting); lower = more consistent (good for analysis/distillation). */
+  /** @deprecated Sampling params (temperature/top_p/top_k) are removed on Opus
+   *  4.7/4.8 and return a 400 — this is accepted but no longer sent. Variation
+   *  is now steered by the prompt (e.g. the per-variant "open differently"
+   *  directive in the draft prompt). */
   temperature?: number;
+  /** Enable adaptive thinking (Claude decides depth). Pairs with `effort`. */
   think?: boolean;
+  /** Thinking depth + token spend for this call. Defaults to the ANTHROPIC_EFFORT
+   *  floor, then "medium" when thinking is on. Use "xhigh"/"max" only for
+   *  intelligence-heavy calls — they cost materially more. */
+  effort?: EffortLevel;
   /** Label for usage/cost attribution (e.g. "draft", "reply", "brief"). */
   feature?: string;
 }): Promise<T> {
@@ -59,10 +82,12 @@ export async function completeJson<T>(opts: {
     messages: [{ role: "user", content: opts.user }],
     output_config: { format: { type: "json_schema", schema: opts.schema } },
   };
-  if (opts.temperature !== undefined) params.temperature = opts.temperature;
-  if (opts.think) {
+  // NB: temperature/top_p/top_k are intentionally NOT sent — Opus 4.7/4.8 reject
+  // sampling params with a 400. Steer variation via the prompt instead.
+  const effort = opts.effort ?? aiEffort();
+  if (opts.think || effort) {
     params.thinking = { type: "adaptive" };
-    (params.output_config as Record<string, unknown>).effort = "medium";
+    (params.output_config as Record<string, unknown>).effort = effort ?? "medium";
   }
 
   const res = await client.messages.create(params as any);
