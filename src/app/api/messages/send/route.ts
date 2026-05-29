@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getProvider } from "@/lib/crm/registry";
 import { sendEmail, sendSms } from "@/lib/comms";
+import { writeRateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  if (!writeRateLimit(req, "send").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid message" }, { status: 400 });
   const { channel, dealId, body, subject } = parsed.data;

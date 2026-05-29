@@ -50,6 +50,17 @@ export function aiRateLimit(req: Request, scope = "ai"): RateLimitResult {
   return rateLimit(clientKey(req, scope), limit, 60_000);
 }
 
+/**
+ * Throttle a state-mutating / send-triggering write endpoint per client. Looser
+ * than the AI limit (these are cheap) but stops runaway loops, bulk-send abuse,
+ * and DB write floods. Tune with WRITE_RATE_LIMIT_PER_MIN (default 120/min).
+ */
+export function writeRateLimit(req: Request, scope = "write"): RateLimitResult {
+  const perMin = Number(process.env.WRITE_RATE_LIMIT_PER_MIN);
+  const limit = Number.isFinite(perMin) && perMin > 0 ? perMin : 120;
+  return rateLimit(clientKey(req, scope), limit, 60_000);
+}
+
 /** Test-only: clear all buckets between cases. */
 export function _resetRateLimit(): void {
   buckets.clear();

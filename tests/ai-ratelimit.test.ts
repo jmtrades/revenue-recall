@@ -1,11 +1,14 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { POST as voiceTurn } from "@/app/api/voice/turn/route";
-import { aiRateLimit, _resetRateLimit } from "@/lib/ratelimit";
+import { POST as inboundEmail } from "@/app/api/inbound/email/route";
+import { aiRateLimit, writeRateLimit, _resetRateLimit } from "@/lib/ratelimit";
 
 beforeEach(() => {
   _resetRateLimit();
   delete process.env.AI_RATE_LIMIT_PER_MIN;
   delete process.env.ANTHROPIC_API_KEY; // template path, no real cost
+  delete process.env.WRITE_RATE_LIMIT_PER_MIN;
+  delete process.env.INBOUND_TOKEN;
 });
 
 function req(ip: string, body: unknown) {
@@ -43,5 +46,28 @@ describe("AI endpoint rate limiting (margin + abuse guard)", () => {
     expect((await voiceTurn(req("1.1.1.1", body))).status).not.toBe(429);
     expect((await voiceTurn(req("2.2.2.2", body))).status).not.toBe(429);
     expect((await voiceTurn(req("1.1.1.1", body))).status).toBe(429); // 1.1.1.1 over its cap
+  });
+});
+
+describe("write-endpoint rate limiting (send/bulk abuse guard)", () => {
+  it("writeRateLimit caps a client", () => {
+    process.env.WRITE_RATE_LIMIT_PER_MIN = "2";
+    const r = new Request("http://x", { headers: { "x-forwarded-for": "7.7.7.7" } });
+    expect(writeRateLimit(r, "w").ok).toBe(true);
+    expect(writeRateLimit(r, "w").ok).toBe(true);
+    expect(writeRateLimit(r, "w").ok).toBe(false);
+  });
+
+  it("the inbound-email webhook returns 429 once a client bursts past the limit", async () => {
+    process.env.WRITE_RATE_LIMIT_PER_MIN = "3";
+    const mk = () =>
+      new Request("http://localhost/api/inbound/email", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-forwarded-for": "198.51.100.7" },
+        body: JSON.stringify({ from: "x@y.com", text: "hi" }),
+      });
+    let last = 200;
+    for (let i = 0; i < 4; i++) last = (await inboundEmail(mk())).status;
+    expect(last).toBe(429);
   });
 });

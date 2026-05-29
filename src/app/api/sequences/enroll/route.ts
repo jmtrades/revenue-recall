@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { enroll, listEnrollments } from "@/lib/cadence";
+import { writeRateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ const Body = z.object({
 
 /** Enroll matching deals/contacts into a sequence (bulk by scope). */
 export async function POST(req: Request) {
+  if (!writeRateLimit(req, "enroll").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   try {
