@@ -13,6 +13,7 @@ import { Tabs } from "@/components/Tabs";
 import { OrgSettingsForm } from "@/components/OrgSettingsForm";
 import { AppearanceSettings } from "@/components/AppearanceSettings";
 import { BillingSettings } from "@/components/BillingSettings";
+import { NumbersManager } from "@/components/NumbersManager";
 import { VoiceStudio } from "@/components/VoiceStudio";
 import { VoiceControls } from "@/components/VoiceControls";
 import { getSubscription } from "@/lib/billing/store";
@@ -170,32 +171,15 @@ export default async function SettingsPage() {
     <Card>
       <p className="mb-3 text-sm text-muted">
         Use your own number, or connect a provider to search and buy new ones. Bring your own by setting{" "}
-        <code className="text-fg">OUTBOUND_FROM_NUMBER</code> (used as the caller ID on outbound SMS and calls). To buy/manage,
-        register a provider or point <code className="text-fg">NUMBERS_WEBHOOK_URL</code> at your telephony account — no vendor lock-in.
+        <code className="text-fg">OUTBOUND_FROM_NUMBER</code> (the caller ID on outbound SMS and calls); connect a provider to
+        buy more — no vendor lock-in.
       </p>
-      <div className="mb-3 flex items-center justify-between rounded-lg border border-border bg-surface-2/40 p-3 text-sm">
-        <span className="text-muted">Buy / manage numbers</span>
-        <span className={`pill ${numbersConfigured() ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>
-          {numbersConfigured() ? `Connected · ${numbersProviderId()}` : "Not connected"}
-        </span>
-      </div>
-      {ownedNumbers.length === 0 ? (
-        <p className="text-sm text-muted">No numbers yet. {outboundFromNumber() ? "" : "Set OUTBOUND_FROM_NUMBER to use your own."}</p>
-      ) : (
-        <ul className="divide-y divide-border">
-          {ownedNumbers.map((n) => (
-            <li key={n.number} className="flex items-center justify-between py-2.5">
-              <div>
-                <span className="font-mono text-sm text-fg">{n.number}</span>
-                {n.label && <span className="ml-2 text-xs text-muted">{n.label}</span>}
-              </div>
-              <span className="text-xs text-muted">
-                {[n.capabilities?.sms && "SMS", n.capabilities?.voice && "Voice"].filter(Boolean).join(" · ") || "owned"}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <NumbersManager
+        configured={numbersConfigured()}
+        provider={numbersProviderId()}
+        byoNumber={outboundFromNumber() ?? null}
+        initialOwned={ownedNumbers}
+      />
     </Card>
   );
 
