@@ -87,13 +87,17 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
     setBusy(true);
     setError(null);
     try {
+      // Fold the subject into the logged email body so it isn't lost (mirrors
+      // /api/messages/send). Other channels have no subject.
+      const composed = kind === "email" && subject.trim() ? `${subject.trim()}\n\n${summary}` : summary;
       const res = await fetch(`/api/opportunities/${dealId}/activity`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind, summary }),
+        body: JSON.stringify({ kind, summary: composed }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Failed");
       setSummary("");
+      setSubject("");
       startTransition(() => router.refresh());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
