@@ -93,8 +93,8 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="hero-glow relative overflow-hidden">
         <div className="surface-grid absolute inset-0 opacity-40" />
-        <div className="relative mx-auto grid max-w-6xl gap-12 px-5 pb-20 pt-14 lg:grid-cols-2 lg:items-center lg:pb-28 lg:pt-20">
-          <div className="animate-fade-up">
+        <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-12 px-5 pb-20 pt-14 lg:grid-cols-2 lg:items-center lg:pb-28 lg:pt-20">
+          <div className="min-w-0 animate-fade-up">
             <span className="eyebrow">Autonomous outbound · every industry</span>
             <h1 className="mt-5 text-[2.6rem] font-semibold leading-[1.05] tracking-tight text-fg sm:text-5xl lg:text-[3.75rem]">
               Put your entire sales operation <span className="gradient-text">on autopilot.</span>
@@ -121,7 +121,7 @@ export default function LandingPage() {
               <p className="mt-2 text-sm text-body">Real estate · SaaS · Insurance · Mortgage · Agencies · Auto · Home services</p>
             </div>
           </div>
-          <div className="animate-fade-up [animation-delay:120ms]">
+          <div className="min-w-0 animate-fade-up [animation-delay:120ms]">
             <HeroPreview />
           </div>
         </div>
