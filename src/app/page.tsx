@@ -2,6 +2,7 @@ import Link from "next/link";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { Footer } from "@/components/marketing/Footer";
 import { HeroPreview } from "@/components/marketing/HeroPreview";
+import { PricingPlans } from "@/components/marketing/PricingPlans";
 import { Icon, type IconName } from "@/components/icons";
 import { INDUSTRIES } from "@/lib/industries";
 
@@ -45,12 +46,6 @@ const TESTIMONIALS = [
   { quote: "We were leaving money on the table in deals that just went quiet. Recall surfaces them every morning — it's the first tab we open.", role: "VP Sales, B2B SaaS" },
   { quote: "The AI call prep alone changed our connect rate. Reps walk into every call knowing exactly what to say.", role: "Sales Manager, Real Estate" },
   { quote: "It works with the CRM we already had and the one team that didn't have one. Same playbook, every desk.", role: "RevOps Lead, Insurance" },
-];
-
-const PRICING = [
-  { name: "Starter", price: "$0", cadence: "/mo", blurb: "For solo closers getting started.", cta: "Start free", href: "/signup", features: ["Built-in CRM", "Revenue Recall queue", "AI drafting (templates)", "1 pipeline"], featured: false },
-  { name: "Growth", price: "$49", cadence: "/user/mo", blurb: "For teams recovering serious revenue.", cta: "Start free trial", href: "/signup", features: ["Everything in Starter", "Connect any CRM", "Live AI drafting + briefs", "Power Dialer + email/SMS", "Automations", "Unlimited pipelines"], featured: true },
-  { name: "Scale", price: "Custom", cadence: "", blurb: "For multi-team orgs and brokerages.", cta: "Talk to us", href: "/signup", features: ["Everything in Growth", "SSO & RBAC", "Dedicated success", "Custom integrations", "Security review"], featured: false },
 ];
 
 const FAQ = [
@@ -256,29 +251,7 @@ export default function LandingPage() {
           <p className="text-sm font-semibold uppercase tracking-wider text-brand">Pricing</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Start free. Scale when it pays for itself.</h2>
         </div>
-        <div className="mt-12 grid gap-6 lg:grid-cols-3">
-          {PRICING.map((p) => (
-            <div key={p.name} className={`relative rounded-2xl border p-7 ${p.featured ? "border-brand bg-surface ring-glow" : "border-border bg-surface"}`}>
-              {p.featured && <span className="absolute -top-3 left-7 rounded-full bg-brand px-3 py-1 text-xs font-semibold text-white">Most popular</span>}
-              <h3 className="font-semibold text-fg">{p.name}</h3>
-              <p className="mt-1 text-sm text-muted">{p.blurb}</p>
-              <div className="mt-5 flex items-end gap-1">
-                <span className="text-4xl font-semibold text-fg">{p.price}</span>
-                <span className="mb-1 text-sm text-muted">{p.cadence}</span>
-              </div>
-              <Link href={p.href} className={`mt-6 block rounded-xl px-4 py-2.5 text-center text-sm font-semibold transition ${p.featured ? "bg-brand text-white hover:bg-brand/90" : "border border-border text-white hover:bg-surface-2"}`}>
-                {p.cta}
-              </Link>
-              <ul className="mt-6 space-y-2.5">
-                {p.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-muted">
-                    <span className="mt-0.5 text-success">✓</span> {f}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
+        <PricingPlans />
       </section>
 
       {/* Final CTA */}
