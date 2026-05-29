@@ -16,6 +16,7 @@ import { batchActivities } from "@/lib/crm/activities";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
 import { getSequence } from "@/lib/sequences";
 import { recordRecallTouch } from "@/lib/recall/events";
+import { submitDraftBatch, collectBatch, listPendingBatches, markBatchCollected, type BatchDraftRequest } from "@/lib/ai/batch";
 import type { Contact, Opportunity, Pipeline } from "@/lib/crm/types";
 
 /**
@@ -62,6 +63,8 @@ export interface CadenceTickResult {
   stopped: number;
   /** Steps advanced without a touch because the contact was unreachable on that channel. */
   skipped: number;
+  /** Drafts deferred to an async batch (SEQUENCE_BATCH); collected on a later tick. */
+  batched: number;
 }
 
 /** The address to reach a contact on a given channel (email vs phone), if any. */
@@ -271,13 +274,18 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
   const contactById = new Map<string, Contact>(contacts.map((c) => [c.id, c]));
   const oppById = new Map<string, Opportunity>(opps.map((o) => [o.id, o]));
   const autoSend = process.env.SEQUENCE_AUTOPILOT === "true";
+  // Opt-in: defer drafts to the Anthropic Batches API (~50% cheaper, async).
+  // Batched drafts are always queued to Approvals on collect — never auto-sent —
+  // since opt-out/quiet-hours were evaluated at submit time, not collect time.
+  const batchMode = process.env.SEQUENCE_BATCH === "true" && isAiConfigured();
+  const batchRequests: BatchDraftRequest[] = [];
 
   const active = await listActiveEnrollments();
   const due = active.filter((e) => e.nextDueAt <= now);
   // Prefetch activities for every due deal in one batch (avoids N+1 opt-out lookups).
   const actByOpp = await batchActivities(provider, due.map((e) => e.dealId).filter((id): id is string => Boolean(id)));
 
-  const result: CadenceTickResult = { due: due.length, processed: 0, sent: 0, queued: 0, completed: 0, stopped: 0, skipped: 0 };
+  const result: CadenceTickResult = { due: due.length, processed: 0, sent: 0, queued: 0, completed: 0, stopped: 0, skipped: 0, batched: 0 };
 
   for (const e of due) {
     const seq = getSequence(e.sequenceId);
@@ -327,7 +335,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
         occurredAt: now,
       });
     } else {
-      const draft = await draftMessage({
+      const draftInput = {
         channel: step.channel,
         contactName: name,
         company: contact?.company,
@@ -343,7 +351,23 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
         instruction: `This is step ${e.stepIndex + 1} of the "${seq.name}" cadence. Intent: ${step.body}`,
         language: contactPreferredLanguage(contact?.attributes, org.language),
         voice,
-      });
+      } as const;
+
+      if (batchMode) {
+        // Defer the draft to the async batch; it'll be queued to Approvals when
+        // the batch is collected on a later tick. Enrollment still advances.
+        batchRequests.push({ item: { customId: `${e.id}:${e.stepIndex}`, dealId: deal?.id, contactId: e.contactId, channel: step.channel }, input: draftInput });
+        result.batched += 1;
+        // Skip the synchronous draft/send below.
+        if (seq.id === "recall") await recordRecallTouch({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, source: "cadence", occurredAt: now });
+        const ni = e.stepIndex + 1;
+        if (ni >= seq.steps.length) { await updateEnrollment(e.id, { status: "completed", stepIndex: ni, lastStepAt: now }); result.completed += 1; }
+        else await updateEnrollment(e.id, { stepIndex: ni, lastStepAt: now, nextDueAt: addDays(e.enrolledAt, seq.steps[ni].day) });
+        result.processed += 1;
+        continue;
+      }
+
+      const draft = await draftMessage(draftInput);
 
       // Hold auto-sends during quiet hours — queue for review instead of firing
       // a message at 2am. (Outside autopilot we always queue to Approvals.)
@@ -386,5 +410,41 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
     result.processed += 1;
   }
 
+  // Submit all deferred drafts as one batch (~50% cheaper). Results are queued
+  // to Approvals by collectDueBatches() on a later tick.
+  if (batchRequests.length > 0) await submitDraftBatch(batchRequests);
+
+  return result;
+}
+
+export interface BatchCollectResult {
+  /** Pending batches inspected this tick. */
+  checked: number;
+  /** Batches that had ended and were collected. */
+  collected: number;
+  /** Drafts queued to Approvals from collected batches. */
+  queued: number;
+}
+
+/**
+ * Second phase of opt-in cadence batching: poll pending draft batches and, for
+ * any that have finished, queue the resulting drafts to the Approvals outbox.
+ * Called by the agent cron alongside runDueSteps. Safe to call when batching is
+ * off — there simply are no pending batches.
+ */
+export async function collectDueBatches(): Promise<BatchCollectResult> {
+  const result: BatchCollectResult = { checked: 0, collected: 0, queued: 0 };
+  const pending = await listPendingBatches();
+  for (const b of pending) {
+    result.checked += 1;
+    const drafts = await collectBatch(b.providerBatchId); // null while still processing
+    if (!drafts) continue;
+    for (const d of drafts) {
+      await createOutboxItem({ dealId: d.item.dealId, contactId: d.item.contactId, channel: d.item.channel, subject: d.subject, body: d.body, source: "ai" });
+      result.queued += 1;
+    }
+    await markBatchCollected(b.providerBatchId);
+    result.collected += 1;
+  }
   return result;
 }

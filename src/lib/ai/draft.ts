@@ -413,9 +413,11 @@ function playbookBlock(input: DraftInput): string {
   • ${pb.sampleVoice.join("\n  • ")}`;
 }
 
-export async function draftMessage(input: DraftInput): Promise<DraftResult> {
-  if (!isAiConfigured()) return fallback(input);
-
+/**
+ * Build the user prompt for a live draft. Exported so the Batches path can send
+ * the byte-identical prompt the synchronous path uses (`draftMessage`).
+ */
+export function buildDraftUserPrompt(input: DraftInput): string {
   const pb = getPlaybook(input.industryId ?? "generic");
   const tone = getTone(input.tone);
   const scenarioCoaching =
@@ -448,6 +450,17 @@ ${input.voice?.profile ? `\nWrite in THIS person's voice — match it exactly so
 
 ${languageDirective(input.language) ? `\n${languageDirective(input.language)}` : ""}
 Write the ${input.channel} message now, as this human. Make it impossible to tell AI was involved.`;
+  return user;
+}
+
+/** The drafting system prompt + schema, exported for the Batches path. */
+export const DRAFT_SYSTEM = SYSTEM;
+export const DRAFT_SCHEMA = SCHEMA;
+
+export async function draftMessage(input: DraftInput): Promise<DraftResult> {
+  if (!isAiConfigured()) return fallback(input);
+
+  const user = buildDraftUserPrompt(input);
 
   try {
     const raw = await completeJson<{ subject?: string; body: string }>({

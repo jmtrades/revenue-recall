@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { listTasks } from "@/lib/agent/store";
 import { runTask } from "@/lib/agent/engine";
-import { runDueSteps } from "@/lib/cadence";
+import { runDueSteps, collectDueBatches } from "@/lib/cadence";
 import { runDigests } from "@/lib/digest";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +38,9 @@ async function run() {
   }
   // Advance any sequence enrollments whose next step is due.
   const cadence = await runDueSteps().catch((e) => ({ error: e instanceof Error ? e.message : "cadence failed" }));
+  // Collect any finished draft batches (opt-in SEQUENCE_BATCH) into Approvals.
+  const batches = await collectDueBatches().catch((e) => ({ error: e instanceof Error ? e.message : "batch collect failed" }));
   // Send any opted-in daily digest / task-reminder emails (once per day).
   const digests = await runDigests().catch((e) => ({ error: e instanceof Error ? e.message : "digests failed" }));
-  return NextResponse.json({ ok: true, ran: results.length, results, cadence, digests });
+  return NextResponse.json({ ok: true, ran: results.length, results, cadence, batches, digests });
 }

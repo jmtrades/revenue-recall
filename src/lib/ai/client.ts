@@ -70,6 +70,45 @@ export function aiEffort(): EffortLevel | undefined {
   return v && EFFORTS.has(v) ? (v as EffortLevel) : undefined;
 }
 
+export interface CompletionShape {
+  system: string;
+  user: string;
+  schema: Record<string, unknown>;
+  maxTokens?: number;
+  think?: boolean;
+  effort?: EffortLevel;
+}
+
+/**
+ * Build the Messages API params for a structured-output completion. Shared by
+ * the synchronous path (`completeJson`) and the Batches path so both send the
+ * identical model/effort/thinking/schema config. `spent` is the monthly-budget
+ * fraction used to clamp effort under the cap.
+ */
+export function buildMessageParams(opts: CompletionShape & { spent?: number }): Record<string, unknown> {
+  // Built untyped: output_config / adaptive thinking are current API fields
+  // that may post-date the installed SDK's static types.
+  const params: Record<string, unknown> = {
+    model: aiModel(),
+    max_tokens: opts.maxTokens ?? 1500,
+    system: [{ type: "text", text: opts.system, cache_control: { type: "ephemeral" } }],
+    messages: [{ role: "user", content: opts.user }],
+    output_config: { format: { type: "json_schema", schema: opts.schema } },
+  };
+  // NB: temperature/top_p/top_k are intentionally NOT sent — Opus 4.7/4.8 reject
+  // sampling params with a 400. Steer variation via the prompt instead.
+  // ANTHROPIC_EFFORT raises (never lowers) the per-call effort; the budget
+  // ceiling then clamps it down as monthly spend nears the cap.
+  let effort = maxEffort(opts.effort, aiEffort());
+  const ceiling = effortCeiling(opts.spent ?? 0);
+  if (effort && ceiling) effort = minEffort(effort, ceiling);
+  if (opts.think || effort) {
+    params.thinking = { type: "adaptive" };
+    (params.output_config as Record<string, unknown>).effort = effort ?? "medium";
+  }
+  return params;
+}
+
 /**
  * Run a structured-output completion and return the parsed JSON object.
  *
@@ -109,28 +148,7 @@ export async function completeJson<T>(opts: {
   const spent = await budgetFraction();
   if (spent >= 1) throw new Error("AI monthly budget reached");
 
-  // Built untyped: output_config / adaptive thinking are current API fields
-  // that may post-date the installed SDK's static types.
-  const params: Record<string, unknown> = {
-    model: aiModel(),
-    max_tokens: opts.maxTokens ?? 1500,
-    system: [{ type: "text", text: opts.system, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content: opts.user }],
-    output_config: { format: { type: "json_schema", schema: opts.schema } },
-  };
-  // NB: temperature/top_p/top_k are intentionally NOT sent — Opus 4.7/4.8 reject
-  // sampling params with a 400. Steer variation via the prompt instead.
-  // ANTHROPIC_EFFORT raises (never lowers) the per-call effort; the budget
-  // ceiling then clamps it down as monthly spend nears the cap (only lowers a
-  // requested effort — never introduces one).
-  let effort = maxEffort(opts.effort, aiEffort());
-  const ceiling = effortCeiling(spent);
-  if (effort && ceiling) effort = minEffort(effort, ceiling);
-  if (opts.think || effort) {
-    params.thinking = { type: "adaptive" };
-    (params.output_config as Record<string, unknown>).effort = effort ?? "medium";
-  }
-
+  const params = buildMessageParams({ ...opts, spent });
   const res = await client.messages.create(params as any);
 
   // Meter the call (best-effort) so cost is tracked and the budget cap works.
