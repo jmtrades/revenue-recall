@@ -12,6 +12,7 @@ import type {
   Stage,
   User,
 } from "@/lib/crm/types";
+import { fetchWithRetry } from "@/lib/crm/net";
 
 /**
  * HubSpot CRM adapter (https://developers.hubspot.com/docs/api/crm). Reads a
@@ -78,7 +79,7 @@ export class HubspotProvider implements CrmProvider {
   private token = process.env.HUBSPOT_ACCESS_TOKEN ?? "";
 
   private async req<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
-    const res = await fetch(`${API}${path}`, {
+    const res = await fetchWithRetry(`${API}${path}`, {
       method: init?.method ?? "GET",
       headers: {
         Authorization: `Bearer ${this.token}`,

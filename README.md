@@ -107,7 +107,11 @@ Three ways, in increasing effort:
 2. **Built-in adapters** — Supabase, Close, HubSpot, Pipedrive, and Salesforce
    all ship ready: set the relevant credential (`HUBSPOT_ACCESS_TOKEN`,
    `PIPEDRIVE_API_TOKEN`, `SALESFORCE_ACCESS_TOKEN` + `SALESFORCE_INSTANCE_URL`,
-   or `CLOSE_API_KEY`) and the matching provider is auto-selected.
+   or `CLOSE_API_KEY`) and the matching provider is auto-selected. Salesforce
+   can instead take OAuth refresh credentials (`SALESFORCE_REFRESH_TOKEN` +
+   `SALESFORCE_CLIENT_ID`[ + `SALESFORCE_CLIENT_SECRET`]) and renew its
+   short-lived access token automatically. All adapters retry throttled (429)
+   and transient (5xx) responses with backoff, honoring `Retry-After`.
 3. **Native adapter** — implement `CrmProvider` (`src/lib/crm/types.ts`) and
    register it in `src/lib/crm/registry.ts`. The rest of the app — dashboard,
    recall engine, board, analytics — works unchanged because it only ever talks

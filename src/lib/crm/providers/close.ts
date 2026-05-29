@@ -11,6 +11,7 @@ import type {
   Stage,
   User,
 } from "@/lib/crm/types";
+import { fetchWithRetry } from "@/lib/crm/net";
 
 /**
  * Close CRM adapter (https://developer.close.com). Reads CLOSE_API_KEY from the
@@ -55,7 +56,7 @@ export class CloseProvider implements CrmProvider {
 
   private async req<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
     const auth = Buffer.from(`${this.key}:`).toString("base64");
-    const res = await fetch(`${API}${path}`, {
+    const res = await fetchWithRetry(`${API}${path}`, {
       method: init?.method ?? "GET",
       headers: {
         Authorization: `Basic ${auth}`,

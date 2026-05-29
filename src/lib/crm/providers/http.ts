@@ -10,6 +10,7 @@ import type {
   ProviderInfo,
   User,
 } from "@/lib/crm/types";
+import { fetchWithRetry } from "@/lib/crm/net";
 
 /**
  * Generic HTTP CRM adapter — connect ANY CRM, no per-vendor code. Point it at a
@@ -52,13 +53,13 @@ export class HttpCrmProvider implements CrmProvider {
   }
 
   private async get<T>(path: string): Promise<T> {
-    const res = await fetch(`${this.base}${path}`, { headers: this.headers() });
+    const res = await fetchWithRetry(`${this.base}${path}`, { headers: this.headers() });
     if (!res.ok) throw new Error(`CRM HTTP ${res.status} on GET ${path}`);
     return (await res.json()) as T;
   }
 
   private async post<T>(path: string, body: unknown): Promise<T> {
-    const res = await fetch(`${this.base}${path}`, { method: "POST", headers: this.headers(), body: JSON.stringify(body) });
+    const res = await fetchWithRetry(`${this.base}${path}`, { method: "POST", headers: this.headers(), body: JSON.stringify(body) });
     if (!res.ok) throw new Error(`CRM HTTP ${res.status} on POST ${path}`);
     return (await res.json()) as T;
   }

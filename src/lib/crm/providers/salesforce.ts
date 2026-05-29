@@ -12,6 +12,7 @@ import type {
   Stage,
   User,
 } from "@/lib/crm/types";
+import { fetchWithRetry } from "@/lib/crm/net";
 
 /**
  * Salesforce CRM adapter (REST + SOQL). Reads an OAuth access token and the org
@@ -67,18 +68,32 @@ interface SfOpp {
   OwnerId?: string | null;
 }
 
+const DEFAULT_TOKEN_URL = "https://login.salesforce.com/services/oauth2/token";
+
 export class SalesforceProvider implements CrmProvider {
   private token = process.env.SALESFORCE_ACCESS_TOKEN ?? "";
   private instance = (process.env.SALESFORCE_INSTANCE_URL ?? "").replace(/\/$/, "");
   private version = process.env.SALESFORCE_API_VERSION ?? DEFAULT_VERSION;
+  // OAuth refresh: Salesforce access tokens are short-lived, so when a refresh
+  // token + connected-app client id are configured we transparently refresh on
+  // 401 (and proactively when only a refresh token is supplied).
+  private refreshToken = process.env.SALESFORCE_REFRESH_TOKEN ?? "";
+  private clientId = process.env.SALESFORCE_CLIENT_ID ?? "";
+  private clientSecret = process.env.SALESFORCE_CLIENT_SECRET ?? "";
+  private tokenUrl = process.env.SALESFORCE_TOKEN_URL ?? DEFAULT_TOKEN_URL;
+  private refreshing: Promise<boolean> | null = null;
 
   private get base(): string {
     return `${this.instance}/services/data/v${this.version}`;
   }
 
-  private async req<T>(path: string, init?: { method?: string; body?: unknown; absolute?: boolean }): Promise<T> {
+  private get canRefresh(): boolean {
+    return Boolean(this.refreshToken && this.clientId);
+  }
+
+  private send(path: string, init?: { method?: string; body?: unknown; absolute?: boolean }): Promise<Response> {
     const url = init?.absolute ? `${this.instance}${path}` : `${this.base}${path}`;
-    const res = await fetch(url, {
+    return fetchWithRetry(url, {
       method: init?.method ?? "GET",
       headers: {
         Authorization: `Bearer ${this.token}`,
@@ -88,6 +103,41 @@ export class SalesforceProvider implements CrmProvider {
       body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
       cache: "no-store",
     });
+  }
+
+  /** Exchange the refresh token for a fresh access token (single-flight). */
+  private refresh(): Promise<boolean> {
+    if (!this.canRefresh) return Promise.resolve(false);
+    if (this.refreshing) return this.refreshing;
+    this.refreshing = (async () => {
+      try {
+        const body = new URLSearchParams({ grant_type: "refresh_token", refresh_token: this.refreshToken, client_id: this.clientId });
+        if (this.clientSecret) body.set("client_secret", this.clientSecret);
+        const res = await fetchWithRetry(this.tokenUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+          body: body.toString(),
+        });
+        if (!res.ok) return false;
+        const data = (await res.json()) as { access_token?: string; instance_url?: string };
+        if (!data.access_token) return false;
+        this.token = data.access_token;
+        if (data.instance_url) this.instance = data.instance_url.replace(/\/$/, "");
+        return true;
+      } catch {
+        return false;
+      } finally {
+        this.refreshing = null;
+      }
+    })();
+    return this.refreshing;
+  }
+
+  private async req<T>(path: string, init?: { method?: string; body?: unknown; absolute?: boolean }): Promise<T> {
+    // Acquire a token up front if we only have refresh credentials.
+    if (!this.token && this.canRefresh) await this.refresh();
+    let res = await this.send(path, init);
+    if (res.status === 401 && (await this.refresh())) res = await this.send(path, init);
     if (!res.ok) throw new Error(`Salesforce API ${res.status}: ${await res.text()}`);
     if (res.status === 204) return undefined as T;
     return res.json() as Promise<T>;
@@ -153,7 +203,9 @@ export class SalesforceProvider implements CrmProvider {
       id: "salesforce",
       label: "Salesforce",
       capabilities: { read: true, write: true, activities: true, customFields: true },
-      ready: Boolean(this.token && this.instance),
+      // Ready with a current access token + instance, OR with refresh
+      // credentials we can exchange for one (instance comes back in the refresh).
+      ready: Boolean((this.token && this.instance) || this.canRefresh),
     };
   }
 

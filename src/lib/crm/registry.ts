@@ -38,7 +38,7 @@ function build(id: string): CrmProvider {
       if (httpCrmConfigured()) return new HttpCrmProvider();
       if (process.env.HUBSPOT_ACCESS_TOKEN) return new HubspotProvider();
       if (process.env.PIPEDRIVE_API_TOKEN) return new PipedriveProvider();
-      if (process.env.SALESFORCE_ACCESS_TOKEN && process.env.SALESFORCE_INSTANCE_URL) return new SalesforceProvider();
+      if ((process.env.SALESFORCE_ACCESS_TOKEN && process.env.SALESFORCE_INSTANCE_URL) || (process.env.SALESFORCE_REFRESH_TOKEN && process.env.SALESFORCE_CLIENT_ID)) return new SalesforceProvider();
       if (process.env.CLOSE_API_KEY) return new CloseProvider();
       return isSupabaseConfigured() ? new SupabaseProvider() : new BuiltinProvider();
   }
