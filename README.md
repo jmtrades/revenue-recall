@@ -150,7 +150,11 @@ The voice layer goes well past "no clichés":
 - **Multilingual** (`src/lib/languages.ts`) — pick the language the workspace
   sells in (13 supported) and every email, text, and call script is written
   idiomatically in it, not translated; the voice synth speaks with a matching
-  locale. Inbound auto-replies mirror the language the prospect wrote in.
+  locale and live calls are conducted in it end to end. Inbound auto-replies
+  mirror the language the prospect wrote in. Individual contacts can override
+  the workspace default with their own `preferredLanguage` (set via CRM data or
+  a `language` column on CSV import) — so outreach to them goes out in their
+  language even in an otherwise-English org.
 - **Spoken voice, in-house** (`src/lib/voice/*`) — browser-native TTS + speech
   recognition (no third-party provider, nothing leaves the device), with text
   normalization, prosody, and **emotional delivery** that shifts speed/pitch/

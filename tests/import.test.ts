@@ -39,6 +39,12 @@ describe("rowsToImport / parseImportCsv", () => {
     ]);
   });
 
+  it("maps a language / lang / locale column to the language field", () => {
+    expect(parseImportCsv("name,language\nJane,Spanish").rows).toEqual([{ name: "Jane", language: "Spanish" }]);
+    expect(parseImportCsv("name,lang\nPat,fr").rows).toEqual([{ name: "Pat", language: "fr" }]);
+    expect(parseImportCsv("name,Preferred Language\nSam,es-MX").rows).toEqual([{ name: "Sam", language: "es-MX" }]);
+  });
+
   it("ignores unknown columns and empty cells", () => {
     const csv = "name,favorite_color,value\nSam,,1000\nPat,blue,";
     const { rows } = parseImportCsv(csv);
