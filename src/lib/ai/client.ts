@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { costOf } from "@/lib/ai/cost";
-import { recordUsage, isWithinBudget } from "@/lib/ai/usage";
+import { recordUsage, budgetFraction } from "@/lib/ai/usage";
 
 /**
  * Anthropic client factory. Returns null when no API key is configured, so the
@@ -35,6 +35,26 @@ export function maxEffort(a?: EffortLevel, b?: EffortLevel): EffortLevel | undef
   if (!a) return b;
   if (!b) return a;
   return EFFORT_ORDER.indexOf(a) >= EFFORT_ORDER.indexOf(b) ? a : b;
+}
+
+/** The lower of two effort levels — used to clamp a request under a ceiling. */
+export function minEffort(a?: EffortLevel, b?: EffortLevel): EffortLevel | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return EFFORT_ORDER.indexOf(a) <= EFFORT_ORDER.indexOf(b) ? a : b;
+}
+
+/**
+ * Budget-aware effort ceiling: as monthly spend approaches the cap, glide effort
+ * down (max→high→medium→low) instead of falling off a cliff to templates at
+ * 100%. Returns the highest effort allowed at the given spend fraction, or
+ * undefined for no ceiling (plenty of headroom / unlimited budget).
+ */
+export function effortCeiling(spentFraction: number): EffortLevel | undefined {
+  if (spentFraction >= 0.97) return "low";
+  if (spentFraction >= 0.9) return "medium";
+  if (spentFraction >= 0.75) return "high";
+  return undefined;
 }
 
 /**
@@ -83,9 +103,11 @@ export async function completeJson<T>(opts: {
   const client = getAnthropic();
   if (!client) throw new Error("AI not configured");
 
-  // Margin guard: if the org has hit its monthly AI budget, stop spending — the
-  // caller catches this and falls back to the free template path.
-  if (!(await isWithinBudget())) throw new Error("AI monthly budget reached");
+  // Margin guard: at 100% of the monthly budget, stop spending (caller falls
+  // back to templates). Below that, we glide effort down as the cap nears
+  // (see effortCeiling) rather than dropping off a cliff.
+  const spent = await budgetFraction();
+  if (spent >= 1) throw new Error("AI monthly budget reached");
 
   // Built untyped: output_config / adaptive thinking are current API fields
   // that may post-date the installed SDK's static types.
@@ -98,8 +120,12 @@ export async function completeJson<T>(opts: {
   };
   // NB: temperature/top_p/top_k are intentionally NOT sent — Opus 4.7/4.8 reject
   // sampling params with a 400. Steer variation via the prompt instead.
-  // ANTHROPIC_EFFORT acts as a floor that raises (never lowers) the per-call effort.
-  const effort = maxEffort(opts.effort, aiEffort());
+  // ANTHROPIC_EFFORT raises (never lowers) the per-call effort; the budget
+  // ceiling then clamps it down as monthly spend nears the cap (only lowers a
+  // requested effort — never introduces one).
+  let effort = maxEffort(opts.effort, aiEffort());
+  const ceiling = effortCeiling(spent);
+  if (effort && ceiling) effort = minEffort(effort, ceiling);
   if (opts.think || effort) {
     params.thinking = { type: "adaptive" };
     (params.output_config as Record<string, unknown>).effort = effort ?? "medium";

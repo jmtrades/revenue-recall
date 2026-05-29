@@ -96,6 +96,14 @@ export async function usageSummary(now: Date = new Date()): Promise<UsageSummary
   }
 }
 
+/** Fraction of the monthly budget already spent (0 = none/unlimited, ≥1 = capped). */
+export async function budgetFraction(now: Date = new Date()): Promise<number> {
+  const cap = monthlyBudgetUsd();
+  if (cap <= 0) return 0; // unlimited
+  const { costUsd } = await usageSummary(now);
+  return costUsd / cap;
+}
+
 /** True when we're under the monthly budget (or no budget is set). */
 export async function isWithinBudget(now: Date = new Date()): Promise<boolean> {
   const cap = monthlyBudgetUsd();
