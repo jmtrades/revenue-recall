@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Avatar, ChannelIcon } from "@/components/ui";
+import { Avatar, ChannelIcon, EmptyState } from "@/components/ui";
 
 export interface ApprovalRow {
   id: string;
@@ -41,7 +41,14 @@ export function ApprovalsView({ rows }: { rows: ApprovalRow[] }) {
   }
 
   if (items.length === 0) {
-    return <div className="rounded-xl border border-dashed border-border py-16 text-center text-sm text-muted">Nothing to approve. AI drafts from review-mode Autopilot tasks land here.</div>;
+    return (
+      <EmptyState
+        iconName="approvals"
+        title="Inbox zero — nothing to approve"
+        hint="Drafts from review-mode Autopilot tasks land here for one-click send. Create an agent in Autopilot to start the queue."
+        action={<Link href="/agents" className="cta inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90">Open Autopilot</Link>}
+      />
+    );
   }
 
   return (

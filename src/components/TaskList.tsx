@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { TaskItem } from "@/lib/queries";
-import { ChannelBadge } from "@/components/ui";
+import { ChannelBadge, EmptyState } from "@/components/ui";
 
 const PRIORITY: Record<string, string> = {
   high: "bg-danger/15 text-danger",
@@ -61,7 +61,9 @@ export function TaskList({ tasks }: { tasks: TaskItem[] }) {
             </div>
           ),
       )}
-      {tasks.length === 0 && <p className="rounded-xl border border-dashed border-border py-10 text-center text-sm text-muted">All caught up — no tasks right now.</p>}
+      {tasks.length === 0 && (
+        <EmptyState iconName="tasks" title="All caught up" hint="No tasks need your attention right now. New follow-ups appear here as deals progress and Autopilot works your pipeline." />
+      )}
     </div>
   );
 }

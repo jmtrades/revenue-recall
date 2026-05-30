@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { CallQueueItem } from "@/lib/queries";
 import { Icon } from "@/components/icons";
-import { Avatar, ReasonBadge, ScoreDot } from "@/components/ui";
+import { Avatar, ReasonBadge, ScoreDot, EmptyState } from "@/components/ui";
 import { RolePlay } from "@/components/RolePlay";
 import { SpeakButton } from "@/components/SpeakButton";
 
@@ -102,7 +102,14 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
   }
 
   if (queue.length === 0) {
-    return <div className="rounded-xl border border-dashed border-border py-16 text-center text-sm text-muted">No deals with phone numbers to call right now. The dialer pulls from your Revenue Recall queue.</div>;
+    return (
+      <EmptyState
+        iconName="dialer"
+        title="No calls queued"
+        hint="The power dialer pulls deals with phone numbers from your Revenue Recall queue. When deals go cold, they line up here for back-to-back calling with AI prep."
+        action={<Link href="/recall" className="cta inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90">View recall queue</Link>}
+      />
+    );
   }
 
   return (
