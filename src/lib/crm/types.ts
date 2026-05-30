@@ -103,6 +103,12 @@ export interface ProviderInfo {
   capabilities: ProviderCapabilities;
   /** Whether this provider is fully configured and usable right now. */
   ready: boolean;
+  /**
+   * Optional one-line guidance shown when a provider isn't connected yet — e.g.
+   * which env var to set. Mainly for the bring-your-own connectors (database,
+   * HTTP CRM) so users know how to plug in their own data.
+   */
+  setupHint?: string;
 }
 
 export interface NewOpportunity {

@@ -206,6 +206,7 @@ export class DatabaseProvider implements CrmProvider {
       label: "Connected database",
       capabilities: { read: true, write: true, activities: true, customFields: true },
       ready: Boolean(this.url),
+      setupHint: "Connect any table — Postgres, Airtable, Sheets, a warehouse view. Set DATA_SOURCE_URL.",
     };
   }
 
