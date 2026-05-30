@@ -1,4 +1,11 @@
 <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="64" height="64" rx="14" fill="#5b8cff"/>
+  <rect width="64" height="64" rx="14" fill="#059669"/>
+  <rect width="64" height="64" rx="14" fill="url(#g)" fill-opacity="0.18"/>
   <text x="32" y="43" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="30" font-weight="700" fill="#ffffff" text-anchor="middle">RR</text>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
 </svg>
