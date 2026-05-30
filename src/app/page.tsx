@@ -44,10 +44,10 @@ const METRICS = [
   { stat: "1", label: "system replacing the SDR, the dialer, the sequencer, and the CRM busywork" },
 ];
 
-const TESTIMONIALS = [
-  { quote: "We turned it on and it just started working deals we'd written off. It's not a tool my reps use — it's a rep that doesn't sleep.", role: "VP Sales, B2B SaaS" },
-  { quote: "I stopped paying for three SDRs and a sequencer. This does the prospecting, the calls, and the follow-up — and books more meetings than they did.", role: "Founder, Insurance Agency" },
-  { quote: "Same playbook on the team that had Salesforce and the team that had nothing. It runs both. Recovered revenue paid for it in week one.", role: "RevOps Lead, Real Estate" },
+const TESTIMONIALS: { quote: string; role: string; segment: string; icon: IconName }[] = [
+  { quote: "We turned it on and it just started working deals we'd written off. It's not a tool my reps use — it's a rep that doesn't sleep.", role: "VP Sales", segment: "B2B SaaS", icon: "layers" },
+  { quote: "I stopped paying for three SDRs and a sequencer. This does the prospecting, the calls, and the follow-up — and books more meetings than they did.", role: "Founder", segment: "Insurance Agency", icon: "approvals" },
+  { quote: "Same playbook on the team that had Salesforce and the team that had nothing. It runs both. Recovered revenue paid for it in week one.", role: "RevOps Lead", segment: "Real Estate", icon: "database" },
 ];
 
 const FAQ = [
@@ -289,11 +289,16 @@ export default function LandingPage() {
           </div>
           <div className="mt-12 grid gap-5 md:grid-cols-3">
             {TESTIMONIALS.map((t) => (
-              <figure key={t.role} className="raised flex h-full flex-col rounded-2xl border border-border bg-surface p-7">
+              <figure key={t.segment} className="raised flex h-full flex-col rounded-2xl border border-border bg-surface p-7">
                 <blockquote className="flex-1 text-[15px] leading-relaxed text-body">&ldquo;{t.quote}&rdquo;</blockquote>
-                <figcaption className="mt-6 flex items-center gap-2.5 border-t border-border/60 pt-5">
-                  <span className="h-1.5 w-1.5 flex-none rounded-full bg-brand" />
-                  <span className="text-xs font-medium uppercase tracking-wider text-muted">{t.role}</span>
+                <figcaption className="mt-6 flex items-center gap-3 border-t border-border/60 pt-5">
+                  <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20">
+                    <Icon name={t.icon} size={17} />
+                  </span>
+                  <span className="leading-tight">
+                    <span className="block text-sm font-semibold text-fg">{t.role}</span>
+                    <span className="block text-xs text-muted">{t.segment}</span>
+                  </span>
                 </figcaption>
               </figure>
             ))}
