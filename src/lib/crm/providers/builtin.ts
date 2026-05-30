@@ -34,6 +34,15 @@ const PERSIST_DIR = process.env.BUILTIN_PERSIST_DIR || path.join(process.cwd(), 
 let store: Dataset | null = null;
 let storeIndustry: string | null = null;
 
+// Collision-free local ids. `Date.now()` alone repeats when rows are created in
+// the same millisecond (e.g. a batch of inbound social messages at volume), so
+// we append a process-monotonic counter. Keeps ids sortable-ish and unique.
+let idSeq = 0;
+function newId(prefix: string): string {
+  idSeq = (idSeq + 1) % 1_000_000;
+  return `${prefix}_${Date.now().toString(36)}${idSeq.toString(36)}`;
+}
+
 function fileFor(industry: string): string {
   return path.join(PERSIST_DIR, `builtin-${industry}.json`);
 }
@@ -105,7 +114,7 @@ export class BuiltinProvider implements CrmProvider {
   }
 
   async createContact(input: Omit<Contact, "id">): Promise<Contact> {
-    const contact: Contact = { ...input, id: `c_new_${Date.now()}` };
+    const contact: Contact = { ...input, id: newId("c_new") };
     db().contacts.unshift(contact);
     persist();
     return contact;
@@ -124,7 +133,7 @@ export class BuiltinProvider implements CrmProvider {
     const now = new Date().toISOString();
     const opp: Opportunity = {
       ...input,
-      id: `o_new_${Date.now()}`,
+      id: newId("o_new"),
       createdAt: now,
       updatedAt: now,
       lastActivityAt: now,
@@ -145,7 +154,7 @@ export class BuiltinProvider implements CrmProvider {
     const stage = d.pipelines.flatMap((p) => p.stages).find((s) => s.id === stageId);
     if (stage?.type === "won" || stage?.type === "lost") opp.closedAt = now;
     d.activities.push({
-      id: `a_${id}_${Date.now()}`,
+      id: newId(`a_${id}`),
       opportunityId: id,
       contactId: opp.contactId,
       kind: "stage_change",
@@ -159,6 +168,12 @@ export class BuiltinProvider implements CrmProvider {
   async listActivities(opportunityId: Id): Promise<Activity[]> {
     return db()
       .activities.filter((a) => a.opportunityId === opportunityId)
+      .sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1));
+  }
+
+  async listActivitiesByContact(contactId: Id): Promise<Activity[]> {
+    return db()
+      .activities.filter((a) => a.contactId === contactId)
       .sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1));
   }
 

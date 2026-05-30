@@ -1,14 +1,19 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { ingestSocialMessages, socialAttrKey, socialAddress } from "@/lib/social/ingest";
 import { getProvider } from "@/lib/crm/registry";
-import { __resetBuiltin } from "@/lib/crm/providers/builtin";
 import type { InboundSocialMessage } from "@/lib/social/types";
+
+// Uses the built-in (auto-seeded, in-memory) provider — same pattern as
+// inbound.test.ts: no reset hook exists, so each test uses unique identities and
+// asserts relative behavior rather than absolute counts.
+let n = 0;
+const uid = () => `tg-${Date.now()}-${n++}`;
 
 function msg(over: Partial<InboundSocialMessage> = {}): InboundSocialMessage {
   return {
     platform: "telegram",
-    externalMessageId: "m1",
-    from: { externalId: "tg-999", name: "Sam Rivers", handle: "@sam" },
+    externalMessageId: `m-${n++}`,
+    from: { externalId: uid(), name: `Sender ${Date.now()}-${n}`, handle: "@sam" },
     text: "Hi, are you still taking new clients?",
     at: new Date().toISOString(),
     ...over,
@@ -16,38 +21,35 @@ function msg(over: Partial<InboundSocialMessage> = {}): InboundSocialMessage {
 }
 
 describe("ingestSocialMessages", () => {
-  beforeEach(() => __resetBuiltin());
-
-  it("creates a contact for a new sender and logs the message to the timeline", async () => {
+  it("creates a contact for a new sender and logs the message + follow-up task", async () => {
     const [res] = await ingestSocialMessages([msg()]);
     expect(res.created).toBe(true);
     expect(res.logged).toBe(true);
     expect(res.contactId).toBeTruthy();
 
-    const provider = getProvider();
-    const acts = await provider.listActivitiesByContact!(res.contactId!);
-    // inbound message + a follow-up task for the new sender
+    const acts = await getProvider().listActivitiesByContact!(res.contactId!);
     expect(acts.some((a) => a.kind === "note" && a.summary.includes("[Telegram]") && a.direction === "inbound")).toBe(true);
     expect(acts.some((a) => a.kind === "task" && /follow up/i.test(a.summary))).toBe(true);
   });
 
   it("stores the platform identity so the same sender resolves to one contact", async () => {
-    const [first] = await ingestSocialMessages([msg({ externalMessageId: "a" })]);
-    const [second] = await ingestSocialMessages([msg({ externalMessageId: "b", text: "following up" })]);
+    const ext = uid();
+    const name = `Repeat ${Date.now()}`;
+    const [first] = await ingestSocialMessages([msg({ from: { externalId: ext, name } })]);
+    const [second] = await ingestSocialMessages([msg({ text: "following up", from: { externalId: ext, name } })]);
+    expect(first.created).toBe(true);
     expect(second.created).toBe(false); // matched the existing contact
     expect(second.contactId).toBe(first.contactId);
 
-    const provider = getProvider();
-    const contacts = await provider.listContacts();
-    const c = contacts.find((x) => x.id === first.contactId)!;
-    expect(c.attributes?.[socialAttrKey("telegram")]).toBe("tg-999");
-    expect(socialAddress(c, "telegram")).toBe("tg-999");
+    const c = (await getProvider().listContacts()).find((x) => x.id === first.contactId)!;
+    expect(c.attributes?.[socialAttrKey("telegram")]).toBe(ext);
+    expect(socialAddress(c, "telegram")).toBe(ext);
   });
 
-  it("keeps different platforms with the same external id as distinct identities", async () => {
-    // Distinct, clearly-unique names (the builtin store rejects duplicate names).
-    const [tg] = await ingestSocialMessages([msg({ platform: "telegram", from: { externalId: "X1", name: "Zella Quintano" } })]);
-    const [wa] = await ingestSocialMessages([msg({ platform: "whatsapp", from: { externalId: "X1", name: "Yuri Petrovich" } })]);
+  it("keeps the same external id on different platforms as distinct identities", async () => {
+    const ext = uid();
+    const [tg] = await ingestSocialMessages([msg({ platform: "telegram", from: { externalId: ext, name: `Zella ${Date.now()}` } })]);
+    const [wa] = await ingestSocialMessages([msg({ platform: "whatsapp", from: { externalId: ext, name: `Yuri ${Date.now()}` } })]);
     expect(tg.created).toBe(true);
     expect(wa.created).toBe(true);
     expect(tg.contactId).not.toBe(wa.contactId);

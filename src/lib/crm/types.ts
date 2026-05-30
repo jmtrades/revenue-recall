@@ -154,5 +154,12 @@ export interface CrmProvider {
    * `batchActivities` helper, which falls back to per-id fetches when absent.
    */
   listActivitiesByOpps?(opportunityIds: Id[]): Promise<Record<Id, Activity[]>>;
+  /**
+   * Optional: every activity logged against a contact directly (not via a deal).
+   * The unified inbox uses this to surface conversations from people who have no
+   * open opportunity yet — e.g. inbound social DMs. Providers that can't query
+   * by contact omit it; the inbox falls back to deal-scoped activity.
+   */
+  listActivitiesByContact?(contactId: Id): Promise<Activity[]>;
   logActivity(input: Omit<Activity, "id">): Promise<Activity>;
 }
