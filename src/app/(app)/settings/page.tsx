@@ -14,6 +14,7 @@ import { getActiveVoice } from "@/lib/voice";
 import { pct } from "@/lib/format";
 import { PageHeader, Card, Avatar, InfoRow } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
+import { BillingReturnBanner } from "@/components/BillingReturnBanner";
 import { OrgSettingsForm } from "@/components/OrgSettingsForm";
 import { AppearanceSettings } from "@/components/AppearanceSettings";
 import { BillingSettings } from "@/components/BillingSettings";
@@ -32,7 +33,7 @@ import { listInvites } from "@/lib/invites-server";
 
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: { billing?: string } }) {
   const cfg = getConfig();
   const org = await getOrgSettings();
   const voice = await getActiveVoice();
@@ -299,10 +300,14 @@ export default async function SettingsPage() {
     </Card>
   );
 
+  const billingReturn = searchParams.billing === "success" ? "success" : searchParams.billing === "cancelled" ? "cancelled" : null;
+
   return (
     <div className="max-w-4xl">
       <PageHeader title="Settings" subtitle="Organization, industry profile, pipeline, integrations, and team." />
+      {billingReturn && <BillingReturnBanner status={billingReturn} />}
       <Tabs
+        initial={billingReturn ? "billing" : undefined}
         tabs={[
           { id: "setup", label: "Setup", content: setupTab },
           { id: "general", label: "General", content: general },
