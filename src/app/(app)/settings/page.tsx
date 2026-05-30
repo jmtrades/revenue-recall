@@ -182,31 +182,52 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
 
   const channels = ch;
   const channelsTab = (
-    <Card>
-      <p className="mb-3 text-sm text-muted">
-        How outbound email, SMS, and calls are delivered. Provider-agnostic: point a webhook
-        (<code className="text-fg">EMAIL_WEBHOOK_URL</code> / <code className="text-fg">SMS_WEBHOOK_URL</code> /{" "}
-        <code className="text-fg">VOICE_WEBHOOK_URL</code>) at any provider or automation tool — no vendor lock-in — or
-        register a transport in code. Built-in adapters (Resend/SendGrid, optional Twilio) work via env too. Until something
-        is connected, messages are recorded to the timeline so every flow works end-to-end.
-      </p>
-      <ul className="divide-y divide-border">
-        {([
-          ["Email", channels.email],
-          ["SMS", channels.sms],
-          ["Voice / Calls", channels.voice],
-        ] as const).map(([label, c]) => (
-          <li key={label} className="flex items-center justify-between py-3">
-            <div>
-              <span className="text-sm font-medium text-fg">{label}</span>
-              <div className="mt-1 text-xs text-muted">Provider: {c.provider}</div>
+    <>
+      <Card>
+        <p className="mb-3 text-sm text-muted">
+          How outbound email, SMS, and calls are delivered. Provider-agnostic: point a webhook
+          (<code className="text-fg">EMAIL_WEBHOOK_URL</code> / <code className="text-fg">SMS_WEBHOOK_URL</code> /{" "}
+          <code className="text-fg">VOICE_WEBHOOK_URL</code>) at any provider or automation tool — no vendor lock-in — or
+          register a transport in code. Built-in adapters (Resend/SendGrid, optional Twilio) work via env too. Until something
+          is connected, messages are recorded to the timeline so every flow works end-to-end.
+        </p>
+        <ul className="divide-y divide-border">
+          {([
+            ["Email", channels.email],
+            ["SMS", channels.sms],
+            ["Voice / Calls", channels.voice],
+          ] as const).map(([label, c]) => (
+            <li key={label} className="flex items-center justify-between py-3">
+              <div>
+                <span className="text-sm font-medium text-fg">{label}</span>
+                <div className="mt-1 text-xs text-muted">Provider: {c.provider}</div>
+              </div>
+              <span className={`pill ${c.live ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>{c.live ? "Live" : "Logging only"}</span>
+            </li>
+          ))}
+        </ul>
+        <TestSend />
+      </Card>
+
+      <Card className="mt-4">
+        <h2 className="font-semibold text-fg">Social channels</h2>
+        <p className="mt-1 text-sm text-muted">
+          One inbox for every platform. Connect an account and inbound DMs flow into your unified inbox; replies go back out on the
+          same channel. Point each platform&apos;s webhook at <code className="text-fg">/api/social/&lt;platform&gt;</code>.
+        </p>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {socialChannels.map((s) => (
+            <div key={s.platform} className="flex items-start justify-between gap-3 rounded-lg border border-border bg-surface-2 px-4 py-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-fg">{s.label}</div>
+                <div className="mt-1 text-xs leading-relaxed text-muted">{s.hint}</div>
+              </div>
+              <span className={`pill shrink-0 ${s.connected ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>{s.connected ? "Connected" : "Connect"}</span>
             </div>
-            <span className={`pill ${c.live ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>{c.live ? "Live" : "Logging only"}</span>
-          </li>
-        ))}
-      </ul>
-      <TestSend />
-    </Card>
+          ))}
+        </div>
+      </Card>
+    </>
   );
 
   const ownedNumbers = await listOwnedNumbers().catch(() => []);

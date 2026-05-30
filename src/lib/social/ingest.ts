@@ -1,6 +1,6 @@
 import { getProvider } from "@/lib/crm/registry";
 import { detectIntent } from "@/lib/ai/intent";
-import type { Contact, CrmProvider } from "@/lib/crm/types";
+import type { Contact } from "@/lib/crm/types";
 import type { InboundSocialMessage, SocialPlatform } from "@/lib/social/types";
 
 /**
@@ -49,6 +49,7 @@ export async function ingestSocialMessages(messages: InboundSocialMessage[]): Pr
       try {
         contact = await provider.createContact({
           name: m.from.name || m.from.handle || `${cap(platform)} contact`,
+          points: [],
           attributes: {
             [key]: m.from.externalId,
             ...(m.from.handle ? { [`${key}:handle`]: m.from.handle } : {}),
