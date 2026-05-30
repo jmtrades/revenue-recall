@@ -94,7 +94,7 @@ export function databaseConfigured(): boolean {
 
 function defaultCurrency(): string {
   try {
-    return getConfig().defaultCurrency;
+    return getIndustry(getConfig().industryId).currency;
   } catch {
     return "USD";
   }
