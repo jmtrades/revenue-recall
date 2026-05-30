@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/components/icons";
 import { PLANS, getPlan, type PlanId } from "@/lib/billing/plans";
 
 interface Props {
@@ -93,7 +94,7 @@ export function BillingSettings({ configured, plan, status, seats, currentPeriod
               <ul className="mt-3 space-y-1.5">
                 {p.features.map((f) => (
                   <li key={f} className="flex items-start gap-1.5 text-xs text-muted">
-                    <span className="mt-0.5 text-success">✓</span> {f}
+                    <Icon name="approvals" size={12} className="mt-0.5 shrink-0 text-success" /> {f}
                   </li>
                 ))}
               </ul>
