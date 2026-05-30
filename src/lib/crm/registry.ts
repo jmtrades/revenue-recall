@@ -6,6 +6,7 @@ import { HubspotProvider } from "@/lib/crm/providers/hubspot";
 import { PipedriveProvider } from "@/lib/crm/providers/pipedrive";
 import { SalesforceProvider } from "@/lib/crm/providers/salesforce";
 import { HttpCrmProvider } from "@/lib/crm/providers/http";
+import { DatabaseProvider, databaseConfigured } from "@/lib/crm/providers/database";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { getConfig } from "@/lib/config";
 
@@ -27,6 +28,8 @@ function build(id: string): CrmProvider {
       return new CloseProvider();
     case "http":
       return new HttpCrmProvider();
+    case "database":
+      return new DatabaseProvider();
     case "hubspot":
       return new HubspotProvider();
     case "salesforce":
@@ -34,8 +37,9 @@ function build(id: string): CrmProvider {
     case "pipedrive":
       return new PipedriveProvider();
     default:
-      // Auto-select a connected CRM when one's configured, before the built-in.
+      // Auto-select a connected source when one's configured, before the built-in.
       if (httpCrmConfigured()) return new HttpCrmProvider();
+      if (databaseConfigured()) return new DatabaseProvider();
       if (process.env.HUBSPOT_ACCESS_TOKEN) return new HubspotProvider();
       if (process.env.PIPEDRIVE_API_TOKEN) return new PipedriveProvider();
       if ((process.env.SALESFORCE_ACCESS_TOKEN && process.env.SALESFORCE_INSTANCE_URL) || (process.env.SALESFORCE_REFRESH_TOKEN && process.env.SALESFORCE_CLIENT_ID)) return new SalesforceProvider();
@@ -73,6 +77,7 @@ export function listIntegrations(): ProviderInfo[] {
     new PipedriveProvider().info(),
     new SalesforceProvider().info(),
     new HttpCrmProvider().info(),
+    new DatabaseProvider().info(),
   ];
 }
 
