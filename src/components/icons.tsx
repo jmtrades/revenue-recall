@@ -30,7 +30,13 @@ export type IconName =
   | "layers"
   | "mail"
   | "message"
-  | "note";
+  | "note"
+  | "home"
+  | "building"
+  | "shield"
+  | "briefcase"
+  | "car"
+  | "wrench";
 
 const PATHS: Record<IconName, JSX.Element> = {
   dashboard: (
@@ -192,6 +198,47 @@ const PATHS: Record<IconName, JSX.Element> = {
       <path d="M8 13h8" />
       <path d="M8 17h5" />
     </>
+  ),
+  home: (
+    <>
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5" />
+      <path d="M9.5 21v-6h5v6" />
+    </>
+  ),
+  building: (
+    <>
+      <rect x="4" y="3" width="16" height="18" rx="1.5" />
+      <path d="M9 7h2" />
+      <path d="M13 7h2" />
+      <path d="M9 11h2" />
+      <path d="M13 11h2" />
+      <path d="M10 21v-4h4v4" />
+    </>
+  ),
+  shield: (
+    <>
+      <path d="M12 3 5 6v5c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6z" />
+      <path d="m9.5 12 2 2 3.5-4" />
+    </>
+  ),
+  briefcase: (
+    <>
+      <rect x="3" y="7" width="18" height="13" rx="2" />
+      <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+      <path d="M3 12h18" />
+    </>
+  ),
+  car: (
+    <>
+      <path d="M5 13 6.5 8.5A2 2 0 0 1 8.4 7h7.2a2 2 0 0 1 1.9 1.5L19 13" />
+      <path d="M4 13h16a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z" />
+      <circle cx="7.5" cy="17.5" r="1.2" />
+      <circle cx="16.5" cy="17.5" r="1.2" />
+    </>
+  ),
+  wrench: (
+    <path d="M14.7 6.3a4 4 0 0 0-5.2 5.2L3 18l3 3 6.5-6.5a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.4-.6-.6-2.4z" />
   ),
 };
 

@@ -44,6 +44,17 @@ const METRICS = [
   { stat: "1", label: "system replacing the SDR, the dialer, the sequencer, and the CRM busywork" },
 ];
 
+// Line-icon per industry id (keyed to src/lib/industries ids).
+const INDUSTRY_ICONS: Record<string, IconName> = {
+  real_estate: "home",
+  mortgage: "database",
+  insurance: "shield",
+  saas: "layers",
+  agency: "briefcase",
+  auto: "car",
+  home_services: "wrench",
+};
+
 const TESTIMONIALS: { quote: string; role: string; segment: string; icon: IconName }[] = [
   { quote: "We turned it on and it just started working deals we'd written off. It's not a tool my reps use — it's a rep that doesn't sleep.", role: "VP Sales", segment: "B2B SaaS", icon: "layers" },
   { quote: "I stopped paying for three SDRs and a sequencer. This does the prospecting, the calls, and the follow-up — and books more meetings than they did.", role: "Founder", segment: "Insurance Agency", icon: "approvals" },
@@ -270,13 +281,21 @@ export default function LandingPage() {
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Built for every industry</h2>
           <p className="mt-4 text-muted">It knows the terminology, the objections, and the way deals actually close in your business — out of the box.</p>
         </div>
-        <div className="mx-auto mt-10 flex max-w-3xl flex-wrap justify-center gap-2.5">
+        <div className="mx-auto mt-12 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {INDUSTRIES.filter((i) => i.id !== "generic").map((i) => (
-            <span key={i.id} className="lift rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium text-body transition-colors hover:border-brand/40 hover:text-fg">
-              {i.label}
-            </span>
+            <div key={i.id} className="raised lift group flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 hover:border-brand/40">
+              <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20 transition-transform duration-200 ease-out group-hover:scale-105">
+                <Icon name={INDUSTRY_ICONS[i.id] ?? "layers"} size={18} />
+              </span>
+              <span className="text-sm font-semibold text-fg">{i.label}</span>
+            </div>
           ))}
-          <span className="rounded-full border border-dashed border-border px-4 py-2 text-sm text-muted">+ your vertical</span>
+          <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border px-4 py-3.5">
+            <span className="grid h-9 w-9 flex-none place-items-center rounded-xl border border-dashed border-border text-muted">
+              <Icon name="plus" size={16} />
+            </span>
+            <span className="text-sm font-medium text-muted">Your vertical</span>
+          </div>
         </div>
       </section>
 
