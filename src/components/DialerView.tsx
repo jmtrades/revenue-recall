@@ -128,7 +128,7 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
                 <div className="truncate text-sm text-fg">{q.contactName}</div>
                 <div className="truncate text-xs text-muted">{q.phone}</div>
               </div>
-              {done[q.dealId] && <span className="text-success">✓</span>}
+              {done[q.dealId] && <Icon name="check" size={13} strokeWidth={3} className="text-success" />}
             </button>
           ))}
         </div>
@@ -197,7 +197,7 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
                 <div className="mb-2 flex items-center gap-2">
                   <span className="pill bg-brand-soft text-brand">{OUTCOME_LABEL[summary.outcome] ?? summary.outcome}</span>
                   <span className={`pill ${SENTIMENT[summary.sentiment]}`}>{summary.sentiment}</span>
-                  {saved && <span className="text-xs text-success">✓ logged to timeline</span>}
+                  {saved && <span className="inline-flex items-center gap-1 text-xs text-success"><Icon name="check" size={12} strokeWidth={3} /> logged to timeline</span>}
                 </div>
                 <p className="text-sm text-fg">{summary.summary}</p>
                 <p className="mt-1 text-xs text-muted">Next: {summary.nextStep}</p>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { TaskItem } from "@/lib/queries";
 import { ChannelBadge, EmptyState } from "@/components/ui";
+import { Icon } from "@/components/icons";
 
 const PRIORITY: Record<string, string> = {
   high: "bg-danger/15 text-danger",
@@ -39,10 +40,11 @@ export function TaskList({ tasks }: { tasks: TaskItem[] }) {
                   >
                     <button
                       onClick={() => setDone((d) => ({ ...d, [t.id]: !d[t.id] }))}
-                      className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border ${done[t.id] ? "border-success bg-success text-white" : "border-border text-transparent hover:border-brand"}`}
+                      className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border transition ${done[t.id] ? "border-success bg-success text-white" : "border-border text-transparent hover:border-brand"}`}
                       aria-label="Toggle done"
+                      aria-pressed={!!done[t.id]}
                     >
-                      ✓
+                      <Icon name="check" size={13} strokeWidth={3} />
                     </button>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">

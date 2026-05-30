@@ -337,11 +337,11 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
                 <span>Talk ratio: <span className="text-fg">{Math.round(score.talkRatio * 100)}% you</span></span>
                 <span>Questions asked: <span className="text-fg">{score.questionsAsked}</span></span>
                 <span>Their mood: <span className="text-fg">{score.sentimentArc}</span></span>
-                <span>Next step: <span className="text-fg">{score.nextStepSecured ? "booked ✓" : "none"}</span></span>
+                <span>Next step: <span className={`inline-flex items-center gap-1 ${score.nextStepSecured ? "text-success" : "text-fg"}`}>{score.nextStepSecured ? <><Icon name="check" size={12} strokeWidth={3} /> booked</> : "none"}</span></span>
               </div>
               {score.objections.length > 0 && (
                 <p className="mt-2 text-xs text-muted">
-                  Objections: {score.objections.map((o) => `${o.intent}${o.handled ? " ✓" : " ✗"}`).join(", ")}
+                  Objections: {score.objections.map((o) => `${o.intent} (${o.handled ? "handled" : "missed"})`).join(", ")}
                 </p>
               )}
               <ul className="mt-2 space-y-1">

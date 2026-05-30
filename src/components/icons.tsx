@@ -42,7 +42,9 @@ export type IconName =
   | "mute"
   | "close"
   | "play"
-  | "stop";
+  | "stop"
+  | "check"
+  | "upload";
 
 const PATHS: Record<IconName, JSX.Element> = {
   dashboard: (
@@ -278,6 +280,16 @@ const PATHS: Record<IconName, JSX.Element> = {
   ),
   stop: (
     <rect x="5" y="5" width="14" height="14" rx="2.5" />
+  ),
+  check: (
+    <path d="M20 6 9 17l-5-5" />
+  ),
+  upload: (
+    <>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <path d="M7 9l5-5 5 5" />
+      <path d="M12 4v12" />
+    </>
   ),
 };
 
