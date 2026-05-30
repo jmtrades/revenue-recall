@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icons";
+import { useEscapeKey } from "@/lib/useEscapeKey";
 
 interface Note { id: string; kind: "recall" | "new_lead" | "stage_change"; title: string; detail: string; href: string }
 
@@ -17,6 +18,7 @@ export function Notifications() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Note[]>([]);
   const [loaded, setLoaded] = useState(false);
+  useEscapeKey(open, () => setOpen(false));
 
   useEffect(() => {
     fetch("/api/notifications")
