@@ -59,10 +59,30 @@ log = logging.getLogger("neural-voice")
 HOST = os.environ.get("NEURAL_VOICE_HOST", "0.0.0.0")
 PORT = int(os.environ.get("NEURAL_VOICE_PORT", "8765"))
 VOICE = os.environ.get("PIPER_VOICE", "en_US-amy-medium")
-CHUNK_FRAMES = 2400  # ~100ms at 24kHz — small chunks = low first-audio latency
+# ~100ms chunks at the client rate — small chunks = low first-audio latency.
+# (Piper's native rate is model-dependent, e.g. 22050 Hz; we resample to the
+# client's requested sampleRate before chunking.)
+CHUNK_FRAMES = 2400
 MAX_TEXT = 4000
 
 _voice: "PiperVoice | None" = None
+
+
+def _resolve_model_path() -> str:
+    """
+    Resolve the model file. PIPER_VOICE may be a full path to a .onnx, or a voice
+    name whose model was fetched via `python -m piper.download_voices <name>`
+    (downloaded into the current dir or DATA_DIR).
+    """
+    if VOICE.endswith(".onnx") and os.path.exists(VOICE):
+        return VOICE
+    search = [os.getcwd(), os.environ.get("PIPER_DATA_DIR", ""), "/data", os.path.expanduser("~")]
+    for base in filter(None, search):
+        cand = os.path.join(base, f"{VOICE}.onnx")
+        if os.path.exists(cand):
+            return cand
+    # Last resort: let Piper's own download dir resolution find it by name.
+    return f"{VOICE}.onnx"
 
 
 def load_voice() -> "PiperVoice":
@@ -75,8 +95,10 @@ def load_voice() -> "PiperVoice":
             "piper-tts is not installed. Run: pip install -r requirements.txt && "
             "python -m piper.download_voices " + VOICE
         )
-    log.info("loading neural voice model: %s", VOICE)
-    _voice = PiperVoice.load(VOICE)
+    path = _resolve_model_path()
+    log.info("loading neural voice model: %s", path)
+    use_cuda = os.environ.get("PIPER_CUDA", "").lower() in ("1", "true", "yes")
+    _voice = PiperVoice.load(path, use_cuda=use_cuda)
     log.info("model loaded; native sample rate = %d Hz", _voice.config.sample_rate)
     return _voice
 
@@ -86,15 +108,19 @@ def synthesize(text: str, rate: float = 1.0) -> tuple[np.ndarray, int]:
     Run the neural model → mono float32 waveform in [-1, 1] plus its sample rate.
     `rate` adjusts speaking speed (length_scale is inverse: faster => shorter).
     """
+    from piper.config import SynthesisConfig
+
     voice = load_voice()
-    length_scale = 1.0 / max(0.5, min(2.0, rate or 1.0))
+    syn = SynthesisConfig(length_scale=1.0 / max(0.5, min(2.0, rate or 1.0)))
 
     pcm = bytearray()
-    # piper streams 16-bit PCM internally; concatenate then normalize to float.
-    for audio_bytes in voice.synthesize_stream_raw(text, length_scale=length_scale):
-        pcm.extend(audio_bytes)
+    sample_rate = voice.config.sample_rate
+    # synthesize() yields AudioChunk objects; concatenate their int16 PCM.
+    for chunk in voice.synthesize(text, syn_config=syn):
+        pcm.extend(chunk.audio_int16_bytes)
+        sample_rate = chunk.sample_rate
     samples = np.frombuffer(bytes(pcm), dtype="<i2").astype(np.float32) / 32768.0
-    return samples, voice.config.sample_rate
+    return samples, sample_rate
 
 
 def to_pcm16(samples: np.ndarray, src_rate: int, dst_rate: int) -> bytes:

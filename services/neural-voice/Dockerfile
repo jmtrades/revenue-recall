@@ -14,6 +14,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Bake the default voice into the image so a fresh container is ready to speak.
+# download_voices saves into the working dir; _resolve_model_path() finds it there.
 ARG PIPER_VOICE=en_US-amy-medium
 ENV PIPER_VOICE=${PIPER_VOICE}
 RUN python -m piper.download_voices ${PIPER_VOICE}

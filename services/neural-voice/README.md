@@ -11,6 +11,15 @@ It speaks the exact WebSocket protocol the web app's neural seam expects
 surface (AI briefs, call prep, role-play) upgrades from the browser voice to the
 neural voice with **zero app code changes**.
 
+## Verified working
+
+This service has been run end-to-end: model loads, a WebSocket client sending
+the exact frame `src/lib/voice/neural.ts` sends receives a real PCM stream
+(resampled to the requested rate) followed by the `end` frame, and the offline
+`render` command writes a valid WAV. Native model rate is model-dependent
+(e.g. 22050 Hz for `en_US-amy-medium`); the server resamples to whatever
+`sampleRate` the client asks for (24000 web / 8000 phone).
+
 ## Quick start (local)
 
 ```bash

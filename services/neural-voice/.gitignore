@@ -1,0 +1,5 @@
+# Neural voice model weights — downloaded at setup, never committed (huge + licensed).
+*.onnx
+*.onnx.json
+*.wav
+__pycache__/
