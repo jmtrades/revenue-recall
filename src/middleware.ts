@@ -4,9 +4,24 @@ import { createServerClient } from "@supabase/ssr";
 // Public routes that never require a session.
 const PUBLIC = new Set(["/", "/login", "/signup"]);
 
+// Machine-to-machine API endpoints that authenticate by their OWN secret
+// (Stripe signature, CRON_SECRET, INBOUND_TOKEN, UNSUBSCRIBE_SECRET) and must
+// never be redirected to an HTML /login — a 307 there would silently break the
+// caller. Most critically the billing webhook: gating it would leave paid
+// subscriptions un-activated. Each of these enforces its own auth internally.
+const PUBLIC_API = [
+  "/api/billing/webhook",
+  "/api/agent/cron",
+  "/api/inbound/", // email + sms
+  "/api/unsubscribe",
+  "/api/health",
+  "/api/meta",
+];
+
 function isPublic(path: string): boolean {
   if (PUBLIC.has(path)) return true;
-  return path.startsWith("/auth/"); // OAuth / email-confirm callback
+  if (path.startsWith("/auth/")) return true; // OAuth / email-confirm callback
+  return PUBLIC_API.some((p) => (p.endsWith("/") ? path.startsWith(p) : path === p));
 }
 
 export async function middleware(req: NextRequest) {
@@ -46,13 +61,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
-  // Gate app PAGES only when auth is required (keeps the public demo working).
-  // API routes are never redirected to /login: machine callers (Stripe webhook,
-  // cron, inbound email/SMS, unsubscribe) authenticate by their own secret, and
-  // a 307 to an HTML login page would silently break them — most importantly the
-  // billing webhook, which would leave paid subscriptions un-activated. Each API
-  // route enforces its own auth and returns JSON 401 when needed.
-  if (authRequired && !userId && !isPublic(path) && !path.startsWith("/api/")) {
+  // Gate everything that isn't public when auth is required (keeps the public
+  // demo working). isPublic() allowlists the auth screens + the secret-authed
+  // machine endpoints, so the Stripe webhook/cron/inbound keep working while
+  // user pages and user-facing API routes still require a session.
+  if (authRequired && !userId && !isPublic(path)) {
     const to = new URL("/login", req.url);
     to.searchParams.set("next", path);
     return NextResponse.redirect(to);
