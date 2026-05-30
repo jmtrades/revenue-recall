@@ -40,7 +40,9 @@ export type IconName =
   | "mic"
   | "volume"
   | "mute"
-  | "close";
+  | "close"
+  | "play"
+  | "stop";
 
 const PATHS: Record<IconName, JSX.Element> = {
   dashboard: (
@@ -270,6 +272,12 @@ const PATHS: Record<IconName, JSX.Element> = {
       <path d="M18 6 6 18" />
       <path d="m6 6 12 12" />
     </>
+  ),
+  play: (
+    <path d="M7 4.5v15a1 1 0 0 0 1.52.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z" />
+  ),
+  stop: (
+    <rect x="5" y="5" width="14" height="14" rx="2.5" />
   ),
 };
 

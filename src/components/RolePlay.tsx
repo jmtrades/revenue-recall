@@ -249,7 +249,10 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
               title="Hands-free: it listens, pauses, and you can talk over it"
               className={`rounded-lg border px-2 py-1 text-xs transition ${live ? "border-success text-success" : "border-border text-muted"}`}
             >
-              {live ? "● Live" : "Live"}
+              <span className="inline-flex items-center gap-1.5">
+                {live && <span className="h-1.5 w-1.5 rounded-full bg-success" />}
+                Live
+              </span>
             </button>
           )}
         </div>
@@ -299,7 +302,17 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
             />
             {canListen && (
               <button onClick={mic} disabled={busy || listening} title="Speak your response" className={`rounded-lg border px-3 py-2 text-sm transition ${listening ? "border-danger text-danger" : "border-border text-muted hover:text-fg"} disabled:opacity-50`}>
-                {listening ? "● listening" : <Icon name="mic" size={15} />}
+                {listening ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-danger/70" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-danger" />
+                    </span>
+                    listening
+                  </span>
+                ) : (
+                  <Icon name="mic" size={15} />
+                )}
               </button>
             )}
             <button onClick={() => send(input)} disabled={busy || !input.trim()} className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">

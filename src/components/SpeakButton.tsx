@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { isSpeechSupported, loadVoices, pickVoice, speak, type SpeakHandle } from "@/lib/voice/speech";
 import { getSynth } from "@/lib/voice/synth";
+import { Icon } from "@/components/icons";
 import { loadVoicePrefs, toVoicePrefs } from "@/lib/voice/prefs";
 
 /**
@@ -54,9 +55,10 @@ export function SpeakButton({ text, label = "Listen", className = "" }: { text: 
       onClick={toggle}
       title={speaking ? "Stop" : "Read aloud in your voice"}
       aria-label={speaking ? "Stop reading" : "Read aloud"}
-      className={`inline-flex items-center gap-1 rounded-lg border border-border px-2 py-0.5 text-xs text-muted transition hover:text-fg ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-xs text-muted transition hover:border-brand/40 hover:text-fg ${className}`}
     >
-      {speaking ? "■ Stop" : `▶ ${label}`}
+      <Icon name={speaking ? "stop" : "play"} size={11} fill="currentColor" stroke="none" className={speaking ? "text-danger" : "text-brand"} />
+      {speaking ? "Stop" : label}
     </button>
   );
 }

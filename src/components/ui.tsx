@@ -85,7 +85,7 @@ export function EmptyState({
   return (
     <div className="grid place-items-center rounded-2xl border border-dashed border-border bg-surface/40 px-6 py-14 text-center">
       <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20">
-        {iconName ? <Icon name={iconName} size={22} /> : <span className="text-xl text-muted/70">{icon ?? "○"}</span>}
+        {iconName ? <Icon name={iconName} size={22} /> : icon ? <span className="text-xl text-muted/70">{icon}</span> : <Icon name="inbox" size={22} />}
       </span>
       <p className="mt-4 text-sm font-semibold text-fg">{title}</p>
       {hint && <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-muted">{hint}</p>}

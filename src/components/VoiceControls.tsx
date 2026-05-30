@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { isSpeechSupported, loadVoices, pickVoice, speak, type SpeakHandle } from "@/lib/voice/speech";
+import { Icon } from "@/components/icons";
 import { loadVoicePrefs, saveVoicePrefs, toVoicePrefs, type StoredVoicePrefs } from "@/lib/voice/prefs";
 
 const SAMPLE = "Hey Jordan, it's me — caught you at an okay time? Wanted to run something by you real quick.";
@@ -96,10 +97,15 @@ export function VoiceControls() {
       </div>
 
       <div className="flex items-center gap-3">
-        <button onClick={preview} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90">
-          {speaking ? "■ Stop" : "▶ Preview"}
+        <button onClick={preview} className="cta inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand/90">
+          <Icon name={speaking ? "stop" : "play"} size={12} fill="currentColor" stroke="none" />
+          {speaking ? "Stop" : "Preview"}
         </button>
-        {saved && <span className="text-sm text-success">Saved ✓</span>}
+        {saved && (
+          <span className="inline-flex items-center gap-1 text-sm text-success">
+            <Icon name="approvals" size={13} /> Saved
+          </span>
+        )}
       </div>
     </div>
   );
