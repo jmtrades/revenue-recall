@@ -10,6 +10,8 @@
 // Refresh) runtime evaluates module code via eval, and without it client-side
 // hydration silently fails — every button/form goes dead. It is NOT included in
 // production builds, where the compiled bundles need no eval.
+// Verified with `next build && next start`: prod serves script-src
+// 'self' 'unsafe-inline' (no eval) and all interactive flows hydrate clean.
 const isDev = process.env.NODE_ENV !== "production";
 const scriptSrc = isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self' 'unsafe-inline'";
 const csp = [
