@@ -13,6 +13,7 @@ const PUBLIC_API = [
   "/api/billing/webhook",
   "/api/agent/cron",
   "/api/inbound/", // email + sms
+  "/api/social/", // social webhooks (WhatsApp, Instagram, Messenger, Telegram, X) — each verifies its own signature/secret
   "/api/unsubscribe",
   "/api/health",
   "/api/meta",

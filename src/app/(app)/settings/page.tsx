@@ -5,6 +5,7 @@ import { listIntegrations, getProvider } from "@/lib/crm/registry";
 import { isAiConfigured } from "@/lib/ai/client";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { channelStatus } from "@/lib/comms";
+import { listSocialChannels } from "@/lib/social/registry";
 import { complianceConfig } from "@/lib/compliance";
 import { listOwnedNumbers, numbersConfigured, numbersProviderId, outboundFromNumber } from "@/lib/numbers";
 import { SetupChecklist, type SetupItem } from "@/components/SetupChecklist";
@@ -40,6 +41,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
   const active = getIndustry(org.industryId);
 
   const ch = channelStatus();
+  const socialChannels = listSocialChannels();
   // Org-level compliance wins over env (multi-tenant identity).
   const compliance = complianceConfig({ orgName: org.compliance.senderName ?? org.name, address: org.compliance.address });
   const setupItems: SetupItem[] = [
