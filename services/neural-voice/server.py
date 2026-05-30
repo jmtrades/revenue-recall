@@ -132,10 +132,56 @@ def load_voice():
     return _engine
 
 
+# ─── Voice cloning (per-rep, consent-gated, watermarked) ──────────────────────
+# Chatterbox (Resemble AI, MIT) does zero-shot cloning from a short reference
+# clip and embeds an inaudible watermark (PerthNet) on every output — the
+# anti-deepfake provenance docs/neural-voice.md §4 requires. A rep's enrollment
+# clip is stored as a .wav under CLONE_DIR keyed by their voice id; we only clone
+# when a matching CONSENT marker exists, never otherwise.
+CLONE_DIR = os.environ.get("CLONE_DIR", os.path.join(os.getcwd(), "voices_clones"))
+_clone_model = None
+
+
+def _load_clone_model():
+    global _clone_model
+    if _clone_model is not None:
+        return _clone_model
+    from chatterbox.tts import ChatterboxTTS
+
+    device = "cuda" if os.environ.get("CLONE_CUDA", "").lower() in ("1", "true", "yes") else "cpu"
+    log.info("loading voice-clone model (Chatterbox) on %s", device)
+    _clone_model = ChatterboxTTS.from_pretrained(device=device)
+    log.info("clone model loaded; watermarking active")
+    return _clone_model
+
+
+def _clone_paths(voice_id: str) -> tuple[str, str]:
+    """Reference clip + consent marker paths for a cloned voice id (sanitized)."""
+    safe = "".join(c for c in voice_id if c.isalnum() or c in "-_")[:64]
+    return os.path.join(CLONE_DIR, f"{safe}.wav"), os.path.join(CLONE_DIR, f"{safe}.consent")
+
+
+def _clone_synth(text: str, voice_id: str) -> tuple[np.ndarray, int]:
+    """Synthesize `text` in a rep's cloned voice. Refuses without a consent marker."""
+    ref, consent = _clone_paths(voice_id)
+    if not os.path.exists(ref):
+        raise RuntimeError(f"no enrollment clip for voice '{voice_id}'")
+    if not os.path.exists(consent):
+        # Hard refusal: cloning without recorded consent is never allowed (§4).
+        raise RuntimeError(f"voice '{voice_id}' has no recorded consent; refusing to synthesize")
+    model = _load_clone_model()
+    wav = model.generate(text, audio_prompt_path=ref)  # watermarked output
+    samples = wav.squeeze().detach().cpu().numpy().astype(np.float32)
+    return samples, int(model.sr)
+
+
 def synthesize(text: str, rate: float = 1.0, voice: str | None = None) -> tuple[np.ndarray, int]:
     """Run the active neural engine → mono float32 waveform in [-1,1] + sample rate."""
-    load_voice()
     v = voice or DEFAULT_VOICE
+    # A "clone:<id>" voice id routes to the cloning engine (the rep's own voice).
+    if v.startswith("clone:"):
+        return _clone_synth(text, v[len("clone:") :])
+    load_voice()
     if ENGINE == "kokoro":
         return _kokoro_synth(text, v, rate)
     return _piper_synth(text, v, rate)
@@ -196,9 +242,9 @@ async def _safe_error(ws, message: str) -> None:
         pass
 
 
-def render_wav(text: str, path: str) -> None:
+def render_wav(text: str, path: str, voice: str | None = None) -> None:
     """Offline helper: render one line to a .wav so you can hear it without the app."""
-    samples, src_rate = synthesize(text)
+    samples, src_rate = synthesize(text, voice=voice)
     pcm = to_pcm16(samples, src_rate, src_rate)
     with wave.open(path, "wb") as w:
         w.setnchannels(1)
@@ -206,6 +252,24 @@ def render_wav(text: str, path: str) -> None:
         w.setframerate(src_rate)
         w.writeframes(pcm)
     log.info("wrote %s (%.1fs)", path, len(samples) / src_rate)
+
+
+def enroll(voice_id: str, clip_path: str, consent_by: str) -> None:
+    """
+    Register a rep's voice for cloning. Copies their enrollment clip and writes a
+    consent marker — synthesis later refuses if the marker is absent (§4). Pass
+    `consent_by` as the verified identity that authorized cloning THIS voice.
+    """
+    import shutil
+
+    if not consent_by.strip():
+        raise SystemExit("refusing to enroll without a consent identity (consent_by)")
+    os.makedirs(CLONE_DIR, exist_ok=True)
+    ref, consent = _clone_paths(voice_id)
+    shutil.copyfile(clip_path, ref)
+    with open(consent, "w") as f:
+        json.dump({"voiceId": voice_id, "consentBy": consent_by, "enrolledAt": __import__("time").time()}, f)
+    log.info("enrolled cloned voice '%s' (consent by %s) → use voiceId 'clone:%s'", voice_id, consent_by, voice_id)
 
 
 async def main() -> None:
@@ -218,9 +282,12 @@ async def main() -> None:
 if __name__ == "__main__":
     import sys
 
-    if len(sys.argv) >= 3 and sys.argv[1] == "render":
-        # `python server.py render "hello there" out.wav`
-        render_wav(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else "out.wav")
+    if len(sys.argv) >= 2 and sys.argv[1] == "render":
+        # `python server.py render "hello there" out.wav [voiceId]`
+        render_wav(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else "out.wav", sys.argv[4] if len(sys.argv) > 4 else None)
+    elif len(sys.argv) >= 2 and sys.argv[1] == "enroll":
+        # `python server.py enroll <voiceId> <clip.wav> <consentBy>`
+        enroll(sys.argv[2], sys.argv[3], sys.argv[4] if len(sys.argv) > 4 else "")
     else:
         try:
             asyncio.run(main())

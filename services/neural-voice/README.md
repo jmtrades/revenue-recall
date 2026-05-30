@@ -85,3 +85,32 @@ docker run -p 8765:8765 rr-neural-voice
 CPU is already faster than real-time for one stream. For high concurrency, set
 `PIPER_CUDA=1` (piper) or run `kokoro-onnx[gpu]` with the CUDA ONNX runtime;
 `synthesize()` is unchanged.
+
+## Voice cloning (a rep's own voice — in-house)
+
+The thing ElevenLabs charges most for, done on your own hardware. Uses
+**Chatterbox** (Resemble AI, **MIT** — commercial-safe) for zero-shot cloning
+from a short reference clip, with an **inaudible watermark** (PerthNet) on every
+generated clip for provenance / anti-deepfake.
+
+**Consent is enforced, not optional** (per `docs/neural-voice.md §4`): synthesis
+**refuses** unless a recorded consent marker exists for that voice. A rep may
+only clone their own verified voice or a voice with explicit written consent.
+
+```bash
+# 1) Enroll a rep with a 30-60s clean clip + a verified consent identity:
+python server.py enroll rep_michael ./michael_sample.wav "Michael R. (verified self-enrollment)"
+
+# 2) Synthesize in their cloned voice (client sends voiceId "clone:rep_michael"):
+python server.py render "Hey Jordan, you free Thursday?" out.wav "clone:rep_michael"
+```
+
+From the app, set the rep's persona `voiceId` to `clone:<id>` and every surface
+speaks in their voice. Without the consent marker the service errors and the app
+falls back (via `getSynth()`) to a stock neural voice — it never clones silently.
+Enrollment clips + consent markers live under `voices_clones/` and are
+**gitignored** (sensitive, never committed).
+
+Tested end-to-end: enrollment writes a consent record; cloning **refuses**
+without it and **succeeds** (watermarked) with it. CPU is ~10x real-time for
+cloning — use a GPU (`CLONE_CUDA=1`) for production latency.
