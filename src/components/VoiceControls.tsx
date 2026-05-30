@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { loadVoices, pickVoice, speak, type SpeakHandle } from "@/lib/voice/speech";
+import { useEffect, useRef, useState } from "react";
+import { isSpeechSupported, loadVoices, pickVoice, speak, type SpeakHandle } from "@/lib/voice/speech";
 import { getSynth } from "@/lib/voice/synth";
 import { Icon } from "@/components/icons";
 import { loadVoicePrefs, saveVoicePrefs, toVoicePrefs, type StoredVoicePrefs } from "@/lib/voice/prefs";
 
-// A curated set of the in-house neural voices (Kokoro ids) surfaced in the
-// picker when the neural backend is connected. The stored value flows through to
-// the neural service as the voiceId; "clone:<id>" selects a rep's cloned voice.
+const SAMPLE = "Hey Jordan, it's me — caught you at an okay time? Wanted to run something by you real quick.";
+
+// Curated in-house neural voices (Kokoro ids), shown only when the neural
+// backend is connected. The stored value flows to the service as the voiceId.
 const NEURAL_VOICES: { id: string; label: string }[] = [
   { id: "af_heart", label: "Aria — warm female" },
   { id: "af_bella", label: "Bella — bright female" },
@@ -19,27 +20,40 @@ const NEURAL_VOICES: { id: string; label: string }[] = [
   { id: "bm_george", label: "George — British male" },
 ];
 
+/**
+ * Tune the spoken voice: pick a voice and set speed/pitch, preview it, and save
+ * on-device. Every spoken surface (briefs, drafts, call prep, role-play) then
+ * uses these settings. When the in-house neural service is connected, its voices
+ * appear here too and preview routes through it; otherwise it's the browser
+ * engine, fully on-device.
+ */
 export function VoiceControls() {
+  const [supported, setSupported] = useState(false);
+  const [neural, setNeural] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [prefs, setPrefs] = useState<StoredVoicePrefs>(loadVoicePrefs());
+  const [prefs, setPrefs] = useState<StoredVoicePrefs>({ rate: 1, pitch: 1 });
   const [speaking, setSpeaking] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [neural, setNeural] = useState(false);
   const handleRef = useRef<SpeakHandle | null>(null);
-  const input = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-fg outline-none focus:border-brand";
 
   useEffect(() => {
-    // Neural backend connected? Then offer the in-house neural voices.
-    setNeural(getSynth().kind === "neural");
-    loadVoices().then(setVoices);
+    const isNeural = getSynth().kind === "neural";
+    setNeural(isNeural);
+    const ok = isNeural || isSpeechSupported();
+    setSupported(ok);
+    if (ok) {
+      setPrefs(loadVoicePrefs());
+      loadVoices().then(setVoices);
+    }
     return () => handleRef.current?.stop();
   }, []);
 
-  function persist(next: StoredVoicePrefs) {
+  function update(patch: Partial<StoredVoicePrefs>) {
+    const next = { ...prefs, ...patch };
     setPrefs(next);
     saveVoicePrefs(next);
     setSaved(true);
-    window.setTimeout(() => setSaved(false), 1500);
+    setTimeout(() => setSaved(false), 1500);
   }
 
   async function preview() {
@@ -48,33 +62,50 @@ export function VoiceControls() {
       setSpeaking(false);
       return;
     }
-    const sample = "Hi, this is a quick test of how I'll sound on calls and voicemails.";
     const p = toVoicePrefs(prefs);
     const synth = getSynth();
     let h: SpeakHandle;
     if (synth.kind === "neural") {
-      // Neural backend resolves the voice server-side from voiceId/preferName.
-      h = await synth.speak(sample, p);
+      h = await synth.speak(SAMPLE, p); // neural backend resolves the voice from voiceId/preferName
     } else {
-      h = speak(sample, p, pickVoice(voices, p));
+      h = speak(SAMPLE, p, pickVoice(voices, p));
     }
     handleRef.current = h;
     setSpeaking(true);
     h.done.finally(() => setSpeaking(false));
   }
 
-  const ranked = [...voices].sort((a, b) => Number(b.localService) - Number(a.localService));
+  if (!supported) {
+    return (
+      <div className="mt-5 border-t border-border pt-4">
+        <p className="text-sm font-medium text-fg">Spoken voice</p>
+        <p className="mt-1 text-xs text-muted">Your browser doesn&apos;t support on-device speech synthesis. The written voice still works everywhere.</p>
+      </div>
+    );
+  }
+
+  const english = voices.filter((v) => v.lang?.toLowerCase().startsWith("en"));
+  const list = english.length ? english : voices;
 
   return (
-    <div className="space-y-4">
+    <div className="mt-5 space-y-3 border-t border-border pt-4">
       <div>
-        <span className="stat-label">Voice</span>
+        <p className="text-sm font-medium text-fg">Spoken voice</p>
+        <p className="mt-0.5 text-xs text-muted">
+          {neural
+            ? "The in-house neural voice is connected — pick one of ours below, or a teammate's cloned voice. Higher fidelity, fully in-house."
+            : "Used when the app reads briefs, drafts, and call prep aloud, and in call role-play. On-device — nothing leaves your machine."}
+        </p>
+      </div>
+
+      <div>
+        <label className="stat-label">Voice</label>
         <select
-          className={`${input} mt-1`}
           value={prefs.voiceName ?? ""}
-          onChange={(e) => persist({ ...prefs, voiceName: e.target.value || undefined })}
+          onChange={(e) => update({ voiceName: e.target.value || undefined })}
+          className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
         >
-          <option value="">Auto (best available)</option>
+          <option value="">Auto (most natural available)</option>
           {neural && (
             <optgroup label="In-house neural voices">
               {NEURAL_VOICES.map((v) => (
@@ -82,29 +113,24 @@ export function VoiceControls() {
               ))}
             </optgroup>
           )}
-          {ranked.length > 0 && (
+          {list.length > 0 && (
             <optgroup label={neural ? "Browser voices" : "Voices"}>
-              {ranked.map((v) => (
-                <option key={v.name} value={v.name}>{v.name}{v.localService ? "" : " (online)"}</option>
+              {list.map((v) => (
+                <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
               ))}
             </optgroup>
           )}
         </select>
-        <p className="mt-1 text-xs text-muted">
-          {neural
-            ? "The in-house neural voice is connected — pick one of ours, or a teammate's cloned voice in Settings."
-            : "Using your device's built-in voices. Connect the neural voice service for a higher-fidelity, fully in-house voice."}
-        </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <label>
-          <span className="stat-label">Rate · {prefs.rate.toFixed(2)}</span>
-          <input type="range" min={0.6} max={1.4} step={0.05} value={prefs.rate} onChange={(e) => persist({ ...prefs, rate: Number(e.target.value) })} className="mt-1 w-full accent-brand" />
+      <div className="grid grid-cols-2 gap-4">
+        <label className="block">
+          <span className="stat-label">Speed · {prefs.rate.toFixed(2)}×</span>
+          <input type="range" min={0.6} max={1.4} step={0.05} value={prefs.rate} onChange={(e) => update({ rate: Number(e.target.value) })} className="mt-1 w-full accent-brand" />
         </label>
-        <label>
+        <label className="block">
           <span className="stat-label">Pitch · {prefs.pitch.toFixed(2)}</span>
-          <input type="range" min={0.6} max={1.6} step={0.05} value={prefs.pitch} onChange={(e) => persist({ ...prefs, pitch: Number(e.target.value) })} className="mt-1 w-full accent-brand" />
+          <input type="range" min={0.6} max={1.6} step={0.05} value={prefs.pitch} onChange={(e) => update({ pitch: Number(e.target.value) })} className="mt-1 w-full accent-brand" />
         </label>
       </div>
 
