@@ -6,6 +6,7 @@ import { HubspotProvider } from "@/lib/crm/providers/hubspot";
 import { PipedriveProvider } from "@/lib/crm/providers/pipedrive";
 import { SalesforceProvider } from "@/lib/crm/providers/salesforce";
 import { HttpCrmProvider } from "@/lib/crm/providers/http";
+import { DatabaseProvider, databaseConfigured } from "@/lib/crm/providers/database";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { getConfig } from "@/lib/config";
 
