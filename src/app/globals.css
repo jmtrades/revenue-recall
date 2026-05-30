@@ -253,6 +253,17 @@ textarea:focus-visible {
   }
 }
 
+/* Onboarding step + tailoring entrance (CSP-safe CSS, no JS animation lib) */
+@keyframes rr-onb-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.onb-step { animation: rr-onb-in 0.34s cubic-bezier(0.23, 1, 0.32, 1) both; }
+.onb-fade { animation: rr-onb-in 0.26s cubic-bezier(0.23, 1, 0.32, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .onb-step, .onb-fade { animation: none; }
+}
+
 /* Entrance animations */
 @keyframes rr-fade-up {
   from {
