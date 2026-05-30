@@ -133,13 +133,46 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
   );
 }
 
-export function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "default" | "success" | "warn" | "danger" }) {
+export function Stat({
+  label,
+  value,
+  hint,
+  tone,
+  delta,
+  icon,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: "default" | "success" | "warn" | "danger";
+  /** Period-over-period change, e.g. +12 or -5 (rendered as a colored ↑/↓ chip). */
+  delta?: number;
+  icon?: IconName;
+}) {
   const toneClass =
     tone === "success" ? "text-success" : tone === "warn" ? "text-warn" : tone === "danger" ? "text-danger" : "text-fg";
+  const up = (delta ?? 0) >= 0;
   return (
     <div className="card">
-      <p className="stat-label">{label}</p>
-      <p className={`stat-value ${toneClass}`}>{value}</p>
+      <div className="flex items-center justify-between">
+        <p className="stat-label">{label}</p>
+        {icon && (
+          <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-soft/60 text-brand ring-1 ring-inset ring-brand/15">
+            <Icon name={icon} size={14} />
+          </span>
+        )}
+      </div>
+      <div className="mt-1 flex items-baseline gap-2">
+        <p className={`stat-value !mt-0 ${toneClass}`}>{value}</p>
+        {delta !== undefined && (
+          <span className={`inline-flex items-center gap-0.5 text-xs font-semibold tabular-nums ${up ? "text-success" : "text-danger"}`}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              {up ? <path d="M7 17 17 7M17 7H9M17 7v8" /> : <path d="M7 7l10 10M17 17H9M17 17V9" />}
+            </svg>
+            {Math.abs(delta)}%
+          </span>
+        )}
+      </div>
       {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
     </div>
   );
