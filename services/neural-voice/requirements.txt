@@ -1,0 +1,5 @@
+# In-house neural voice service deps. All permissively licensed, all self-hosted.
+piper-tts>=1.2.0      # VITS-family neural TTS (MIT); the model that actually speaks
+websockets>=12.0      # streaming PCM transport to the web app
+numpy>=1.24
+scipy>=1.10           # polyphase resampling (native rate -> web 24k / phone 8k)
