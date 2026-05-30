@@ -2,15 +2,16 @@ import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <div className="grid min-h-[60vh] place-items-center text-center">
-      <div>
-        <div className="text-5xl font-semibold text-muted/50">404</div>
-        <p className="mt-3 text-lg text-fg">We couldn&apos;t find that.</p>
-        <div className="mt-4 flex justify-center gap-3">
-          <Link href="/dashboard" className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand/90">
+    <div className="grid min-h-[70vh] place-items-center px-6 text-center">
+      <div className="max-w-md">
+        <div className="font-display text-7xl font-semibold tracking-tight text-brand/30">404</div>
+        <h1 className="mt-4 font-display text-xl font-semibold tracking-tight text-fg">We couldn&apos;t find that page</h1>
+        <p className="mt-2 text-sm leading-relaxed text-muted">The link may be broken or the page may have moved. Let&apos;s get you back on track.</p>
+        <div className="mt-6 flex justify-center gap-3">
+          <Link href="/dashboard" className="cta inline-flex items-center rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand/90">
             Go to dashboard
           </Link>
-          <Link href="/" className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-fg hover:bg-surface-2">
+          <Link href="/" className="cta inline-flex items-center rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-fg transition-colors hover:bg-surface-2">
             Home
           </Link>
         </div>
