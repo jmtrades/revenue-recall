@@ -48,79 +48,97 @@ import numpy as np
 import websockets
 from scipy.signal import resample_poly
 
-try:
-    from piper import PiperVoice  # type: ignore
-except Exception:  # pragma: no cover - import guard for a clear error
-    PiperVoice = None  # noqa: N816
-
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)s  %(message)s")
 log = logging.getLogger("neural-voice")
 
 HOST = os.environ.get("NEURAL_VOICE_HOST", "0.0.0.0")
 PORT = int(os.environ.get("NEURAL_VOICE_PORT", "8765"))
-VOICE = os.environ.get("PIPER_VOICE", "en_US-amy-medium")
+# Engine: "kokoro" (frontier-class open model, default) or "piper" (lighter fallback).
+ENGINE = os.environ.get("VOICE_ENGINE", "kokoro").lower()
+# Default voice id per engine; the client may override via `voiceId`.
+DEFAULT_VOICE = os.environ.get("VOICE_ID", "af_heart" if ENGINE == "kokoro" else "en_US-amy-medium")
 # ~100ms chunks at the client rate — small chunks = low first-audio latency.
-# (Piper's native rate is model-dependent, e.g. 22050 Hz; we resample to the
-# client's requested sampleRate before chunking.)
 CHUNK_FRAMES = 2400
 MAX_TEXT = 4000
 
-_voice: "PiperVoice | None" = None
+# Kokoro model files (ONNX). Download once (see README); resolved from common dirs.
+KOKORO_MODEL = os.environ.get("KOKORO_MODEL", "kokoro-v1.0.onnx")
+KOKORO_VOICES = os.environ.get("KOKORO_VOICES", "voices-v1.0.bin")
+
+_engine = None  # lazily-loaded engine instance (Kokoro or PiperVoice)
 
 
-def _resolve_model_path() -> str:
-    """
-    Resolve the model file. PIPER_VOICE may be a full path to a .onnx, or a voice
-    name whose model was fetched via `python -m piper.download_voices <name>`
-    (downloaded into the current dir or DATA_DIR).
-    """
-    if VOICE.endswith(".onnx") and os.path.exists(VOICE):
-        return VOICE
-    search = [os.getcwd(), os.environ.get("PIPER_DATA_DIR", ""), "/data", os.path.expanduser("~")]
-    for base in filter(None, search):
-        cand = os.path.join(base, f"{VOICE}.onnx")
+def _find(name: str) -> str:
+    """Locate a model file across common locations (cwd, /data, ~, env path)."""
+    if os.path.isabs(name) and os.path.exists(name):
+        return name
+    for base in filter(None, [os.getcwd(), os.environ.get("MODEL_DIR", ""), "/data", os.path.expanduser("~")]):
+        cand = os.path.join(base, name)
         if os.path.exists(cand):
             return cand
-    # Last resort: let Piper's own download dir resolution find it by name.
-    return f"{VOICE}.onnx"
+    return name  # let the loader raise a clear error if truly missing
 
 
-def load_voice() -> "PiperVoice":
-    """Load the Piper neural model once, lazily, and keep it warm in memory."""
-    global _voice
-    if _voice is not None:
-        return _voice
-    if PiperVoice is None:
-        raise RuntimeError(
-            "piper-tts is not installed. Run: pip install -r requirements.txt && "
-            "python -m piper.download_voices " + VOICE
-        )
-    path = _resolve_model_path()
-    log.info("loading neural voice model: %s", path)
+# ─── Kokoro engine (default) ──────────────────────────────────────────────────
+def _load_kokoro():
+    from kokoro_onnx import Kokoro
+
+    model, voices = _find(KOKORO_MODEL), _find(KOKORO_VOICES)
+    log.info("loading Kokoro model: %s", model)
+    k = Kokoro(model, voices)
+    log.info("Kokoro loaded; %d voices, native 24kHz", len(k.get_voices()))
+    return k
+
+
+def _kokoro_synth(text: str, voice: str, rate: float) -> tuple[np.ndarray, int]:
+    k = _engine
+    samples, sr = k.create(text, voice=voice, speed=max(0.5, min(2.0, rate or 1.0)), lang="en-us")
+    return np.asarray(samples, dtype=np.float32), int(sr)
+
+
+# ─── Piper engine (lighter fallback) ──────────────────────────────────────────
+def _load_piper():
+    from piper import PiperVoice
+
+    name = DEFAULT_VOICE
+    path = name if (name.endswith(".onnx") and os.path.exists(name)) else _find(f"{name}.onnx")
+    log.info("loading Piper model: %s", path)
     use_cuda = os.environ.get("PIPER_CUDA", "").lower() in ("1", "true", "yes")
-    _voice = PiperVoice.load(path, use_cuda=use_cuda)
-    log.info("model loaded; native sample rate = %d Hz", _voice.config.sample_rate)
-    return _voice
+    v = PiperVoice.load(path, use_cuda=use_cuda)
+    log.info("Piper loaded; native %d Hz", v.config.sample_rate)
+    return v
 
 
-def synthesize(text: str, rate: float = 1.0) -> tuple[np.ndarray, int]:
-    """
-    Run the neural model → mono float32 waveform in [-1, 1] plus its sample rate.
-    `rate` adjusts speaking speed (length_scale is inverse: faster => shorter).
-    """
+def _piper_synth(text: str, voice: str, rate: float) -> tuple[np.ndarray, int]:
     from piper.config import SynthesisConfig
 
-    voice = load_voice()
+    v = _engine
     syn = SynthesisConfig(length_scale=1.0 / max(0.5, min(2.0, rate or 1.0)))
-
     pcm = bytearray()
-    sample_rate = voice.config.sample_rate
-    # synthesize() yields AudioChunk objects; concatenate their int16 PCM.
-    for chunk in voice.synthesize(text, syn_config=syn):
+    sr = v.config.sample_rate
+    for chunk in v.synthesize(text, syn_config=syn):
         pcm.extend(chunk.audio_int16_bytes)
-        sample_rate = chunk.sample_rate
+        sr = chunk.sample_rate
     samples = np.frombuffer(bytes(pcm), dtype="<i2").astype(np.float32) / 32768.0
-    return samples, sample_rate
+    return samples, sr
+
+
+def load_voice():
+    """Load the configured engine once, lazily, and keep it warm in memory."""
+    global _engine
+    if _engine is not None:
+        return _engine
+    _engine = _load_kokoro() if ENGINE == "kokoro" else _load_piper()
+    return _engine
+
+
+def synthesize(text: str, rate: float = 1.0, voice: str | None = None) -> tuple[np.ndarray, int]:
+    """Run the active neural engine → mono float32 waveform in [-1,1] + sample rate."""
+    load_voice()
+    v = voice or DEFAULT_VOICE
+    if ENGINE == "kokoro":
+        return _kokoro_synth(text, v, rate)
+    return _piper_synth(text, v, rate)
 
 
 def to_pcm16(samples: np.ndarray, src_rate: int, dst_rate: int) -> bytes:
@@ -146,11 +164,12 @@ async def handle(ws: "websockets.WebSocketServerProtocol") -> None:
             return
         dst_rate = int(req.get("sampleRate", 24000))
         rate = float(req.get("rate", 1.0))
-        log.info("synthesize %d chars for %s @ %dHz", len(text), peer, dst_rate)
+        voice = req.get("voiceId") or None
+        log.info("synthesize %d chars for %s @ %dHz (voice=%s)", len(text), peer, dst_rate, voice or DEFAULT_VOICE)
 
         # Synthesis is CPU/GPU-bound: run it off the event loop so the socket
         # stays responsive (and a future client can barge-in / disconnect).
-        samples, src_rate = await asyncio.to_thread(synthesize, text, rate)
+        samples, src_rate = await asyncio.to_thread(synthesize, text, rate, voice)
         pcm = to_pcm16(samples, src_rate, dst_rate)
 
         # Stream in small chunks for low first-audio latency + barge-in support.

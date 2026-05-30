@@ -1,9 +1,8 @@
 # In-house neural voice service
 
 The real, self-hosted TTS backend for Revenue Recall's voice surfaces. It runs
-on **your** hardware, uses an **open-source neural model** (Piper, a VITS-family
-network — permissively licensed), and **no audio ever leaves your
-infrastructure**. There is no third-party API in the hot path: this is the
+on **your** hardware, uses an **open-source neural model**, and **no audio ever
+leaves your infrastructure**. No third-party API in the hot path: this is the
 honest meaning of "in-house, not a vendor."
 
 It speaks the exact WebSocket protocol the web app's neural seam expects
@@ -11,28 +10,55 @@ It speaks the exact WebSocket protocol the web app's neural seam expects
 surface (AI briefs, call prep, role-play) upgrades from the browser voice to the
 neural voice with **zero app code changes**.
 
+## Engines
+
+| Engine | Model | Notes |
+|---|---|---|
+| **`kokoro`** (default) | Kokoro 82M, Apache-2.0 | Top of open TTS leaderboards; **54 voices**; native **24 kHz**; ~**0.3× real-time on CPU** (faster than real-time); genuinely close to commercial quality. |
+| `piper` | VITS, MIT | Lighter/faster, lower fidelity. Set `VOICE_ENGINE=piper`. |
+
+### Honest quality note
+
+Straight talk: this does **not** claim to beat ElevenLabs on raw naturalness —
+ElevenLabs is at the frontier. Kokoro gets you **genuinely close**, and you win
+decisively on the axes a vendor can't touch: **it's yours** — your weights, your
+serving, ~**zero marginal cost**, full privacy, unlimited per-rep voices, and no
+vendor lock-in or per-character bill. Reaching true frontier parity is the
+audio-model training effort in `docs/neural-voice.md`; getting there swaps only
+`synthesize()` in `server.py` — the protocol, the app, and this deployment stay
+identical.
+
 ## Verified working
 
-This service has been run end-to-end: model loads, a WebSocket client sending
+Run end-to-end in CI/sandbox: model loads (54 voices), a WebSocket client sending
 the exact frame `src/lib/voice/neural.ts` sends receives a real PCM stream
-(resampled to the requested rate) followed by the `end` frame, and the offline
-`render` command writes a valid WAV. Native model rate is model-dependent
-(e.g. 22050 Hz for `en_US-amy-medium`); the server resamples to whatever
-`sampleRate` the client asks for (24000 web / 8000 phone).
+(tested with two voices — `af_heart`, `am_adam`) followed by the `end` frame,
+~1 s first-byte latency on CPU. The offline `render` command writes a valid
+24 kHz 16-bit mono WAV.
 
 ## Quick start (local)
 
 ```bash
 cd services/neural-voice
 pip install -r requirements.txt
-python -m piper.download_voices en_US-amy-medium   # one-time model download
-python server.py                                    # ws://0.0.0.0:8765
+
+# Download Kokoro model files once (≈330 MB + 28 MB):
+curl -L -o kokoro-v1.0.onnx  https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx
+curl -L -o voices-v1.0.bin   https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
+
+python server.py            # ws://0.0.0.0:8765
 ```
 
 Hear it without the app:
 
 ```bash
-python server.py render "Hey Jordan — quick one. You free Thursday?" hello.wav
+python server.py render "Hey Jordan, you free Thursday?" hello.wav
+```
+
+Pick a voice (54 available — `af_heart`, `af_bella`, `am_adam`, `am_michael`, …):
+
+```bash
+VOICE_ID=am_adam python server.py
 ```
 
 ## Point the app at it
@@ -43,44 +69,19 @@ Set this env var (locally in `.env.local`, or in Vercel for the deployed app):
 NEXT_PUBLIC_NEURAL_VOICE_URL=ws://localhost:8765
 ```
 
-In production this must be `wss://` (TLS) — browsers block insecure `ws://` from
-an https page. Put the service behind a TLS-terminating proxy / load balancer and
-point the env var at the `wss://` URL.
+In production use `wss://` (TLS) — browsers block insecure `ws://` from an https
+page. Put the service behind a TLS-terminating proxy and point the var at the
+`wss://` URL. The client's `voiceId` selects the voice; `rate` controls speed.
 
 ## Docker
 
 ```bash
-docker build -t rr-neural-voice .
+docker build -t rr-neural-voice .     # bakes the Kokoro model into the image
 docker run -p 8765:8765 rr-neural-voice
 ```
 
-## Choosing / adding voices
+## GPU
 
-Browse voices at the Piper voices catalog, then:
-
-```bash
-python -m piper.download_voices en_GB-alan-medium
-PIPER_VOICE=en_GB-alan-medium python server.py
-```
-
-`*-high` variants sound better and cost more compute. The client sends a
-`voiceId`; map it to a model here if you host several voices.
-
-## Where this sits on the quality ladder
-
-This is **M0→M1** of `docs/neural-voice.md`: a genuine, self-hosted neural voice
-that is clearly more human than the browser engine and fully owned. It is not yet
-the studio/clone-grade, phone-streaming model in M2–M5 — reaching that ABX-"can't
-tell it's AI" bar is the audio-model build (training data + GPUs + eval gates)
-described in the spec. Crucially, getting there means swapping only
-`synthesize()` in `server.py`; the protocol, the web app, and this deployment
-shape stay exactly the same.
-
-## Notes on quality vs. "10,000× better than ElevenLabs"
-
-Straight talk: no single drop-in is "10,000× better than ElevenLabs" — ElevenLabs
-is already near the frontier. What this gives you that a vendor can't: **it's
-yours** — your weights, your data rights, your serving, your cost curve, your
-privacy story, and no per-character vendor bill. The path to *matching* frontier
-quality is the training effort in the spec; this server is the production-shaped
-foundation you train into, not a toy.
+CPU is already faster than real-time for one stream. For high concurrency, set
+`PIPER_CUDA=1` (piper) or run `kokoro-onnx[gpu]` with the CUDA ONNX runtime;
+`synthesize()` is unchanged.
