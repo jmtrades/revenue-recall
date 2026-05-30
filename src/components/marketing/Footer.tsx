@@ -39,7 +39,14 @@ export function Footer() {
               <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-brand text-[13px] font-bold tracking-tight text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)] ring-1 ring-inset ring-white/10">RR</span>
               <span className="font-display text-[15px] font-semibold tracking-tight text-fg">Revenue Recall</span>
             </div>
-            <p className="mt-3 max-w-xs text-sm text-muted">The universal sales OS that recovers the revenue you&apos;re about to lose — for any CRM, any industry.</p>
+            <p className="mt-3 max-w-xs text-sm text-muted">Autonomous outbound that recovers the revenue you&apos;re about to lose — for any CRM, any industry.</p>
+            <span className="mt-4 inline-flex items-center gap-2 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-medium text-muted">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand/70" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
+              </span>
+              All systems operational
+            </span>
           </div>
           {COLS.map((col) => (
             <div key={col.heading}>
