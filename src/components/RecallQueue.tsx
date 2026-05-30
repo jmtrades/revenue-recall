@@ -184,7 +184,7 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
           <div role="dialog" aria-modal="true" aria-label="AI draft" className="w-full max-w-lg rounded-xl border border-border bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
               <h3 className="flex items-center gap-2 font-semibold text-fg"><Icon name="autopilot" size={15} className="text-brand" /> Drafted outreach</h3>
-              <button onClick={() => setDraft(null)} className="text-muted hover:text-fg">✕</button>
+              <button onClick={() => setDraft(null)} aria-label="Close" className="text-muted transition-colors hover:text-fg"><Icon name="close" size={16} /></button>
             </div>
             <p className="mb-3 text-xs text-muted">{draft.row.title} · {draft.row.contactLabel}</p>
             {draft.busy ? (

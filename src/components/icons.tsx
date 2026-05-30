@@ -36,7 +36,11 @@ export type IconName =
   | "shield"
   | "briefcase"
   | "car"
-  | "wrench";
+  | "wrench"
+  | "mic"
+  | "volume"
+  | "mute"
+  | "close";
 
 const PATHS: Record<IconName, JSX.Element> = {
   dashboard: (
@@ -239,6 +243,33 @@ const PATHS: Record<IconName, JSX.Element> = {
   ),
   wrench: (
     <path d="M14.7 6.3a4 4 0 0 0-5.2 5.2L3 18l3 3 6.5-6.5a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.4-.6-.6-2.4z" />
+  ),
+  mic: (
+    <>
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M5 10a7 7 0 0 0 14 0" />
+      <path d="M12 17v4" />
+    </>
+  ),
+  volume: (
+    <>
+      <path d="M11 5 6 9H3v6h3l5 4z" />
+      <path d="M16 9a4 4 0 0 1 0 6" />
+      <path d="M19 7a8 8 0 0 1 0 10" />
+    </>
+  ),
+  mute: (
+    <>
+      <path d="M11 5 6 9H3v6h3l5 4z" />
+      <path d="m22 9-6 6" />
+      <path d="m16 9 6 6" />
+    </>
+  ),
+  close: (
+    <>
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </>
   ),
 };
 

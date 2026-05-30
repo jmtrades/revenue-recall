@@ -4,11 +4,11 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Revenue Recall",
     short_name: "Revenue Recall",
-    description: "The universal sales OS that recovers the revenue you're about to lose.",
+    description: "Autonomous outbound that recovers the revenue you're about to lose — for any CRM, any industry.",
     start_url: "/dashboard",
     display: "standalone",
-    background_color: "#0b0e14",
-    theme_color: "#0b0e14",
+    background_color: "#0a0b0a",
+    theme_color: "#0a0b0a",
     icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml" }],
   };
 }

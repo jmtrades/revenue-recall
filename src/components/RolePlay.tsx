@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/icons";
 import { TONES, DEFAULT_TONE, type ToneId } from "@/lib/tones";
 import {
   isSpeechSupported,
@@ -225,7 +226,7 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
   return (
     <div className="card">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 font-semibold text-fg">🎙 Practice this call
+        <h2 className="flex items-center gap-2 font-semibold text-fg"><Icon name="mic" size={16} className="text-brand" /> Practice this call
           {mood && <span className="pill bg-surface-2 text-muted">reading the room: {mood}</span>}
         </h2>
         <div className="flex items-center gap-1.5">
@@ -239,7 +240,7 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
           </select>
           {canSpeak && (
             <button onClick={() => setVoiceOn((v) => !v)} title="Toggle spoken voice" className={`rounded-lg border px-2 py-1 text-xs transition ${voiceOn ? "border-brand text-brand" : "border-border text-muted"}`}>
-              {voiceOn ? "🔊" : "🔇"}
+              <Icon name={voiceOn ? "volume" : "mute"} size={14} />
             </button>
           )}
           {canListen && (
@@ -298,7 +299,7 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
             />
             {canListen && (
               <button onClick={mic} disabled={busy || listening} title="Speak your response" className={`rounded-lg border px-3 py-2 text-sm transition ${listening ? "border-danger text-danger" : "border-border text-muted hover:text-fg"} disabled:opacity-50`}>
-                {listening ? "● listening" : "🎤"}
+                {listening ? "● listening" : <Icon name="mic" size={15} />}
               </button>
             )}
             <button onClick={() => send(input)} disabled={busy || !input.trim()} className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">

@@ -8,14 +8,14 @@ const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://revenue-recall.app"),
   title: {
-    default: "Revenue Recall — Universal Sales OS",
+    default: "Revenue Recall — Autonomous outbound that runs your whole sales operation",
     template: "%s · Revenue Recall",
   },
-  description: "Recover slipping revenue and run your entire sales process — for any industry, with any CRM or none.",
+  description: "An autonomous AI sales force that recovers the revenue you're losing — works every deal across email, SMS, and the phone, for any industry, with any CRM or none.",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0e14",
+  themeColor: "#0a0b0a",
   width: "device-width",
   initialScale: 1,
 };
