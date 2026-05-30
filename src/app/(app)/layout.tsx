@@ -2,6 +2,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { BillingBanner } from "@/components/BillingBanner";
 import { SystemTheme } from "@/components/SystemTheme";
+import { NeuralVoice } from "@/components/NeuralVoice";
 import { getIndustry } from "@/lib/industries";
 import { getSessionUser } from "@/lib/auth";
 import { getOrgSettings } from "@/lib/org";
@@ -19,6 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       data-theme={mode === "system" ? undefined : mode}
     >
       {mode === "system" && <SystemTheme />}
+      <NeuralVoice />
       <Sidebar orgName={org.name} industryLabel={industry.label} />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar userName={user?.name ?? "You"} userEmail={user?.email} signedIn={Boolean(user)} orgName={org.name} />

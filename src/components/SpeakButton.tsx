@@ -2,12 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { isSpeechSupported, loadVoices, pickVoice, speak, type SpeakHandle } from "@/lib/voice/speech";
+import { getSynth } from "@/lib/voice/synth";
 import { loadVoicePrefs, toVoicePrefs } from "@/lib/voice/prefs";
 
 /**
- * Read any text aloud with the rep's tuned, in-house voice. One component so the
- * same voice powers every surface — briefs, drafts, call prep, role-play. All
- * synthesis is browser-native; nothing leaves the device.
+ * Read any text aloud with the rep's tuned voice. One component so the same
+ * voice powers every surface — briefs, drafts, call prep, role-play. Resolves
+ * the active backend through getSynth(): the in-house neural voice when it's
+ * registered and healthy, otherwise the browser engine. Nothing about the UI
+ * changes when the backend upgrades.
  */
 export function SpeakButton({ text, label = "Listen", className = "" }: { text: string; label?: string; className?: string }) {
   const [speaking, setSpeaking] = useState(false);
@@ -15,7 +18,8 @@ export function SpeakButton({ text, label = "Listen", className = "" }: { text: 
   const handleRef = useRef<SpeakHandle | null>(null);
 
   useEffect(() => {
-    setSupported(isSpeechSupported());
+    // Supported if either the neural backend or the browser engine can speak.
+    setSupported(getSynth().available() || isSpeechSupported());
     return () => handleRef.current?.stop();
   }, []);
 
@@ -27,10 +31,16 @@ export function SpeakButton({ text, label = "Listen", className = "" }: { text: 
     }
     const clean = text.trim();
     if (!clean) return;
-    const voices = await loadVoices();
-    const prefs = loadVoicePrefs();
-    const voice = pickVoice(voices, toVoicePrefs(prefs));
-    const handle = speak(clean, toVoicePrefs(prefs), voice);
+    const prefs = toVoicePrefs(loadVoicePrefs());
+    const synth = getSynth();
+    let handle: SpeakHandle;
+    if (synth.kind === "neural") {
+      // Neural backend handles its own voice selection server-side.
+      handle = await synth.speak(clean, prefs);
+    } else {
+      const voice = pickVoice(await loadVoices(), prefs);
+      handle = speak(clean, prefs, voice);
+    }
     handleRef.current = handle;
     setSpeaking(true);
     handle.done.finally(() => setSpeaking(false));
