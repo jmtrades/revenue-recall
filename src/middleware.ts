@@ -46,8 +46,13 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
-  // Gate app routes only when auth is required (keeps the public demo working).
-  if (authRequired && !userId && !isPublic(path)) {
+  // Gate app PAGES only when auth is required (keeps the public demo working).
+  // API routes are never redirected to /login: machine callers (Stripe webhook,
+  // cron, inbound email/SMS, unsubscribe) authenticate by their own secret, and
+  // a 307 to an HTML login page would silently break them — most importantly the
+  // billing webhook, which would leave paid subscriptions un-activated. Each API
+  // route enforces its own auth and returns JSON 401 when needed.
+  if (authRequired && !userId && !isPublic(path) && !path.startsWith("/api/")) {
     const to = new URL("/login", req.url);
     to.searchParams.set("next", path);
     return NextResponse.redirect(to);
