@@ -3,6 +3,7 @@ import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { Footer } from "@/components/marketing/Footer";
 import { HeroPreview } from "@/components/marketing/HeroPreview";
 import { PricingPlans } from "@/components/marketing/PricingPlans";
+import { BrandLogos } from "@/components/marketing/BrandLogos";
 import { Icon, type IconName } from "@/components/icons";
 import { INDUSTRIES } from "@/lib/industries";
 
@@ -143,11 +144,7 @@ export default function LandingPage() {
       <section className="border-b border-border">
         <div className="mx-auto max-w-6xl px-5 py-10">
           <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Runs on the stack you already use — or none of it</p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
-            {["Salesforce", "HubSpot", "Close", "Pipedrive", "Gmail", "Outlook", "Twilio", "Slack"].map((n) => (
-              <span key={n} className="font-display text-[15px] font-medium tracking-tight text-muted/70 transition-colors hover:text-body">{n}</span>
-            ))}
-          </div>
+          <BrandLogos />
         </div>
       </section>
 
