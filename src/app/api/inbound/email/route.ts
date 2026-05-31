@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { handleInbound } from "@/lib/inbound";
 import { writeRateLimit } from "@/lib/ratelimit";
+import { withGuard } from "@/lib/api/guard";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -14,7 +15,7 @@ const Body = z.object({
 
 /** Generic inbound-email webhook (JSON). Point your email provider's inbound
  *  parse / forwarding webhook here. Token-gated via ?token=INBOUND_TOKEN. */
-export async function POST(req: Request) {
+export const POST = withGuard(async (req: Request) => {
   if (!writeRateLimit(req, "inbound-email").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const url = new URL(req.url);
   const token = process.env.INBOUND_TOKEN;
@@ -26,4 +27,4 @@ export async function POST(req: Request) {
 
   const result = await handleInbound("email", parsed.data.from, parsed.data.text, parsed.data.subject);
   return NextResponse.json(result);
-}
+});

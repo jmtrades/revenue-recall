@@ -5,12 +5,13 @@ import { getProvider } from "@/lib/crm/registry";
 import { sendReply, isSocialChannel } from "@/lib/outbound";
 import { platformTag } from "@/lib/social/ingest";
 import type { SocialPlatform } from "@/lib/social/types";
+import { withGuard } from "@/lib/api/guard";
 
 export const dynamic = "force-dynamic";
 
 const Body = z.object({ action: z.enum(["approve", "dismiss"]) });
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export const POST = withGuard(async (req: Request, { params }: { params: { id: string } }) => {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "action required" }, { status: 400 });
 
@@ -50,4 +51,4 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   });
   await setOutboxStatus(item.id, "sent");
   return NextResponse.json({ ok: true, status: "sent", provider: res.provider });
-}
+});

@@ -3,12 +3,13 @@ import { z } from "zod";
 import { getProvider } from "@/lib/crm/registry";
 import { placeCall } from "@/lib/comms";
 import { writeRateLimit } from "@/lib/ratelimit";
+import { withGuard } from "@/lib/api/guard";
 
 export const dynamic = "force-dynamic";
 
 const Body = z.object({ dealId: z.string().optional(), contactId: z.string().optional(), to: z.string().optional() });
 
-export async function POST(req: Request) {
+export const POST = withGuard(async (req: Request) => {
   if (!writeRateLimit(req, "call").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
@@ -30,4 +31,4 @@ export async function POST(req: Request) {
   const result = await placeCall(to);
   if (result.status === "failed") return NextResponse.json({ error: result.detail ?? "Call failed" }, { status: 502 });
   return NextResponse.json({ ok: true, to, ...result });
-}
+});

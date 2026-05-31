@@ -7,6 +7,7 @@ import { platformTag } from "@/lib/social/ingest";
 import type { SocialPlatform } from "@/lib/social/types";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { recordRecallTouch } from "@/lib/recall/events";
+import { withGuard } from "@/lib/api/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ const Body = z.object({
   recall: z.boolean().optional(),
 });
 
-export async function POST(req: Request) {
+export const POST = withGuard(async (req: Request) => {
   if (!writeRateLimit(req, "send").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid message" }, { status: 400 });
@@ -84,4 +85,4 @@ export async function POST(req: Request) {
   if (parsed.data.recall) await recordRecallTouch({ dealId, contactId, channel, source: "manual" });
 
   return NextResponse.json({ ok: true, ...result });
-}
+});
