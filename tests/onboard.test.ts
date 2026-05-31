@@ -35,6 +35,13 @@ describe("personalizeFromDescription (keyword fallback)", () => {
     expect(p.industryId).toBe("real_estate");
   });
 
+  it("extracts a real company name and ignores common-word phrases", async () => {
+    // "called X" is a strong signal → the actual name.
+    expect((await personalizeFromDescription("I run a brokerage in Austin called Lone Star Homes.")).orgName).toContain("Lone Star Homes");
+    // No proper noun after the cue → empty, not junk like "a boutique real estate".
+    expect((await personalizeFromDescription("I run a boutique real estate brokerage helping buyers.")).orgName).toBe("");
+  });
+
   it("handles an empty description without throwing", async () => {
     const p = await personalizeFromDescription("");
     expect(p.industryId).toBe("generic");
