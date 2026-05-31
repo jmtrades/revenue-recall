@@ -17,20 +17,37 @@ export function billingConfigured(): boolean {
   return Boolean(env("STRIPE_SECRET_KEY"));
 }
 
-/** Stripe price id for a plan, if one has been wired via env. */
-export function priceId(plan: PlanId): string | undefined {
-  if (plan === "growth") return env("STRIPE_PRICE_GROWTH");
-  if (plan === "team") return env("STRIPE_PRICE_TEAM");
-  if (plan === "scale") return env("STRIPE_PRICE_SCALE");
-  return undefined;
+export type BillingCycle = "monthly" | "annual";
+
+const MONTHLY_PRICE: Record<Exclude<PlanId, "free">, string> = {
+  growth: "STRIPE_PRICE_GROWTH",
+  team: "STRIPE_PRICE_TEAM",
+  scale: "STRIPE_PRICE_SCALE",
+};
+const ANNUAL_PRICE: Record<Exclude<PlanId, "free">, string> = {
+  growth: "STRIPE_PRICE_GROWTH_ANNUAL",
+  team: "STRIPE_PRICE_TEAM_ANNUAL",
+  scale: "STRIPE_PRICE_SCALE_ANNUAL",
+};
+
+/**
+ * Stripe price id for a plan + cycle, if wired via env. Annual falls back to the
+ * monthly price when no annual price is configured, so the annual toggle still
+ * checks out (at the monthly rate) rather than dead-ending.
+ */
+export function priceId(plan: PlanId, cycle: BillingCycle = "monthly"): string | undefined {
+  if (plan === "free") return undefined;
+  if (cycle === "annual") return env(ANNUAL_PRICE[plan]) ?? env(MONTHLY_PRICE[plan]);
+  return env(MONTHLY_PRICE[plan]);
 }
 
-/** Reverse a Stripe price id back to a plan (for webhook reconciliation). */
+/** Reverse a Stripe price id back to a plan (for webhook reconciliation). Checks
+ *  both monthly and annual price ids. */
 export function planForPrice(price: string | undefined): PlanId | undefined {
   if (!price) return undefined;
-  if (price === env("STRIPE_PRICE_GROWTH")) return "growth";
-  if (price === env("STRIPE_PRICE_TEAM")) return "team";
-  if (price === env("STRIPE_PRICE_SCALE")) return "scale";
+  for (const plan of ["growth", "team", "scale"] as const) {
+    if (price === env(MONTHLY_PRICE[plan]) || price === env(ANNUAL_PRICE[plan])) return plan;
+  }
   return undefined;
 }
 
@@ -55,6 +72,7 @@ export interface CheckoutInput {
   plan: PlanId;
   orgId: string;
   seats: number;
+  cycle?: BillingCycle;
   customerEmail?: string;
   successUrl: string;
   cancelUrl: string;
@@ -62,7 +80,7 @@ export interface CheckoutInput {
 
 /** Create a Checkout session and return its hosted URL. */
 export async function createCheckoutSession(input: CheckoutInput): Promise<string> {
-  const price = priceId(input.plan);
+  const price = priceId(input.plan, input.cycle ?? "monthly");
   if (!price) throw new Error(`No Stripe price configured for the ${input.plan} plan.`);
   const form: Record<string, string> = {
     mode: "subscription",

@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { verifyStripeSignature, planForPrice } from "@/lib/billing/stripe";
+import { verifyStripeSignature, planForPrice, priceId } from "@/lib/billing/stripe";
 import { PLANS, getPlan, isPlanId, type PlanId } from "@/lib/billing/plans";
 
 function sign(payload: string, secret: string, t = Math.floor(Date.now() / 1000)): string {
@@ -61,6 +61,42 @@ describe("plan catalog", () => {
   it("planForPrice returns undefined when no prices are configured", () => {
     expect(planForPrice(undefined)).toBeUndefined();
     expect(planForPrice("price_xyz")).toBeUndefined();
+  });
+});
+
+describe("billing cycle (monthly/annual) price resolution", () => {
+  const ENV_KEYS = ["STRIPE_PRICE_GROWTH", "STRIPE_PRICE_GROWTH_ANNUAL"] as const;
+  afterEach(() => {
+    for (const k of ENV_KEYS) delete process.env[k];
+  });
+
+  it("resolves the monthly price by default", () => {
+    process.env.STRIPE_PRICE_GROWTH = "price_growth_m";
+    expect(priceId("growth")).toBe("price_growth_m");
+    expect(priceId("growth", "monthly")).toBe("price_growth_m");
+  });
+
+  it("resolves the annual price when wired", () => {
+    process.env.STRIPE_PRICE_GROWTH = "price_growth_m";
+    process.env.STRIPE_PRICE_GROWTH_ANNUAL = "price_growth_y";
+    expect(priceId("growth", "annual")).toBe("price_growth_y");
+  });
+
+  it("falls back to monthly for annual when no annual price exists (no dead end)", () => {
+    process.env.STRIPE_PRICE_GROWTH = "price_growth_m";
+    expect(priceId("growth", "annual")).toBe("price_growth_m");
+  });
+
+  it("reverses both monthly and annual price ids back to the plan", () => {
+    process.env.STRIPE_PRICE_GROWTH = "price_growth_m";
+    process.env.STRIPE_PRICE_GROWTH_ANNUAL = "price_growth_y";
+    expect(planForPrice("price_growth_m")).toBe("growth");
+    expect(planForPrice("price_growth_y")).toBe("growth");
+  });
+
+  it("free has no price in any cycle", () => {
+    expect(priceId("free")).toBeUndefined();
+    expect(priceId("free", "annual")).toBeUndefined();
   });
 });
 
