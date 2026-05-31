@@ -5,7 +5,9 @@ import { listIntegrations, getProvider } from "@/lib/crm/registry";
 import { isAiConfigured } from "@/lib/ai/client";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { channelStatus } from "@/lib/comms";
-import { listSocialChannels } from "@/lib/social/registry";
+import { listConnections } from "@/lib/connections/store";
+import { encryptionAvailable } from "@/lib/crypto";
+import { ConnectionsManager } from "@/components/ConnectionsManager";
 import { complianceConfig } from "@/lib/compliance";
 import { listOwnedNumbers, numbersConfigured, numbersProviderId, outboundFromNumber } from "@/lib/numbers";
 import { SetupChecklist, type SetupItem } from "@/components/SetupChecklist";
@@ -41,7 +43,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
   const active = getIndustry(org.industryId);
 
   const ch = channelStatus();
-  const socialChannels = listSocialChannels();
+  // Per-org connections (sanitized: which fields are set, never secret values).
+  const connections = (await listConnections().catch(() => [])).map((c) => ({
+    provider: c.provider,
+    connected: c.connected,
+    setFields: [...Object.keys(c.secrets), ...Object.keys(c.config)],
+  }));
+  const encAvailable = encryptionAvailable();
   // Org-level compliance wins over env (multi-tenant identity).
   const compliance = complianceConfig({ orgName: org.compliance.senderName ?? org.name, address: org.compliance.address });
   const setupItems: SetupItem[] = [
@@ -156,6 +164,17 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
           </li>
         ))}
       </ul>
+
+      <div className="mt-6 border-t border-border pt-5">
+        <h2 className="font-semibold text-fg">Connect your database</h2>
+        <p className="mt-1 text-sm text-muted">
+          Bring your own data even if it isn&apos;t a normal CRM — Postgres, Airtable, a spreadsheet, a warehouse view.
+          Connect it here (encrypted at rest) and we map your columns automatically.
+        </p>
+        <div className="mt-4">
+          <ConnectionsManager initial={connections} encryptionAvailable={encAvailable} kind="database" />
+        </div>
+      </div>
     </Card>
   );
 
@@ -212,19 +231,12 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       <Card className="mt-4">
         <h2 className="font-semibold text-fg">Social channels</h2>
         <p className="mt-1 text-sm text-muted">
-          One inbox for every platform. Connect an account and inbound DMs flow into your unified inbox; replies go back out on the
-          same channel. Point each platform&apos;s webhook at <code className="text-fg">/api/social/&lt;platform&gt;</code>.
+          One inbox for every platform. Connect your own account below — credentials are encrypted at rest — and inbound DMs flow
+          into your unified inbox; replies go back out on the same channel. Then point each platform&apos;s webhook at{" "}
+          <code className="text-fg">/api/social/&lt;platform&gt;</code>.
         </p>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {socialChannels.map((s) => (
-            <div key={s.platform} className="flex items-start justify-between gap-3 rounded-lg border border-border bg-surface-2 px-4 py-3">
-              <div className="min-w-0">
-                <div className="text-sm font-medium text-fg">{s.label}</div>
-                <div className="mt-1 text-xs leading-relaxed text-muted">{s.hint}</div>
-              </div>
-              <span className={`pill shrink-0 ${s.connected ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>{s.connected ? "Connected" : "Needs setup"}</span>
-            </div>
-          ))}
+        <div className="mt-4">
+          <ConnectionsManager initial={connections} encryptionAvailable={encAvailable} kind="social" />
         </div>
       </Card>
     </>
