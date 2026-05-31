@@ -40,7 +40,7 @@ const STEPS = [
 
 const METRICS = [
   { stat: "24/7", label: "works every deal around the clock — no human in the loop required" },
-  { stat: "23%", label: "of dead deals are reactivatable — and almost none ever get a second touch" },
+  { stat: "Every", label: "cold and lost deal gets the second touch almost no team ever sends" },
   { stat: "1", label: "system replacing the SDR, the dialer, the sequencer, and the CRM busywork" },
 ];
 
@@ -55,10 +55,13 @@ const INDUSTRY_ICONS: Record<string, IconName> = {
   home_services: "wrench",
 };
 
-const TESTIMONIALS: { quote: string; role: string; segment: string; icon: IconName }[] = [
-  { quote: "We turned it on and it just started working deals we'd written off. It's not a tool my reps use — it's a rep that doesn't sleep.", role: "VP Sales", segment: "B2B SaaS", icon: "layers" },
-  { quote: "I stopped paying for three SDRs and a sequencer. This does the prospecting, the calls, and the follow-up — and books more meetings than they did.", role: "Founder", segment: "Insurance Agency", icon: "approvals" },
-  { quote: "Same playbook on the team that had Salesforce and the team that had nothing. It runs both. Recovered revenue paid for it in week one.", role: "RevOps Lead", segment: "Real Estate", icon: "database" },
+// Honest capability statements — what the system actually does. No fabricated
+// customer quotes: we don't invent testimonials or attribute words to people
+// who didn't say them. Swap in real, attributable quotes once customers consent.
+const CAPABILITIES: { title: string; body: string; icon: IconName }[] = [
+  { title: "Works deals you've written off", body: "It re-engages cold and lost deals on a cadence — the second touch almost no team ever sends — and routes replies back into your pipeline.", icon: "recall" },
+  { title: "Replaces the busywork, not the judgment", body: "Prospecting, dialing, follow-up, and logging run autonomously. You approve, close, and keep the relationships.", icon: "approvals" },
+  { title: "Runs with a CRM or none at all", body: "The same playbook works on a team with Salesforce and a team with nothing. Built-in CRM included; plug into yours when ready.", icon: "database" },
 ];
 
 const FAQ = [
@@ -299,26 +302,21 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* What it does */}
       <section className="border-y border-border bg-surface/30">
         <div className="mx-auto max-w-6xl px-5 py-20">
           <div className="mx-auto max-w-2xl text-center">
-            <span className="eyebrow">Proof</span>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">What happens when teams turn it on</h2>
+            <span className="eyebrow">What it does</span>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">A sales rep that doesn&rsquo;t sleep</h2>
           </div>
           <div className="mt-12 grid gap-5 md:grid-cols-3">
-            {TESTIMONIALS.map((t) => (
-              <figure key={t.segment} className="raised flex h-full flex-col rounded-2xl border border-border bg-surface p-7">
-                <blockquote className="flex-1 text-[15px] leading-relaxed text-body">&ldquo;{t.quote}&rdquo;</blockquote>
-                <figcaption className="mt-6 flex items-center gap-3 border-t border-border/60 pt-5">
-                  <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20">
-                    <Icon name={t.icon} size={17} />
-                  </span>
-                  <span className="leading-tight">
-                    <span className="block text-sm font-semibold text-fg">{t.role}</span>
-                    <span className="block text-xs text-muted">{t.segment}</span>
-                  </span>
-                </figcaption>
+            {CAPABILITIES.map((c) => (
+              <figure key={c.title} className="raised flex h-full flex-col rounded-2xl border border-border bg-surface p-7">
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20">
+                  <Icon name={c.icon} size={18} />
+                </span>
+                <figcaption className="mt-5 text-base font-semibold text-fg">{c.title}</figcaption>
+                <p className="mt-2 flex-1 text-[15px] leading-relaxed text-body">{c.body}</p>
               </figure>
             ))}
           </div>
