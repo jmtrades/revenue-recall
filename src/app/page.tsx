@@ -151,8 +151,8 @@ export default function LandingPage() {
                   <Arrow />
                 </span>
               </Link>
-              <Link href="/dashboard" className="cta inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-5 py-2.5 text-sm font-semibold text-fg transition-colors hover:bg-surface-2">
-                Watch it run live
+              <Link href="#how" className="cta inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-5 py-2.5 text-sm font-semibold text-fg transition-colors hover:bg-surface-2">
+                See how it works
                 <Arrow className="text-muted" />
               </Link>
             </div>
@@ -467,8 +467,8 @@ export default function LandingPage() {
                   <Arrow />
                 </span>
               </Link>
-              <Link href="/dashboard" className="cta inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-5 py-2.5 text-sm font-semibold text-fg transition-colors hover:bg-surface-2">
-                Watch it run
+              <Link href="/login" className="cta inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-5 py-2.5 text-sm font-semibold text-fg transition-colors hover:bg-surface-2">
+                Sign in
                 <Arrow className="text-muted" />
               </Link>
             </div>

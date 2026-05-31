@@ -65,8 +65,16 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
     speakHandleRef.current?.stop();
   }, []);
 
-  const canSpeak = typeof window !== "undefined" && isSpeechSupported();
-  const canListen = typeof window !== "undefined" && isRecognitionSupported();
+  // Browser-capability flags must start false so the server render and the first
+  // client (hydration) render agree; flip them on after mount. Computing them
+  // inline during render mismatches hydration (the server has no `window`, the
+  // client does), which surfaces as React #418/#422 on this page.
+  const [canSpeak, setCanSpeak] = useState(false);
+  const [canListen, setCanListen] = useState(false);
+  useEffect(() => {
+    setCanSpeak(isSpeechSupported());
+    setCanListen(isRecognitionSupported());
+  }, []);
 
   useEffect(() => {
     if (canSpeak) loadVoices().then((v) => (voiceRef.current = pickVoice(v, { ...toVoicePrefs(loadVoicePrefs()), lang: speechLang })));

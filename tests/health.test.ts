@@ -65,6 +65,19 @@ describe("health launch-readiness verdict", () => {
     expect(body.launch.ready).toBe(true);
   });
 
+  it("blocks launch when a database is connected without a service-role key", async () => {
+    // Provisioning a new user's first org uses the service-role client (it
+    // bypasses RLS to create the org/member). Without that key every signup
+    // silently dead-ends, so a connected DB with no service role must be loud.
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://x.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon";
+    // SUPABASE_SERVICE_ROLE_KEY intentionally absent
+    const body = await health();
+    expect(body.capabilities.database).toBe("supabase");
+    expect(body.launch.ready).toBe(false);
+    expect(body.launch.blockers.join(" ")).toMatch(/service-role/i);
+  });
+
   it("still reports status ok even when not launch-ready", async () => {
     const body = await health();
     expect(body.status).toBe("ok");

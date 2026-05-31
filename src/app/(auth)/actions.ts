@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getServerSupabase } from "@/lib/supabase/server";
 
 export interface AuthState {
@@ -32,10 +33,17 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   const password = String(formData.get("password") ?? "");
   if (password.length < 8) return { error: "Use at least 8 characters for your password." };
 
+  // Point the confirmation link (if the project requires one) back at our
+  // callback so it completes the session and lands the user in onboarding,
+  // rather than the project's default Site URL.
+  const origin = headers().get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "";
   const { data, error } = await sb.auth.signUp({
     email,
     password,
-    options: { data: { name } },
+    options: {
+      data: { name },
+      emailRedirectTo: origin ? `${origin}/auth/callback?next=/onboarding` : undefined,
+    },
   });
   if (error) return { error: error.message };
 

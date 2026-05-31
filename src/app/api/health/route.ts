@@ -26,6 +26,10 @@ export async function GET() {
   const blockers: string[] = [];
   if (!isSupabaseConfigured()) blockers.push("No database connected (set SUPABASE_* env vars).");
   if (!cfg.authRequired) blockers.push("Auth is optional — connect a database (Supabase) and every user gets their own private workspace automatically, or set NEXT_PUBLIC_AUTH_REQUIRED=true to gate the built-in demo store.");
+  // A connected database with no service-role key looks healthy but can't write:
+  // new users' orgs are provisioned with the service-role client (it bypasses
+  // RLS to create the first org/member), so without it every signup dead-ends.
+  if (isSupabaseConfigured() && !process.env.SUPABASE_SERVICE_ROLE_KEY) blockers.push("Database connected without a service-role key — new accounts can't be provisioned (set SUPABASE_SERVICE_ROLE_KEY).");
 
   const warnings: string[] = [];
   if (!isAiConfigured()) warnings.push("AI is in template mode (set ANTHROPIC_API_KEY for live drafting).");
