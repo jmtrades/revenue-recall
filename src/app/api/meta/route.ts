@@ -13,9 +13,11 @@ export async function GET() {
     provider.listContacts(),
     provider.listUsers(),
   ]);
-  const pipeline = pipelines[0];
   const org = await getOrgSettings();
   const industry = getIndustry(org.industryId);
+  // A provider can return zero pipelines (empty/transient/just-connected source);
+  // fall back to the org's industry template so the create-form metadata never 500s.
+  const pipeline = pipelines[0] ?? (industry.pipeline as typeof pipelines[number]);
   const firstOpen = pipeline.stages.find((s) => s.type === "open") ?? pipeline.stages[0];
 
   return NextResponse.json({

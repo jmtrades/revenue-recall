@@ -9,6 +9,23 @@ import { listEnrollments } from "@/lib/cadence";
 import { listRecallTouches, earliestTouchByDeal, touchesByWeek } from "@/lib/recall/events";
 import type { Activity, Contact, Opportunity, Pipeline, Stage, User } from "@/lib/crm/types";
 
+/**
+ * Guarantee a usable pipeline. A provider can legitimately return zero pipelines
+ * (an empty HTTP-CRM endpoint, a transient read, a freshly-connected source), and
+ * the dashboard/board/analytics all assume `pipelines[0]` exists — passing
+ * undefined into them throws "Cannot read properties of undefined". Falling back
+ * to the active industry's template pipeline (always non-empty) keeps every
+ * surface rendering instead of white-screening.
+ */
+export function safePipeline(pipelines: Pipeline[]): Pipeline {
+  return pipelines[0] ?? (getIndustry(getConfig().industryId).pipeline as Pipeline);
+}
+
+/** Pipelines with the safe fallback guaranteed present as the first entry. */
+function safePipelines(pipelines: Pipeline[]): Pipeline[] {
+  return pipelines.length > 0 ? pipelines : [safePipeline(pipelines)];
+}
+
 /** Everything the dashboard needs in one round trip. */
 export interface Overview {
   orgName: string;
@@ -26,7 +43,8 @@ export async function getOverview(): Promise<Overview> {
   const cfg = getConfig();
   const industry = getIndustry(cfg.industryId);
 
-  const [pipelines, opportunities] = await Promise.all([cachedPipelines(), cachedOpportunities()]);
+  const [rawPipelines, opportunities] = await Promise.all([cachedPipelines(), cachedOpportunities()]);
+  const pipelines = safePipelines(rawPipelines);
   const pipeline = pipelines[0];
   const metrics = computeMetrics(opportunities, pipeline);
   const recall = buildRecallQueue(opportunities, pipelines);
@@ -60,7 +78,7 @@ export async function getBoard(): Promise<BoardData> {
     provider.listUsers(),
   ]);
   return {
-    pipeline: pipelines[0],
+    pipeline: safePipeline(pipelines),
     opportunities,
     contacts: new Map(contacts.map((c) => [c.id, c])),
     owners: new Map(users.map((u) => [u.id, u.name])),
@@ -170,7 +188,7 @@ export async function getCallQueue(): Promise<CallQueueItem[]> {
 export async function getTeamAndPipeline(): Promise<{ users: User[]; pipeline: Pipeline }> {
   const provider = getProvider();
   const [users, pipelines] = await Promise.all([provider.listUsers(), provider.listPipelines()]);
-  return { users, pipeline: pipelines[0] };
+  return { users, pipeline: safePipeline(pipelines) };
 }
 
 export interface LeadRow {
@@ -297,7 +315,7 @@ export async function getDealDetail(id: string): Promise<DealDetail | null> {
     provider.listActivities(id),
     provider.getContact(opp.contactId),
   ]);
-  const pipeline = pipelines.find((p) => p.id === opp.pipelineId) ?? pipelines[0];
+  const pipeline = pipelines.find((p) => p.id === opp.pipelineId) ?? safePipeline(pipelines);
   const stage = pipeline.stages.find((s) => s.id === opp.stageId);
   const industry = getIndustry((await getOrgSettings()).industryId);
   return {
@@ -466,7 +484,7 @@ export interface Forecast {
 export async function getForecast(): Promise<Forecast> {
   const provider = getProvider();
   const [pipelines, opps, org] = await Promise.all([provider.listPipelines(), provider.listOpportunities(), getOrgSettings()]);
-  const pipeline = pipelines[0];
+  const pipeline = safePipeline(pipelines);
   const stageById = new Map(pipeline.stages.map((s) => [s.id, s]));
   const currency = org.currency;
 
@@ -532,7 +550,7 @@ export async function getReports(): Promise<Reports> {
     cachedOpportunities(),
     cachedUsers(),
   ]);
-  const pipeline = pipelines[0];
+  const pipeline = safePipeline(pipelines);
   const metrics = computeMetrics(opps, pipeline);
 
   const funnel = pipeline.stages
