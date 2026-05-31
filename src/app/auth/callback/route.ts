@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { EmailOtpType } from "@supabase/supabase-js";
 import { getServerSupabase } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -9,22 +10,30 @@ function safeNext(next: string | null): string {
   return s.startsWith("/") && !s.startsWith("//") ? s : "/dashboard";
 }
 
-/** Exchanges an OAuth / email-confirmation code for a session, then redirects.
- *  On failure (expired or already-used link), sends the user back to /login with
- *  a friendly flag rather than silently bouncing through the dashboard. */
+/** Completes a sign-in from either flow, then redirects:
+ *   - OAuth / PKCE: `?code=…`            → exchangeCodeForSession
+ *   - email confirm / magic link: `?token_hash=…&type=…` → verifyOtp
+ *  On a missing/expired/used link, sends the user back to /login with a friendly
+ *  flag rather than silently bouncing through the dashboard. */
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
+  const tokenHash = url.searchParams.get("token_hash");
+  const type = url.searchParams.get("type") as EmailOtpType | null;
   const next = safeNext(url.searchParams.get("next"));
-
-  if (!code) {
-    return NextResponse.redirect(new URL("/login?error=link", url.origin));
-  }
 
   const sb = getServerSupabase();
   if (!sb) return NextResponse.redirect(new URL("/login?error=config", url.origin));
 
-  const { error } = await sb.auth.exchangeCodeForSession(code);
+  let error = null;
+  if (code) {
+    ({ error } = await sb.auth.exchangeCodeForSession(code));
+  } else if (tokenHash && type) {
+    ({ error } = await sb.auth.verifyOtp({ type, token_hash: tokenHash }));
+  } else {
+    return NextResponse.redirect(new URL("/login?error=link", url.origin));
+  }
+
   if (error) {
     return NextResponse.redirect(new URL("/login?error=link", url.origin));
   }

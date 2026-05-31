@@ -43,7 +43,7 @@ function EyeIcon({ off }: { off?: boolean }) {
 // Turn raw Supabase auth errors into something a person understands.
 function friendlyError(msg: string): string {
   const m = msg.toLowerCase();
-  if (m.includes("invalid login")) return "That email or password doesn't match. Try again, or reset your password.";
+  if (m.includes("invalid login")) return "That email or password doesn't match. Double-check it, or continue with Google.";
   if (m.includes("already registered") || m.includes("already exists")) return "An account with this email already exists — try signing in instead.";
   if (m.includes("rate limit") || m.includes("too many")) return "Too many attempts. Give it a minute and try again.";
   if (m.includes("email not confirmed")) return "Please confirm your email first — check your inbox for the link.";

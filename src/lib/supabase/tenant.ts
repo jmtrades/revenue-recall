@@ -10,8 +10,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *
  * Returns null when the database has no org yet (run bootstrap).
  */
-let cached: string | null | undefined;
-
 export async function getActiveOrgId(client: SupabaseClient, authUserId?: string): Promise<string | null> {
   if (process.env.DEFAULT_ORG_ID) return process.env.DEFAULT_ORG_ID;
 
@@ -20,12 +18,10 @@ export async function getActiveOrgId(client: SupabaseClient, authUserId?: string
     if (data?.org_id) return data.org_id as string;
   }
 
-  if (cached) return cached;
+  // Single-org fallback — deliberately NOT cached across requests. A module-level
+  // cache could pin one tenant's org onto an unrelated request on a warm
+  // serverless instance (a multi-tenant data-leak hazard). Per-request dedupe
+  // already happens one layer up in active-org.ts via React cache().
   const { data } = await client.from("orgs").select("id").order("created_at", { ascending: true }).limit(1).maybeSingle();
-  if (data?.id) cached = data.id as string;
   return (data?.id as string) ?? null;
-}
-
-export function clearOrgCache() {
-  cached = undefined;
 }
