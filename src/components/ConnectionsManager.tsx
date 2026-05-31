@@ -20,13 +20,17 @@ export function ConnectionsManager({
   initial,
   encryptionAvailable,
   kind,
+  oauthProviders = [],
 }: {
   initial: ConnView[];
   encryptionAvailable: boolean;
   kind: "social" | "database";
+  /** Providers whose OAuth app is configured → show a "Connect with…" button. */
+  oauthProviders?: string[];
 }) {
   const specs = CONNECTION_SPECS.filter((s) => s.kind === kind);
   const byProvider = new Map(initial.map((c) => [c.provider, c]));
+  const oauthSet = new Set(oauthProviders);
   const [open, setOpen] = useState<string | null>(null);
 
   return (
@@ -43,6 +47,7 @@ export function ConnectionsManager({
             spec={spec}
             current={byProvider.get(spec.provider)}
             disabled={!encryptionAvailable}
+            oauth={oauthSet.has(spec.provider)}
             open={open === spec.provider}
             onToggle={() => setOpen(open === spec.provider ? null : spec.provider)}
             onDone={() => setOpen(null)}
@@ -57,6 +62,7 @@ function ConnectionCard({
   spec,
   current,
   disabled,
+  oauth,
   open,
   onToggle,
   onDone,
@@ -64,6 +70,7 @@ function ConnectionCard({
   spec: ProviderSpec;
   current?: ConnView;
   disabled: boolean;
+  oauth: boolean;
   open: boolean;
   onToggle: () => void;
   onDone: () => void;
@@ -118,13 +125,21 @@ function ConnectionCard({
         <span className={`pill shrink-0 ${connected ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>{connected ? "Connected" : "Not connected"}</span>
       </div>
 
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {oauth && (
+          <a
+            href={`/api/oauth/${spec.provider}/start`}
+            className={`rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white transition hover:bg-brand/90 ${disabled ? "pointer-events-none opacity-50" : ""}`}
+          >
+            {connected ? `Reconnect ${spec.label}` : `Connect with ${spec.label}`}
+          </a>
+        )}
         <button
           onClick={onToggle}
           disabled={disabled}
           className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-fg transition hover:bg-surface disabled:opacity-50"
         >
-          {open ? "Cancel" : connected ? "Update" : "Connect"}
+          {open ? "Cancel" : oauth ? "Connect with keys" : connected ? "Update" : "Connect"}
         </button>
         {connected && (
           <button onClick={disconnect} disabled={busy} className="text-xs text-muted transition hover:text-danger disabled:opacity-50">

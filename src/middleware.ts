@@ -22,6 +22,9 @@ const PUBLIC_API = [
 function isPublic(path: string): boolean {
   if (PUBLIC.has(path)) return true;
   if (path.startsWith("/auth/")) return true; // OAuth / email-confirm callback
+  // Social OAuth callback: the platform redirects here with no session; the
+  // signed `state` authenticates the org binding. (The /start route stays gated.)
+  if (path.startsWith("/api/oauth/") && path.endsWith("/callback")) return true;
   return PUBLIC_API.some((p) => (p.endsWith("/") ? path.startsWith(p) : path === p));
 }
 

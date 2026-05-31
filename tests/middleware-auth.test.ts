@@ -9,11 +9,12 @@ import { describe, expect, it } from "vitest";
  * Mirrors the isPublic() logic in src/middleware.ts.
  */
 const PUBLIC = new Set(["/", "/login", "/signup"]);
-const PUBLIC_API = ["/api/billing/webhook", "/api/agent/cron", "/api/inbound/", "/api/unsubscribe", "/api/health", "/api/meta"];
+const PUBLIC_API = ["/api/billing/webhook", "/api/agent/cron", "/api/inbound/", "/api/social/", "/api/unsubscribe", "/api/health", "/api/meta"];
 
 function isPublic(path: string): boolean {
   if (PUBLIC.has(path)) return true;
   if (path.startsWith("/auth/")) return true;
+  if (path.startsWith("/api/oauth/") && path.endsWith("/callback")) return true;
   return PUBLIC_API.some((p) => (p.endsWith("/") ? path.startsWith(p) : path === p));
 }
 
@@ -32,13 +33,13 @@ describe("middleware auth-gate allowlist", () => {
     }
   });
 
-  it("keeps auth screens + callback public", () => {
-    for (const p of ["/", "/login", "/signup", "/auth/callback"]) {
+  it("keeps auth screens + callbacks public", () => {
+    for (const p of ["/", "/login", "/signup", "/auth/callback", "/api/social/whatsapp", "/api/oauth/x/callback", "/api/oauth/instagram/callback"]) {
       expect(isPublic(p)).toBe(true);
     }
   });
 
-  it("gates user pages and user-facing API routes", () => {
+  it("gates user pages and user-facing API routes (incl. OAuth start)", () => {
     for (const p of [
       "/dashboard",
       "/settings",
@@ -48,6 +49,8 @@ describe("middleware auth-gate allowlist", () => {
       "/api/messages/send",
       "/api/billing/checkout", // user-initiated → must require a session
       "/api/org",
+      "/api/connections",
+      "/api/oauth/x/start", // starting a connection must be done by a signed-in member
     ]) {
       expect(isPublic(p), `${p} must require auth`).toBe(false);
     }
