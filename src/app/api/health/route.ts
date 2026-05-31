@@ -25,7 +25,7 @@ export async function GET() {
   // isolation) is loud, not silent. `blockers` must be empty to be launch-ready.
   const blockers: string[] = [];
   if (!isSupabaseConfigured()) blockers.push("No database connected (set SUPABASE_* env vars).");
-  if (!cfg.authRequired) blockers.push("Auth is optional — it auto-enables when a database is connected; remove any NEXT_PUBLIC_AUTH_REQUIRED=false override so each user gets their own private workspace.");
+  if (!cfg.authRequired) blockers.push("Auth is optional — connect a database (Supabase) and every user gets their own private workspace automatically, or set NEXT_PUBLIC_AUTH_REQUIRED=true to gate the built-in demo store.");
 
   const warnings: string[] = [];
   if (!isAiConfigured()) warnings.push("AI is in template mode (set ANTHROPIC_API_KEY for live drafting).");

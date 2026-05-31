@@ -52,14 +52,17 @@ describe("health launch-readiness verdict", () => {
     expect(body.launch.blockers).toEqual([]);
   });
 
-  it("honors an explicit opt-out even with a database connected", async () => {
+  it("ignores a stray NEXT_PUBLIC_AUTH_REQUIRED=false when a database is connected", async () => {
+    // A leftover opt-out must never drop a real multi-tenant deploy back into an
+    // open, shared-workspace state — the exact production misconfig that left
+    // every visitor on one org. A connected database forces auth on, full stop.
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://x.supabase.co";
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "svc";
     process.env.NEXT_PUBLIC_AUTH_REQUIRED = "false";
     const body = await health();
-    expect(body.capabilities.auth).toBe("optional");
-    expect(body.launch.ready).toBe(false);
+    expect(body.capabilities.auth).toBe("required");
+    expect(body.launch.ready).toBe(true);
   });
 
   it("still reports status ok even when not launch-ready", async () => {
