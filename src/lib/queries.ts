@@ -344,34 +344,73 @@ export interface InboxThread {
   messages: InboxMessage[];
 }
 
+const INBOX_MESSAGE_KINDS = ["email", "sms", "call", "note"];
+
+/**
+ * Social DMs are logged as kind:"note" with a "[Platform]" prefix on the summary
+ * (see lib/social/ingest). Pull the platform back out so the inbox shows the real
+ * channel (WhatsApp, Instagram, …) and a clean message body without the tag.
+ */
+function parseInboxChannel(a: Activity): { channel: string; body: string } {
+  if (a.kind === "note") {
+    const m = a.summary.match(/^\[([A-Za-z]+)\]\s*([\s\S]*)$/);
+    if (m) return { channel: m[1].toLowerCase(), body: m[2] };
+  }
+  return { channel: a.kind, body: a.summary };
+}
+
+function buildInboxThread(contact: Contact, acts: Activity[]): InboxThread | null {
+  const msgs = acts.filter((a) => INBOX_MESSAGE_KINDS.includes(a.kind));
+  if (msgs.length === 0) return null;
+  const newestFirst = msgs.slice().sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1));
+  const last = newestFirst[0];
+  const lastParsed = parseInboxChannel(last);
+  const messages: InboxMessage[] = newestFirst
+    .slice()
+    .reverse()
+    .map((a) => {
+      const p = parseInboxChannel(a);
+      return { id: a.id, channel: p.channel, direction: a.direction ?? "outbound", body: p.body, at: a.occurredAt };
+    });
+  return {
+    contactId: contact.id,
+    contactName: contact.name,
+    company: contact.company ?? "",
+    channel: lastParsed.channel,
+    lastAt: last.occurredAt,
+    snippet: lastParsed.body,
+    unread: last.direction === "inbound",
+    messages,
+  };
+}
+
+/**
+ * Unified inbox across every channel — email, SMS, calls, and all social DMs.
+ *
+ * Built from recent activities grouped by contact (one query, not one per deal),
+ * so it scales and naturally includes inbound social DMs that created a contact
+ * but no deal yet. Every activity carries contactId, so deal-linked and
+ * contact-only messages land in the same thread.
+ */
 export async function getInbox(): Promise<InboxThread[]> {
   const provider = getProvider();
-  const [contacts, opps] = await Promise.all([provider.listContacts(), provider.listOpportunities()]);
+  const [contacts, acts] = await Promise.all([provider.listContacts(), provider.listRecentActivities(500)]);
   const cById = new Map(contacts.map((c) => [c.id, c]));
-  const oppsByContact = new Map<string, string>();
-  for (const o of opps) if (!oppsByContact.has(o.contactId)) oppsByContact.set(o.contactId, o.id);
+
+  const byContact = new Map<string, Activity[]>();
+  for (const a of acts) {
+    if (!a.contactId || !INBOX_MESSAGE_KINDS.includes(a.kind)) continue;
+    const list = byContact.get(a.contactId);
+    if (list) list.push(a);
+    else byContact.set(a.contactId, [a]);
+  }
 
   const threads: InboxThread[] = [];
-  for (const [contactId, oppId] of oppsByContact) {
+  for (const [contactId, list] of byContact) {
     const contact = cById.get(contactId);
     if (!contact) continue;
-    const acts = (await provider.listActivities(oppId)).filter((a) => ["email", "sms", "call", "note"].includes(a.kind));
-    if (acts.length === 0) continue;
-    const messages: InboxMessage[] = acts
-      .slice()
-      .reverse()
-      .map((a) => ({ id: a.id, channel: a.kind, direction: a.direction ?? "outbound", body: a.summary, at: a.occurredAt }));
-    const last = acts[0];
-    threads.push({
-      contactId,
-      contactName: contact.name,
-      company: contact.company ?? "",
-      channel: last.kind,
-      lastAt: last.occurredAt,
-      snippet: last.summary,
-      unread: last.direction === "inbound",
-      messages,
-    });
+    const t = buildInboxThread(contact, list);
+    if (t) threads.push(t);
   }
   return threads.sort((a, b) => (a.lastAt < b.lastAt ? 1 : -1)).slice(0, 20);
 }

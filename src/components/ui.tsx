@@ -190,22 +190,46 @@ export function ReasonBadge({ reason }: { reason: string }) {
   return <span className={`pill ${s.cls}`}>{s.label}</span>;
 }
 
-const CHANNEL_ICON: Record<string, IconName> = { call: "dialer", email: "mail", sms: "message", note: "note" };
+const CHANNEL_ICON: Record<string, IconName> = {
+  call: "dialer",
+  email: "mail",
+  sms: "message",
+  note: "note",
+  // Social DMs all render with the message glyph; the label disambiguates them.
+  whatsapp: "message",
+  instagram: "message",
+  messenger: "message",
+  telegram: "message",
+  linkedin: "message",
+  x: "message",
+};
 
 export function ChannelIcon({ channel, size = 13, className = "" }: { channel: string; size?: number; className?: string }) {
   return <Icon name={CHANNEL_ICON[channel] ?? "recall"} size={size} className={`inline-block shrink-0 ${className}`} />;
 }
 
+const CHANNEL_LABEL: Record<string, string> = {
+  call: "Call",
+  email: "Email",
+  sms: "SMS",
+  whatsapp: "WhatsApp",
+  instagram: "Instagram",
+  messenger: "Messenger",
+  telegram: "Telegram",
+  linkedin: "LinkedIn",
+  x: "X",
+};
+
+/** Human label for a channel id (e.g. "whatsapp" → "WhatsApp"). */
+export function channelLabel(channel: string): string {
+  return CHANNEL_LABEL[channel] ?? channel.charAt(0).toUpperCase() + channel.slice(1);
+}
+
 export function ChannelBadge({ channel }: { channel: string }) {
-  const map: Record<string, { icon: IconName; label: string }> = {
-    call: { icon: "dialer", label: "Call" },
-    email: { icon: "mail", label: "Email" },
-    sms: { icon: "message", label: "SMS" },
-  };
-  const c = map[channel] ?? { icon: "recall" as IconName, label: channel };
+  const icon = CHANNEL_ICON[channel] ?? ("recall" as IconName);
   return (
     <span className="pill gap-1 bg-surface-2 text-muted">
-      <Icon name={c.icon} size={12} /> {c.label}
+      <Icon name={icon} size={12} /> {channelLabel(channel)}
     </span>
   );
 }

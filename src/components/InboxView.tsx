@@ -4,11 +4,18 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { InboxThread } from "@/lib/queries";
-import { Avatar, ChannelIcon } from "@/components/ui";
+import { Avatar, ChannelIcon, ChannelBadge, channelLabel } from "@/components/ui";
 
 function timeAgo(iso: string): string {
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
   return d <= 0 ? "today" : d === 1 ? "1d" : d < 30 ? `${d}d` : `${Math.round(d / 30)}mo`;
+}
+
+// Channels a reply can actually be sent on. A thread whose newest message was a
+// call or internal note isn't directly repliable, so we fall back to email.
+const SENDABLE = new Set(["email", "sms", "whatsapp", "instagram", "messenger", "telegram", "x", "linkedin"]);
+function replyChannel(channel: string): string {
+  return SENDABLE.has(channel) ? channel : "email";
 }
 
 export function InboxView({ threads }: { threads: InboxThread[] }) {
@@ -24,7 +31,7 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
     if (!active || !draft.trim()) return;
     setSending(true);
     try {
-      const channel = active.channel === "sms" ? "sms" : "email";
+      const channel = replyChannel(active.channel);
       const res = await fetch("/api/messages/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -87,7 +94,10 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
                   <div className="text-xs text-muted">{active.company}</div>
                 </div>
               </div>
-              <Link href={`/leads/${active.contactId}`} className="text-sm text-brand hover:underline">View contact →</Link>
+              <div className="flex items-center gap-3">
+                <ChannelBadge channel={active.channel} />
+                <Link href={`/leads/${active.contactId}`} className="text-sm text-brand hover:underline">View contact →</Link>
+              </div>
             </div>
             <div className="flex-1 space-y-3 overflow-y-auto p-4">
               {active.messages.map((m) => (
@@ -109,7 +119,7 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
                 />
                 <button onClick={send} disabled={sending || !draft.trim()} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{sending ? "Sending…" : "Send"}</button>
               </div>
-              <p className="mt-1.5 text-[11px] text-muted">Delivered via your email/SMS provider when configured — otherwise logged to the timeline.</p>
+              <p className="mt-1.5 text-[11px] text-muted">Replies go back out on {channelLabel(replyChannel(active.channel))} when that channel is connected — otherwise logged to the timeline.</p>
             </div>
           </>
         )}

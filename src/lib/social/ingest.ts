@@ -19,6 +19,15 @@ export function socialAttrKey(platform: SocialPlatform): string {
   return `social:${platform}`;
 }
 
+/**
+ * The "[Platform]" tag prefixed onto a social message's timeline summary, so the
+ * inbox can recover the channel from a note. Shared by the inbound ingest and
+ * the outbound reply path so the two formats can never drift apart.
+ */
+export function platformTag(platform: SocialPlatform): string {
+  return platform.charAt(0).toUpperCase() + platform.slice(1);
+}
+
 function matchBySocial(contacts: Contact[], platform: SocialPlatform, externalId: string): Contact | undefined {
   const key = socialAttrKey(platform);
   const id = externalId.trim();
@@ -75,7 +84,7 @@ export async function ingestSocialMessages(messages: InboundSocialMessage[]): Pr
       await provider.logActivity({
         contactId: contact.id,
         kind: "note",
-        summary: `[${cap(platform)}] ${m.text}`,
+        summary: `[${platformTag(platform)}] ${m.text}`,
         direction: "inbound",
         occurredAt: m.at,
       });
