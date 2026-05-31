@@ -4,9 +4,28 @@ import { createServerClient } from "@supabase/ssr";
 // Public routes that never require a session.
 const PUBLIC = new Set(["/", "/login", "/signup"]);
 
+// Machine-to-machine API endpoints that authenticate by their OWN secret
+// (Stripe signature, CRON_SECRET, INBOUND_TOKEN, UNSUBSCRIBE_SECRET) and must
+// never be redirected to an HTML /login — a 307 there would silently break the
+// caller. Most critically the billing webhook: gating it would leave paid
+// subscriptions un-activated. Each of these enforces its own auth internally.
+const PUBLIC_API = [
+  "/api/billing/webhook",
+  "/api/agent/cron",
+  "/api/inbound/", // email + sms
+  "/api/social/", // social webhooks (WhatsApp, Instagram, Messenger, Telegram, X) — each verifies its own signature/secret
+  "/api/unsubscribe",
+  "/api/health",
+  "/api/meta",
+];
+
 function isPublic(path: string): boolean {
   if (PUBLIC.has(path)) return true;
-  return path.startsWith("/auth/"); // OAuth / email-confirm callback
+  if (path.startsWith("/auth/")) return true; // OAuth / email-confirm callback
+  // Social OAuth callback: the platform redirects here with no session; the
+  // signed `state` authenticates the org binding. (The /start route stays gated.)
+  if (path.startsWith("/api/oauth/") && path.endsWith("/callback")) return true;
+  return PUBLIC_API.some((p) => (p.endsWith("/") ? path.startsWith(p) : path === p));
 }
 
 export async function middleware(req: NextRequest) {
@@ -46,7 +65,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
-  // Gate app routes only when auth is required (keeps the public demo working).
+  // Gate everything that isn't public when auth is required (keeps the public
+  // demo working). isPublic() allowlists the auth screens + the secret-authed
+  // machine endpoints, so the Stripe webhook/cron/inbound keep working while
+  // user pages and user-facing API routes still require a session.
   if (authRequired && !userId && !isPublic(path)) {
     const to = new URL("/login", req.url);
     to.searchParams.set("next", path);

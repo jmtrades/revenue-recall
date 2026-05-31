@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/icons";
 import { TONES, DEFAULT_TONE, type ToneId } from "@/lib/tones";
 import {
   isSpeechSupported,
@@ -225,7 +226,7 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
   return (
     <div className="card">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 font-semibold text-fg">🎙 Practice this call
+        <h2 className="flex items-center gap-2 font-semibold text-fg"><Icon name="mic" size={16} className="text-brand" /> Practice this call
           {mood && <span className="pill bg-surface-2 text-muted">reading the room: {mood}</span>}
         </h2>
         <div className="flex items-center gap-1.5">
@@ -239,7 +240,7 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
           </select>
           {canSpeak && (
             <button onClick={() => setVoiceOn((v) => !v)} title="Toggle spoken voice" className={`rounded-lg border px-2 py-1 text-xs transition ${voiceOn ? "border-brand text-brand" : "border-border text-muted"}`}>
-              {voiceOn ? "🔊" : "🔇"}
+              <Icon name={voiceOn ? "volume" : "mute"} size={14} />
             </button>
           )}
           {canListen && (
@@ -248,7 +249,10 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
               title="Hands-free: it listens, pauses, and you can talk over it"
               className={`rounded-lg border px-2 py-1 text-xs transition ${live ? "border-success text-success" : "border-border text-muted"}`}
             >
-              {live ? "● Live" : "Live"}
+              <span className="inline-flex items-center gap-1.5">
+                {live && <span className="h-1.5 w-1.5 rounded-full bg-success" />}
+                Live
+              </span>
             </button>
           )}
         </div>
@@ -298,7 +302,17 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
             />
             {canListen && (
               <button onClick={mic} disabled={busy || listening} title="Speak your response" className={`rounded-lg border px-3 py-2 text-sm transition ${listening ? "border-danger text-danger" : "border-border text-muted hover:text-fg"} disabled:opacity-50`}>
-                {listening ? "● listening" : "🎤"}
+                {listening ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-danger/70" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-danger" />
+                    </span>
+                    listening
+                  </span>
+                ) : (
+                  <Icon name="mic" size={15} />
+                )}
               </button>
             )}
             <button onClick={() => send(input)} disabled={busy || !input.trim()} className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
@@ -307,8 +321,8 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
           </div>
           <div className="mt-2 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button onClick={coachMe} disabled={busy} className="text-xs text-brand hover:underline disabled:opacity-50">💡 Coach me</button>
-              <button onClick={() => setScore(analyzeCall(turns))} disabled={turns.length < 2} className="text-xs text-brand hover:underline disabled:opacity-50">📊 Score call</button>
+              <button onClick={coachMe} disabled={busy} className="text-xs text-brand hover:underline disabled:opacity-50">Coach me</button>
+              <button onClick={() => setScore(analyzeCall(turns))} disabled={turns.length < 2} className="text-xs text-brand hover:underline disabled:opacity-50">Score call</button>
             </div>
             <button onClick={reset} className="text-xs text-muted hover:text-fg">Reset</button>
           </div>
@@ -323,11 +337,11 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
                 <span>Talk ratio: <span className="text-fg">{Math.round(score.talkRatio * 100)}% you</span></span>
                 <span>Questions asked: <span className="text-fg">{score.questionsAsked}</span></span>
                 <span>Their mood: <span className="text-fg">{score.sentimentArc}</span></span>
-                <span>Next step: <span className="text-fg">{score.nextStepSecured ? "booked ✓" : "none"}</span></span>
+                <span>Next step: <span className={`inline-flex items-center gap-1 ${score.nextStepSecured ? "text-success" : "text-fg"}`}>{score.nextStepSecured ? <><Icon name="check" size={12} strokeWidth={3} /> booked</> : "none"}</span></span>
               </div>
               {score.objections.length > 0 && (
                 <p className="mt-2 text-xs text-muted">
-                  Objections: {score.objections.map((o) => `${o.intent}${o.handled ? " ✓" : " ✗"}`).join(", ")}
+                  Objections: {score.objections.map((o) => `${o.intent} (${o.handled ? "handled" : "missed"})`).join(", ")}
                 </p>
               )}
               <ul className="mt-2 space-y-1">

@@ -43,6 +43,7 @@ export class HttpCrmProvider implements CrmProvider {
       label: "Custom CRM (HTTP)",
       capabilities: { read: true, write: true, activities: true, customFields: true },
       ready: Boolean(this.base),
+      setupHint: "Connect any REST CRM that speaks the universal shape. Set CRM_HTTP_BASE_URL.",
     };
   }
 

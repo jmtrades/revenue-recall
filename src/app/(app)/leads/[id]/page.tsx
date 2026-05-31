@@ -55,7 +55,7 @@ export default async function ContactPage({ params }: { params: { id: string } }
         <div className="space-y-6 lg:col-span-2">
           <Card title="Deals">
             {deals.length === 0 ? (
-              <EmptyState title="No deals" />
+              <EmptyState iconName="pipeline" title="No deals" hint="Deals you create for this contact will appear here." />
             ) : (
               <ul className="space-y-2">
                 {deals.map((d) => (
@@ -72,7 +72,7 @@ export default async function ContactPage({ params }: { params: { id: string } }
 
           <Card title="Activity">
             {activities.length === 0 ? (
-              <EmptyState icon="📋" title="No activity yet" />
+              <EmptyState iconName="note" title="No activity yet" />
             ) : (
               <ol className="space-y-4">
                 {activities.slice(0, 20).map((a) => (

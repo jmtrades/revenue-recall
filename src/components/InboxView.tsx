@@ -4,13 +4,18 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { InboxThread } from "@/lib/queries";
-import { Avatar } from "@/components/ui";
-
-const CHANNEL: Record<string, string> = { email: "✉", sms: "💬", call: "📞", note: "📝" };
+import { Avatar, ChannelIcon, ChannelBadge, channelLabel, EmptyState, Button } from "@/components/ui";
 
 function timeAgo(iso: string): string {
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
   return d <= 0 ? "today" : d === 1 ? "1d" : d < 30 ? `${d}d` : `${Math.round(d / 30)}mo`;
+}
+
+// Channels a reply can actually be sent on. A thread whose newest message was a
+// call or internal note isn't directly repliable, so we fall back to email.
+const SENDABLE = new Set(["email", "sms", "whatsapp", "instagram", "messenger", "telegram", "x", "linkedin"]);
+function replyChannel(channel: string): string {
+  return SENDABLE.has(channel) ? channel : "email";
 }
 
 export function InboxView({ threads }: { threads: InboxThread[] }) {
@@ -26,7 +31,7 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
     if (!active || !draft.trim()) return;
     setSending(true);
     try {
-      const channel = active.channel === "sms" ? "sms" : "email";
+      const channel = replyChannel(active.channel);
       const res = await fetch("/api/messages/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -41,6 +46,19 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
     }
   }
 
+  // Nothing has come in yet — show one clear, full-width empty state rather than
+  // an empty split view with a thin "No conversations" line.
+  if (threads.length === 0) {
+    return (
+      <EmptyState
+        iconName="inbox"
+        title="No conversations yet"
+        hint="Every reply across email, SMS, and connected social channels (WhatsApp, Instagram, Messenger, Telegram, X, LinkedIn) lands here in one thread. Connect a channel and inbound messages flow straight in."
+        action={<Button href="/settings?tab=channels" variant="outline" size="sm">Connect a channel</Button>}
+      />
+    );
+  }
+
   return (
     <div className="grid h-[calc(100vh-12rem)] grid-cols-1 gap-4 md:grid-cols-[320px_1fr]">
       <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface">
@@ -53,7 +71,7 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
         </div>
         <div className="flex-1 overflow-y-auto">
           {shown.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted">No conversations.</p>
+            <p className="px-4 py-8 text-center text-sm text-muted">No unread conversations.</p>
           ) : (
             shown.map((t) => (
               <button
@@ -67,7 +85,7 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
                     <span className="truncate text-sm font-medium text-fg">{t.contactName}</span>
                     <span className="shrink-0 text-xs text-muted">{timeAgo(t.lastAt)}</span>
                   </div>
-                  <p className="truncate text-xs text-muted">{CHANNEL[t.channel]} {t.snippet}</p>
+                  <p className="truncate text-xs text-muted"><ChannelIcon channel={t.channel} size={12} className="mr-1 align-[-2px] text-muted/80" />{t.snippet}</p>
                 </div>
                 {t.unread && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand" />}
               </button>
@@ -89,14 +107,17 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
                   <div className="text-xs text-muted">{active.company}</div>
                 </div>
               </div>
-              <Link href={`/leads/${active.contactId}`} className="text-sm text-brand hover:underline">View contact →</Link>
+              <div className="flex items-center gap-3">
+                <ChannelBadge channel={active.channel} />
+                <Link href={`/leads/${active.contactId}`} className="text-sm text-brand hover:underline">View contact →</Link>
+              </div>
             </div>
             <div className="flex-1 space-y-3 overflow-y-auto p-4">
               {active.messages.map((m) => (
                 <div key={m.id} className={`flex ${m.direction === "outbound" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm ${m.direction === "outbound" ? "bg-brand text-white" : "bg-surface-2 text-white"}`}>
                     <p>{m.body}</p>
-                    <p className={`mt-1 text-[10px] ${m.direction === "outbound" ? "text-fg/70" : "text-muted"}`}>{CHANNEL[m.channel]} · {timeAgo(m.at)} ago</p>
+                    <p className={`mt-1 flex items-center gap-1 text-[10px] ${m.direction === "outbound" ? "text-fg/70" : "text-muted"}`}><ChannelIcon channel={m.channel} size={11} /> · {timeAgo(m.at)} ago</p>
                   </div>
                 </div>
               ))}
@@ -111,7 +132,7 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
                 />
                 <button onClick={send} disabled={sending || !draft.trim()} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{sending ? "Sending…" : "Send"}</button>
               </div>
-              <p className="mt-1.5 text-[11px] text-muted">Delivered via your email/SMS provider when configured — otherwise logged to the timeline.</p>
+              <p className="mt-1.5 text-[11px] text-muted">Replies go back out on {channelLabel(replyChannel(active.channel))} when that channel is connected — otherwise logged to the timeline.</p>
             </div>
           </>
         )}

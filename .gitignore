@@ -33,3 +33,7 @@ next-env.d.ts
 
 # built-in CRM disk persistence (opt-in via BUILTIN_PERSIST)
 /.data
+
+# local visual-QA tooling (headless screenshots; not part of the app)
+/.shot.mjs
+/shot-*.png

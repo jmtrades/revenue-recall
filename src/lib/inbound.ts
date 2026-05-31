@@ -8,6 +8,7 @@ import { detectIntent } from "@/lib/ai/intent";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { createOutboxItem } from "@/lib/agent/store";
+import { fireSpeedToLead } from "@/lib/agent/speed-to-lead";
 import type { Contact, CrmProvider, Opportunity } from "@/lib/crm/types";
 
 function digits(s: string): string {
@@ -57,6 +58,9 @@ async function captureUnmatched(
     const contact = await provider.createContact({ name, points: [{ channel: channel === "email" ? "email" : "phone", value: from }] });
     await provider.logActivity({ contactId: contact.id, kind: channel, summary: subject ? `${subject}\n\n${body}` : body, direction: "inbound", occurredAt: now });
     await provider.logActivity({ contactId: contact.id, kind: "task", summary: `New inbound from ${name} — follow up`, occurredAt: now });
+    // Speed-to-lead: if the org runs new-lead autopilot, start working this fresh
+    // lead immediately rather than waiting for the daily cron.
+    await fireSpeedToLead(contact.id);
     return { matched: false, contactId: contact.id, action: "logged", messageTaken: true, intent: detectIntent(body) };
   } catch {
     return { matched: false, action: "unmatched" };

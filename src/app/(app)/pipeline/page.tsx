@@ -1,7 +1,7 @@
 import { getBoard } from "@/lib/queries";
 import { getProvider } from "@/lib/crm/registry";
 import { money } from "@/lib/format";
-import { PageHeader } from "@/components/ui";
+import { PageHeader, EmptyState, Button } from "@/components/ui";
 import { Board } from "@/components/Board";
 
 export const dynamic = "force-dynamic";
@@ -25,9 +25,23 @@ export default async function PipelinePage() {
         title={pipeline.label}
         subtitle={canWrite ? `${money(openValue, opportunities[0]?.currency ?? "USD")} open · drag cards between stages` : "Read-only — your CRM controls stage changes."}
       />
-      <div className="overflow-x-auto pb-4">
-        <Board pipeline={pipeline} opportunities={opportunities} contacts={contactMap} owners={ownerMap} canWrite={canWrite} />
-      </div>
+      {opportunities.length === 0 ? (
+        <EmptyState
+          iconName="pipeline"
+          title="Your board is empty"
+          hint="Import your leads or connect a source and deals will populate these stages automatically. Then drag cards between stages to move them forward."
+          action={
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button href="/settings?tab=import" variant="primary" size="sm">Import leads</Button>
+              <Button href="/leads" variant="outline" size="sm">View leads</Button>
+            </div>
+          }
+        />
+      ) : (
+        <div className="overflow-x-auto pb-4">
+          <Board pipeline={pipeline} opportunities={opportunities} contacts={contactMap} owners={ownerMap} canWrite={canWrite} />
+        </div>
+      )}
     </div>
   );
 }

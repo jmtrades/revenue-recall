@@ -9,6 +9,23 @@ import { listEnrollments } from "@/lib/cadence";
 import { listRecallTouches, earliestTouchByDeal, touchesByWeek } from "@/lib/recall/events";
 import type { Activity, Contact, Opportunity, Pipeline, Stage, User } from "@/lib/crm/types";
 
+/**
+ * Guarantee a usable pipeline. A provider can legitimately return zero pipelines
+ * (an empty HTTP-CRM endpoint, a transient read, a freshly-connected source), and
+ * the dashboard/board/analytics all assume `pipelines[0]` exists — passing
+ * undefined into them throws "Cannot read properties of undefined". Falling back
+ * to the active industry's template pipeline (always non-empty) keeps every
+ * surface rendering instead of white-screening.
+ */
+export function safePipeline(pipelines: Pipeline[]): Pipeline {
+  return pipelines[0] ?? (getIndustry(getConfig().industryId).pipeline as Pipeline);
+}
+
+/** Pipelines with the safe fallback guaranteed present as the first entry. */
+function safePipelines(pipelines: Pipeline[]): Pipeline[] {
+  return pipelines.length > 0 ? pipelines : [safePipeline(pipelines)];
+}
+
 /** Everything the dashboard needs in one round trip. */
 export interface Overview {
   orgName: string;
@@ -26,7 +43,8 @@ export async function getOverview(): Promise<Overview> {
   const cfg = getConfig();
   const industry = getIndustry(cfg.industryId);
 
-  const [pipelines, opportunities] = await Promise.all([cachedPipelines(), cachedOpportunities()]);
+  const [rawPipelines, opportunities] = await Promise.all([cachedPipelines(), cachedOpportunities()]);
+  const pipelines = safePipelines(rawPipelines);
   const pipeline = pipelines[0];
   const metrics = computeMetrics(opportunities, pipeline);
   const recall = buildRecallQueue(opportunities, pipelines);
@@ -60,7 +78,7 @@ export async function getBoard(): Promise<BoardData> {
     provider.listUsers(),
   ]);
   return {
-    pipeline: pipelines[0],
+    pipeline: safePipeline(pipelines),
     opportunities,
     contacts: new Map(contacts.map((c) => [c.id, c])),
     owners: new Map(users.map((u) => [u.id, u.name])),
@@ -69,10 +87,13 @@ export async function getBoard(): Promise<BoardData> {
 
 export async function getRecallQueue(): Promise<{ items: RecallItem[]; summary: RecallSummary; contacts: Map<string, Contact>; opps: Map<string, Opportunity> }> {
   const provider = getProvider();
+  // Route the no-arg list reads through the request-cache so a dashboard render
+  // (overview + recall + feed) shares one fetch each instead of re-reading all
+  // contacts/opps per helper. listRecentActivities is parameterized, so direct.
   const [pipelines, opportunities, contacts, recent] = await Promise.all([
-    provider.listPipelines(),
-    provider.listOpportunities(),
-    provider.listContacts(),
+    cachedPipelines(),
+    cachedOpportunities(),
+    cachedContacts(),
     provider.listRecentActivities(250).catch(() => [] as Activity[]),
   ]);
   // Group recent activities by opportunity so the engine can route to the
@@ -167,7 +188,7 @@ export async function getCallQueue(): Promise<CallQueueItem[]> {
 export async function getTeamAndPipeline(): Promise<{ users: User[]; pipeline: Pipeline }> {
   const provider = getProvider();
   const [users, pipelines] = await Promise.all([provider.listUsers(), provider.listPipelines()]);
-  return { users, pipeline: pipelines[0] };
+  return { users, pipeline: safePipeline(pipelines) };
 }
 
 export interface LeadRow {
@@ -294,7 +315,7 @@ export async function getDealDetail(id: string): Promise<DealDetail | null> {
     provider.listActivities(id),
     provider.getContact(opp.contactId),
   ]);
-  const pipeline = pipelines.find((p) => p.id === opp.pipelineId) ?? pipelines[0];
+  const pipeline = pipelines.find((p) => p.id === opp.pipelineId) ?? safePipeline(pipelines);
   const stage = pipeline.stages.find((s) => s.id === opp.stageId);
   const industry = getIndustry((await getOrgSettings()).industryId);
   return {
@@ -344,34 +365,73 @@ export interface InboxThread {
   messages: InboxMessage[];
 }
 
+const INBOX_MESSAGE_KINDS = ["email", "sms", "call", "note"];
+
+/**
+ * Social DMs are logged as kind:"note" with a "[Platform]" prefix on the summary
+ * (see lib/social/ingest). Pull the platform back out so the inbox shows the real
+ * channel (WhatsApp, Instagram, …) and a clean message body without the tag.
+ */
+function parseInboxChannel(a: Activity): { channel: string; body: string } {
+  if (a.kind === "note") {
+    const m = a.summary.match(/^\[([A-Za-z]+)\]\s*([\s\S]*)$/);
+    if (m) return { channel: m[1].toLowerCase(), body: m[2] };
+  }
+  return { channel: a.kind, body: a.summary };
+}
+
+function buildInboxThread(contact: Contact, acts: Activity[]): InboxThread | null {
+  const msgs = acts.filter((a) => INBOX_MESSAGE_KINDS.includes(a.kind));
+  if (msgs.length === 0) return null;
+  const newestFirst = msgs.slice().sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1));
+  const last = newestFirst[0];
+  const lastParsed = parseInboxChannel(last);
+  const messages: InboxMessage[] = newestFirst
+    .slice()
+    .reverse()
+    .map((a) => {
+      const p = parseInboxChannel(a);
+      return { id: a.id, channel: p.channel, direction: a.direction ?? "outbound", body: p.body, at: a.occurredAt };
+    });
+  return {
+    contactId: contact.id,
+    contactName: contact.name,
+    company: contact.company ?? "",
+    channel: lastParsed.channel,
+    lastAt: last.occurredAt,
+    snippet: lastParsed.body,
+    unread: last.direction === "inbound",
+    messages,
+  };
+}
+
+/**
+ * Unified inbox across every channel — email, SMS, calls, and all social DMs.
+ *
+ * Built from recent activities grouped by contact (one query, not one per deal),
+ * so it scales and naturally includes inbound social DMs that created a contact
+ * but no deal yet. Every activity carries contactId, so deal-linked and
+ * contact-only messages land in the same thread.
+ */
 export async function getInbox(): Promise<InboxThread[]> {
   const provider = getProvider();
-  const [contacts, opps] = await Promise.all([provider.listContacts(), provider.listOpportunities()]);
+  const [contacts, acts] = await Promise.all([provider.listContacts(), provider.listRecentActivities(500)]);
   const cById = new Map(contacts.map((c) => [c.id, c]));
-  const oppsByContact = new Map<string, string>();
-  for (const o of opps) if (!oppsByContact.has(o.contactId)) oppsByContact.set(o.contactId, o.id);
+
+  const byContact = new Map<string, Activity[]>();
+  for (const a of acts) {
+    if (!a.contactId || !INBOX_MESSAGE_KINDS.includes(a.kind)) continue;
+    const list = byContact.get(a.contactId);
+    if (list) list.push(a);
+    else byContact.set(a.contactId, [a]);
+  }
 
   const threads: InboxThread[] = [];
-  for (const [contactId, oppId] of oppsByContact) {
+  for (const [contactId, list] of byContact) {
     const contact = cById.get(contactId);
     if (!contact) continue;
-    const acts = (await provider.listActivities(oppId)).filter((a) => ["email", "sms", "call", "note"].includes(a.kind));
-    if (acts.length === 0) continue;
-    const messages: InboxMessage[] = acts
-      .slice()
-      .reverse()
-      .map((a) => ({ id: a.id, channel: a.kind, direction: a.direction ?? "outbound", body: a.summary, at: a.occurredAt }));
-    const last = acts[0];
-    threads.push({
-      contactId,
-      contactName: contact.name,
-      company: contact.company ?? "",
-      channel: last.kind,
-      lastAt: last.occurredAt,
-      snippet: last.summary,
-      unread: last.direction === "inbound",
-      messages,
-    });
+    const t = buildInboxThread(contact, list);
+    if (t) threads.push(t);
   }
   return threads.sort((a, b) => (a.lastAt < b.lastAt ? 1 : -1)).slice(0, 20);
 }
@@ -424,7 +484,7 @@ export interface Forecast {
 export async function getForecast(): Promise<Forecast> {
   const provider = getProvider();
   const [pipelines, opps, org] = await Promise.all([provider.listPipelines(), provider.listOpportunities(), getOrgSettings()]);
-  const pipeline = pipelines[0];
+  const pipeline = safePipeline(pipelines);
   const stageById = new Map(pipeline.stages.map((s) => [s.id, s]));
   const currency = org.currency;
 
@@ -490,7 +550,7 @@ export async function getReports(): Promise<Reports> {
     cachedOpportunities(),
     cachedUsers(),
   ]);
-  const pipeline = pipelines[0];
+  const pipeline = safePipeline(pipelines);
   const metrics = computeMetrics(opps, pipeline);
 
   const funnel = pipeline.stages

@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { handleInbound } from "@/lib/inbound";
 import { getProvider } from "@/lib/crm/registry";
+import { createTask } from "@/lib/agent/store";
+import { listEnrollments } from "@/lib/cadence";
 
 // Uses the built-in (in-memory) provider. No AI key, so replies use the human
 // template fallback and REPLY_AUTOPILOT stays off (queued to Approvals).
@@ -49,5 +51,26 @@ describe("inbound message handling", () => {
     expect(res.matched).toBe(true);
     expect(res.intent).toBe("busy");
     expect(res.messageTaken).toBe(true);
+  });
+
+  // NOTE: these two share the process-level agent-task + enrollment stores, so
+  // the opt-OUT case runs first (clean store, no on_new_lead task) and the
+  // opt-IN case creates the task that turns the feature on.
+  it("does NOT enroll new leads when no on_new_lead task exists (opt-in default off)", async () => {
+    const res = await handleInbound("sms", "+1 (555) 818-3030", "hello there");
+    const enrollments = await listEnrollments("active");
+    expect(enrollments.some((e) => e.sequenceId === "new_lead" && e.contactId === res.contactId)).toBe(false);
+  });
+
+  it("speed-to-lead: enrolls a brand-new inbound lead when on_new_lead autopilot is on", async () => {
+    // Opt in: an enabled on_new_lead task is the switch that turns this on.
+    await createTask({ name: "Speed to lead", goal: "Reach new leads fast.", trigger: "on_new_lead", scope: "all_open", channel: "sms", autonomy: "auto" });
+
+    const res = await handleInbound("sms", "+1 (555) 717-2020", "saw your ad, interested!");
+    expect(res.contactId).toBeTruthy();
+
+    const enrollments = await listEnrollments("active");
+    const mine = enrollments.find((e) => e.sequenceId === "new_lead" && e.contactId === res.contactId);
+    expect(mine).toBeTruthy(); // the new lead is being worked immediately, not next cron
   });
 });

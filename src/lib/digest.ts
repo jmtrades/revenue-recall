@@ -3,7 +3,7 @@ import { getOrgSettings } from "@/lib/org";
 import { sendEmail } from "@/lib/comms";
 import { computeMetrics } from "@/lib/analytics";
 import { buildRecallQueue, summarizeRecall } from "@/lib/recall/engine";
-import { getTasks } from "@/lib/queries";
+import { getTasks, safePipeline } from "@/lib/queries";
 import { money } from "@/lib/format";
 import { isSupabaseConfigured, getSupabase } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
@@ -71,7 +71,7 @@ async function broadcast(to: string[], subject: string, body: string): Promise<n
 async function buildDailyDigest(orgName: string): Promise<{ subject: string; body: string }> {
   const provider = getProvider();
   const [pipelines, opps] = await Promise.all([provider.listPipelines(), provider.listOpportunities()]);
-  const metrics = computeMetrics(opps, pipelines[0]);
+  const metrics = computeMetrics(opps, safePipeline(pipelines));
   const recall = buildRecallQueue(opps, pipelines);
   const summary = summarizeRecall(recall, metrics.currency);
   const cur = metrics.currency;

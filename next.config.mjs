@@ -5,9 +5,18 @@
 // https) while allowing the inline script/style Next.js injects for hydration.
 // connect-src stays broad (https/wss) so first-party APIs and Supabase realtime
 // keep working; tighten to explicit origins once verified in a browser.
+//
+// 'unsafe-eval' is required in development: Next.js's react-refresh (Fast
+// Refresh) runtime evaluates module code via eval, and without it client-side
+// hydration silently fails — every button/form goes dead. It is NOT included in
+// production builds, where the compiled bundles need no eval.
+// Verified with `next build && next start`: prod serves script-src
+// 'self' 'unsafe-inline' (no eval) and all interactive flows hydrate clean.
+const isDev = process.env.NODE_ENV !== "production";
+const scriptSrc = isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self' 'unsafe-inline'";
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  scriptSrc,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",

@@ -31,10 +31,24 @@ export const ensureOrgForUser = cache(async (user: SessionUser): Promise<string 
   const invitedOrgId = await acceptPendingInvite(user);
   if (invitedOrgId) return invitedOrgId;
 
-  const res = await bootstrapOrg({
-    demo: false,
-    orgName: workspaceName(user.email),
-    member: { authUserId: user.id, name: user.name, email: user.email, role: "owner" },
-  });
-  return res.orgId;
+  try {
+    const res = await bootstrapOrg({
+      demo: false,
+      orgName: workspaceName(user.email),
+      member: { authUserId: user.id, name: user.name, email: user.email, role: "owner" },
+    });
+    return res.orgId;
+  } catch {
+    // Bootstrap can fail on a race: a concurrent first request already created
+    // this user's membership, and the unique index on members.auth_user_id
+    // rejects the duplicate. Recover by reading the membership that won the
+    // race rather than forking the account into a second org.
+    const { data: existing } = await client
+      .from("members")
+      .select("org_id")
+      .eq("auth_user_id", user.id)
+      .limit(1)
+      .maybeSingle();
+    return (existing?.org_id as string) ?? null;
+  }
 });

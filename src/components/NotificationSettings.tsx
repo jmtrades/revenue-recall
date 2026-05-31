@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Icon } from "@/components/icons";
 import { NOTIFICATION_OPTIONS, type NotificationPrefs } from "@/lib/notifications";
 
 export function NotificationSettings({ initial, persisted }: { initial: NotificationPrefs; persisted: boolean }) {
@@ -68,7 +69,7 @@ export function NotificationSettings({ initial, persisted }: { initial: Notifica
           >
             {status === "saving" ? "Saving…" : "Save preferences"}
           </button>
-          {status === "saved" && <span className="text-sm text-success">Saved ✓</span>}
+          {status === "saved" && <span className="inline-flex items-center gap-1 text-sm text-success"><Icon name="approvals" size={13} /> Saved</span>}
           {status === "error" && <span className="text-sm text-danger">{error}</span>}
         </div>
       ) : (

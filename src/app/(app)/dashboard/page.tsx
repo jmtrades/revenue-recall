@@ -6,6 +6,8 @@ import { firstName } from "@/lib/copy";
 import { compactMoney, money, pct, relativeDays } from "@/lib/format";
 import { PageHeader, Stat, ReasonBadge, ScoreDot, Card, Avatar, ActivityIcon, Button } from "@/components/ui";
 import { Funnel, ProgressRing, BarChart, Sparkline } from "@/components/charts";
+import { Icon } from "@/components/icons";
+import { DashboardWelcome } from "@/components/DashboardWelcome";
 
 export const dynamic = "force-dynamic";
 
@@ -35,31 +37,50 @@ export default async function DashboardPage() {
     getSessionUser(),
   ]);
   const m = o.metrics;
-  const wonThisMonth = reports.monthlyWon[reports.monthlyWon.length - 1]?.value ?? 0;
+  const wonSeries = reports.monthlyWon;
+  const wonThisMonth = wonSeries[wonSeries.length - 1]?.value ?? 0;
+  const wonPrevMonth = wonSeries[wonSeries.length - 2]?.value ?? 0;
+  // Honest month-over-month delta from real history (only shown when there's a prior month to compare).
+  const wonDelta = wonPrevMonth > 0 ? Math.round(((wonThisMonth - wonPrevMonth) / wonPrevMonth) * 100) : undefined;
   const attainment = org.monthlyQuota > 0 ? wonThisMonth / org.monthlyQuota : 0;
   const greeting = user?.name ? `${partOfDay(new Date().getHours())}, ${firstName(user.name)}` : partOfDay(new Date().getHours());
+
+  // Brand-new workspace: no deals and nothing logged yet. Zero-filled stats and
+  // empty charts read as broken — show a guided first-run experience instead.
+  const isEmpty = m.openCount + m.wonCount + m.lostCount === 0 && feed.length === 0;
+  if (isEmpty) return <DashboardWelcome greeting={greeting} />;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={greeting}
         subtitle={focusLine(o.recallSummary.itemCount, o.recallSummary.totalRecoverable, m.currency)}
-        action={<Button href="/recall" variant="primary">↺ Work the recall queue</Button>}
+        action={<Button href="/recall" variant="primary"><Icon name="recall" size={15} /> Work the recall queue</Button>}
       />
 
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Open Pipeline" value={money(m.openValue, m.currency)} hint={`${m.openCount} open ${o.terminology.opportunity.toLowerCase()}s`} />
-        <Stat label="Weighted Forecast" value={money(m.weightedForecast, m.currency)} hint="probability-adjusted" />
-        <Stat label="Recoverable Revenue" value={money(o.recallSummary.totalRecoverable, m.currency)} hint={`${o.recallSummary.itemCount} at-risk deals`} tone="warn" />
-        <Stat label="Win Rate" value={pct(m.winRate)} hint={`${m.wonCount} won · ${m.lostCount} lost`} tone="success" />
+        <Stat label="Open Pipeline" value={money(m.openValue, m.currency)} hint={`${m.openCount} open ${o.terminology.opportunity.toLowerCase()}s`} icon="pipeline" />
+        <Stat label="Weighted Forecast" value={money(m.weightedForecast, m.currency)} hint="probability-adjusted" icon="forecast" />
+        <Stat label="Recoverable Revenue" value={money(o.recallSummary.totalRecoverable, m.currency)} hint={`${o.recallSummary.itemCount} at-risk deals`} tone="warn" icon="recall" />
+        <Stat label="Win Rate" value={pct(m.winRate)} hint={`${m.wonCount} won · ${m.lostCount} lost`} tone="success" icon="reports" />
       </section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card title="Revenue trend" className="lg:col-span-2" action={<Link href="/reports" className="text-sm text-brand hover:underline">Reports →</Link>}>
           <div className="mb-4 flex items-end gap-3">
             <div>
-              <div className="text-2xl font-semibold text-fg">{money(wonThisMonth, m.currency)}</div>
-              <div className="text-xs text-muted">won this month</div>
+              <div className="flex items-center gap-2">
+                <span className="font-display text-2xl font-semibold tabular-nums tracking-tight text-fg">{money(wonThisMonth, m.currency)}</span>
+                {wonDelta !== undefined && (
+                  <span className={`inline-flex items-center gap-0.5 text-xs font-semibold tabular-nums ${wonDelta >= 0 ? "text-success" : "text-danger"}`}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      {wonDelta >= 0 ? <path d="M7 17 17 7M17 7H9M17 7v8" /> : <path d="M7 7l10 10M17 17H9M17 17V9" />}
+                    </svg>
+                    {Math.abs(wonDelta)}%
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-muted">won this month{wonDelta !== undefined ? " · vs last" : ""}</div>
             </div>
             <div className="mb-1 ml-auto">
               <Sparkline data={reports.monthlyWon.map((x) => x.value)} width={200} height={44} />
@@ -73,7 +94,7 @@ export default async function DashboardPage() {
             <ProgressRing value={attainment} size={120} thickness={11} color={attainment >= 1 ? "#34d399" : "rgb(var(--brand-rgb))"} />
             <div className="text-center">
               <div className="text-sm text-fg">{money(wonThisMonth, m.currency)} <span className="text-muted">/ {compactMoney(org.monthlyQuota, m.currency)}</span></div>
-              <div className="text-xs text-muted">{attainment >= 1 ? "Goal reached 🎉" : `${money(Math.max(0, org.monthlyQuota - wonThisMonth), m.currency)} to go`}</div>
+              <div className="text-xs text-muted">{attainment >= 1 ? "Goal reached" : `${money(Math.max(0, org.monthlyQuota - wonThisMonth), m.currency)} to go`}</div>
             </div>
           </div>
         </Card>

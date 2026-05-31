@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { isEntitled, enforcementOn } from "@/lib/billing/enforce";
 import { getProvider } from "@/lib/crm/registry";
 import { runTask } from "@/lib/agent/engine";
+import { draftMessage, type DraftInput } from "@/lib/ai/draft";
+import { draftReply, type ReplyInput } from "@/lib/ai/reply";
 import type { AgentTask } from "@/lib/agent/types";
 
 beforeEach(() => {
@@ -48,5 +50,41 @@ describe("autopilot honors enforcement", () => {
     const run = await runTask(await autoEmailTask());
     const action = run.actions[0];
     expect(["sent", "logged"]).toContain(action.result);
+  });
+});
+
+describe("aiLive entitlement gates live drafting", () => {
+  const draftInput: DraftInput = {
+    channel: "email",
+    contactName: "Dana Lee",
+    dealTitle: "Roof replacement",
+    valueLabel: "Deal value",
+    value: 12000,
+    currency: "USD",
+    stageLabel: "Proposal",
+    industryLabel: "Home Services",
+    industryId: "home_services",
+  };
+  const replyInput: ReplyInput = {
+    channel: "email",
+    contactName: "Dana Lee",
+    dealTitle: "Roof replacement",
+    incoming: "Is the quote still good?",
+    industryId: "home_services",
+  };
+
+  it("falls back to templates for a free org when enforcement is on", async () => {
+    process.env.BILLING_ENFORCE = "true";
+    // Even if a key were present, the unentitled plan must not spend on a model.
+    expect(await isEntitled("aiLive")).toBe(false);
+    expect((await draftMessage(draftInput)).source).toBe("template");
+    expect((await draftReply(replyInput)).source).toBe("template");
+  });
+
+  it("does not block drafting when enforcement is off", async () => {
+    // No key in tests, so the result is still a template — but via the
+    // isAiConfigured() path, not the entitlement gate (which is open here).
+    expect(await isEntitled("aiLive")).toBe(true);
+    expect((await draftMessage(draftInput)).source).toBe("template");
   });
 });

@@ -10,7 +10,11 @@ import { getActiveOrgId } from "@/lib/supabase/tenant";
 
 export const dynamic = "force-dynamic";
 
-const Body = z.object({ plan: z.string(), seats: z.number().int().positive().max(1000).optional() });
+const Body = z.object({
+  plan: z.string(),
+  seats: z.number().int().positive().max(1000).optional(),
+  cycle: z.enum(["monthly", "annual"]).optional(),
+});
 
 export async function POST(req: Request) {
   if (!billingConfigured()) {
@@ -32,6 +36,7 @@ export async function POST(req: Request) {
       plan: parsed.data.plan,
       orgId,
       seats: parsed.data.seats ?? sub.seats,
+      cycle: parsed.data.cycle,
       customerEmail: user?.email,
       successUrl: `${origin}/settings?billing=success`,
       cancelUrl: `${origin}/settings?billing=cancelled`,

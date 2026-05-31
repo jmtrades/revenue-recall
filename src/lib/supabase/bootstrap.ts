@@ -11,8 +11,12 @@ export interface BootstrapResult {
 
 /**
  * Initialize a fresh Supabase database for one org: creates the org, its
- * default pipeline + stages from the industry template, a default member, and
- * (optionally) realistic demo data so the UI is populated on first run.
+ * default pipeline + stages from the industry template, and a default member.
+ *
+ * Real users get a CLEAN workspace — no demo data. Seeding demo records is
+ * strictly opt-in (`demo: true`) and intended only for a throwaway preview org,
+ * never for a real account. The default is `false` so a fake deal can never
+ * leak into someone's live data through any path.
  *
  * Idempotency is the caller's concern — run once per org.
  */
@@ -28,7 +32,7 @@ export async function bootstrapOrg(opts?: {
   const cfg = getConfig();
   const industryId = opts?.industryId ?? cfg.industryId;
   const industry = getIndustry(industryId);
-  const demo = opts?.demo ?? true;
+  const demo = opts?.demo ?? false;
 
   // 1. Org
   const { data: org, error: orgErr } = await client

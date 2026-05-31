@@ -60,6 +60,7 @@ export function Board({ pipeline, opportunities, contacts, owners, canWrite }: P
           const colItems = items.filter((o) => o.stageId === stage.id);
           const total = colItems.reduce((s, o) => s + o.value, 0);
           const tone = stage.type === "won" ? "text-success" : stage.type === "lost" ? "text-danger" : "text-fg";
+          const dot = stage.type === "won" ? "bg-success" : stage.type === "lost" ? "bg-danger" : "bg-brand";
           return (
             <div
               key={stage.id}
@@ -72,9 +73,12 @@ export function Board({ pipeline, opportunities, contacts, owners, canWrite }: P
               onDrop={() => onDrop(stage.id)}
               className={`flex min-w-0 flex-col rounded-xl border bg-surface transition ${overStage === stage.id ? "border-brand bg-brand-soft/20" : "border-border"}`}
             >
-              <div className="flex items-center justify-between border-b border-border px-3 py-2">
-                <span className={`truncate text-sm font-medium ${tone}`}>{stage.label}</span>
-                <span className="text-xs tabular-nums text-muted">{colItems.length}</span>
+              <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+                <span className={`flex items-center gap-2 truncate text-sm font-medium ${tone}`}>
+                  <span className={`h-1.5 w-1.5 flex-none rounded-full ${dot}`} />
+                  {stage.label}
+                </span>
+                <span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-xs tabular-nums text-muted">{colItems.length}</span>
               </div>
               <div className="px-3 py-1 text-xs tabular-nums text-muted">{compactMoney(total, colItems[0]?.currency ?? "USD")}</div>
               <div className="flex flex-1 flex-col gap-2 p-2">
@@ -86,7 +90,7 @@ export function Board({ pipeline, opportunities, contacts, owners, canWrite }: P
                       draggable={canWrite}
                       onDragStart={() => setDragId(o.id)}
                       onDragEnd={() => setDragId(null)}
-                      className={`group rounded-lg border border-border bg-surface-2 p-3 ${canWrite ? "cursor-grab active:cursor-grabbing" : ""} ${dragId === o.id ? "opacity-40" : ""}`}
+                      className={`group rounded-lg border border-border bg-surface-2 p-3 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.04),0_1px_2px_rgb(0_0_0/0.25)] transition duration-150 hover:border-brand/40 hover:shadow-[0_8px_20px_-12px_rgb(0_0_0/0.7)] ${canWrite ? "cursor-grab active:cursor-grabbing" : ""} ${dragId === o.id ? "opacity-40" : ""}`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <Link href={`/deals/${o.id}`} className="truncate text-sm font-medium text-fg hover:underline">
@@ -95,7 +99,7 @@ export function Board({ pipeline, opportunities, contacts, owners, canWrite }: P
                         {o.ownerId && owners[o.ownerId] && <Avatar name={owners[o.ownerId]} size={20} />}
                       </div>
                       {c?.company && <div className="truncate text-xs text-muted">{c.company}</div>}
-                      <div className="mt-2 text-sm tabular-nums text-brand">{compactMoney(o.value, o.currency)}</div>
+                      <div className="mt-2 font-display text-sm font-semibold tabular-nums tracking-tight text-brand">{compactMoney(o.value, o.currency)}</div>
                     </div>
                   );
                 })}

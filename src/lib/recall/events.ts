@@ -13,7 +13,7 @@ import { getActiveOrgId } from "@/lib/supabase/tenant";
  */
 
 export type RecallTouchChannel = "call" | "email" | "sms";
-export type RecallTouchSource = "cadence" | "manual";
+export type RecallTouchSource = "cadence" | "manual" | "autopilot";
 
 export interface RecallTouch {
   id: string;

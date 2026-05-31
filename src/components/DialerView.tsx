@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { CallQueueItem } from "@/lib/queries";
-import { Avatar, ReasonBadge, ScoreDot } from "@/components/ui";
+import { Icon } from "@/components/icons";
+import { Avatar, ReasonBadge, ScoreDot, EmptyState } from "@/components/ui";
 import { RolePlay } from "@/components/RolePlay";
 import { SpeakButton } from "@/components/SpeakButton";
 
@@ -101,7 +102,14 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
   }
 
   if (queue.length === 0) {
-    return <div className="rounded-xl border border-dashed border-border py-16 text-center text-sm text-muted">No deals with phone numbers to call right now. The dialer pulls from your Revenue Recall queue.</div>;
+    return (
+      <EmptyState
+        iconName="dialer"
+        title="No calls queued"
+        hint="The power dialer pulls deals with phone numbers from your Revenue Recall queue. When deals go cold, they line up here for back-to-back calling with AI prep."
+        action={<Link href="/recall" className="cta inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90">View recall queue</Link>}
+      />
+    );
   }
 
   return (
@@ -120,7 +128,7 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
                 <div className="truncate text-sm text-fg">{q.contactName}</div>
                 <div className="truncate text-xs text-muted">{q.phone}</div>
               </div>
-              {done[q.dealId] && <span className="text-success">✓</span>}
+              {done[q.dealId] && <Icon name="check" size={13} strokeWidth={3} className="text-success" />}
             </button>
           ))}
         </div>
@@ -141,14 +149,14 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
               <ReasonBadge reason={active.reason} />
             </div>
             <div className="mt-4 flex items-center gap-3">
-              <button onClick={call} className="rounded-lg bg-success px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-success/90">📞 Call</button>
+              <button onClick={call} className="inline-flex items-center gap-1.5 rounded-lg bg-success px-5 py-2.5 text-sm font-semibold text-white transition active:scale-[0.97] hover:bg-success/90"><Icon name="dialer" size={15} /> Call</button>
               {callStatus && <span className="text-sm text-muted">{callStatus}</span>}
             </div>
           </div>
 
           <div className="card border-brand/30">
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="font-semibold text-fg">✨ AI call prep</h2>
+              <h2 className="flex items-center gap-2 font-semibold text-fg"><Icon name="autopilot" size={16} className="text-brand" /> AI call prep</h2>
               <div className="flex items-center gap-2">
                 {brief && <SpeakButton text={`${brief.summary} ${brief.talkingPoints.join(". ")}. Goal: ${brief.nextStep}`} label="Prep" />}
                 <button onClick={loadBrief} disabled={briefBusy} className="text-xs text-brand hover:underline disabled:opacity-50">{briefBusy ? "Preparing…" : brief ? "Refresh" : "Prepare"}</button>
@@ -189,7 +197,7 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
                 <div className="mb-2 flex items-center gap-2">
                   <span className="pill bg-brand-soft text-brand">{OUTCOME_LABEL[summary.outcome] ?? summary.outcome}</span>
                   <span className={`pill ${SENTIMENT[summary.sentiment]}`}>{summary.sentiment}</span>
-                  {saved && <span className="text-xs text-success">✓ logged to timeline</span>}
+                  {saved && <span className="inline-flex items-center gap-1 text-xs text-success"><Icon name="check" size={12} strokeWidth={3} /> logged to timeline</span>}
                 </div>
                 <p className="text-sm text-fg">{summary.summary}</p>
                 <p className="mt-1 text-xs text-muted">Next: {summary.nextStep}</p>

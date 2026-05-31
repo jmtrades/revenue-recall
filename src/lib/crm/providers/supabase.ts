@@ -29,6 +29,10 @@ import type {
  * multi-tenant database the moment SUPABASE_* env vars are set. All queries are
  * explicitly org-scoped (defense in depth alongside RLS).
  */
+
+// Most recent activities to keep per deal in the batch read. Enough to pick the
+// reply channel and detect a recent opt-out; bounds memory on huge histories.
+const ACTIVITIES_PER_OPP = 25;
 export class SupabaseProvider implements CrmProvider {
   private client: SupabaseClient;
   private orgIdPromise?: Promise<string>;
@@ -226,17 +230,26 @@ export class SupabaseProvider implements CrmProvider {
     for (const id of opportunityIds) out[id] = [];
     if (opportunityIds.length === 0) return out;
     const orgId = await this.orgId();
+    // Cap the rows pulled in one shot. Callers (cadence, agent) only need recent
+    // history per deal to pick a reply channel and honor opt-outs — not the full
+    // timeline — so without a ceiling a batch of long-history deals could drag
+    // tens of thousands of rows into a single invocation. Newest-first + a cap
+    // keeps it bounded while still giving each deal its latest activity.
+    const cap = Math.min(5000, Math.max(200, opportunityIds.length * ACTIVITIES_PER_OPP));
     const rows = await this.q<ActivityRow[]>(
       this.client
         .from("activities")
         .select("*")
         .eq("org_id", orgId)
         .in("opportunity_id", opportunityIds)
-        .order("occurred_at", { ascending: false }),
+        .order("occurred_at", { ascending: false })
+        .limit(cap),
     );
     for (const row of rows) {
       const a = mapActivity(row);
-      if (a.opportunityId && out[a.opportunityId]) out[a.opportunityId].push(a);
+      if (a.opportunityId && out[a.opportunityId] && out[a.opportunityId].length < ACTIVITIES_PER_OPP) {
+        out[a.opportunityId].push(a);
+      }
     }
     return out;
   }

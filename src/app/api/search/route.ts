@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { getProvider } from "@/lib/crm/registry";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
+import { withGuard } from "@/lib/api/guard";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: Request) {
+export const GET = withGuard(async (req: Request) => {
   // Public read endpoint — cap bursts (60/min per client).
   const rl = rateLimit(clientKey(req, "search"), 60, 60_000);
   if (!rl.ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -27,4 +28,4 @@ export async function GET(req: Request) {
     .map((o) => ({ id: o.id, title: o.title, value: o.value, currency: o.currency }));
 
   return NextResponse.json({ contacts: matchedContacts, deals: matchedDeals });
-}
+});

@@ -146,21 +146,46 @@ export function humanizeChunks(text: string, base: { rate?: number; pitch?: numb
 
   // Split keeping the delimiter so we know whether a chunk ends a sentence.
   const parts = clean.match(/[^,;:.!?]+[,;:.!?]*/g) ?? [clean];
-  return parts
-    .map((raw) => raw.trim())
-    .filter(Boolean)
-    .map((chunk) => {
-      const endsSentence = /[.!?]$/.test(chunk);
-      const endsClause = /[,;:]$/.test(chunk);
-      // Stable jitter from chunk length — longer phrases ride a hair slower.
-      const jitter = ((chunk.length % 5) - 2) / 100; // -0.02 .. +0.02
-      return {
-        text: chunk,
-        rate: Math.max(0.6, Math.min(1.4, rate + jitter)),
-        pitch: Math.max(0.6, Math.min(1.6, pitch + jitter / 2)),
-        pauseAfterMs: endsSentence ? 320 : endsClause ? 150 : 60,
-      };
-    });
+  const trimmed = parts.map((raw) => raw.trim()).filter(Boolean);
+
+  return trimmed.map((chunk, i) => {
+    const endsQuestion = /\?$/.test(chunk);
+    const endsExclaim = /!$/.test(chunk);
+    const endsSentence = /[.!?]$/.test(chunk);
+    const endsClause = /[,;:]$/.test(chunk);
+    const words = chunk.split(/\s+/).length;
+
+    // Stable jitter from chunk length — longer phrases ride a hair slower.
+    const jitter = ((chunk.length % 5) - 2) / 100; // -0.02 .. +0.02
+
+    // Intonation: questions lift at the end (rising terminal); statements settle
+    // a touch lower as a thought closes; exclamations get a little lift + energy.
+    // This is the single biggest "robot vs. person" tell on stock synth voices.
+    let pitchShift = 0;
+    let rateShift = 0;
+    if (endsQuestion) pitchShift += 0.06;
+    else if (endsExclaim) { pitchShift += 0.04; rateShift += 0.03; }
+    else if (endsSentence) pitchShift -= 0.03;
+    // Opening phrase carries a hair more energy, like someone leading in.
+    if (i === 0) pitchShift += 0.02;
+
+    // Breath: take a longer beat before a long new sentence (a real speaker
+    // inhales), and a micro-beat after the very first phrase to feel unhurried.
+    const longPhrase = words >= 9;
+    const sentencePause = endsQuestion ? 380 : endsExclaim ? 300 : 340;
+    const pauseAfterMs = endsSentence
+      ? sentencePause + (longPhrase ? 120 : 0)
+      : endsClause
+        ? 150
+        : 60;
+
+    return {
+      text: chunk,
+      rate: Math.max(0.6, Math.min(1.4, rate + jitter + rateShift)),
+      pitch: Math.max(0.6, Math.min(1.6, pitch + jitter / 2 + pitchShift)),
+      pauseAfterMs,
+    };
+  });
 }
 
 const DAYS: Record<string, string> = {

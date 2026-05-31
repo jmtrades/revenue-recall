@@ -103,6 +103,12 @@ export interface ProviderInfo {
   capabilities: ProviderCapabilities;
   /** Whether this provider is fully configured and usable right now. */
   ready: boolean;
+  /**
+   * Optional one-line guidance shown when a provider isn't connected yet — e.g.
+   * which env var to set. Mainly for the bring-your-own connectors (database,
+   * HTTP CRM) so users know how to plug in their own data.
+   */
+  setupHint?: string;
 }
 
 export interface NewOpportunity {
@@ -154,5 +160,12 @@ export interface CrmProvider {
    * `batchActivities` helper, which falls back to per-id fetches when absent.
    */
   listActivitiesByOpps?(opportunityIds: Id[]): Promise<Record<Id, Activity[]>>;
+  /**
+   * Optional: every activity logged against a contact directly (not via a deal).
+   * The unified inbox uses this to surface conversations from people who have no
+   * open opportunity yet — e.g. inbound social DMs. Providers that can't query
+   * by contact omit it; the inbox falls back to deal-scoped activity.
+   */
+  listActivitiesByContact?(contactId: Id): Promise<Activity[]>;
   logActivity(input: Omit<Activity, "id">): Promise<Activity>;
 }

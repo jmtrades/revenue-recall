@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Stage } from "@/lib/crm/types";
+import { Icon } from "@/components/icons";
 import { HumannessMeter } from "@/components/HumannessMeter";
 import { SpeakButton } from "@/components/SpeakButton";
 import { TONES, DEFAULT_TONE, type ToneId } from "@/lib/tones";
@@ -144,7 +145,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
                 disabled={drafting}
                 className="inline-flex items-center gap-1 rounded-lg border border-brand/40 bg-brand-soft/30 px-2 py-0.5 text-xs font-medium text-brand transition hover:bg-brand-soft/50 disabled:opacity-50"
               >
-                {drafting ? "Drafting…" : "✨ Draft with AI"}
+                {drafting ? "Drafting…" : <><Icon name="autopilot" size={13} /> Draft with AI</>}
               </button>
               <button
                 onClick={() => draft({ count: 3 })}
@@ -160,12 +161,12 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
         {canDraft && (
           <div className="mt-1 flex flex-wrap gap-1.5">
             <span className="text-[11px] text-muted">Quick:</span>
-            <button onClick={() => draft({ scenario: "voicemail" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">📞 Voicemail</button>
-            <button onClick={() => draft({ scenario: "recap" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">📝 Recap</button>
-            <button onClick={() => draft({ scenario: "reschedule" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">↻ Reschedule</button>
-            <button onClick={() => draft({ scenario: "referral" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">🙌 Referral</button>
-            <button onClick={() => draft({ scenario: "renewal" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">🔁 Renewal</button>
-            <button onClick={() => draft({ scenario: "breakup" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">👋 Breakup</button>
+            <button onClick={() => draft({ scenario: "voicemail" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">Voicemail</button>
+            <button onClick={() => draft({ scenario: "recap" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">Recap</button>
+            <button onClick={() => draft({ scenario: "reschedule" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">Reschedule</button>
+            <button onClick={() => draft({ scenario: "referral" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">Referral</button>
+            <button onClick={() => draft({ scenario: "renewal" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">Renewal</button>
+            <button onClick={() => draft({ scenario: "breakup" })} disabled={drafting} className="rounded-lg border border-border px-2 py-0.5 text-[11px] text-muted transition hover:text-fg disabled:opacity-50">Breakup</button>
           </div>
         )}
         {variations.length > 1 && (
@@ -207,7 +208,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
         <textarea
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
-          placeholder="What happened? Or click ✨ Draft with AI."
+          placeholder="What happened? Or click Draft with AI."
           rows={4}
           className="mt-2 w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
         />

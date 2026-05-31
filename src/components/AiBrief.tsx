@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { SpeakButton } from "@/components/SpeakButton";
+import { Icon } from "@/components/icons";
 
 interface Brief {
   summary: string;
@@ -44,7 +45,7 @@ export function AiBrief({ dealId }: { dealId: string }) {
   return (
     <section className="card border-brand/30">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 font-semibold text-fg">✨ AI Brief</h2>
+        <h2 className="flex items-center gap-2 font-semibold text-fg"><Icon name="autopilot" size={16} className="text-brand" /> AI Brief</h2>
         <div className="flex items-center gap-2">
           {brief && <SpeakButton text={`${brief.summary} Next step: ${brief.nextStep}. ${brief.talkingPoints.join(". ")}`} label="Brief" />}
           {brief && <span className={`pill ${RISK[brief.risk]}`}>{brief.risk} risk</span>}

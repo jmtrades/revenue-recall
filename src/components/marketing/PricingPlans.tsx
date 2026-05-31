@@ -102,20 +102,24 @@ export function PricingPlans() {
 
   return (
     <div>
-      <div className="mt-8 flex items-center justify-center gap-3">
-        <div className="inline-flex rounded-xl border border-border bg-surface p-1 text-sm">
+      <div className="mt-8 flex items-center justify-center">
+        <div className="inline-flex items-center gap-1 rounded-full border border-border bg-surface p-1 text-sm shadow-[inset_0_1px_0_0_rgb(255_255_255/0.04)]">
           {(["monthly", "annual"] as Cycle[]).map((c) => (
             <button
               key={c}
               onClick={() => setCycle(c)}
-              className={`rounded-lg px-4 py-1.5 font-medium capitalize transition ${cycle === c ? "bg-brand text-white" : "text-muted hover:text-fg"}`}
+              className={`cta inline-flex items-center gap-2 rounded-full px-4 py-1.5 font-medium capitalize ${cycle === c ? "bg-brand text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.2)]" : "text-muted hover:text-fg"}`}
               aria-pressed={cycle === c}
             >
               {c}
+              {c === "annual" && (
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${cycle === "annual" ? "bg-white/20 text-white" : "bg-success/15 text-success"}`}>
+                  −17%
+                </span>
+              )}
             </button>
           ))}
         </div>
-        <span className="rounded-full bg-success/15 px-2.5 py-1 text-xs font-medium text-success">2 months free</span>
       </div>
 
       <div className="mt-12 grid items-start gap-5 lg:grid-cols-4">
@@ -127,13 +131,13 @@ export function PricingPlans() {
           return (
             <div
               key={p.name}
-              className={`relative flex flex-col rounded-2xl border p-6 ${p.featured ? "border-brand bg-surface ring-glow lg:-mt-3 lg:pb-9" : "border-border bg-surface"}`}
+              className={`raised relative flex flex-col rounded-2xl border p-6 ${p.featured ? "border-brand bg-surface ring-glow lg:-mt-3 lg:pb-9" : "lift border-border bg-surface hover:border-brand/40"}`}
             >
-              {p.featured && <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-brand px-3 py-1 text-xs font-semibold text-white">Most popular</span>}
+              {p.featured && <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-brand px-3 py-1 text-xs font-semibold text-white shadow-[0_4px_12px_-4px_rgb(0_0_0/0.6)]">Most popular</span>}
               <h3 className="text-lg font-semibold text-fg">{p.name}</h3>
               <p className="mt-1 text-sm leading-snug text-muted">{p.tagline}</p>
               <div className="mt-5 flex items-end gap-1">
-                <span className="text-3xl font-semibold text-fg">{priceLabel}</span>
+                <span className="font-display text-[2.1rem] font-semibold tabular-nums tracking-tight text-fg">{priceLabel}</span>
                 {p.unit && <span className="mb-1 text-sm text-muted">{p.unit}</span>}
               </div>
               <p className="mt-1 h-4 text-xs text-success">
@@ -141,15 +145,18 @@ export function PricingPlans() {
               </p>
               <Link
                 href={p.href}
-                className={`mt-5 block rounded-xl px-4 py-2.5 text-center text-sm font-semibold transition ${p.featured ? "bg-brand text-white hover:bg-brand/90" : "border border-border text-fg hover:bg-surface-2"}`}
+                className={`cta mt-5 block rounded-full px-4 py-2.5 text-center text-sm font-semibold ${p.featured ? "bg-brand text-white hover:bg-brand/90" : "border border-border text-fg hover:bg-surface-2"}`}
               >
                 {p.cta}
               </Link>
               <p className="mt-3 text-xs leading-relaxed text-muted">{p.anchor}</p>
               <ul className="mt-5 space-y-2.5 border-t border-border/60 pt-5">
                 {p.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-muted">
-                    <span className="mt-0.5 text-success">✓</span> {f}
+                  <li key={f} className="flex items-start gap-2.5 text-sm text-muted">
+                    <span className="mt-0.5 grid h-[18px] w-[18px] flex-none place-items-center rounded-full bg-brand/15 text-brand">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+                    </span>
+                    {f}
                   </li>
                 ))}
               </ul>

@@ -15,6 +15,9 @@
   --muted-rgb: 148 154 148;
   --fg-rgb: 255 255 255;
   --body-rgb: 223 227 223;
+  /* Strong custom easings (Emil Kowalski) — the built-in CSS easings lack punch. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 [data-theme="light"] {
@@ -41,6 +44,11 @@
 
 html {
   scroll-behavior: smooth;
+}
+
+/* Anchor targets clear the sticky nav instead of hiding under it. */
+section[id], [id]:target {
+  scroll-margin-top: 5.5rem;
 }
 
 html,
@@ -109,23 +117,57 @@ textarea:focus-visible {
 @layer components {
   .card {
     @apply rounded-xl border border-border bg-surface p-5;
-    /* Subtle elevation + a hairline top highlight so cards feel lifted, not flat. */
-    box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.04) inset, 0 1px 2px rgb(0 0 0 / 0.25), 0 8px 24px -16px rgb(0 0 0 / 0.6);
+    /* Real material: hairline top highlight (catches light) + a faint top-down
+       sheen + layered ambient shadow. Depth hierarchy, not a flat 1px box. */
+    background-image: linear-gradient(rgb(255 255 255 / 0.025), transparent 40%);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.05),
+      0 1px 2px rgb(0 0 0 / 0.25),
+      0 12px 32px -20px rgb(0 0 0 / 0.7);
   }
   .stat-label {
     @apply text-xs font-medium uppercase tracking-wide text-muted;
   }
   .stat-value {
-    @apply mt-1 text-2xl font-semibold text-fg;
+    @apply mt-1 font-display text-2xl font-semibold tabular-nums tracking-tight text-fg;
   }
   .pill {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
+  /* Section eyebrow — a refined pill badge with a lit dot. Replaces the plain
+     repeated green caps so the accent stays special instead of diluted. */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border border-border bg-surface/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-body;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 9999px;
+    background: rgb(var(--brand-rgb));
+    box-shadow: 0 0 0 3px rgb(var(--brand-rgb) / 0.18);
+    flex: none;
+  }
   .nav-link {
-    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-surface-2 hover:text-fg;
+    @apply relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg;
   }
   .nav-link-active {
-    @apply bg-surface-2 text-fg;
+    @apply bg-brand-soft/60 text-fg;
+  }
+  /* Active rail: a short brand bar tucked against the sidebar edge. */
+  .nav-link-active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: 1.1rem;
+    width: 3px;
+    transform: translateY(-50%);
+    border-radius: 0 3px 3px 0;
+    background: rgb(var(--brand-rgb));
+  }
+  .nav-link-active svg {
+    color: rgb(var(--brand-rgb));
   }
 }
 
@@ -136,9 +178,13 @@ textarea:focus-visible {
   .gradient-text {
     color: rgb(var(--brand-rgb));
   }
-  /* Hero ambience: barely-there single glow. Flat reads more premium than aurora. */
+  /* Hero ambience: a dual-layer glow — a wide soft wash plus a tighter, slightly
+     brighter core — so the top of the hero feels lit from a real source rather
+     than a flat tint. Still restrained money-green, never an aurora. */
   .hero-glow {
-    background: radial-gradient(56rem 26rem at 50% -8rem, rgb(var(--brand-rgb) / 0.07) 0%, transparent 68%);
+    background:
+      radial-gradient(34rem 16rem at 50% -6rem, rgb(var(--brand-rgb) / 0.10) 0%, transparent 70%),
+      radial-gradient(60rem 28rem at 50% -9rem, rgb(var(--brand-rgb) / 0.06) 0%, transparent 72%);
   }
   /* Featured-card emphasis: a crisp accent border + a neutral lift, not a colored halo. */
   .ring-glow {
@@ -158,6 +204,64 @@ textarea:focus-visible {
   .shadow-soft {
     box-shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 12px 32px -18px rgb(0 0 0 / 0.7);
   }
+  /* A surface that reads as a real, lifted material: hairline top highlight
+     (catches "light" from above) + layered ambient shadow. The premium tell is
+     depth hierarchy, not a flat 1px box. */
+  .raised {
+    background-image: linear-gradient(rgb(255 255 255 / 0.035), transparent 38%);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.06),
+      0 1px 2px rgb(0 0 0 / 0.3),
+      0 18px 40px -24px rgb(0 0 0 / 0.8);
+  }
+  /* Double-bezel outer shell (machined-hardware look): content sits in a tray. */
+  .bezel {
+    background: rgb(255 255 255 / 0.04);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.07),
+      0 40px 90px -40px rgb(0 0 0 / 0.95);
+  }
+  /* Tasteful card hover lift — gated to fine pointers so touch never sticks. */
+  .lift {
+    transition:
+      transform 220ms var(--ease-out),
+      border-color 220ms var(--ease-out),
+      box-shadow 220ms var(--ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .lift:hover {
+      transform: translateY(-3px);
+      box-shadow:
+        inset 0 1px 0 0 rgb(255 255 255 / 0.07),
+        0 1px 2px rgb(0 0 0 / 0.3),
+        0 28px 50px -28px rgb(0 0 0 / 0.85);
+    }
+  }
+  /* Hairline divider that fades at both ends — softer than a hard 1px rule. */
+  .hairline {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(var(--border-rgb)), transparent);
+  }
+  /* Hero headline: subtle top-down gradient clip (white -> faintly cooled) so
+     the big type reads as crafted material, not flat fill. The Linear/Vercel
+     tell, tuned restrained — not a rainbow. */
+  .display-hero {
+    background-image: linear-gradient(180deg, rgb(var(--fg-rgb)) 30%, rgb(var(--fg-rgb) / 0.72) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+/* Onboarding step + tailoring entrance (CSP-safe CSS, no JS animation lib) */
+@keyframes rr-onb-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.onb-step { animation: rr-onb-in 0.34s cubic-bezier(0.23, 1, 0.32, 1) both; }
+.onb-fade { animation: rr-onb-in 0.26s cubic-bezier(0.23, 1, 0.32, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .onb-step, .onb-fade { animation: none; }
 }
 
 /* Entrance animations */
@@ -174,6 +278,15 @@ textarea:focus-visible {
 .animate-fade-up {
   animation: rr-fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* Button press feedback (Emil): the UI should feel it heard the press.
+   Targets the primary/ghost CTA treatment used across marketing + app. */
+.cta {
+  transition: transform 140ms var(--ease-out), background-color 140ms var(--ease-out), border-color 140ms var(--ease-out);
+}
+.cta:active {
+  transform: scale(0.97);
+}
 @keyframes rr-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
@@ -182,10 +295,38 @@ textarea:focus-visible {
   animation: rr-float 6s ease-in-out infinite;
 }
 
+/* Scroll-reveal (motion design): each section's content rises + fades as it
+   enters the viewport. Pure CSS scroll-driven animation — no JS, runs off the
+   main thread. Inert where unsupported (Safari/FF today) or under reduced
+   motion: elements simply stay visible. Hero (first section) is excluded so it
+   keeps its load-time fade-up. Decorative grid layers are excluded. */
+@keyframes rr-reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .landing > section:not(:first-of-type) > div:not(.surface-grid) {
+      animation: rr-reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry 4% cover 32%;
+    }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
   .animate-float {
     animation: none;
+  }
+  .lift:hover {
+    transform: none;
   }
   html {
     scroll-behavior: auto;

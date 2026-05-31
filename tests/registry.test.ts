@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { getProvider, listIntegrations } from "@/lib/crm/registry";
+import { getProvider, resolveProvider, listIntegrations } from "@/lib/crm/registry";
+import { saveConnection, __resetConnectionsForTests } from "@/lib/connections/store";
 
 /** Env keys this suite toggles; cleared after each test for isolation. */
 const KEYS = [
@@ -10,6 +11,7 @@ const KEYS = [
   "SALESFORCE_ACCESS_TOKEN",
   "SALESFORCE_INSTANCE_URL",
   "CRM_HTTP_BASE_URL",
+  "ENCRYPTION_KEY",
 ];
 const saved: Record<string, string | undefined> = {};
 for (const k of KEYS) saved[k] = process.env[k];
@@ -62,5 +64,29 @@ describe("provider registry", () => {
     // HubSpot outranks Pipedrive when both are present.
     process.env.HUBSPOT_ACCESS_TOKEN = "pat";
     expect(getProvider().info().id).toBe("hubspot");
+  });
+
+  it("resolveProvider activates a UI-connected database (auto mode)", async () => {
+    clear();
+    __resetConnectionsForTests();
+    process.env.CRM_PROVIDER = "auto";
+    process.env.ENCRYPTION_KEY = "test-encryption-key-at-least-16-chars";
+    // No DB connected yet → built-in.
+    expect((await resolveProvider()).info().id).toBe("builtin");
+    // Org connects their own database via the UI → it becomes active.
+    await saveConnection({ kind: "database", provider: "database", secrets: { url: "https://my-db.example/leads" } });
+    expect((await resolveProvider()).info().id).toBe("database");
+    __resetConnectionsForTests();
+  });
+
+  it("resolveProvider respects an explicit non-database CRM_PROVIDER over a connected DB", async () => {
+    clear();
+    __resetConnectionsForTests();
+    process.env.ENCRYPTION_KEY = "test-encryption-key-at-least-16-chars";
+    process.env.CRM_PROVIDER = "hubspot";
+    process.env.HUBSPOT_ACCESS_TOKEN = "pat";
+    await saveConnection({ kind: "database", provider: "database", secrets: { url: "https://my-db.example/leads" } });
+    expect((await resolveProvider()).info().id).toBe("hubspot"); // explicit choice wins
+    __resetConnectionsForTests();
   });
 });

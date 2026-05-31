@@ -5,6 +5,10 @@ import { listIntegrations, getProvider } from "@/lib/crm/registry";
 import { isAiConfigured } from "@/lib/ai/client";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { channelStatus } from "@/lib/comms";
+import { listConnections } from "@/lib/connections/store";
+import { encryptionAvailable } from "@/lib/crypto";
+import { ConnectionsManager } from "@/components/ConnectionsManager";
+import { OAUTH_PROVIDERS, oauthConfigured, type OAuthPlatform } from "@/lib/connections/oauth";
 import { complianceConfig } from "@/lib/compliance";
 import { listOwnedNumbers, numbersConfigured, numbersProviderId, outboundFromNumber } from "@/lib/numbers";
 import { SetupChecklist, type SetupItem } from "@/components/SetupChecklist";
@@ -14,6 +18,7 @@ import { getActiveVoice } from "@/lib/voice";
 import { pct } from "@/lib/format";
 import { PageHeader, Card, Avatar, InfoRow } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
+import { BillingReturnBanner } from "@/components/BillingReturnBanner";
 import { OrgSettingsForm } from "@/components/OrgSettingsForm";
 import { AppearanceSettings } from "@/components/AppearanceSettings";
 import { BillingSettings } from "@/components/BillingSettings";
@@ -32,13 +37,22 @@ import { listInvites } from "@/lib/invites-server";
 
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: { billing?: string; tab?: string; connected?: string } }) {
   const cfg = getConfig();
   const org = await getOrgSettings();
   const voice = await getActiveVoice();
   const active = getIndustry(org.industryId);
 
   const ch = channelStatus();
+  // Per-org connections (sanitized: which fields are set, never secret values).
+  const connections = (await listConnections().catch(() => [])).map((c) => ({
+    provider: c.provider,
+    connected: c.connected,
+    setFields: [...Object.keys(c.secrets), ...Object.keys(c.config)],
+  }));
+  const encAvailable = encryptionAvailable();
+  // Which social platforms have an OAuth app wired → show "Connect with…".
+  const oauthProviders = (Object.keys(OAUTH_PROVIDERS) as OAuthPlatform[]).filter((p) => oauthConfigured(p));
   // Org-level compliance wins over env (multi-tenant identity).
   const compliance = complianceConfig({ orgName: org.compliance.senderName ?? org.name, address: org.compliance.address });
   const setupItems: SetupItem[] = [
@@ -153,6 +167,17 @@ export default async function SettingsPage() {
           </li>
         ))}
       </ul>
+
+      <div className="mt-6 border-t border-border pt-5">
+        <h2 className="font-semibold text-fg">Connect your database</h2>
+        <p className="mt-1 text-sm text-muted">
+          Bring your own data even if it isn&apos;t a normal CRM — Postgres, Airtable, a spreadsheet, a warehouse view.
+          Connect it here (encrypted at rest) and we map your columns automatically.
+        </p>
+        <div className="mt-4">
+          <ConnectionsManager initial={connections} encryptionAvailable={encAvailable} kind="database" />
+        </div>
+      </div>
     </Card>
   );
 
@@ -179,31 +204,45 @@ export default async function SettingsPage() {
 
   const channels = ch;
   const channelsTab = (
-    <Card>
-      <p className="mb-3 text-sm text-muted">
-        How outbound email, SMS, and calls are delivered. Provider-agnostic: point a webhook
-        (<code className="text-fg">EMAIL_WEBHOOK_URL</code> / <code className="text-fg">SMS_WEBHOOK_URL</code> /{" "}
-        <code className="text-fg">VOICE_WEBHOOK_URL</code>) at any provider or automation tool — no vendor lock-in — or
-        register a transport in code. Built-in adapters (Resend/SendGrid, optional Twilio) work via env too. Until something
-        is connected, messages are recorded to the timeline so every flow works end-to-end.
-      </p>
-      <ul className="divide-y divide-border">
-        {([
-          ["Email", channels.email],
-          ["SMS", channels.sms],
-          ["Voice / Calls", channels.voice],
-        ] as const).map(([label, c]) => (
-          <li key={label} className="flex items-center justify-between py-3">
-            <div>
-              <span className="text-sm font-medium text-fg">{label}</span>
-              <div className="mt-1 text-xs text-muted">Provider: {c.provider}</div>
-            </div>
-            <span className={`pill ${c.live ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>{c.live ? "Live" : "Logging only"}</span>
-          </li>
-        ))}
-      </ul>
-      <TestSend />
-    </Card>
+    <>
+      <Card>
+        <p className="mb-3 text-sm text-muted">
+          How outbound email, SMS, and calls are delivered. Provider-agnostic: point a webhook
+          (<code className="text-fg">EMAIL_WEBHOOK_URL</code> / <code className="text-fg">SMS_WEBHOOK_URL</code> /{" "}
+          <code className="text-fg">VOICE_WEBHOOK_URL</code>) at any provider or automation tool — no vendor lock-in — or
+          register a transport in code. Built-in adapters (Resend/SendGrid, optional Twilio) work via env too. Until something
+          is connected, messages are recorded to the timeline so every flow works end-to-end.
+        </p>
+        <ul className="divide-y divide-border">
+          {([
+            ["Email", channels.email],
+            ["SMS", channels.sms],
+            ["Voice / Calls", channels.voice],
+          ] as const).map(([label, c]) => (
+            <li key={label} className="flex items-center justify-between py-3">
+              <div>
+                <span className="text-sm font-medium text-fg">{label}</span>
+                <div className="mt-1 text-xs text-muted">Provider: {c.provider}</div>
+              </div>
+              <span className={`pill ${c.live ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>{c.live ? "Live" : "Logging only"}</span>
+            </li>
+          ))}
+        </ul>
+        <TestSend />
+      </Card>
+
+      <Card className="mt-4">
+        <h2 className="font-semibold text-fg">Social channels</h2>
+        <p className="mt-1 text-sm text-muted">
+          One inbox for every platform. Connect your own account below — credentials are encrypted at rest — and inbound DMs flow
+          into your unified inbox; replies go back out on the same channel. Then point each platform&apos;s webhook at{" "}
+          <code className="text-fg">/api/social/&lt;platform&gt;</code>.
+        </p>
+        <div className="mt-4">
+          <ConnectionsManager initial={connections} encryptionAvailable={encAvailable} kind="social" oauthProviders={oauthProviders} />
+        </div>
+      </Card>
+    </>
   );
 
   const ownedNumbers = await listOwnedNumbers().catch(() => []);
@@ -299,10 +338,24 @@ export default async function SettingsPage() {
     </Card>
   );
 
+  const billingReturn = searchParams.billing === "success" ? "success" : searchParams.billing === "cancelled" ? "cancelled" : null;
+  const oauthReturn = searchParams.connected; // success | denied | error, from the OAuth callback
+
   return (
     <div className="max-w-4xl">
       <PageHeader title="Settings" subtitle="Organization, industry profile, pipeline, integrations, and team." />
+      {billingReturn && <BillingReturnBanner status={billingReturn} />}
+      {oauthReturn === "success" && (
+        <div className="mb-4 rounded-lg border border-success/40 bg-success/10 px-4 py-2.5 text-sm text-success">Channel connected. Inbound messages will now flow into your inbox.</div>
+      )}
+      {oauthReturn === "denied" && (
+        <div className="mb-4 rounded-lg border border-warn/40 bg-warn/10 px-4 py-2.5 text-sm text-warn">Connection cancelled — you didn&apos;t approve access. You can try again anytime.</div>
+      )}
+      {oauthReturn === "error" && (
+        <div className="mb-4 rounded-lg border border-danger/40 bg-danger/10 px-4 py-2.5 text-sm text-danger">We couldn&apos;t complete that connection. Please try again, or connect with keys.</div>
+      )}
       <Tabs
+        initial={billingReturn ? "billing" : searchParams.tab}
         tabs={[
           { id: "setup", label: "Setup", content: setupTab },
           { id: "general", label: "General", content: general },

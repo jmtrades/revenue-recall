@@ -1,0 +1,8 @@
+# Neural voice model weights — downloaded at setup, never committed (huge + licensed).
+*.onnx
+*.onnx.json
+*.bin
+*.wav
+# Per-rep cloned-voice enrollment clips + consent markers — sensitive, never committed.
+voices_clones/
+__pycache__/

@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Avatar } from "@/components/ui";
+import { Avatar, ChannelIcon, channelLabel, EmptyState } from "@/components/ui";
+import type { OutboxChannel } from "@/lib/agent/types";
 
 export interface ApprovalRow {
   id: string;
   contactName: string;
   dealId?: string;
-  channel: "email" | "sms";
+  channel: OutboxChannel;
   subject?: string;
   body: string;
   source: "ai" | "template";
@@ -41,7 +42,14 @@ export function ApprovalsView({ rows }: { rows: ApprovalRow[] }) {
   }
 
   if (items.length === 0) {
-    return <div className="rounded-xl border border-dashed border-border py-16 text-center text-sm text-muted">Nothing to approve. AI drafts from review-mode Autopilot tasks land here.</div>;
+    return (
+      <EmptyState
+        iconName="approvals"
+        title="Inbox zero — nothing to approve"
+        hint="Drafts from review-mode Autopilot tasks land here for one-click send. Create an agent in Autopilot to start the queue."
+        action={<Link href="/agents" className="cta inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90">Open Autopilot</Link>}
+      />
+    );
   }
 
   return (
@@ -55,7 +63,7 @@ export function ApprovalsView({ rows }: { rows: ApprovalRow[] }) {
               <Avatar name={it.contactName} size={30} />
               <div>
                 {it.dealId ? <Link href={`/deals/${it.dealId}`} className="text-sm font-medium text-fg hover:underline">{it.contactName}</Link> : <span className="text-sm font-medium text-fg">{it.contactName}</span>}
-                <div className="text-xs text-muted">{it.channel === "email" ? "✉ Email" : "💬 SMS"} · {it.source === "ai" ? "AI draft" : "template"}</div>
+                <div className="flex items-center gap-1 text-xs text-muted"><ChannelIcon channel={it.channel} size={11} /> {channelLabel(it.channel)} · {it.source === "ai" ? "AI draft" : "template"}</div>
               </div>
             </div>
             <div className="flex gap-2">

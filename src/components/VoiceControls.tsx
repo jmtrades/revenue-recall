@@ -2,18 +2,34 @@
 
 import { useEffect, useRef, useState } from "react";
 import { isSpeechSupported, loadVoices, pickVoice, speak, type SpeakHandle } from "@/lib/voice/speech";
+import { getSynth } from "@/lib/voice/synth";
+import { Icon } from "@/components/icons";
 import { loadVoicePrefs, saveVoicePrefs, toVoicePrefs, type StoredVoicePrefs } from "@/lib/voice/prefs";
 
 const SAMPLE = "Hey Jordan, it's me — caught you at an okay time? Wanted to run something by you real quick.";
 
+// Curated in-house neural voices (Kokoro ids), shown only when the neural
+// backend is connected. The stored value flows to the service as the voiceId.
+const NEURAL_VOICES: { id: string; label: string }[] = [
+  { id: "af_heart", label: "Aria — warm female" },
+  { id: "af_bella", label: "Bella — bright female" },
+  { id: "af_nicole", label: "Nicole — soft female" },
+  { id: "am_adam", label: "Adam — steady male" },
+  { id: "am_michael", label: "Michael — friendly male" },
+  { id: "bf_emma", label: "Emma — British female" },
+  { id: "bm_george", label: "George — British male" },
+];
+
 /**
- * Tune the in-house spoken voice: pick an installed voice and set speed/pitch,
- * preview it, and save on-device. Every spoken surface (briefs, drafts, call
- * prep, role-play) then uses these settings. Browser-native, nothing leaves the
- * device.
+ * Tune the spoken voice: pick a voice and set speed/pitch, preview it, and save
+ * on-device. Every spoken surface (briefs, drafts, call prep, role-play) then
+ * uses these settings. When the in-house neural service is connected, its voices
+ * appear here too and preview routes through it; otherwise it's the browser
+ * engine, fully on-device.
  */
 export function VoiceControls() {
   const [supported, setSupported] = useState(false);
+  const [neural, setNeural] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [prefs, setPrefs] = useState<StoredVoicePrefs>({ rate: 1, pitch: 1 });
   const [speaking, setSpeaking] = useState(false);
@@ -21,7 +37,9 @@ export function VoiceControls() {
   const handleRef = useRef<SpeakHandle | null>(null);
 
   useEffect(() => {
-    const ok = isSpeechSupported();
+    const isNeural = getSynth().kind === "neural";
+    setNeural(isNeural);
+    const ok = isNeural || isSpeechSupported();
     setSupported(ok);
     if (ok) {
       setPrefs(loadVoicePrefs());
@@ -38,14 +56,20 @@ export function VoiceControls() {
     setTimeout(() => setSaved(false), 1500);
   }
 
-  function preview() {
+  async function preview() {
     if (speaking) {
       handleRef.current?.stop();
       setSpeaking(false);
       return;
     }
-    const voice = pickVoice(voices, toVoicePrefs(prefs));
-    const h = speak(SAMPLE, toVoicePrefs(prefs), voice);
+    const p = toVoicePrefs(prefs);
+    const synth = getSynth();
+    let h: SpeakHandle;
+    if (synth.kind === "neural") {
+      h = await synth.speak(SAMPLE, p); // neural backend resolves the voice from voiceId/preferName
+    } else {
+      h = speak(SAMPLE, p, pickVoice(voices, p));
+    }
     handleRef.current = h;
     setSpeaking(true);
     h.done.finally(() => setSpeaking(false));
@@ -67,7 +91,11 @@ export function VoiceControls() {
     <div className="mt-5 space-y-3 border-t border-border pt-4">
       <div>
         <p className="text-sm font-medium text-fg">Spoken voice</p>
-        <p className="mt-0.5 text-xs text-muted">Used when the app reads briefs, drafts, and call prep aloud, and in call role-play. On-device — nothing leaves your machine.</p>
+        <p className="mt-0.5 text-xs text-muted">
+          {neural
+            ? "The in-house neural voice is connected — pick one of ours below, or a teammate's cloned voice. Higher fidelity, fully in-house."
+            : "Used when the app reads briefs, drafts, and call prep aloud, and in call role-play. On-device — nothing leaves your machine."}
+        </p>
       </div>
 
       <div>
@@ -78,9 +106,20 @@ export function VoiceControls() {
           className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
         >
           <option value="">Auto (most natural available)</option>
-          {list.map((v) => (
-            <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
-          ))}
+          {neural && (
+            <optgroup label="In-house neural voices">
+              {NEURAL_VOICES.map((v) => (
+                <option key={v.id} value={v.id}>{v.label}</option>
+              ))}
+            </optgroup>
+          )}
+          {list.length > 0 && (
+            <optgroup label={neural ? "Browser voices" : "Voices"}>
+              {list.map((v) => (
+                <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
+              ))}
+            </optgroup>
+          )}
         </select>
       </div>
 
@@ -96,10 +135,15 @@ export function VoiceControls() {
       </div>
 
       <div className="flex items-center gap-3">
-        <button onClick={preview} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90">
-          {speaking ? "■ Stop" : "▶ Preview"}
+        <button onClick={preview} className="cta inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand/90">
+          <Icon name={speaking ? "stop" : "play"} size={12} fill="currentColor" stroke="none" />
+          {speaking ? "Stop" : "Preview"}
         </button>
-        {saved && <span className="text-sm text-success">Saved ✓</span>}
+        {saved && (
+          <span className="inline-flex items-center gap-1 text-sm text-success">
+            <Icon name="approvals" size={13} /> Saved
+          </span>
+        )}
       </div>
     </div>
   );

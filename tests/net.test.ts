@@ -77,4 +77,26 @@ describe("fetchWithRetry", () => {
     const r = await fetchWithRetry("https://x/y", undefined, { sleep });
     expect(r.status).toBe(200);
   });
+
+  it("passes an abort signal so a hung request can time out", async () => {
+    // A fetch that hangs until its signal aborts — proves the timeout fires.
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        const signal = init?.signal;
+        if (signal) signal.addEventListener("abort", () => reject(new Error("aborted")));
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(fetchWithRetry("https://x/y", undefined, { sleep, retries: 0, timeoutMs: 10 })).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // The signal was supplied to fetch.
+    expect((fetchMock.mock.calls[0][1] as RequestInit | undefined)?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("does not attach a signal when timeoutMs is 0 (disabled)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res(200));
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchWithRetry("https://x/y", undefined, { sleep, timeoutMs: 0 });
+    expect((fetchMock.mock.calls[0][1] as RequestInit | undefined)?.signal).toBeUndefined();
+  });
 });

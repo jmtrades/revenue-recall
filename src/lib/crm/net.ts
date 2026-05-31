@@ -16,6 +16,10 @@ export interface RetryOptions {
   baseMs?: number;
   /** Cap on any single backoff wait. */
   maxMs?: number;
+  /** Per-attempt timeout in ms. A hung connection is aborted and (if attempts
+   *  remain) retried, so one unresponsive endpoint can't block the request
+   *  until the serverless platform kills the whole function. 0 disables it. */
+  timeoutMs?: number;
   /** Injectable delay (tests pass a no-op/recorder). */
   sleep?: (ms: number) => Promise<void>;
 }
@@ -46,12 +50,17 @@ export async function fetchWithRetry(input: string, init?: RequestInit, opts: Re
   const retries = opts.retries ?? 3;
   const baseMs = opts.baseMs ?? 400;
   const maxMs = opts.maxMs ?? 8000;
+  const timeoutMs = opts.timeoutMs ?? 15000;
   const sleep = opts.sleep ?? defaultSleep;
 
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
+    // Abort a hung request after timeoutMs. We compose with any caller-supplied
+    // signal so an upstream cancel still works.
+    const controller = timeoutMs > 0 ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
     try {
-      const res = await fetch(input, init);
+      const res = await fetch(input, controller ? { ...init, signal: controller.signal } : init);
       if (RETRYABLE_STATUS.has(res.status) && attempt < retries) {
         const wait = retryAfterMs(res.headers.get("retry-after")) ?? backoffMs(attempt, baseMs, maxMs);
         await sleep(wait);
@@ -59,10 +68,12 @@ export async function fetchWithRetry(input: string, init?: RequestInit, opts: Re
       }
       return res;
     } catch (err) {
-      // Network-level failure (DNS, connection reset, …) — retry if we can.
+      // Network-level failure or a timeout abort — retry if we can.
       lastError = err;
       if (attempt >= retries) break;
       await sleep(backoffMs(attempt, baseMs, maxMs));
+    } finally {
+      if (timer) clearTimeout(timer);
     }
   }
   throw lastError instanceof Error ? lastError : new Error("fetchWithRetry: request failed");

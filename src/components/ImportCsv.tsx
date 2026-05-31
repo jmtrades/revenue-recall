@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Icon } from "@/components/icons";
 import { parseImportCsv, type ParseResult } from "@/lib/import/csv";
 
 interface ImportResult {
@@ -103,7 +104,7 @@ export function ImportCsv({ writable }: { writable: boolean }) {
               dragging ? "border-brand bg-brand-soft/20" : "border-border hover:border-brand/50"
             }`}
           >
-            <div className="text-3xl text-muted/60">⬆</div>
+            <Icon name="upload" size={26} className="text-muted/60" />
             <p className="mt-2 text-sm text-fg">{fileName ?? "Drop a CSV here or click to upload"}</p>
             <p className="mt-1 text-xs text-muted">Columns: name, email, phone, company, value, stage, language</p>
           </button>
@@ -148,7 +149,7 @@ export function ImportCsv({ writable }: { writable: boolean }) {
 
       {status === "done" && result && (
         <div className="mt-4 rounded-xl border border-success/40 bg-success/10 p-4">
-          <p className="text-sm font-medium text-fg">Import complete ✓</p>
+          <p className="inline-flex items-center gap-1.5 text-sm font-medium text-fg"><Icon name="check" size={14} strokeWidth={3} className="text-success" /> Import complete</p>
           <p className="mt-1 text-sm text-muted">
             {result.contacts} contact{result.contacts === 1 ? "" : "s"} and {result.deals} deal
             {result.deals === 1 ? "" : "s"} created.

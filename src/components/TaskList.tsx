@@ -3,8 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { TaskItem } from "@/lib/queries";
+import { ChannelBadge, EmptyState } from "@/components/ui";
+import { Icon } from "@/components/icons";
 
-const CHANNEL: Record<string, string> = { call: "📞 Call", email: "✉ Email", sms: "💬 SMS" };
 const PRIORITY: Record<string, string> = {
   high: "bg-danger/15 text-danger",
   medium: "bg-warn/15 text-warn",
@@ -39,10 +40,11 @@ export function TaskList({ tasks }: { tasks: TaskItem[] }) {
                   >
                     <button
                       onClick={() => setDone((d) => ({ ...d, [t.id]: !d[t.id] }))}
-                      className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border ${done[t.id] ? "border-success bg-success text-white" : "border-border text-transparent hover:border-brand"}`}
+                      className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border transition ${done[t.id] ? "border-success bg-success text-white" : "border-border text-transparent hover:border-brand"}`}
                       aria-label="Toggle done"
+                      aria-pressed={!!done[t.id]}
                     >
-                      ✓
+                      <Icon name="check" size={13} strokeWidth={3} />
                     </button>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -54,14 +56,16 @@ export function TaskList({ tasks }: { tasks: TaskItem[] }) {
                       <p className="mt-1 text-xs text-muted">{t.note}</p>
                       {t.contactName && <p className="mt-0.5 text-xs text-muted">{t.contactName}</p>}
                     </div>
-                    <span className="pill shrink-0 bg-surface-2 text-muted">{CHANNEL[t.channel]}</span>
+                    <span className="shrink-0"><ChannelBadge channel={t.channel} /></span>
                   </li>
                 ))}
               </ul>
             </div>
           ),
       )}
-      {tasks.length === 0 && <p className="rounded-xl border border-dashed border-border py-10 text-center text-sm text-muted">All caught up — no tasks right now.</p>}
+      {tasks.length === 0 && (
+        <EmptyState iconName="tasks" title="All caught up" hint="No tasks need your attention right now. New follow-ups appear here as deals progress and Autopilot works your pipeline." />
+      )}
     </div>
   );
 }

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Initialize one org (pipeline, stages, member, demo data) in a freshly-migrated
-# database by calling the running app's bootstrap endpoint.
+# Initialize one org (pipeline, stages, member) in a freshly-migrated database
+# by calling the running app's bootstrap endpoint. Starts CLEAN (no demo data) —
+# real workspaces are live data only. Pass `true` only to seed a throwaway
+# demo/preview org: ./scripts/db-bootstrap.sh true
 # Prereqs: migrations applied, app running (npm run dev), ADMIN_TOKEN set.
 # Usage: npm run db:bootstrap   (or  ./scripts/db-bootstrap.sh)
 set -euo pipefail
@@ -14,7 +16,7 @@ fi
 
 : "${ADMIN_TOKEN:?Set ADMIN_TOKEN in the environment or .env.local}"
 APP_URL="${APP_URL:-http://localhost:3000}"
-DEMO="${1:-true}"
+DEMO="${1:-false}"
 
 echo "→ Bootstrapping org at $APP_URL (demo=$DEMO)"
 curl -fsS -X POST "$APP_URL/api/admin/bootstrap" \
