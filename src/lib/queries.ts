@@ -69,10 +69,13 @@ export async function getBoard(): Promise<BoardData> {
 
 export async function getRecallQueue(): Promise<{ items: RecallItem[]; summary: RecallSummary; contacts: Map<string, Contact>; opps: Map<string, Opportunity> }> {
   const provider = getProvider();
+  // Route the no-arg list reads through the request-cache so a dashboard render
+  // (overview + recall + feed) shares one fetch each instead of re-reading all
+  // contacts/opps per helper. listRecentActivities is parameterized, so direct.
   const [pipelines, opportunities, contacts, recent] = await Promise.all([
-    provider.listPipelines(),
-    provider.listOpportunities(),
-    provider.listContacts(),
+    cachedPipelines(),
+    cachedOpportunities(),
+    cachedContacts(),
     provider.listRecentActivities(250).catch(() => [] as Activity[]),
   ]);
   // Group recent activities by opportunity so the engine can route to the
