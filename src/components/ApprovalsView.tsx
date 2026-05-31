@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Avatar, ChannelIcon, EmptyState } from "@/components/ui";
+import { Avatar, ChannelIcon, channelLabel, EmptyState } from "@/components/ui";
+import type { OutboxChannel } from "@/lib/agent/types";
 
 export interface ApprovalRow {
   id: string;
   contactName: string;
   dealId?: string;
-  channel: "email" | "sms";
+  channel: OutboxChannel;
   subject?: string;
   body: string;
   source: "ai" | "template";
@@ -62,7 +63,7 @@ export function ApprovalsView({ rows }: { rows: ApprovalRow[] }) {
               <Avatar name={it.contactName} size={30} />
               <div>
                 {it.dealId ? <Link href={`/deals/${it.dealId}`} className="text-sm font-medium text-fg hover:underline">{it.contactName}</Link> : <span className="text-sm font-medium text-fg">{it.contactName}</span>}
-                <div className="flex items-center gap-1 text-xs text-muted"><ChannelIcon channel={it.channel} size={11} /> {it.channel === "email" ? "Email" : "SMS"} · {it.source === "ai" ? "AI draft" : "template"}</div>
+                <div className="flex items-center gap-1 text-xs text-muted"><ChannelIcon channel={it.channel} size={11} /> {channelLabel(it.channel)} · {it.source === "ai" ? "AI draft" : "template"}</div>
               </div>
             </div>
             <div className="flex gap-2">

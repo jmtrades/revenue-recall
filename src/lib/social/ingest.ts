@@ -1,5 +1,13 @@
 import { getProvider } from "@/lib/crm/registry";
 import { detectIntent } from "@/lib/ai/intent";
+import { draftReply } from "@/lib/ai/reply";
+import { getActiveVoice } from "@/lib/voice";
+import { getOrgSettings } from "@/lib/org";
+import { getIndustry } from "@/lib/industries";
+import { contactPreferredLanguage } from "@/lib/languages";
+import { sendReply } from "@/lib/outbound";
+import { createOutboxItem } from "@/lib/agent/store";
+import { fireSpeedToLead } from "@/lib/agent/speed-to-lead";
 import type { Contact } from "@/lib/crm/types";
 import type { InboundSocialMessage, SocialPlatform } from "@/lib/social/types";
 
@@ -39,6 +47,8 @@ export interface SocialIngestResult {
   contactId?: string;
   created: boolean;
   logged: boolean;
+  /** Outbound reply outcome: auto-sent, queued to Approvals, or none. */
+  replied?: "sent" | "queued" | false;
   intent?: string;
 }
 
@@ -78,6 +88,7 @@ export async function ingestSocialMessages(messages: InboundSocialMessage[]): Pr
     }
 
     let logged = false;
+    let replied: "sent" | "queued" | false = false;
     try {
       // Log the inbound message to the timeline (kind:note keeps within core
       // types; the platform prefix makes the channel unambiguous in the inbox).
@@ -90,7 +101,8 @@ export async function ingestSocialMessages(messages: InboundSocialMessage[]): Pr
       });
       logged = true;
 
-      // New sender → raise a follow-up task so it's never lost.
+      // New sender → raise a follow-up task so it's never lost, and kick off
+      // speed-to-lead (opt-in) just like a fresh inbound email/SMS lead.
       if (created) {
         await provider.logActivity({
           contactId: contact.id,
@@ -98,12 +110,18 @@ export async function ingestSocialMessages(messages: InboundSocialMessage[]): Pr
           summary: `New ${cap(platform)} message from ${contact.name} — follow up`,
           occurredAt: m.at,
         });
+        await fireSpeedToLead(contact.id);
       }
+
+      // Draft a human-voiced reply and send it back on the SAME platform (auto
+      // when REPLY_AUTOPILOT=true), or queue it to Approvals — so social is
+      // two-way like email/SMS, not a one-way log.
+      replied = await autoReply(contact, platform, m.text);
     } catch {
       logged = false;
     }
 
-    results.push({ platform, contactId: contact.id, created, logged, intent: detectIntent(m.text) });
+    results.push({ platform, contactId: contact.id, created, logged, replied, intent: detectIntent(m.text) });
   }
 
   return results;
@@ -111,6 +129,51 @@ export async function ingestSocialMessages(messages: InboundSocialMessage[]): Pr
 
 function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/**
+ * Draft a reply to an inbound social DM in the rep's voice and either send it
+ * back on the same platform (REPLY_AUTOPILOT=true) or queue it to Approvals.
+ * Mirrors the email/SMS inbound behavior so every channel is genuinely two-way.
+ * Best-effort: a reply failure never breaks ingestion of the message itself.
+ */
+async function autoReply(contact: Contact, platform: SocialPlatform, incoming: string): Promise<"sent" | "queued" | false> {
+  try {
+    const [voice, org] = await Promise.all([getActiveVoice(), getOrgSettings()]);
+    const industry = getIndustry(org.industryId);
+    const reply = await draftReply({
+      channel: "sms", // social DMs are short-form; reuse the SMS register
+      contactName: contact.name,
+      company: contact.company,
+      dealTitle: contact.name,
+      industryLabel: industry.label,
+      industryId: industry.id,
+      incoming,
+      voice,
+      language: contactPreferredLanguage(contact.attributes, org.language),
+    });
+
+    if (process.env.REPLY_AUTOPILOT === "true") {
+      const res = await sendReply({ contact, channel: platform, body: reply.body });
+      if (res.status !== "failed") {
+        const provider = getProvider();
+        await provider.logActivity({
+          contactId: contact.id,
+          kind: "note",
+          summary: `[${platformTag(platform)}] ${reply.body}`,
+          direction: "outbound",
+          occurredAt: new Date().toISOString(),
+        });
+        return "sent";
+      }
+    }
+
+    // Default: queue the drafted reply to Approvals for one-click send.
+    await createOutboxItem({ contactId: contact.id, channel: platform, body: reply.body, source: reply.source });
+    return "queued";
+  } catch {
+    return false;
+  }
 }
 
 /** Resolve a contact's external id for a platform (for the outbound reply path). */

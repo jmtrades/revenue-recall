@@ -36,13 +36,16 @@ export interface AgentAction {
   value?: number;
 }
 
+/** Channels a queued outbox item can be sent on: email/sms + social platforms. */
+export type OutboxChannel = "email" | "sms" | "whatsapp" | "instagram" | "messenger" | "telegram" | "x" | "linkedin";
+
 export interface OutboxItem {
   id: string;
   runId?: string;
   taskId?: string;
   dealId?: string;
   contactId?: string;
-  channel: "email" | "sms";
+  channel: OutboxChannel;
   subject?: string;
   body: string;
   status: "pending" | "sent" | "dismissed";

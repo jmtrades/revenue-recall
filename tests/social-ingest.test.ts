@@ -1,7 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ingestSocialMessages, socialAttrKey, socialAddress } from "@/lib/social/ingest";
 import { getProvider } from "@/lib/crm/registry";
+import { listOutbox } from "@/lib/agent/store";
 import type { InboundSocialMessage } from "@/lib/social/types";
+
+beforeEach(() => {
+  delete process.env.ANTHROPIC_API_KEY;
+  delete process.env.REPLY_AUTOPILOT;
+});
+afterEach(() => {
+  delete process.env.REPLY_AUTOPILOT;
+});
 
 // Uses the built-in (auto-seeded, in-memory) provider — same pattern as
 // inbound.test.ts: no reset hook exists, so each test uses unique identities and
@@ -53,5 +62,24 @@ describe("ingestSocialMessages", () => {
     expect(tg.created).toBe(true);
     expect(wa.created).toBe(true);
     expect(tg.contactId).not.toBe(wa.contactId);
+  });
+
+  it("drafts a reply and queues it to Approvals by default (two-way, not one-way)", async () => {
+    const [res] = await ingestSocialMessages([msg()]);
+    expect(res.replied).toBe("queued");
+    const pending = await listOutbox("pending");
+    const mine = pending.find((p) => p.contactId === res.contactId);
+    expect(mine).toBeTruthy();
+    expect(mine!.channel).toBe("telegram"); // queued on the channel it arrived on
+    expect(mine!.body.length).toBeGreaterThan(0);
+  });
+
+  it("auto-sends the reply on the same channel when REPLY_AUTOPILOT=true", async () => {
+    process.env.REPLY_AUTOPILOT = "true";
+    const [res] = await ingestSocialMessages([msg()]);
+    expect(res.replied).toBe("sent");
+    // Logged as an outbound [Telegram] note so it round-trips into the inbox thread.
+    const acts = await getProvider().listActivitiesByContact!(res.contactId!);
+    expect(acts.some((a) => a.direction === "outbound" && a.summary.includes("[Telegram]"))).toBe(true);
   });
 });
