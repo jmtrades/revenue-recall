@@ -1,4 +1,5 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
+import { isEntitled } from "@/lib/billing/enforce";
 import { refineForHumanness } from "@/lib/ai/refine";
 import { getPlaybook } from "@/lib/industries";
 import { languageDirective } from "@/lib/languages";
@@ -458,7 +459,12 @@ export const DRAFT_SYSTEM = SYSTEM;
 export const DRAFT_SCHEMA = SCHEMA;
 
 export async function draftMessage(input: DraftInput): Promise<DraftResult> {
-  if (!isAiConfigured()) return fallback(input);
+  // Live AI is the paid boundary. When billing enforcement is on, a plan
+  // without aiLive falls back to the (still good) deterministic templates
+  // instead of spending on a model — closing the free-plan revenue leak.
+  // isEntitled short-circuits to true when enforcement is off, so this is a
+  // no-op for the demo/trial default.
+  if (!isAiConfigured() || !(await isEntitled("aiLive"))) return fallback(input);
 
   const user = buildDraftUserPrompt(input);
 

@@ -1,4 +1,5 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
+import { isEntitled } from "@/lib/billing/enforce";
 import { refineForHumanness } from "@/lib/ai/refine";
 import { getPlaybook } from "@/lib/industries";
 import { getLanguage, DEFAULT_LANGUAGE } from "@/lib/languages";
@@ -189,7 +190,9 @@ function replyLanguageDirective(code?: string): string {
 }
 
 export async function draftReply(input: ReplyInput): Promise<ReplyResult> {
-  if (!isAiConfigured() || !input.incoming.trim()) return fallback(input);
+  // Live AI is the paid boundary (see draftMessage). Falls back to templates
+  // when enforcement is on and the plan lacks aiLive; no-op otherwise.
+  if (!isAiConfigured() || !input.incoming.trim() || !(await isEntitled("aiLive"))) return fallback(input);
   const pb = getPlaybook(input.industryId ?? "generic");
   const tone = getTone(input.tone);
   const user = `Channel: ${input.channel}
