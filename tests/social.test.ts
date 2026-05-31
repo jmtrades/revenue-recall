@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import { telegramChannel } from "@/lib/social/telegram";
 import { whatsappChannel, verifyMetaSignature } from "@/lib/social/whatsapp";
+import { xChannel } from "@/lib/social/x";
 import { listSocialChannels, getSocialChannel } from "@/lib/social/registry";
 import { socialAttrKey } from "@/lib/social/ingest";
 
@@ -88,6 +89,52 @@ describe("whatsapp / meta signature", () => {
     const msgs = await whatsappChannel.parseWebhook({ rawBody: JSON.stringify(body), headers: {}, query: new URLSearchParams() });
     expect(msgs).toHaveLength(1);
     expect(msgs[0]).toMatchObject({ platform: "whatsapp", text: "interested", from: { externalId: "15551234567", name: "Jordan" }, toAccountId: "PN1" });
+  });
+});
+
+describe("x (twitter) DM webhook", () => {
+  const SECRET = "x_app_secret";
+  afterEach(() => {
+    delete process.env.X_API_SECRET;
+  });
+
+  function sign(body: string): string {
+    return "sha256=" + crypto.createHmac("sha256", SECRET).update(body, "utf8").digest("base64");
+  }
+
+  const activity = JSON.stringify({
+    for_user_id: "me_1",
+    direct_message_events: [
+      { type: "message_create", id: "dm_1", created_timestamp: "1700000000000", message_create: { sender_id: "them_1", target: { recipient_id: "me_1" }, message_data: { text: "still available?" } } },
+      // our own outbound echo — must be skipped
+      { type: "message_create", id: "dm_2", message_create: { sender_id: "me_1", message_data: { text: "yes!" } } },
+    ],
+    users: { them_1: { screen_name: "buyer", name: "A Buyer" } },
+  });
+
+  it("parses an inbound DM and skips our own echoes", async () => {
+    const msgs = await xChannel.parseWebhook({ rawBody: activity, headers: {}, query: new URLSearchParams() });
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0]).toMatchObject({ platform: "x", text: "still available?", from: { externalId: "them_1", handle: "buyer", name: "A Buyer" } });
+  });
+
+  it("rejects a bad signature when X_API_SECRET is set", async () => {
+    process.env.X_API_SECRET = SECRET;
+    await expect(
+      xChannel.parseWebhook({ rawBody: activity, headers: { "x-twitter-webhooks-signature": "sha256=wrong" }, query: new URLSearchParams() }),
+    ).rejects.toThrow(/signature/);
+  });
+
+  it("accepts a correctly signed payload", async () => {
+    process.env.X_API_SECRET = SECRET;
+    const msgs = await xChannel.parseWebhook({ rawBody: activity, headers: { "x-twitter-webhooks-signature": sign(activity) }, query: new URLSearchParams() });
+    expect(msgs).toHaveLength(1);
+  });
+
+  it("answers the CRC challenge", () => {
+    process.env.X_API_SECRET = SECRET;
+    const res = xChannel.verifyChallenge!(new URLSearchParams({ crc_token: "abc" }));
+    expect(res).toContain("response_token");
   });
 });
 

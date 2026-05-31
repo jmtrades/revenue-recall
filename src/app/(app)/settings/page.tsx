@@ -222,7 +222,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
                 <div className="text-sm font-medium text-fg">{s.label}</div>
                 <div className="mt-1 text-xs leading-relaxed text-muted">{s.hint}</div>
               </div>
-              <span className={`pill shrink-0 ${s.connected ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>{s.connected ? "Connected" : "Connect"}</span>
+              <span className={`pill shrink-0 ${s.connected ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>{s.connected ? "Connected" : "Needs setup"}</span>
             </div>
           ))}
         </div>
