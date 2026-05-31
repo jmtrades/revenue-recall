@@ -129,6 +129,7 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
           <EyeIcon off={showPw} />
         </button>
       </div>
+      {mode === "signup" && <p className="-mt-1 text-[11px] text-muted">At least 8 characters.</p>}
       {next && <input type="hidden" name="next" value={next} />}
 
       {state?.error && (

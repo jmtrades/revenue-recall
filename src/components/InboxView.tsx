@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { InboxThread } from "@/lib/queries";
-import { Avatar, ChannelIcon, ChannelBadge, channelLabel } from "@/components/ui";
+import { Avatar, ChannelIcon, ChannelBadge, channelLabel, EmptyState, Button } from "@/components/ui";
 
 function timeAgo(iso: string): string {
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
@@ -46,6 +46,19 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
     }
   }
 
+  // Nothing has come in yet — show one clear, full-width empty state rather than
+  // an empty split view with a thin "No conversations" line.
+  if (threads.length === 0) {
+    return (
+      <EmptyState
+        iconName="inbox"
+        title="No conversations yet"
+        hint="Every reply across email, SMS, and connected social channels (WhatsApp, Instagram, Messenger, Telegram, X, LinkedIn) lands here in one thread. Connect a channel and inbound messages flow straight in."
+        action={<Button href="/settings?tab=channels" variant="outline" size="sm">Connect a channel</Button>}
+      />
+    );
+  }
+
   return (
     <div className="grid h-[calc(100vh-12rem)] grid-cols-1 gap-4 md:grid-cols-[320px_1fr]">
       <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface">
@@ -58,7 +71,7 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
         </div>
         <div className="flex-1 overflow-y-auto">
           {shown.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted">No conversations.</p>
+            <p className="px-4 py-8 text-center text-sm text-muted">No unread conversations.</p>
           ) : (
             shown.map((t) => (
               <button
