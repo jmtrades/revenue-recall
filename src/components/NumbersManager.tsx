@@ -81,7 +81,7 @@ export function NumbersManager({ configured, provider, byoNumber, initialOwned }
       <div>
         <p className="stat-label">Your numbers</p>
         {owned.length === 0 ? (
-          <p className="mt-1 text-sm text-muted">No numbers yet. {byoNumber ? "" : "Set OUTBOUND_FROM_NUMBER to use your own, or buy one below."}</p>
+          <p className="mt-1 text-sm text-muted">No numbers yet. {byoNumber ? "" : "Connect your own number, or get one below."}</p>
         ) : (
           <ul className="mt-1 divide-y divide-border">
             {owned.map((n) => (
@@ -129,8 +129,7 @@ export function NumbersManager({ configured, provider, byoNumber, initialOwned }
         </div>
       ) : (
         <p className="text-xs text-muted">
-          Connect a number provider to search and buy: set <code className="text-fg">NUMBERS_WEBHOOK_URL</code> (the app POSTs{" "}
-          <code className="text-fg">{"{action,areaCode,number}"}</code> to your telephony account) or register a provider in code. No vendor lock-in.
+          Connect your telephony to search and buy numbers right here — no lock-in. Or bring a number you already own.
         </p>
       )}
 

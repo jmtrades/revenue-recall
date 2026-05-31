@@ -1,0 +1,45 @@
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+
+// The health route reads env at request time; toggle vars per case.
+const SAVED = { ...process.env };
+beforeEach(() => {
+  delete process.env.NEXT_PUBLIC_AUTH_REQUIRED;
+  delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+  delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+});
+afterEach(() => {
+  process.env = { ...SAVED };
+});
+
+async function health() {
+  const { GET } = await import("@/app/api/health/route");
+  const res = await GET();
+  return res.json();
+}
+
+describe("health launch-readiness verdict", () => {
+  it("flags auth-optional + no-database as launch blockers", async () => {
+    const body = await health();
+    expect(body.launch.ready).toBe(false);
+    expect(body.launch.blockers.join(" ")).toMatch(/NEXT_PUBLIC_AUTH_REQUIRED/);
+    expect(body.launch.blockers.join(" ")).toMatch(/database/i);
+  });
+
+  it("is launch-ready when a database is connected and auth is required", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://x.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "svc";
+    process.env.NEXT_PUBLIC_AUTH_REQUIRED = "true";
+    const body = await health();
+    expect(body.capabilities.database).toBe("supabase");
+    expect(body.capabilities.auth).toBe("required");
+    expect(body.launch.ready).toBe(true);
+    expect(body.launch.blockers).toEqual([]);
+  });
+
+  it("still reports status ok even when not launch-ready", async () => {
+    const body = await health();
+    expect(body.status).toBe("ok");
+    expect(Array.isArray(body.launch.warnings)).toBe(true);
+  });
+});
