@@ -7,6 +7,7 @@ import type {
   WebhookEnvelope,
 } from "@/lib/social/types";
 import { resolveSocialCreds } from "@/lib/social/creds";
+import { fetchWithRetry } from "@/lib/crm/net";
 
 /**
  * LinkedIn messaging. LinkedIn's messaging APIs are partner-gated (the Messages
@@ -41,7 +42,8 @@ export const linkedinChannel: SocialChannel = {
     const { token: tk, apiVersion } = await resolveSocialCreds("linkedin", LI_KEYS);
     if (!tk) return { id: "", status: "logged", platform: "linkedin", detail: "not connected" };
     try {
-      const res = await fetch("https://api.linkedin.com/rest/messages", {
+      // retries:0 on a send (avoid double-send); still gets the hang timeout.
+      const res = await fetchWithRetry("https://api.linkedin.com/rest/messages", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${tk}`,
@@ -49,7 +51,7 @@ export const linkedinChannel: SocialChannel = {
           "LinkedIn-Version": apiVersion ?? "202401",
         },
         body: JSON.stringify({ recipients: [msg.to], body: msg.text }),
-      });
+      }, { retries: 0 });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { message?: string };
         throw new Error(j.message ?? `LinkedIn ${res.status}`);

@@ -18,6 +18,7 @@ import type {
  */
 import crypto from "node:crypto";
 import { resolveSocialCreds } from "@/lib/social/creds";
+import { fetchWithRetry } from "@/lib/crm/net";
 
 const X_KEYS = { token: "X_BEARER_TOKEN", apiSecret: "X_API_SECRET" };
 
@@ -43,11 +44,12 @@ export const xChannel: SocialChannel = {
     if (!tk) return { id: "", status: "logged", platform: "x", detail: "not connected" };
     try {
       // v2: POST /2/dm_conversations/with/:participant_id/messages
-      const res = await fetch(`https://api.twitter.com/2/dm_conversations/with/${encodeURIComponent(msg.to)}/messages`, {
+      // retries:0 on a send (avoid double-send); still gets the hang timeout.
+      const res = await fetchWithRetry(`https://api.twitter.com/2/dm_conversations/with/${encodeURIComponent(msg.to)}/messages`, {
         method: "POST",
         headers: { Authorization: `Bearer ${tk}`, "Content-Type": "application/json" },
         body: JSON.stringify({ text: msg.text }),
-      });
+      }, { retries: 0 });
       const json = (await res.json().catch(() => ({}))) as { data?: { dm_event_id?: string }; detail?: string };
       if (!res.ok) throw new Error(json.detail ?? `X ${res.status}`);
       return { id: json.data?.dm_event_id ?? "", status: "sent", platform: "x" };

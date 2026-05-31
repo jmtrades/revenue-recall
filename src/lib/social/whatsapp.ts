@@ -8,6 +8,7 @@ import type {
   WebhookEnvelope,
 } from "@/lib/social/types";
 import { resolveSocialCreds } from "@/lib/social/creds";
+import { fetchWithRetry } from "@/lib/crm/net";
 
 /**
  * WhatsApp Business (Meta Cloud API). Real Graph API shape: outbound via
@@ -61,11 +62,12 @@ export const whatsappChannel: SocialChannel = {
     const { token: tk, phoneNumberId: pnid } = await resolveSocialCreds("whatsapp", WA_KEYS);
     if (!tk || !pnid) return { id: "", status: "logged", platform: "whatsapp", detail: "not connected" };
     try {
-      const res = await fetch(`${GRAPH}/${pnid}/messages`, {
+      // retries:0 on a send (avoid double-send); still gets the hang timeout.
+      const res = await fetchWithRetry(`${GRAPH}/${pnid}/messages`, {
         method: "POST",
         headers: { Authorization: `Bearer ${tk}`, "Content-Type": "application/json" },
         body: JSON.stringify({ messaging_product: "whatsapp", to: msg.to, type: "text", text: { body: msg.text } }),
-      });
+      }, { retries: 0 });
       const json = (await res.json().catch(() => ({}))) as { messages?: { id?: string }[]; error?: { message?: string } };
       if (!res.ok) throw new Error(json.error?.message ?? `WhatsApp ${res.status}`);
       return { id: json.messages?.[0]?.id ?? "", status: "sent", platform: "whatsapp" };

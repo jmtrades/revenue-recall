@@ -7,6 +7,7 @@ import type {
   WebhookEnvelope,
 } from "@/lib/social/types";
 import { resolveSocialCreds } from "@/lib/social/creds";
+import { fetchWithRetry } from "@/lib/crm/net";
 
 /**
  * Telegram channel — fully functional with just a bot token (no app review),
@@ -41,11 +42,13 @@ export const telegramChannel: SocialChannel = {
     const { token: t } = await resolveSocialCreds("telegram", KEYS);
     if (!t) return { id: "", status: "logged", platform: "telegram", detail: "not connected" };
     try {
-      const res = await fetch(`https://api.telegram.org/bot${t}/sendMessage`, {
+      // No retries on a send (a retry after an ambiguous failure risks a
+      // double-send); fetchWithRetry still gives us the abort-on-hang timeout.
+      const res = await fetchWithRetry(`https://api.telegram.org/bot${t}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chat_id: msg.to, text: msg.text, reply_to_message_id: msg.replyToId }),
-      });
+      }, { retries: 0 });
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; result?: { message_id?: number }; description?: string };
       if (!res.ok || !json.ok) throw new Error(json.description ?? `Telegram ${res.status}`);
       return { id: String(json.result?.message_id ?? ""), status: "sent", platform: "telegram" };

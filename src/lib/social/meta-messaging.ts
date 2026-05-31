@@ -9,6 +9,7 @@ import type {
 } from "@/lib/social/types";
 import { verifyMetaSignature } from "@/lib/social/whatsapp";
 import { resolveSocialCreds } from "@/lib/social/creds";
+import { fetchWithRetry } from "@/lib/crm/net";
 
 /**
  * Instagram DMs + Facebook Messenger — both are Meta's Messenger Platform with
@@ -54,11 +55,12 @@ export function metaMessagingChannel(platform: "instagram" | "messenger"): Socia
       const { token: tk } = await resolveSocialCreds(platform as SocialPlatform, credKeys);
       if (!tk) return { id: "", status: "logged", platform, detail: "not connected" };
       try {
-        const res = await fetch(`${GRAPH}/me/messages?access_token=${encodeURIComponent(tk)}`, {
+        // retries:0 on a send (avoid double-send); still gets the hang timeout.
+        const res = await fetchWithRetry(`${GRAPH}/me/messages?access_token=${encodeURIComponent(tk)}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ recipient: { id: msg.to }, message: { text: msg.text }, messaging_type: "RESPONSE" }),
-        });
+        }, { retries: 0 });
         const json = (await res.json().catch(() => ({}))) as { message_id?: string; error?: { message?: string } };
         if (!res.ok) throw new Error(json.error?.message ?? `${k.label} ${res.status}`);
         return { id: json.message_id ?? "", status: "sent", platform };

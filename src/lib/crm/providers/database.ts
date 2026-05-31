@@ -15,6 +15,7 @@ import type {
 import { getConfig } from "@/lib/config";
 import { getIndustry } from "@/lib/industries";
 import { getConnection } from "@/lib/connections/store";
+import { fetchWithRetry } from "@/lib/crm/net";
 
 /**
  * Generic database / data-source adapter — "connect any database, even if it's
@@ -248,7 +249,9 @@ export class DatabaseProvider implements CrmProvider {
     if (!url) return { rows: [], mapping };
     const headers: Record<string, string> = { Accept: "application/json" };
     if (token) headers.Authorization = `Bearer ${token}`;
-    const res = await fetch(url, { headers });
+    // Retry transient blips + abort a hung endpoint — a customer's slow database
+    // must never block the request until the platform kills the function.
+    const res = await fetchWithRetry(url, { headers });
     if (!res.ok) throw new Error(`data source ${res.status}`);
     return { rows: extractRows(await res.json().catch(() => null)), mapping };
   }
