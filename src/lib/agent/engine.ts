@@ -14,6 +14,7 @@ import { contactInsights, reachHint } from "@/lib/insights";
 import { contactPreferredLanguage } from "@/lib/languages";
 import { isEntitled } from "@/lib/billing/enforce";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
+import { recordRecallTouch } from "@/lib/recall/events";
 import type { AgentAction, AgentRun, AgentTask } from "@/lib/agent/types";
 import type { Contact, Opportunity, Pipeline } from "@/lib/crm/types";
 
@@ -179,6 +180,8 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
               direction: "outbound",
               occurredAt: new Date().toISOString(),
             });
+            // Attribute autopilot work on an at-risk deal so won-back ROI counts it.
+            if (t.reason) await recordRecallTouch({ dealId: t.opp.id, contactId: t.opp.contactId, channel: "call", source: "autopilot" });
           }
         } else {
           result = "queued"; // talk track prepared for the dialer (review mode / no number)
@@ -205,6 +208,8 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
               direction: "outbound",
               occurredAt: new Date().toISOString(),
             });
+            // Attribute autopilot work on an at-risk deal so won-back ROI counts it.
+            if (t.reason) await recordRecallTouch({ dealId: t.opp.id, contactId: t.opp.contactId, channel, source: "autopilot" });
           }
         }
       }

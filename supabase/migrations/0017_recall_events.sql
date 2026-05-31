@@ -10,7 +10,7 @@ create table if not exists recall_events (
   deal_id     text,
   contact_id  text,
   channel     text not null check (channel in ('call','email','sms')),
-  source      text not null default 'cadence' check (source in ('cadence','manual')),
+  source      text not null default 'cadence' check (source in ('cadence','manual','autopilot')),
   occurred_at timestamptz not null default now(),
   created_at  timestamptz not null default now()
 );
