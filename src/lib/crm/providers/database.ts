@@ -13,6 +13,7 @@ import type {
   User,
 } from "@/lib/crm/types";
 import { getConfig } from "@/lib/config";
+import { getIndustry } from "@/lib/industries";
 
 /**
  * Generic database / data-source adapter — "connect any database, even if it's
