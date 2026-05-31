@@ -1,5 +1,5 @@
 import { cache } from "@/lib/cache";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import type { Contact, Opportunity, Pipeline, User } from "@/lib/crm/types";
 
 /**
@@ -10,8 +10,11 @@ import type { Contact, Opportunity, Pipeline, User } from "@/lib/crm/types";
  * cache collapses those into a single fetch per request — cutting redundant DB
  * round-trips on Supabase — with zero behavior change (in tests cache() is an
  * identity wrapper, so callers still get fresh data).
+ *
+ * These use resolveProvider() (async) so a database an org connected through the
+ * UI becomes their active source on the main read paths, not just via env.
  */
-export const cachedOpportunities = cache((): Promise<Opportunity[]> => getProvider().listOpportunities());
-export const cachedPipelines = cache((): Promise<Pipeline[]> => getProvider().listPipelines());
-export const cachedContacts = cache((): Promise<Contact[]> => getProvider().listContacts());
-export const cachedUsers = cache((): Promise<User[]> => getProvider().listUsers());
+export const cachedOpportunities = cache(async (): Promise<Opportunity[]> => (await resolveProvider()).listOpportunities());
+export const cachedPipelines = cache(async (): Promise<Pipeline[]> => (await resolveProvider()).listPipelines());
+export const cachedContacts = cache(async (): Promise<Contact[]> => (await resolveProvider()).listContacts());
+export const cachedUsers = cache(async (): Promise<User[]> => (await resolveProvider()).listUsers());

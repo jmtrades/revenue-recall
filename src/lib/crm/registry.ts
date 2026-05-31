@@ -63,6 +63,28 @@ export function getProvider(): CrmProvider {
   }
 }
 
+/**
+ * Async provider resolution that also honors a database an org connected through
+ * the UI (stored in the connections table, which the sync getProvider() can't
+ * read). When the org has a connected database and no explicit CRM_PROVIDER
+ * override is in force, the DatabaseProvider becomes active so their own leads
+ * show up. Otherwise it defers to the sync selection. Read paths that can await
+ * (the request-cached list accessors) use this; everything else keeps getProvider().
+ */
+export async function resolveProvider(): Promise<CrmProvider> {
+  const { providerId } = getConfig();
+  // An explicit env/config provider choice always wins.
+  if (providerId && providerId !== "auto" && providerId !== "database") return getProvider();
+  try {
+    const { getConnection } = await import("@/lib/connections/store");
+    const conn = await getConnection("database");
+    if (conn && (conn.secrets.url || conn.config.url)) return new DatabaseProvider();
+  } catch {
+    // no connection / no org context → fall through
+  }
+  return getProvider();
+}
+
 export function listIntegrations(): ProviderInfo[] {
   return [
     new BuiltinProvider().info(),
