@@ -78,9 +78,12 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
     setGoogleBusy(true);
     try {
       const sb = getBrowserSupabase();
+      // New users (Sign up) land in onboarding just like the email path; an
+      // explicit `next` always wins. Returning users (Sign in) → dashboard.
+      const dest = next ?? (mode === "signup" ? "/onboarding" : "/dashboard");
       await sb.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(next ?? "/dashboard")}` },
+        options: { redirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(dest)}` },
       });
     } catch {
       setGoogleBusy(false);
