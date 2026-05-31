@@ -15,7 +15,7 @@ export interface ReplyInput {
   industryId?: string;
   incoming: string;
   history?: string[];
-  voice?: { senderName?: string; profile?: string; signature?: string; customNextSteps?: string[]; customReengage?: string[] };
+  voice?: { senderName?: string; profile?: string; signature?: string; business?: string; customNextSteps?: string[]; customReengage?: string[] };
   tone?: ToneId;
   /** ISO 639-1 language the workspace sells in (default English). See lib/languages. */
   language?: string;
@@ -199,7 +199,7 @@ export async function draftReply(input: ReplyInput): Promise<ReplyResult> {
 ${input.industryLabel ? `Industry: ${input.industryLabel}\n` : ""}Tone: ${tone.label} — ${tone.directive}
 Prospect: ${input.contactName}${input.company ? ` at ${input.company}` : ""}
 Deal: "${input.dealTitle}"
-${input.voice?.senderName ? `You are: ${input.voice.senderName}\n` : ""}${input.voice?.signature ? `Sign off as: ${input.voice.signature}\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).join("\n- ")}\n` : ""}
+${input.voice?.senderName ? `You are: ${input.voice.senderName}\n` : ""}${input.voice?.signature ? `Sign off as: ${input.voice.signature}\n` : ""}${input.voice?.business ? `The business you represent (what they sell / who they serve — ground your answer in this):\n"""${input.voice.business}"""\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).join("\n- ")}\n` : ""}
 THEIR INCOMING MESSAGE:
 """${input.incoming}"""
 
