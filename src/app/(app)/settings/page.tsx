@@ -56,13 +56,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
   // Org-level compliance wins over env (multi-tenant identity).
   const compliance = complianceConfig({ orgName: org.compliance.senderName ?? org.name, address: org.compliance.address });
   const setupItems: SetupItem[] = [
-    { label: "Database connected", ok: isSupabaseConfigured(), required: true, detail: "Persist data across restarts and support multi-tenant accounts (SUPABASE_*)." },
-    { label: "AI drafting live", ok: isAiConfigured(), required: false, detail: "Set ANTHROPIC_API_KEY for live, in-voice drafts; otherwise high-quality templates." },
-    { label: "Email sending", ok: ch.email.live, required: true, detail: `Provider: ${ch.email.provider}. Connect a transport/webhook to send (else logged).` },
-    { label: "SMS sending", ok: ch.sms.live, required: false, detail: `Provider: ${ch.sms.provider}. Connect a transport/webhook for live texts.` },
-    { label: "A from number", ok: (await listOwnedNumbers().catch(() => [])).length > 0, required: false, detail: "Bring your own (OUTBOUND_FROM_NUMBER) or buy one in the Numbers tab." },
-    { label: "Compliance address", ok: Boolean(compliance.address), required: true, detail: "A real postal address is legally required in commercial email (CAN-SPAM)." },
-    { label: "Billing connected", ok: billingConfigured(), required: false, detail: "Set STRIPE_* to charge customers via self-serve checkout." },
+    { label: "Workspace storage", ok: isSupabaseConfigured(), required: true, detail: "Your data is saved and your account is private to you and your team." },
+    { label: "AI writing live", ok: isAiConfigured(), required: false, detail: "Outreach is written live in your voice. Until connected, polished templates are used." },
+    { label: "Email sending", ok: ch.email.live, required: true, detail: "Connect email so messages actually send. Until then, they're saved to the timeline." },
+    { label: "SMS sending", ok: ch.sms.live, required: false, detail: "Connect texting to send SMS for real instead of logging it." },
+    { label: "A sending number", ok: (await listOwnedNumbers().catch(() => [])).length > 0, required: false, detail: "Bring your own number, or get one in the Numbers tab." },
+    { label: "Compliance address", ok: Boolean(compliance.address), required: true, detail: "A real postal address is legally required on commercial email." },
+    { label: "Billing connected", ok: billingConfigured(), required: false, detail: "Turn on self-serve checkout to charge customers." },
   ];
   const setupTab = (
     <Card>
@@ -207,11 +207,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
     <>
       <Card>
         <p className="mb-3 text-sm text-muted">
-          How outbound email, SMS, and calls are delivered. Provider-agnostic: point a webhook
-          (<code className="text-fg">EMAIL_WEBHOOK_URL</code> / <code className="text-fg">SMS_WEBHOOK_URL</code> /{" "}
-          <code className="text-fg">VOICE_WEBHOOK_URL</code>) at any provider or automation tool — no vendor lock-in — or
-          register a transport in code. Built-in adapters (Resend/SendGrid, optional Twilio) work via env too. Until something
-          is connected, messages are recorded to the timeline so every flow works end-to-end.
+          How outbound email, SMS, and calls are delivered. Connect your own sending — no lock-in. Until a channel is
+          connected, messages are recorded to the timeline so every flow works end-to-end.
         </p>
         <ul className="divide-y divide-border">
           {([
@@ -249,9 +246,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
   const numbersTab = (
     <Card>
       <p className="mb-3 text-sm text-muted">
-        Use your own number, or connect a provider to search and buy new ones. Bring your own by setting{" "}
-        <code className="text-fg">OUTBOUND_FROM_NUMBER</code> (the caller ID on outbound SMS and calls); connect a provider to
-        buy more — no vendor lock-in.
+        Use your own number as the caller ID on outbound SMS and calls, or connect your telephony to search and buy new
+        ones right here — no lock-in.
       </p>
       <NumbersManager
         configured={numbersConfigured()}

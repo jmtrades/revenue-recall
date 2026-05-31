@@ -122,8 +122,7 @@ export function BillingSettings({ configured, plan, status, seats, currentPeriod
 
       {!configured && (
         <p className="text-xs text-muted">
-          Self-serve checkout is inactive until Stripe is connected. Set <code className="text-fg">STRIPE_SECRET_KEY</code>,{" "}
-          <code className="text-fg">STRIPE_PRICE_GROWTH</code>, and <code className="text-fg">STRIPE_WEBHOOK_SECRET</code> to enable real billing.
+          Self-serve checkout activates once billing is connected in your workspace settings.
         </p>
       )}
       {error && <p className="text-sm text-danger">{error}</p>}

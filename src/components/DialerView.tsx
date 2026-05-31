@@ -78,7 +78,7 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
     const res = await fetch("/api/calls/place", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dealId: active.dealId }) });
     const b = await res.json();
     if (!res.ok) setCallStatus(b.error ?? "Call failed");
-    else setCallStatus(b.provider === "log" ? "Call logged (connect Twilio to dial for real)" : `Dialing via ${b.provider} → ${b.to}`);
+    else setCallStatus(b.provider === "log" ? "Call logged — connect a phone number to dial for real" : `Dialing ${b.to}`);
   }
 
   async function endCall() {
