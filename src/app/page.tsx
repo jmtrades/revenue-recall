@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { Footer } from "@/components/marketing/Footer";
-import { HeroPreview } from "@/components/marketing/HeroPreview";
+import { Hero3D } from "@/components/marketing/Hero3D";
 import { PricingPlans } from "@/components/marketing/PricingPlans";
 import { BrandLogos } from "@/components/marketing/BrandLogos";
 import { Icon, type IconName } from "@/components/icons";
@@ -111,7 +111,7 @@ export default function LandingPage() {
         <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-12 px-5 pb-20 pt-14 lg:grid-cols-2 lg:items-center lg:pb-28 lg:pt-20">
           <div className="min-w-0 animate-fade-up">
             <span className="eyebrow">Autonomous outbound · every industry</span>
-            <h1 className="display-hero mt-5 text-[2.6rem] font-semibold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem]">
+            <h1 className="display-hero mt-5 text-[2.9rem] font-semibold leading-[0.98] tracking-[-0.02em] sm:text-[3.5rem] lg:text-[4.25rem]">
               Put your entire sales operation <span className="gradient-text">on autopilot.</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-body">
@@ -137,7 +137,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="min-w-0 animate-fade-up [animation-delay:120ms]">
-            <HeroPreview />
+            <Hero3D />
           </div>
         </div>
       </section>
