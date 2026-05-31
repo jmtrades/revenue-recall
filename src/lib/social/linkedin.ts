@@ -6,6 +6,7 @@ import type {
   SocialSendResult,
   WebhookEnvelope,
 } from "@/lib/social/types";
+import { resolveSocialCreds } from "@/lib/social/creds";
 
 /**
  * LinkedIn messaging. LinkedIn's messaging APIs are partner-gated (the Messages
@@ -13,9 +14,12 @@ import type {
  * real-shaped scaffold: it reports "not connected" until LINKEDIN_ACCESS_TOKEN
  * is present and an approved messaging scope is wired. The send path targets the
  * real REST endpoint shape so finishing it is a credentials + scope task, not a
- * rewrite. Inbound LinkedIn does not push generic message webhooks to third
- * parties, so messages are pulled on the cadence tick rather than parsed here.
+ * rewrite. Credentials resolve per-org first, then env. Inbound LinkedIn does
+ * not push generic message webhooks to third parties, so messages are pulled on
+ * the cadence tick rather than parsed here.
  */
+const LI_KEYS = { token: "LINKEDIN_ACCESS_TOKEN", apiVersion: "LINKEDIN_API_VERSION" };
+
 const env = (k: string) => {
   const v = process.env[k];
   return v && v.length > 0 ? v : undefined;
@@ -34,7 +38,7 @@ export const linkedinChannel: SocialChannel = {
   },
 
   async send(msg: OutboundSocialMessage): Promise<SocialSendResult> {
-    const tk = env("LINKEDIN_ACCESS_TOKEN");
+    const { token: tk, apiVersion } = await resolveSocialCreds("linkedin", LI_KEYS);
     if (!tk) return { id: "", status: "logged", platform: "linkedin", detail: "not connected" };
     try {
       const res = await fetch("https://api.linkedin.com/rest/messages", {
@@ -42,7 +46,7 @@ export const linkedinChannel: SocialChannel = {
         headers: {
           Authorization: `Bearer ${tk}`,
           "Content-Type": "application/json",
-          "LinkedIn-Version": env("LINKEDIN_API_VERSION") ?? "202401",
+          "LinkedIn-Version": apiVersion ?? "202401",
         },
         body: JSON.stringify({ recipients: [msg.to], body: msg.text }),
       });

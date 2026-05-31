@@ -6,6 +6,7 @@ import type {
   SocialSendResult,
   WebhookEnvelope,
 } from "@/lib/social/types";
+import { resolveSocialCreds } from "@/lib/social/creds";
 
 /**
  * Telegram channel — fully functional with just a bot token (no app review),
@@ -13,9 +14,13 @@ import type {
  * Inbound arrives via the Telegram Bot API webhook; we verify it with a secret
  * token Telegram echoes in the `X-Telegram-Bot-Api-Secret-Token` header.
  *
- * Set TELEGRAM_BOT_TOKEN (and TELEGRAM_WEBHOOK_SECRET) to connect.
+ * Credentials resolve per-org first (an org's own connected bot, from the
+ * encrypted connections store), then fall back to env (TELEGRAM_BOT_TOKEN /
+ * TELEGRAM_WEBHOOK_SECRET) for single-tenant / self-hosted deploys.
  */
-function token(): string | undefined {
+const KEYS = { token: "TELEGRAM_BOT_TOKEN", webhookSecret: "TELEGRAM_WEBHOOK_SECRET" };
+
+function envToken(): string | undefined {
   const t = process.env.TELEGRAM_BOT_TOKEN;
   return t && t.length > 0 ? t : undefined;
 }
@@ -27,13 +32,13 @@ export const telegramChannel: SocialChannel = {
     return {
       platform: "telegram",
       label: "Telegram",
-      connected: Boolean(token()),
+      connected: Boolean(envToken()),
       hint: "Set TELEGRAM_BOT_TOKEN (from @BotFather) to send and receive Telegram DMs.",
     };
   },
 
   async send(msg: OutboundSocialMessage): Promise<SocialSendResult> {
-    const t = token();
+    const { token: t } = await resolveSocialCreds("telegram", KEYS);
     if (!t) return { id: "", status: "logged", platform: "telegram", detail: "not connected" };
     try {
       const res = await fetch(`https://api.telegram.org/bot${t}/sendMessage`, {
@@ -50,7 +55,7 @@ export const telegramChannel: SocialChannel = {
   },
 
   async parseWebhook(req: WebhookEnvelope): Promise<InboundSocialMessage[]> {
-    const expected = process.env.TELEGRAM_WEBHOOK_SECRET;
+    const { webhookSecret: expected } = await resolveSocialCreds("telegram", KEYS);
     if (expected) {
       const got = req.headers["x-telegram-bot-api-secret-token"];
       if (got !== expected) throw new Error("bad telegram webhook secret");

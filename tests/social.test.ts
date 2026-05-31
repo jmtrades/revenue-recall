@@ -61,12 +61,12 @@ describe("whatsapp / meta signature", () => {
     expect(verifyMetaSignature(body, undefined, secret)).toBe(false);
   });
 
-  it("echoes the hub.challenge only when the verify token matches", () => {
+  it("echoes the hub.challenge only when the verify token matches", async () => {
     process.env.WHATSAPP_VERIFY_TOKEN = "vtok";
     const ok = new URLSearchParams({ "hub.mode": "subscribe", "hub.verify_token": "vtok", "hub.challenge": "CHALLENGE" });
     const bad = new URLSearchParams({ "hub.mode": "subscribe", "hub.verify_token": "nope", "hub.challenge": "CHALLENGE" });
-    expect(whatsappChannel.verifyChallenge!(ok)).toBe("CHALLENGE");
-    expect(whatsappChannel.verifyChallenge!(bad)).toBeNull();
+    expect(await whatsappChannel.verifyChallenge!(ok)).toBe("CHALLENGE");
+    expect(await whatsappChannel.verifyChallenge!(bad)).toBeNull();
   });
 
   it("parses a WhatsApp text message", async () => {
@@ -131,9 +131,9 @@ describe("x (twitter) DM webhook", () => {
     expect(msgs).toHaveLength(1);
   });
 
-  it("answers the CRC challenge", () => {
+  it("answers the CRC challenge", async () => {
     process.env.X_API_SECRET = SECRET;
-    const res = xChannel.verifyChallenge!(new URLSearchParams({ crc_token: "abc" }));
+    const res = await xChannel.verifyChallenge!(new URLSearchParams({ crc_token: "abc" }));
     expect(res).toContain("response_token");
   });
 });

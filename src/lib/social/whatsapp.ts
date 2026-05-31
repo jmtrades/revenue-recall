@@ -7,6 +7,7 @@ import type {
   SocialSendResult,
   WebhookEnvelope,
 } from "@/lib/social/types";
+import { resolveSocialCreds } from "@/lib/social/creds";
 
 /**
  * WhatsApp Business (Meta Cloud API). Real Graph API shape: outbound via
@@ -14,10 +15,17 @@ import type {
  * with X-Hub-Signature-256 (HMAC-SHA256 of the raw body with the app secret) and
  * the hub.challenge handshake on GET subscribe.
  *
- * Connect with WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_APP_SECRET,
- * and WHATSAPP_VERIFY_TOKEN.
+ * Credentials resolve per-org first (the org's own connected WhatsApp number),
+ * then fall back to env (WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID,
+ * WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN) for single-tenant deploys.
  */
 const GRAPH = "https://graph.facebook.com/v21.0";
+const WA_KEYS = {
+  token: "WHATSAPP_TOKEN",
+  phoneNumberId: "WHATSAPP_PHONE_NUMBER_ID",
+  appSecret: "WHATSAPP_APP_SECRET",
+  verifyToken: "WHATSAPP_VERIFY_TOKEN",
+};
 
 const env = (k: string) => {
   const v = process.env[k];
@@ -50,8 +58,7 @@ export const whatsappChannel: SocialChannel = {
   },
 
   async send(msg: OutboundSocialMessage): Promise<SocialSendResult> {
-    const tk = env("WHATSAPP_TOKEN");
-    const pnid = env("WHATSAPP_PHONE_NUMBER_ID");
+    const { token: tk, phoneNumberId: pnid } = await resolveSocialCreds("whatsapp", WA_KEYS);
     if (!tk || !pnid) return { id: "", status: "logged", platform: "whatsapp", detail: "not connected" };
     try {
       const res = await fetch(`${GRAPH}/${pnid}/messages`, {
@@ -67,16 +74,17 @@ export const whatsappChannel: SocialChannel = {
     }
   },
 
-  verifyChallenge(params: URLSearchParams): string | null {
+  async verifyChallenge(params: URLSearchParams): Promise<string | null> {
     // Meta GET subscribe handshake: echo hub.challenge when the verify token matches.
-    if (params.get("hub.mode") === "subscribe" && params.get("hub.verify_token") === env("WHATSAPP_VERIFY_TOKEN")) {
+    const { verifyToken } = await resolveSocialCreds("whatsapp", WA_KEYS);
+    if (params.get("hub.mode") === "subscribe" && verifyToken && params.get("hub.verify_token") === verifyToken) {
       return params.get("hub.challenge");
     }
     return null;
   },
 
   async parseWebhook(req: WebhookEnvelope): Promise<InboundSocialMessage[]> {
-    const appSecret = env("WHATSAPP_APP_SECRET");
+    const { appSecret } = await resolveSocialCreds("whatsapp", WA_KEYS);
     if (appSecret && !verifyMetaSignature(req.rawBody, req.headers["x-hub-signature-256"], appSecret)) {
       throw new Error("bad whatsapp signature");
     }

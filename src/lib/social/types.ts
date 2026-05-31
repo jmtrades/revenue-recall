@@ -81,8 +81,9 @@ export interface SocialChannel {
    * signature so the route can 401. `secret` is the platform's verify/app secret.
    */
   parseWebhook(req: WebhookEnvelope): Promise<InboundSocialMessage[]>;
-  /** Some platforms (Meta) require echoing a challenge on GET subscribe. */
-  verifyChallenge?(params: URLSearchParams): string | null;
+  /** Some platforms (Meta) require echoing a challenge on GET subscribe. May be
+   *  async when it needs to resolve the org's own verify token. */
+  verifyChallenge?(params: URLSearchParams): string | null | Promise<string | null>;
 }
 
 /** What a channel needs from the incoming HTTP request to verify + parse. */

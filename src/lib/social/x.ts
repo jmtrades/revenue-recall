@@ -17,6 +17,9 @@ import type {
  * Connect: X_BEARER_TOKEN (and, for inbound, X_API_SECRET for CRC).
  */
 import crypto from "node:crypto";
+import { resolveSocialCreds } from "@/lib/social/creds";
+
+const X_KEYS = { token: "X_BEARER_TOKEN", apiSecret: "X_API_SECRET" };
 
 const env = (k: string) => {
   const v = process.env[k];
@@ -36,7 +39,7 @@ export const xChannel: SocialChannel = {
   },
 
   async send(msg: OutboundSocialMessage): Promise<SocialSendResult> {
-    const tk = env("X_BEARER_TOKEN");
+    const { token: tk } = await resolveSocialCreds("x", X_KEYS);
     if (!tk) return { id: "", status: "logged", platform: "x", detail: "not connected" };
     try {
       // v2: POST /2/dm_conversations/with/:participant_id/messages
@@ -54,9 +57,9 @@ export const xChannel: SocialChannel = {
   },
 
   // X Account Activity API requires a CRC challenge-response on GET subscribe.
-  verifyChallenge(params: URLSearchParams): string | null {
+  async verifyChallenge(params: URLSearchParams): Promise<string | null> {
     const crcToken = params.get("crc_token");
-    const secret = env("X_API_SECRET");
+    const { apiSecret: secret } = await resolveSocialCreds("x", X_KEYS);
     if (!crcToken || !secret) return null;
     const mac = crypto.createHmac("sha256", secret).update(crcToken).digest("base64");
     return JSON.stringify({ response_token: `sha256=${mac}` });
@@ -65,7 +68,7 @@ export const xChannel: SocialChannel = {
   async parseWebhook(req: WebhookEnvelope): Promise<InboundSocialMessage[]> {
     // Verify Account Activity signature (HMAC-SHA256 of the raw body, base64,
     // in the x-twitter-webhooks-signature header) when the secret is set.
-    const secret = env("X_API_SECRET");
+    const { apiSecret: secret } = await resolveSocialCreds("x", X_KEYS);
     if (secret) {
       const header = req.headers["x-twitter-webhooks-signature"];
       const expected = "sha256=" + crypto.createHmac("sha256", secret).update(req.rawBody, "utf8").digest("base64");

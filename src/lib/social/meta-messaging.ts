@@ -8,15 +8,18 @@ import type {
   WebhookEnvelope,
 } from "@/lib/social/types";
 import { verifyMetaSignature } from "@/lib/social/whatsapp";
+import { resolveSocialCreds } from "@/lib/social/creds";
 
 /**
  * Instagram DMs + Facebook Messenger — both are Meta's Messenger Platform with
  * the same Graph send endpoint, the same X-Hub-Signature-256 verification, and
  * the same hub.challenge handshake. One factory serves both; the only
- * difference is which page/account token + env keys it reads.
+ * difference is which page/account token it reads.
  *
- * Instagram:  IG_TOKEN, IG_APP_SECRET, IG_VERIFY_TOKEN
- * Messenger:  MESSENGER_PAGE_TOKEN, MESSENGER_APP_SECRET, MESSENGER_VERIFY_TOKEN
+ * Credentials resolve per-org first (the org's own connected page/IG account),
+ * then fall back to env for single-tenant deploys:
+ *   Instagram:  IG_TOKEN, IG_APP_SECRET, IG_VERIFY_TOKEN
+ *   Messenger:  MESSENGER_PAGE_TOKEN, MESSENGER_APP_SECRET, MESSENGER_VERIFY_TOKEN
  */
 const GRAPH = "https://graph.facebook.com/v21.0";
 
@@ -32,6 +35,8 @@ const KEYS: Record<"instagram" | "messenger", { token: string; secret: string; v
 
 export function metaMessagingChannel(platform: "instagram" | "messenger"): SocialChannel {
   const k = KEYS[platform];
+  // Logical cred names → env vars, for resolveSocialCreds (per-org → env).
+  const credKeys = { token: k.token, appSecret: k.secret, verifyToken: k.verify };
 
   return {
     platform: platform as SocialPlatform,
@@ -46,7 +51,7 @@ export function metaMessagingChannel(platform: "instagram" | "messenger"): Socia
     },
 
     async send(msg: OutboundSocialMessage): Promise<SocialSendResult> {
-      const tk = env(k.token);
+      const { token: tk } = await resolveSocialCreds(platform as SocialPlatform, credKeys);
       if (!tk) return { id: "", status: "logged", platform, detail: "not connected" };
       try {
         const res = await fetch(`${GRAPH}/me/messages?access_token=${encodeURIComponent(tk)}`, {
@@ -62,15 +67,16 @@ export function metaMessagingChannel(platform: "instagram" | "messenger"): Socia
       }
     },
 
-    verifyChallenge(params: URLSearchParams): string | null {
-      if (params.get("hub.mode") === "subscribe" && params.get("hub.verify_token") === env(k.verify)) {
+    async verifyChallenge(params: URLSearchParams): Promise<string | null> {
+      const { verifyToken } = await resolveSocialCreds(platform as SocialPlatform, credKeys);
+      if (params.get("hub.mode") === "subscribe" && verifyToken && params.get("hub.verify_token") === verifyToken) {
         return params.get("hub.challenge");
       }
       return null;
     },
 
     async parseWebhook(req: WebhookEnvelope): Promise<InboundSocialMessage[]> {
-      const appSecret = env(k.secret);
+      const { appSecret } = await resolveSocialCreds(platform as SocialPlatform, credKeys);
       if (appSecret && !verifyMetaSignature(req.rawBody, req.headers["x-hub-signature-256"], appSecret)) {
         throw new Error(`bad ${platform} signature`);
       }
