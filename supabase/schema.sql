@@ -345,7 +345,7 @@ alter table orgs add column if not exists theme jsonb not null default '{}'::jso
 
 create table if not exists subscriptions (
   org_id                 uuid primary key references orgs(id) on delete cascade,
-  plan                   text not null default 'free' check (plan in ('free','growth','scale')),
+  plan                   text not null default 'free' check (plan in ('free','growth','team','scale')),
   status                 text not null default 'none' check (status in ('none','trialing','active','past_due','canceled')),
   seats                  int not null default 1,
   stripe_customer_id     text,
