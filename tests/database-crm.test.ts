@@ -134,6 +134,26 @@ describe("generic database adapter — connect any table, even non-CRM", () => {
     expect(await p.listContacts()).toEqual([]);
     expect(await p.listOpportunities()).toEqual([]);
   });
+
+  it("uses a per-org connected database over the env default", async () => {
+    process.env.ENCRYPTION_KEY = "test-encryption-key-at-least-16-chars";
+    const { saveConnection, __resetConnectionsForTests } = await import("@/lib/connections/store");
+    __resetConnectionsForTests();
+    // Env points one place; the org connects their own → the org's wins.
+    process.env.DATA_SOURCE_URL = "https://env-default.example/leads";
+    let lastUrl = "";
+    global.fetch = vi.fn(async (url: string) => {
+      lastUrl = String(url);
+      return { ok: true, json: async () => [{ name: "Org Lead", email: "org@x.io" }] } as Response;
+    }) as unknown as typeof fetch;
+
+    await saveConnection({ kind: "database", provider: "database", secrets: { url: "https://my-org-db.example/leads", token: "t" } });
+    const contacts = await new DatabaseProvider().listContacts();
+    expect(lastUrl).toBe("https://my-org-db.example/leads"); // per-org override used
+    expect(contacts.map((c) => c.name)).toEqual(["Org Lead"]);
+    __resetConnectionsForTests();
+    delete process.env.ENCRYPTION_KEY;
+  });
 });
 
 describe("database adapter helpers", () => {

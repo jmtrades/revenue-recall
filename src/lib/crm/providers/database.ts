@@ -14,6 +14,7 @@ import type {
 } from "@/lib/crm/types";
 import { getConfig } from "@/lib/config";
 import { getIndustry } from "@/lib/industries";
+import { getConnection } from "@/lib/connections/store";
 
 /**
  * Generic database / data-source adapter — "connect any database, even if it's
@@ -211,20 +212,56 @@ export class DatabaseProvider implements CrmProvider {
     };
   }
 
-  private async fetchRows(): Promise<Row[]> {
+  /**
+   * Resolve the live connection details: an org's OWN connected database (from
+   * the encrypted connections store) takes precedence over the env defaults, so
+   * each tenant can point at their own table. Falls back to the env-configured
+   * source for single-tenant / self-hosted deploys.
+   */
+  private async resolve(): Promise<{ url: string; token?: string; mapping: Partial<Record<DataField, string>> }> {
+    try {
+      const conn = await getConnection("database");
+      const url = conn?.secrets.url || conn?.config.url;
+      if (url) {
+        let mapping = this.mapping;
+        const raw = conn?.config.mapping;
+        if (raw) {
+          try {
+            const obj = JSON.parse(raw) as Record<string, unknown>;
+            const m: Partial<Record<DataField, string>> = {};
+            for (const f of Object.keys(ALIASES) as DataField[]) if (typeof obj[f] === "string" && obj[f]) m[f] = obj[f] as string;
+            mapping = m;
+          } catch {
+            // keep env mapping on malformed per-org mapping
+          }
+        }
+        return { url, token: conn?.secrets.token, mapping };
+      }
+    } catch {
+      // no store / no org context → env defaults
+    }
+    return { url: this.url, token: this.token, mapping: this.mapping };
+  }
+
+  private async fetchRows(): Promise<{ rows: Row[]; mapping: Partial<Record<DataField, string>> }> {
+    const { url, token, mapping } = await this.resolve();
+    if (!url) return { rows: [], mapping };
     const headers: Record<string, string> = { Accept: "application/json" };
-    if (this.token) headers.Authorization = `Bearer ${this.token}`;
-    const res = await fetch(this.url, { headers });
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(url, { headers });
     if (!res.ok) throw new Error(`data source ${res.status}`);
-    return extractRows(await res.json().catch(() => null));
+    return { rows: extractRows(await res.json().catch(() => null)), mapping };
   }
 
   /** Map external rows → universal model once, then cache. */
   private async loadExternal(): Promise<{ contacts: Contact[]; opportunities: Opportunity[] }> {
     if (this.cache) return this.cache;
     let rows: Row[] = [];
+    let mapping = this.mapping;
     try {
-      rows = await this.fetchRows();
+      const r = await this.fetchRows();
+      rows = r.rows;
+      mapping = r.mapping;
     } catch {
       rows = [];
     }
@@ -236,15 +273,15 @@ export class DatabaseProvider implements CrmProvider {
       const index = new Map<string, string>();
       for (const key of Object.keys(row)) index.set(norm(key), key);
 
-      const name = str(pickValue(row, index, this.mapping, "name"));
-      const email = str(pickValue(row, index, this.mapping, "email"));
-      const phone = str(pickValue(row, index, this.mapping, "phone"));
+      const name = str(pickValue(row, index, mapping, "name"));
+      const email = str(pickValue(row, index, mapping, "email"));
+      const phone = str(pickValue(row, index, mapping, "phone"));
       if (!name && !email && !phone) return; // skip empty rows
 
-      const rawId = str(pickValue(row, index, this.mapping, "id"));
+      const rawId = str(pickValue(row, index, mapping, "id"));
       const baseId = rawId ?? email ?? `${norm(name ?? "row")}_${i}`;
       const contactId = `db_${baseId}`;
-      const company = str(pickValue(row, index, this.mapping, "company"));
+      const company = str(pickValue(row, index, mapping, "company"));
 
       const points: ContactPoint[] = [];
       if (email) points.push({ channel: "email", value: email });
@@ -254,13 +291,13 @@ export class DatabaseProvider implements CrmProvider {
         id: contactId,
         name: name ?? email ?? phone ?? `Lead ${i + 1}`,
         company,
-        title: str(pickValue(row, index, this.mapping, "title")),
+        title: str(pickValue(row, index, mapping, "title")),
         points,
         attributes: { source: "database" },
       });
 
-      const valueRaw = pickValue(row, index, this.mapping, "value");
-      const stageRaw = pickValue(row, index, this.mapping, "stage");
+      const valueRaw = pickValue(row, index, mapping, "value");
+      const stageRaw = pickValue(row, index, mapping, "stage");
       if (valueRaw != null || stageRaw != null) {
         opportunities.push({
           id: `dbo_${baseId}`,
