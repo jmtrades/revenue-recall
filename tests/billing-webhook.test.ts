@@ -61,6 +61,27 @@ describe("stripe webhook route", () => {
     expect((await getSubscription()).status).toBe("past_due");
   });
 
+  it("recovers a past_due subscription to active on invoice.payment_succeeded", async () => {
+    const { POST } = await import("@/app/api/billing/webhook/route");
+    const { getSubscription } = await import("@/lib/billing/store");
+    await POST(signed(JSON.stringify({
+      type: "checkout.session.completed",
+      data: { object: { client_reference_id: "org_1", metadata: { plan: "growth" }, customer: "cus_1" } },
+    })));
+    await POST(signed(JSON.stringify({ type: "invoice.payment_failed", data: { object: { customer: "cus_1" } } })));
+    expect((await getSubscription()).status).toBe("past_due");
+    // Retry succeeds → back to active (must reference a subscription invoice).
+    const res = await POST(signed(JSON.stringify({ type: "invoice.payment_succeeded", data: { object: { customer: "cus_1", subscription: "sub_1" } } })));
+    expect(res.status).toBe(200);
+    expect((await getSubscription()).status).toBe("active");
+  });
+
+  it("ignores a one-off (non-subscription) paid invoice", async () => {
+    const { POST } = await import("@/app/api/billing/webhook/route");
+    const res = await POST(signed(JSON.stringify({ type: "invoice.payment_succeeded", data: { object: { customer: "cus_1" } } })));
+    expect(res.status).toBe(200); // acknowledged, no status flip without a subscription
+  });
+
   it("acknowledges unknown event types without error", async () => {
     const { POST } = await import("@/app/api/billing/webhook/route");
     const res = await POST(signed(JSON.stringify({ type: "charge.refunded", data: { object: {} } })));

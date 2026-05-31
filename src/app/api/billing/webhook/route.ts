@@ -80,6 +80,15 @@ export async function POST(req: Request) {
         if (customer) await saveSubscriptionForCustomer(customer, { status: "past_due" });
         break;
       }
+      case "invoice.payment_succeeded": {
+        // A successful payment (including a retry after past_due) means the
+        // subscription is in good standing — flip it back to active so a
+        // customer who fixed their card isn't left locked out until the next
+        // subscription.updated event. Only acts on subscription invoices.
+        const customer = obj.customer as string;
+        if (customer && obj.subscription) await saveSubscriptionForCustomer(customer, { status: "active" });
+        break;
+      }
       default:
         // Unhandled event types are acknowledged so Stripe stops retrying.
         break;
