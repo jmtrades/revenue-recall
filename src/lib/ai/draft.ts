@@ -50,7 +50,7 @@ export interface DraftInput {
    *  Used only to make live-AI copy feel naturally timed — never stated mechanically. */
   timingHint?: string;
   /** The rep's distilled writing voice + sign-off, so messages sound like them. */
-  voice?: { senderName?: string; profile?: string; signature?: string; customNextSteps?: string[]; customReengage?: string[] };
+  voice?: { senderName?: string; profile?: string; signature?: string; business?: string; customNextSteps?: string[]; customReengage?: string[] };
 }
 
 export interface DraftResult {
@@ -444,6 +444,7 @@ Prospect: ${input.contactName}${input.company ? ` at ${input.company}` : ""}
 Deal: "${input.dealTitle}" — ${input.valueLabel} ${input.value} ${input.currency}, currently at stage "${input.stageLabel}"
 ${input.recallReason ? `Recall reason: ${input.recallReason} (re-engagement — they've gone quiet)\n` : ""}${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.voice?.senderName || input.repName ? `You are: ${input.voice?.senderName ?? input.repName}\n` : ""}${input.voice?.signature ? `Sign off as: ${input.voice.signature}\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).join("\n- ")}` : "No prior activity logged."}${input.lastInbound ? `\n\nThe last thing THEY said to you (anchor your message to this — acknowledge or build on it, never ignore it):\n"""${input.lastInbound}"""` : ""}
 
+${input.voice?.business ? `THE BUSINESS YOU WRITE FOR — what they actually sell and who they serve. Ground every line in this (it matters most when the industry is generic):\n"""${input.voice.business}"""\n` : ""}
 ${playbookBlock(input)}
 ${input.voice?.customNextSteps?.length ? `\nThis rep's own go-to next steps (prefer one of these when it fits): ${input.voice.customNextSteps.join(" / ")}` : ""}
 ${input.recallReason ? `\nRe-engagement openers (for inspiration): ${(input.voice?.customReengage?.length ? input.voice.customReengage : pb.reengage).join(" / ")}` : ""}

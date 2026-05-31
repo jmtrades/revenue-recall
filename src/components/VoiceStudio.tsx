@@ -8,12 +8,13 @@ export function VoiceStudio({
   initial,
   persisted,
 }: {
-  initial: { senderName?: string; role?: string; signature?: string; samples?: string; profile?: string; customNextSteps?: string[]; customReengage?: string[] };
+  initial: { senderName?: string; role?: string; signature?: string; samples?: string; profile?: string; business?: string; customNextSteps?: string[]; customReengage?: string[] };
   persisted: boolean;
 }) {
   const router = useRouter();
   const [senderName, setSenderName] = useState(initial.senderName ?? "");
   const [signature, setSignature] = useState(initial.signature ?? "");
+  const [business, setBusiness] = useState(initial.business ?? "");
   const [samples, setSamples] = useState(initial.samples ?? "");
   const [profile, setProfile] = useState(initial.profile ?? "");
   const [customNextSteps, setCustomNextSteps] = useState((initial.customNextSteps ?? []).join("\n"));
@@ -23,7 +24,7 @@ export function VoiceStudio({
   const [error, setError] = useState<string | null>(null);
 
   const input = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand";
-  const canSave = Boolean(samples.trim() || customNextSteps.trim() || customReengage.trim());
+  const canSave = Boolean(business.trim() || samples.trim() || customNextSteps.trim() || customReengage.trim());
 
   async function learn() {
     if (!canSave) return;
@@ -32,7 +33,7 @@ export function VoiceStudio({
       const res = await fetch("/api/voice/learn", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ senderName, signature, samples, customNextSteps, customReengage }),
+        body: JSON.stringify({ senderName, signature, business, samples, customNextSteps, customReengage }),
       });
       const b = await res.json();
       if (!res.ok) throw new Error(b.error ?? "Failed");
@@ -53,6 +54,18 @@ export function VoiceStudio({
         No forms. Just describe how you sound, or paste a few of your real emails/texts — the AI learns your voice so every
         message reads like <em>you</em>, never like an AI.
       </p>
+
+      <div className="mt-4">
+        <label className="stat-label">What your business does</label>
+        <p className="mt-0.5 text-xs text-muted">A sentence or two — what you sell and who you serve. Grounds every AI message in your actual business, so it sounds tailored to <em>you</em> no matter your industry.</p>
+        <textarea
+          className={`${input} mt-1.5 resize-none`}
+          rows={3}
+          placeholder={"e.g. We're a boutique wedding photography studio in Austin — we shoot destination and local weddings for couples who want a relaxed, documentary style."}
+          value={business}
+          onChange={(e) => setBusiness(e.target.value)}
+        />
+      </div>
 
       <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
         <input className={input} placeholder="Your name (e.g. Sam)" value={senderName} onChange={(e) => setSenderName(e.target.value)} />

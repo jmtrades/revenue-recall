@@ -9,6 +9,9 @@ export interface Voice {
   signature?: string;
   profile?: string;
   samples?: string;
+  /** What the business actually does — its offer and who it serves. Grounds every
+   *  AI message in THIS business, so output tailors to any vertical (or none). */
+  business?: string;
   /** Workspace's own go-to next-step lines; override the industry defaults. */
   customNextSteps?: string[];
   /** Workspace's own re-engagement openers; override the industry defaults. */
@@ -37,6 +40,7 @@ export const getActiveVoice = cache(async (): Promise<Voice> => {
     signature: data.signature ?? undefined,
     profile: data.profile ?? undefined,
     samples: data.samples ?? undefined,
+    business: data.business ?? undefined,
     customNextSteps: lines(data.custom_next_steps),
     customReengage: lines(data.custom_reengage),
   };
@@ -71,6 +75,7 @@ export async function learnVoice(input: {
   role?: string;
   signature?: string;
   samples?: string;
+  business?: string;
   customNextSteps?: string;
   customReengage?: string;
 }): Promise<Voice & { aiDistilled: boolean }> {
@@ -101,6 +106,9 @@ export async function learnVoice(input: {
       updated_at: new Date().toISOString(),
     };
     if (samples) row.samples = samples; // don't wipe samples when only tuning the playbook
+    // Only touch `business` when explicitly provided, so editing just the voice
+    // never erases the workspace's business description (and vice-versa).
+    if (input.business !== undefined) row.business = input.business.trim() || null;
     const { error } = await client.from("personas").upsert(row, { onConflict: "org_id" });
     if (error) throw new Error(error.message);
   }
@@ -111,6 +119,7 @@ export async function learnVoice(input: {
     signature: input.signature,
     samples,
     profile,
+    business: input.business?.trim() || undefined,
     customNextSteps: lines(input.customNextSteps),
     customReengage: lines(input.customReengage),
     aiDistilled,

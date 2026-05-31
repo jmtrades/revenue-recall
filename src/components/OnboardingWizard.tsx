@@ -100,7 +100,7 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ industryId: industry, language, name: org || undefined, monthlyQuota: Number(quota) || undefined }),
       });
-      if (yourName.trim() || samples.trim()) {
+      if (yourName.trim() || samples.trim() || describe.trim()) {
         await fetch("/api/voice/learn", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -109,6 +109,9 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
             role: role || undefined,
             signature: yourName ? `— ${yourName.split(" ")[0]}` : undefined,
             samples: samples || undefined,
+            // The user's own description of their business — grounds every AI
+            // message in what they actually sell, so it tailors to any vertical.
+            business: describe.trim() || undefined,
           }),
         });
       }
