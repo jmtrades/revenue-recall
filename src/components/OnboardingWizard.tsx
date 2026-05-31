@@ -59,7 +59,9 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
     setStep(to);
   }
 
-  // Send the free-text description to the personalizer; pre-fill + advance.
+  // Send the free-text description to the personalizer; pre-fill everything and
+  // show the express "ready" confirmation (stay on step 0). Only fall through to
+  // the manual steps if personalization fails.
   async function personalize() {
     if (!describe.trim() || thinking) return;
     setThinking(true);
@@ -77,17 +79,20 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
         if (p.voiceTone && !samples.trim()) setSamples(p.voiceTone);
         const label = industries.find((i) => i.id === p.industryId)?.label ?? "your business";
         setPersonalized({ industryLabel: label, sells: p.sells ?? "", ai: Boolean(p.ai) });
+        setThinking(false);
+        return; // stay on step 0 to show the one-tap "Enter my workspace" confirmation
       }
     } catch {
       /* fall through to manual */
-    } finally {
-      setThinking(false);
-      go(1); // advance into the (now pre-filled) industry step regardless
     }
+    setThinking(false);
+    go(1); // personalization unavailable → drop into the (still-usable) manual steps
   }
 
-  async function next() {
-    if (step < steps.length - 1) { go(step + 1); return; }
+  // Persist everything and enter the app. Used by both the express
+  // "Enter my workspace" button (after AI personalization) and the final step.
+  async function finish() {
+    if (finishing) return;
     setFinishing(true);
     try {
       await fetch("/api/org", {
@@ -119,6 +124,11 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
     }
     // Brief "building your workspace" beat so finishing feels like the system coming alive.
     setTimeout(() => router.push("/dashboard"), 1150);
+  }
+
+  async function next() {
+    if (step < steps.length - 1) { go(step + 1); return; }
+    await finish();
   }
 
   return (
@@ -163,29 +173,47 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
                   placeholder={"e.g. I run a real estate brokerage in Austin — we help buyers and sellers, mostly single-family homes."}
                   autoFocus
                 />
-                {personalized && (
-                  <div key={personalized.industryLabel} className="onb-fade mt-4 rounded-xl border border-brand/30 bg-brand-soft/10 p-4">
+                {personalized ? (
+                  <div key={personalized.industryLabel} className="onb-fade mt-6 rounded-2xl border border-brand/30 bg-brand-soft/10 p-5">
                     <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-brand">
                       <Icon name="autopilot" size={12} /> {personalized.ai ? "Personalized for you" : "Set up for you"}
                     </p>
-                    <p className="mt-2 text-sm text-body"><span className="text-muted">Industry:</span> {personalized.industryLabel}{personalized.sells ? <> · <span className="text-muted">You sell:</span> {personalized.sells}</> : null}</p>
-                    <p className="mt-1 text-xs text-muted">Review the next steps — everything&apos;s pre-filled and editable.</p>
+                    <h3 className="mt-2 font-display text-lg font-semibold tracking-tight text-fg">Your workspace is ready</h3>
+                    <div className="mt-3 space-y-2 text-sm">
+                      <div className="flex gap-3"><span className="w-24 shrink-0 text-muted">Industry</span><span className="text-fg">{personalized.industryLabel}</span></div>
+                      {personalized.sells && <div className="flex gap-3"><span className="w-24 shrink-0 text-muted">You sell</span><span className="text-fg">{personalized.sells}</span></div>}
+                      {org && <div className="flex gap-3"><span className="w-24 shrink-0 text-muted">Workspace</span><span className="text-fg">{org}</span></div>}
+                      <div className="flex gap-3"><span className="w-24 shrink-0 text-muted">Pipeline</span><span className="text-fg">{tailoring.pipeline}</span></div>
+                      <div className="flex gap-3"><span className="w-24 shrink-0 text-muted">Plays</span><span className="text-fg">{tailoring.plays}</span></div>
+                    </div>
+                    <p className="mt-3 text-xs text-muted">It&apos;s all set and editable anytime in Settings — your voice, team, and integrations included.</p>
+                    <div className="mt-5 flex flex-wrap items-center gap-3">
+                      <button onClick={finish} disabled={finishing} className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-2.5 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-70">
+                        {finishing ? (
+                          <span className="inline-flex items-center gap-2 pr-3"><svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round" /></svg> Building your workspace…</span>
+                        ) : (
+                          <>Enter my workspace<span className="grid h-7 w-7 place-items-center rounded-full bg-white/20 transition-transform duration-200 ease-out group-hover:translate-x-0.5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg></span></>
+                        )}
+                      </button>
+                      <button onClick={() => go(1)} disabled={finishing} className="text-sm text-muted transition hover:text-fg disabled:opacity-50">Review &amp; customize</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-5 flex items-center gap-3">
+                    <button
+                      onClick={personalize}
+                      disabled={!describe.trim() || thinking}
+                      className="cta inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand/90 disabled:opacity-50"
+                    >
+                      {thinking ? (
+                        <><svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round" /></svg> Personalizing…</>
+                      ) : (
+                        <><Icon name="autopilot" size={15} /> Personalize my setup</>
+                      )}
+                    </button>
+                    <button onClick={() => go(1)} disabled={thinking} className="text-sm text-muted transition hover:text-fg disabled:opacity-50">Skip — set up manually</button>
                   </div>
                 )}
-                <div className="mt-5 flex items-center gap-3">
-                  <button
-                    onClick={personalize}
-                    disabled={!describe.trim() || thinking}
-                    className="cta inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand/90 disabled:opacity-50"
-                  >
-                    {thinking ? (
-                      <><svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round" /></svg> Personalizing…</>
-                    ) : (
-                      <><Icon name="autopilot" size={15} /> Personalize my setup</>
-                    )}
-                  </button>
-                  <button onClick={() => go(1)} disabled={thinking} className="text-sm text-muted transition hover:text-fg disabled:opacity-50">Skip — set up manually</button>
-                </div>
               </div>
             )}
 

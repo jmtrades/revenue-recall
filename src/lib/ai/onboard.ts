@@ -41,15 +41,25 @@ const KEYWORDS: [OnboardIndustry, RegExp][] = [
   ["agency", /\b(agency|consult|marketing|creative|studio|freelance|retainer|client work|services)\b/i],
 ];
 
+// Lift a company name. Match the cue case-insensitively but capture only a real
+// Proper-Cased name (case-sensitive), skipping a leading article — otherwise a
+// phrase like "I run a boutique real estate brokerage" yields the junk name "a
+// boutique real estate". Prefer an explicit "called/named X"; return "" when
+// there's no clear proper noun (better an empty field than a wrong one).
+function extractOrgName(t: string): string {
+  const strong = t.match(/\b(?:[Cc]alled|[Nn]amed)\s+([A-Z][A-Za-z0-9&'’.\-]*(?:\s+[A-Z][A-Za-z0-9&'’.\-]*){0,3})/);
+  const weak = t.match(/\b(?:[Ww]e(?:'re|’re| are)|[Ii] (?:run|own)|[Aa]t|[Ff]or)\s+(?:(?:the|a|an|my|our)\s+)?([A-Z][A-Za-z0-9&'’.\-]*(?:\s+[A-Z][A-Za-z0-9&'’.\-]*){0,3})/);
+  const hit = strong ?? weak;
+  return hit ? hit[1].replace(/[.,;].*$/, "").trim().slice(0, 40) : "";
+}
+
 function fallbackProfile(text: string): OnboardProfile {
   const t = text.trim();
   let industryId: OnboardIndustry = "generic";
   for (const [id, re] of KEYWORDS) {
     if (re.test(t)) { industryId = id; break; }
   }
-  // Try to lift an org name: "we're Acme", "I run Acme Realty", "at Acme Co".
-  const nameMatch = t.match(/\b(?:we(?:'re|’re| are)|i run|i own|company (?:is )?called|business (?:is )?called|called|at|for)\s+([A-Z][A-Za-z0-9&'’.\-]*(?:\s+[A-Z][A-Za-z0-9&'’.\-]*){0,3})/i);
-  const orgName = nameMatch ? nameMatch[1].trim().replace(/[.,;].*$/, "").slice(0, 40) : "";
+  const orgName = extractOrgName(t);
   const sells = t.slice(0, 140);
   return {
     industryId,
