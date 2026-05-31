@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Avatar } from "@/components/ui";
+import { Avatar, EmptyState, Button } from "@/components/ui";
 import { money } from "@/lib/format";
 
 export interface LeadRow {
@@ -30,6 +30,24 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
       return r.name.toLowerCase().includes(term) || r.company.toLowerCase().includes(term) || r.email.toLowerCase().includes(term);
     });
   }, [rows, q, owner]);
+
+  // True empty workspace (no records at all) — guide the user to add data
+  // rather than showing an empty filter UI and a confusing "no match" row.
+  if (rows.length === 0) {
+    return (
+      <EmptyState
+        iconName="leads"
+        title="No leads yet"
+        hint="Import a CSV, connect your CRM or database, or add one by hand. The moment leads land here, Revenue Recall starts surfacing what's slipping."
+        action={
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button href="/settings?tab=import" variant="primary" size="sm">Import a CSV</Button>
+            <Button href="/settings?tab=integrations" variant="outline" size="sm">Connect a source</Button>
+          </div>
+        }
+      />
+    );
+  }
 
   return (
     <div>
@@ -79,7 +97,7 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-muted">No matching leads.</td></tr>
+              <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-muted">No leads match your search or filter.</td></tr>
             )}
           </tbody>
         </table>

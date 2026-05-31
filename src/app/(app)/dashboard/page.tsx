@@ -7,6 +7,7 @@ import { compactMoney, money, pct, relativeDays } from "@/lib/format";
 import { PageHeader, Stat, ReasonBadge, ScoreDot, Card, Avatar, ActivityIcon, Button } from "@/components/ui";
 import { Funnel, ProgressRing, BarChart, Sparkline } from "@/components/charts";
 import { Icon } from "@/components/icons";
+import { DashboardWelcome } from "@/components/DashboardWelcome";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,11 @@ export default async function DashboardPage() {
   const wonDelta = wonPrevMonth > 0 ? Math.round(((wonThisMonth - wonPrevMonth) / wonPrevMonth) * 100) : undefined;
   const attainment = org.monthlyQuota > 0 ? wonThisMonth / org.monthlyQuota : 0;
   const greeting = user?.name ? `${partOfDay(new Date().getHours())}, ${firstName(user.name)}` : partOfDay(new Date().getHours());
+
+  // Brand-new workspace: no deals and nothing logged yet. Zero-filled stats and
+  // empty charts read as broken — show a guided first-run experience instead.
+  const isEmpty = m.openCount + m.wonCount + m.lostCount === 0 && feed.length === 0;
+  if (isEmpty) return <DashboardWelcome greeting={greeting} />;
 
   return (
     <div className="space-y-6">

@@ -34,7 +34,7 @@ import { listInvites } from "@/lib/invites-server";
 
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage({ searchParams }: { searchParams: { billing?: string } }) {
+export default async function SettingsPage({ searchParams }: { searchParams: { billing?: string; tab?: string } }) {
   const cfg = getConfig();
   const org = await getOrgSettings();
   const voice = await getActiveVoice();
@@ -330,7 +330,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       <PageHeader title="Settings" subtitle="Organization, industry profile, pipeline, integrations, and team." />
       {billingReturn && <BillingReturnBanner status={billingReturn} />}
       <Tabs
-        initial={billingReturn ? "billing" : undefined}
+        initial={billingReturn ? "billing" : searchParams.tab}
         tabs={[
           { id: "setup", label: "Setup", content: setupTab },
           { id: "general", label: "General", content: general },
