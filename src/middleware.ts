@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { isAuthRequired } from "@/lib/config";
 
 // Public routes that never require a session.
 const PUBLIC = new Set(["/", "/login", "/signup"]);
@@ -58,7 +59,10 @@ export async function middleware(req: NextRequest) {
   }
 
   const path = req.nextUrl.pathname;
-  const authRequired = process.env.NEXT_PUBLIC_AUTH_REQUIRED === "true";
+  // Supabase is configured here (we returned early above if not), so this
+  // defaults to ON — every user gets their own gated, private workspace —
+  // unless explicitly opted out with NEXT_PUBLIC_AUTH_REQUIRED=false.
+  const authRequired = isAuthRequired();
 
   // Signed-in users shouldn't sit on the auth screens.
   if (userId && (path === "/login" || path === "/signup")) {

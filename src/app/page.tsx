@@ -65,6 +65,32 @@ const CAPABILITIES: { title: string; body: string; icon: IconName }[] = [
   { title: "Runs with a CRM or none at all", body: "The same playbook works on a team with Salesforce and a team with nothing. Built-in CRM included; plug into yours when ready.", icon: "database" },
 ];
 
+// Who it's for — the SAME engine, right-sized for a team of one or a team of
+// thousands. Proves the product spans solo operators through the enterprise.
+const AUDIENCES: { scale: string; icon: IconName; title: string; body: string; points: string[] }[] = [
+  {
+    scale: "For one",
+    icon: "autopilot",
+    title: "Solo operators & founders",
+    body: "You're the founder, the closer, and the follow-up. Revenue Recall is the SDR, the dialer, and the sequencer you can't afford to hire — working your pipeline around the clock while you build everything else.",
+    points: ["Live in 2 minutes — no CRM required", "Every lead gets an instant, human follow-up", "Books meetings while you sleep"],
+  },
+  {
+    scale: "For a team",
+    icon: "leads",
+    title: "Growing teams",
+    body: "Give every rep an autonomous teammate that prospects, dials, and follows up — so a team of three covers the ground of fifteen, and not a single deal slips through the cracks.",
+    points: ["Shared inbox, approvals & guardrails", "Per-rep performance you can actually see", "Plugs into the CRM you already use"],
+  },
+  {
+    scale: "For the enterprise",
+    icon: "building",
+    title: "Enterprise & big business",
+    body: "Roll out one consistent, on-brand outbound motion across every rep and region — with the governance, controls, and reporting leadership needs to trust it at scale.",
+    points: ["Any CRM — Salesforce, HubSpot & more", "Quiet hours, opt-outs & daily caps built in", "Recovered-revenue reporting by rep & team"],
+  },
+];
+
 const FAQ = [
   { q: "How is this different from ChatGPT or Claude?", a: "Those give you words. Revenue Recall does the work. It decides who to reach and when, writes in your voice, sends across email/SMS/phone, follows up until they reply, logs everything, and tells you what revenue it recovered. A writing assistant hands you a draft and stops — this runs the entire motion." },
   { q: "Is it really autonomous?", a: "As autonomous as you want. Review mode drafts everything for one-click approval. Scheduled mode runs on a cadence. Full autopilot works your pipeline end-to-end — sending, calling, and following up — with guardrails for quiet hours, opt-outs, and daily caps so it stays safe and on-brand." },
@@ -111,12 +137,12 @@ export default function LandingPage() {
         <div className="surface-grid absolute inset-0 opacity-40" />
         <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-12 px-5 pb-20 pt-14 lg:grid-cols-2 lg:items-center lg:pb-28 lg:pt-20">
           <div className="min-w-0 animate-fade-up">
-            <span className="eyebrow">Autonomous outbound · every industry</span>
+            <span className="eyebrow">Autonomous outbound · every industry, any size</span>
             <h1 className="display-hero mt-5 text-[2.9rem] font-semibold leading-[0.98] tracking-[-0.02em] sm:text-[3.5rem] lg:text-[4.25rem]">
               Put your entire sales operation <span className="gradient-text">on autopilot.</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-body">
-              Revenue Recall doesn&apos;t just draft messages — it <strong className="font-semibold text-fg">runs your outbound end to end</strong>. It finds the deals slipping away, works them across email, SMS, and the phone, follows up until they reply, and recovers the revenue you&apos;re losing. A sales force that never sleeps — for any industry, on any CRM, or none.
+              Revenue Recall doesn&apos;t just draft messages — it <strong className="font-semibold text-fg">runs your outbound end to end</strong>. It finds the deals slipping away, works them across email, SMS, and the phone, follows up until they reply, and recovers the revenue you&apos;re losing. A sales force that never sleeps — for a solo founder or a thousand-rep enterprise, in any industry, on any CRM, or none.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link href="/signup" className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-2 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand/90">
@@ -301,6 +327,41 @@ export default function LandingPage() {
             <span className="text-sm font-medium text-muted">Your vertical</span>
           </div>
         </div>
+      </section>
+
+      {/* Who it's for — solo operators through the enterprise */}
+      <section id="who" className="mx-auto max-w-6xl px-5 py-20">
+        <div className="mx-auto max-w-2xl text-center">
+          <span className="eyebrow">Who it&rsquo;s for</span>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">From solo founders to the enterprise</h2>
+          <p className="mt-4 text-muted">The same autonomous engine — right-sized whether you&rsquo;re a team of one or a team of thousands. It scales the moment you do.</p>
+        </div>
+        <div className="mt-12 grid gap-5 md:grid-cols-3">
+          {AUDIENCES.map((a) => (
+            <div key={a.title} className="raised lift group flex h-full flex-col rounded-2xl border border-border bg-surface p-7 hover:border-brand/40">
+              <div className="flex items-center justify-between">
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20 transition-transform duration-200 ease-out group-hover:scale-105">
+                  <Icon name={a.icon} size={18} />
+                </span>
+                <span className="pill bg-surface-2 text-muted">{a.scale}</span>
+              </div>
+              <h3 className="mt-5 text-base font-semibold text-fg">{a.title}</h3>
+              <p className="mt-2 text-[15px] leading-relaxed text-body">{a.body}</p>
+              <ul className="mt-5 space-y-2.5 border-t border-border pt-5">
+                {a.points.map((p) => (
+                  <li key={p} className="flex items-start gap-2.5 text-sm text-body">
+                    <span className="mt-0.5 grid h-[18px] w-[18px] flex-none place-items-center rounded-full bg-brand-soft text-brand"><CheckMini /></span>
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <p className="mx-auto mt-10 max-w-2xl text-center text-sm text-muted">
+          One person or one thousand — same two-minute setup, same engine.{" "}
+          <Link href="/signup" className="font-medium text-brand hover:underline">Start free</Link> and scale when you&rsquo;re ready.
+        </p>
       </section>
 
       {/* What it does */}
