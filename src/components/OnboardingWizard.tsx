@@ -45,13 +45,45 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
   const [samples, setSamples] = useState("");
   const [finishing, setFinishing] = useState(false);
 
-  const steps = ["Industry", "Workspace", "Your voice", "Team"];
+  // Conversational first step: describe the business, AI personalizes the rest.
+  const [describe, setDescribe] = useState("");
+  const [thinking, setThinking] = useState(false);
+  const [personalized, setPersonalized] = useState<{ industryLabel: string; sells: string; ai: boolean } | null>(null);
+
+  const steps = ["Describe", "Industry", "Workspace", "Your voice", "Team"];
   const input = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-fg outline-none transition-colors focus:border-brand";
   const chosen = industries.find((i) => i.id === industry);
   const tailoring = INDUSTRY_TAILORING[industry] ?? INDUSTRY_TAILORING.generic;
 
   function go(to: number) {
     setStep(to);
+  }
+
+  // Send the free-text description to the personalizer; pre-fill + advance.
+  async function personalize() {
+    if (!describe.trim() || thinking) return;
+    setThinking(true);
+    try {
+      const res = await fetch("/api/onboard/personalize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: describe }),
+      });
+      if (res.ok) {
+        const p = await res.json();
+        if (p.industryId && industries.some((i) => i.id === p.industryId)) setIndustry(p.industryId);
+        if (p.orgName) setOrg(p.orgName);
+        if (p.monthlyQuota) setQuota(String(p.monthlyQuota));
+        if (p.voiceTone && !samples.trim()) setSamples(p.voiceTone);
+        const label = industries.find((i) => i.id === p.industryId)?.label ?? "your business";
+        setPersonalized({ industryLabel: label, sells: p.sells ?? "", ai: Boolean(p.ai) });
+      }
+    } catch {
+      /* fall through to manual */
+    } finally {
+      setThinking(false);
+      go(1); // advance into the (now pre-filled) industry step regardless
+    }
   }
 
   async function next() {
@@ -121,6 +153,44 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
           <div key={step} className="onb-step">
             {step === 0 && (
               <div>
+                <h2 className="font-display text-2xl font-semibold tracking-tight text-fg">Tell us about your business</h2>
+                <p className="mt-1.5 text-sm text-muted">Describe what you do in a sentence or two — we&apos;ll personalize your whole workspace from it. Or skip and set it up by hand.</p>
+                <textarea
+                  className={`${input} mt-6`}
+                  rows={4}
+                  value={describe}
+                  onChange={(e) => setDescribe(e.target.value)}
+                  placeholder={"e.g. I run a real estate brokerage in Austin — we help buyers and sellers, mostly single-family homes."}
+                  autoFocus
+                />
+                {personalized && (
+                  <div key={personalized.industryLabel} className="onb-fade mt-4 rounded-xl border border-brand/30 bg-brand-soft/10 p-4">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-brand">
+                      <Icon name="autopilot" size={12} /> {personalized.ai ? "Personalized for you" : "Set up for you"}
+                    </p>
+                    <p className="mt-2 text-sm text-body"><span className="text-muted">Industry:</span> {personalized.industryLabel}{personalized.sells ? <> · <span className="text-muted">You sell:</span> {personalized.sells}</> : null}</p>
+                    <p className="mt-1 text-xs text-muted">Review the next steps — everything&apos;s pre-filled and editable.</p>
+                  </div>
+                )}
+                <div className="mt-5 flex items-center gap-3">
+                  <button
+                    onClick={personalize}
+                    disabled={!describe.trim() || thinking}
+                    className="cta inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand/90 disabled:opacity-50"
+                  >
+                    {thinking ? (
+                      <><svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round" /></svg> Personalizing…</>
+                    ) : (
+                      <><Icon name="autopilot" size={15} /> Personalize my setup</>
+                    )}
+                  </button>
+                  <button onClick={() => go(1)} disabled={thinking} className="text-sm text-muted transition hover:text-fg disabled:opacity-50">Skip — set up manually</button>
+                </div>
+              </div>
+            )}
+
+            {step === 1 && (
+              <div>
                 <h2 className="font-display text-2xl font-semibold tracking-tight text-fg">What do you sell?</h2>
                 <p className="mt-1.5 text-sm text-muted">We tailor your pipeline, terminology, objection handling, and playbooks to match.</p>
                 <div className="mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
@@ -154,7 +224,7 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
               </div>
             )}
 
-            {step === 1 && (
+            {step === 2 && (
               <div>
                 <h2 className="font-display text-2xl font-semibold tracking-tight text-fg">Name your workspace</h2>
                 <p className="mt-1.5 text-sm text-muted">You can change any of this later in Settings.</p>
@@ -181,7 +251,7 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
               </div>
             )}
 
-            {step === 2 && (
+            {step === 3 && (
               <div>
                 <h2 className="font-display text-2xl font-semibold tracking-tight text-fg">Teach it your voice</h2>
                 <p className="mt-1.5 text-sm text-muted">So every email, text, and call sounds like <em>you</em> — not AI. Refine anytime in Settings → Voice.</p>
@@ -211,7 +281,7 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
               </div>
             )}
 
-            {step === 3 && (
+            {step === 4 && (
               <div>
                 <h2 className="font-display text-2xl font-semibold tracking-tight text-fg">Invite your team</h2>
                 <p className="mt-1.5 text-sm text-muted">Optional — add teammate emails, one per line. You can skip and do this later.</p>
@@ -232,21 +302,25 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5" /><path d="m11 18-6-6 6-6" /></svg>
           Back
         </button>
-        <button onClick={next} disabled={finishing} className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-2 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-70">
-          {finishing ? (
-            <span className="inline-flex items-center gap-2 pr-3">
-              <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round" /></svg>
-              Building your workspace…
-            </span>
-          ) : (
-            <>
-              {step === steps.length - 1 ? "Finish & enter" : "Continue"}
-              <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20 transition-transform duration-200 ease-out group-hover:translate-x-0.5">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
+        {step === 0 ? (
+          <span /> /* step 0 has its own Personalize / Skip actions */
+        ) : (
+          <button onClick={next} disabled={finishing} className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-2 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-70">
+            {finishing ? (
+              <span className="inline-flex items-center gap-2 pr-3">
+                <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round" /></svg>
+                Building your workspace…
               </span>
-            </>
-          )}
-        </button>
+            ) : (
+              <>
+                {step === steps.length - 1 ? "Finish & enter" : "Continue"}
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20 transition-transform duration-200 ease-out group-hover:translate-x-0.5">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
+                </span>
+              </>
+            )}
+          </button>
+        )}
       </div>
       <p className="relative mt-3 text-center text-[11px] text-muted">Your selections persist once a database is connected.</p>
     </div>
