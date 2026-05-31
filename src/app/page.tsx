@@ -2,6 +2,7 @@ import Link from "next/link";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { Footer } from "@/components/marketing/Footer";
 import { Hero3D } from "@/components/marketing/Hero3D";
+import { StickyCTA } from "@/components/marketing/StickyCTA";
 import { PricingPlans } from "@/components/marketing/PricingPlans";
 import { BrandLogos } from "@/components/marketing/BrandLogos";
 import { Icon, type IconName } from "@/components/icons";
@@ -416,6 +417,7 @@ export default function LandingPage() {
       </section>
 
       <Footer />
+      <StickyCTA />
     </div>
   );
 }
