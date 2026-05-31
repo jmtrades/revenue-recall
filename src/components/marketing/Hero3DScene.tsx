@@ -122,7 +122,15 @@ export default function Hero3DScene() {
       core.position.y = Math.sin(t * 0.9) * 0.12;
       shell.rotation.y = -t * 0.18;
       shell.rotation.z = t * 0.1;
+      shell.position.y = core.position.y;
+      glowCore.position.y = core.position.y;
       particles.rotation.y = t * 0.05;
+      // Breathing emissive + shell pulse so the object reads as "alive" / powered.
+      const pulse = 0.5 + Math.sin(t * 1.6) * 0.5; // 0..1
+      mat.emissiveIntensity = 0.34 + pulse * 0.22;
+      shellMat.opacity = 0.24 + pulse * 0.14;
+      glowMat.opacity = 0.08 + pulse * 0.08;
+      key.intensity = 2.1 + pulse * 0.7;
       renderer.render(scene, camera);
       if (visible) raf = requestAnimationFrame(frame);
     }
