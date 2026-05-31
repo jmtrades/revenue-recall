@@ -59,9 +59,10 @@ export async function middleware(req: NextRequest) {
   }
 
   const path = req.nextUrl.pathname;
-  // Supabase is configured here (we returned early above if not), so this
-  // defaults to ON — every user gets their own gated, private workspace —
-  // unless explicitly opted out with NEXT_PUBLIC_AUTH_REQUIRED=false.
+  // Supabase is configured here (we returned early above if not), so this is
+  // always ON — every user gets their own gated, private workspace. It can't be
+  // disabled while a database is connected, so a stray env flag can't silently
+  // drop the deploy back to a shared, open workspace.
   const authRequired = isAuthRequired();
 
   // Signed-in users shouldn't sit on the auth screens.

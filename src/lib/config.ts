@@ -19,18 +19,22 @@ export interface AppConfig {
 /**
  * Whether app routes require a signed-in user (multi-tenant mode).
  *
- * An explicit `NEXT_PUBLIC_AUTH_REQUIRED` always wins (`true`/`false`). When it
- * isn't set we default to ON whenever a real auth backend (Supabase) is
- * connected — so a production deploy with a database is private, per-user, and
- * multi-tenant by default, with no separate flag to remember to flip. Only the
- * no-database demo (built-in store) stays open. To intentionally run an open
- * deployment on top of Supabase, set `NEXT_PUBLIC_AUTH_REQUIRED=false`.
+ * When a real auth backend (Supabase) is connected the app is multi-tenant by
+ * definition, so sign-in is ALWAYS required — every user gets their own private
+ * workspace. This is deliberately NOT overridable: running open on top of a
+ * shared database would leak one org's data to anonymous visitors, and a
+ * leftover `NEXT_PUBLIC_AUTH_REQUIRED=false` is the exact misconfiguration this
+ * prevents (it kept production stuck on a single shared, open workspace).
+ *
+ * With no backend (the built-in demo store) there are no accounts to protect, so
+ * gating stays off unless you explicitly opt in with `NEXT_PUBLIC_AUTH_REQUIRED=true`.
  */
 export function isAuthRequired(): boolean {
-  const explicit = process.env.NEXT_PUBLIC_AUTH_REQUIRED;
-  if (explicit === "true") return true;
-  if (explicit === "false") return false;
-  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const hasBackend = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  );
+  if (hasBackend) return true;
+  return process.env.NEXT_PUBLIC_AUTH_REQUIRED === "true";
 }
 
 export function getConfig(): AppConfig {
