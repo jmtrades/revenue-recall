@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getProvider } from "@/lib/crm/registry";
-import { getActiveOrg } from "@/lib/org";
+import { getOrgSettings } from "@/lib/org";
 import { toLanguageCode } from "@/lib/languages";
 import { dedupeRows } from "@/lib/import/dedupe";
 import type { Contact, ContactPoint, Stage } from "@/lib/crm/types";
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
   const { toCreate, existingDuplicates, batchDuplicates } = dedupeRows(parsed.data.rows, existing);
 
   // Price new opportunities in the org's currency rather than a hardcoded USD.
-  const currency = (await getActiveOrg().catch(() => null))?.currency ?? "USD";
+  const currency = (await getOrgSettings().catch(() => null))?.currency ?? "USD";
 
   let created = 0;
   let dealsCreated = 0;
@@ -92,8 +92,8 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({
-    created,
-    dealsCreated,
+    contacts: created,
+    deals: dealsCreated,
     duplicates: existingDuplicates + batchDuplicates,
     existingDuplicates,
     batchDuplicates,
