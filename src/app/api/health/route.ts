@@ -10,17 +10,36 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const cfg = getConfig();
   const ch = channelStatus();
+
+  const capabilities = {
+    database: isSupabaseConfigured() ? "supabase" : "in-memory",
+    ai: isAiConfigured() ? "live" : "templates",
+    auth: cfg.authRequired ? "required" : "optional",
+    email: ch.email.live,
+    sms: ch.sms.live,
+    voice: ch.voice.live,
+  };
+
+  // Explicit, machine-readable launch verdict so a misconfigured production
+  // deploy (e.g. auth left optional → anyone reaches the dashboard, no per-user
+  // isolation) is loud, not silent. `blockers` must be empty to be launch-ready.
+  const blockers: string[] = [];
+  if (!isSupabaseConfigured()) blockers.push("No database connected (set SUPABASE_* env vars).");
+  if (!cfg.authRequired) blockers.push("Auth is optional — set NEXT_PUBLIC_AUTH_REQUIRED=true so each user gets their own private workspace.");
+
+  const warnings: string[] = [];
+  if (!isAiConfigured()) warnings.push("AI is in template mode (set ANTHROPIC_API_KEY for live drafting).");
+  if (!ch.email.live) warnings.push("Email sending is off (signup/invite/outreach emails only log).");
+
   return NextResponse.json({
     status: "ok",
     time: new Date().toISOString(),
     industry: cfg.industryId,
-    capabilities: {
-      database: isSupabaseConfigured() ? "supabase" : "in-memory",
-      ai: isAiConfigured() ? "live" : "templates",
-      auth: cfg.authRequired ? "required" : "optional",
-      email: ch.email.live,
-      sms: ch.sms.live,
-      voice: ch.voice.live,
+    capabilities,
+    launch: {
+      ready: blockers.length === 0,
+      blockers,
+      warnings,
     },
   });
 }
