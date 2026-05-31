@@ -4,9 +4,14 @@ import { getProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
 import { toLanguageCode } from "@/lib/languages";
 import { dedupeRows } from "@/lib/import/dedupe";
+import { mapWithConcurrency } from "@/lib/async";
 import type { Contact, ContactPoint, Stage } from "@/lib/crm/types";
 
 export const dynamic = "force-dynamic";
+
+// How many lead rows to create in parallel. Tunable for backends with tighter
+// write limits; high enough to clear a few thousand rows well within budget.
+const IMPORT_CONCURRENCY = Number(process.env.IMPORT_CONCURRENCY ?? 8) || 8;
 
 const Row = z.object({
   name: z.string().min(1).max(200),
@@ -61,35 +66,45 @@ export async function POST(req: Request) {
   let dealsCreated = 0;
   const errors: string[] = [];
 
-  for (const r of toCreate) {
-    try {
-      const points: ContactPoint[] = [];
-      if (r.email) points.push({ channel: "email", value: r.email });
-      if (r.phone) points.push({ channel: "phone", value: r.phone });
-      const contact = await provider.createContact({
-        name: r.name,
-        company: r.company,
-        points,
-        attributes: r.language ? { preferredLanguage: toLanguageCode(r.language) ?? r.language } : undefined,
+  // Create rows with bounded parallelism. A large list done strictly serially
+  // can exceed the serverless time budget; firing all at once stampedes the DB.
+  // Each task creates the contact and (when priced) its opportunity together, so
+  // the opp always has a valid contact id.
+  const settled = await mapWithConcurrency(toCreate, IMPORT_CONCURRENCY, async (r) => {
+    const points: ContactPoint[] = [];
+    if (r.email) points.push({ channel: "email", value: r.email });
+    if (r.phone) points.push({ channel: "phone", value: r.phone });
+    const contact = await provider.createContact({
+      name: r.name,
+      company: r.company,
+      points,
+      attributes: r.language ? { preferredLanguage: toLanguageCode(r.language) ?? r.language } : undefined,
+    });
+    let deal = false;
+    if (r.value !== undefined || r.stage) {
+      const stageId = matchStage(r.stage)?.id ?? stages[0]?.id;
+      await provider.createOpportunity({
+        title: `${r.company ?? r.name} — opportunity`,
+        contactId: contact.id,
+        pipelineId,
+        stageId,
+        value: r.value ?? 0,
+        currency,
+        source: "CSV import",
       });
-      created += contact ? 1 : 0;
-      if (r.value !== undefined || r.stage) {
-        const stageId = matchStage(r.stage)?.id ?? stages[0]?.id;
-        await provider.createOpportunity({
-          title: `${r.company ?? r.name} — opportunity`,
-          contactId: contact.id,
-          pipelineId,
-          stageId,
-          value: r.value ?? 0,
-          currency,
-          source: "CSV import",
-        });
-        dealsCreated++;
-      }
-    } catch (e) {
-      errors.push(`${r.name}: ${e instanceof Error ? e.message : "failed"}`);
+      deal = true;
     }
-  }
+    return deal;
+  });
+
+  settled.forEach((res, i) => {
+    if (res.ok) {
+      created++;
+      if (res.value) dealsCreated++;
+    } else {
+      errors.push(`${toCreate[i].name}: ${res.error instanceof Error ? res.error.message : "failed"}`);
+    }
+  });
 
   return NextResponse.json({
     contacts: created,
