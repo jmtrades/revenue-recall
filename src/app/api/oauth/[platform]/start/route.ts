@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isOAuthPlatform, oauthConfigured, buildAuthorizeUrl, signState, pkcePair, OAUTH_PROVIDERS } from "@/lib/connections/oauth";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
+import { withGuard } from "@/lib/api/guard";
 import crypto from "node:crypto";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
  * redirect the user to the platform's consent screen. Auth-gated by middleware,
  * so only a signed-in member can start a connection for their org.
  */
-export async function GET(req: Request, { params }: { params: { platform: string } }) {
+export const GET = withGuard(async (req: Request, { params }: { params: { platform: string } }) => {
   const platform = params.platform;
   if (!isOAuthPlatform(platform)) return NextResponse.json({ error: "unknown platform" }, { status: 404 });
   if (!oauthConfigured(platform)) {
@@ -32,4 +33,4 @@ export async function GET(req: Request, { params }: { params: { platform: string
   if (!url) return NextResponse.json({ error: "Could not build authorize URL" }, { status: 500 });
 
   return NextResponse.redirect(url);
-}
+});

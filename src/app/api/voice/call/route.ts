@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withGuard } from "@/lib/api/guard";
 import { z } from "zod";
 import { getOrgSettings } from "@/lib/org";
 import { getIndustry } from "@/lib/industries";
@@ -20,7 +21,7 @@ const Body = z.object({
 });
 
 /** Run a complete simulated call end to end and return the transcript + scorecard. */
-export async function POST(req: Request) {
+export const POST = withGuard(async (req: Request) => {
   // A full call runs many model turns — throttle harder.
   if (!aiRateLimit(req, "voice-call").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
@@ -42,4 +43,4 @@ export async function POST(req: Request) {
 
   const result = await runCall(state, { difficulty: (parsed.data.difficulty ?? "medium") as Difficulty, maxRepTurns: parsed.data.maxRepTurns });
   return NextResponse.json(result);
-}
+});

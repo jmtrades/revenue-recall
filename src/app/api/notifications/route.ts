@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
 import { buildRecallQueue } from "@/lib/recall/engine";
+import { withGuard } from "@/lib/api/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ interface NotificationItem {
  *   stage_change  → recent stage moves
  * (daily_digest / task_reminders are email-delivery prefs, not in-app feed items.)
  */
-export async function GET() {
+export const GET = withGuard(async () => {
   const provider = getProvider();
   const [{ notificationPrefs: prefs }, pipelines, opps, activities] = await Promise.all([
     getOrgSettings(),
@@ -59,4 +60,4 @@ export async function GET() {
   }
 
   return NextResponse.json({ count: items.length, items });
-}
+});

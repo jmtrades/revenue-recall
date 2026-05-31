@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withGuard } from "@/lib/api/guard";
 import { z } from "zod";
 import { getOrgSettings } from "@/lib/org";
 import { getIndustry } from "@/lib/industries";
@@ -21,7 +22,7 @@ const Body = z.object({
   turns: z.array(TurnSchema).max(60),
 });
 
-export async function POST(req: Request) {
+export const POST = withGuard(async (req: Request) => {
   if (!aiRateLimit(req, "voice").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
@@ -46,4 +47,4 @@ export async function POST(req: Request) {
   }
   const out = await nextRepTurn(state);
   return NextResponse.json(out);
-}
+});

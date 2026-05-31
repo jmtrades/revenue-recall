@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { getProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
 import { getIndustry } from "@/lib/industries";
+import { withGuard } from "@/lib/api/guard";
 
 export const dynamic = "force-dynamic";
 
 /** Lightweight metadata for create forms: stages, contacts, owners, currency. */
-export async function GET() {
+export const GET = withGuard(async () => {
   const provider = getProvider();
   const [pipelines, contacts, users] = await Promise.all([
     provider.listPipelines(),
@@ -29,4 +30,4 @@ export async function GET() {
     contacts: contacts.map((c) => ({ id: c.id, name: c.name, company: c.company ?? "" })),
     owners: users.map((u) => ({ id: u.id, name: u.name })),
   });
-}
+});
