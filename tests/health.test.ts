@@ -37,6 +37,31 @@ describe("health launch-readiness verdict", () => {
     expect(body.launch.blockers).toEqual([]);
   });
 
+  it("auto-enables auth when a database is connected — no flag needed", async () => {
+    // The production failure mode this fixes: Supabase connected but the
+    // build-time NEXT_PUBLIC_AUTH_REQUIRED flag never took, leaving everyone on
+    // a shared open workspace. With a real backend present, auth is now ON by
+    // default so each user gets their own private org automatically.
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://x.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "svc";
+    // NEXT_PUBLIC_AUTH_REQUIRED intentionally unset
+    const body = await health();
+    expect(body.capabilities.auth).toBe("required");
+    expect(body.launch.ready).toBe(true);
+    expect(body.launch.blockers).toEqual([]);
+  });
+
+  it("honors an explicit opt-out even with a database connected", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://x.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "svc";
+    process.env.NEXT_PUBLIC_AUTH_REQUIRED = "false";
+    const body = await health();
+    expect(body.capabilities.auth).toBe("optional");
+    expect(body.launch.ready).toBe(false);
+  });
+
   it("still reports status ok even when not launch-ready", async () => {
     const body = await health();
     expect(body.status).toBe("ok");
