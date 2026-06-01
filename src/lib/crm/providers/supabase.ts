@@ -131,6 +131,25 @@ export class SupabaseProvider implements CrmProvider {
     return mapContact(data as ContactRow);
   }
 
+  async updateContact(id: Id, patch: Partial<Omit<Contact, "id">>): Promise<Contact> {
+    const orgId = await this.orgId();
+    const row: Record<string, unknown> = {};
+    if (patch.name !== undefined) row.name = patch.name;
+    if (patch.company !== undefined) row.company = patch.company ?? null;
+    if (patch.title !== undefined) row.title = patch.title ?? null;
+    if (patch.points !== undefined) row.points = patch.points;
+    if (patch.attributes !== undefined) row.attributes = patch.attributes;
+    const { data, error } = await this.client
+      .from("contacts")
+      .update(row)
+      .eq("org_id", orgId)
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return mapContact(data as ContactRow);
+  }
+
   async listOpportunities(filter?: OpportunityFilter): Promise<Opportunity[]> {
     const orgId = await this.orgId();
     let query = this.client.from("opportunities").select("*").eq("org_id", orgId);
