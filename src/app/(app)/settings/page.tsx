@@ -297,7 +297,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
         <p className="mt-0.5 text-xs text-muted">Live drafting/brief/voice cost. Margin guard auto-falls back to free templates if a budget is hit.</p>
         <div className="mt-3">
           <InfoRow label="Cost">${aiUsage.costUsd.toFixed(2)}{aiBudget > 0 ? ` / $${aiBudget.toFixed(0)} budget` : " (no cap set)"}</InfoRow>
-          <InfoRow label="Calls">{aiUsage.calls.toLocaleString()}</InfoRow>
+          <InfoRow label="AI messages">{aiUsage.calls.toLocaleString()}</InfoRow>
           <InfoRow label="Tokens">{(aiUsage.inputTokens + aiUsage.outputTokens).toLocaleString()}</InfoRow>
         </div>
         {Object.keys(aiUsage.byFeature).length > 0 && (

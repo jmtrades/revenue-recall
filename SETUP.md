@@ -83,11 +83,11 @@ point a webhook at `…/api/billing/webhook`.
 
 | Var | Pack | Suggested price |
 |---|---|---|
-| `STRIPE_PRICE_TOPUP_1K` | +1,000 actions | $29 (one-time) |
-| `STRIPE_PRICE_TOPUP_5K` | +5,000 actions | $99 (one-time) |
-| `STRIPE_PRICE_TOPUP_25K` | +25,000 actions | $399 (one-time) |
+| `STRIPE_PRICE_TOPUP_1K` | +1,000 AI messages | $29 (one-time) |
+| `STRIPE_PRICE_TOPUP_5K` | +5,000 AI messages | $99 (one-time) |
+| `STRIPE_PRICE_TOPUP_25K` | +25,000 AI messages | $399 (one-time) |
 
-Included monthly pools: Starter 50 · Operator 1,500 · Autopilot 10,000 · Scale unlimited. Customers see a live meter + buy top-ups in Settings → Billing.
+An "AI message" = each email, text, call script, or reply the AI writes. Included monthly pools: Starter 50 · Operator 1,500 · Autopilot 10,000 · Scale unlimited. Customers see a live meter + buy top-ups in Settings → Billing.
 
 ---
 

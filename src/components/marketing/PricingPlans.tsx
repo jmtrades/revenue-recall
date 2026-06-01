@@ -56,7 +56,7 @@ const PLANS: Plan[] = [
       "Everything in Starter",
       "Live AI across email, SMS & the phone",
       "Autopilot sequences — it works the pipeline",
-      "~1,500 AI actions / mo included",
+      "~1,500 AI messages / mo (emails, texts & calls it writes)",
       "Connect any CRM · unlimited pipelines",
     ],
   },
@@ -71,7 +71,7 @@ const PLANS: Plan[] = [
     anchor: "Replaces an SDR pod + your sequencer + your dialer — for less than one hire.",
     features: [
       "Everything in Operator",
-      "Up to 5 reps · ~10,000 AI actions / mo pooled",
+      "Up to 5 reps · ~10,000 AI messages / mo pooled",
       "Batch engine — more volume, lower cost",
       "Recovered-revenue reporting & team analytics",
       "Priority queue + advanced automations",
@@ -166,8 +166,9 @@ export function PricingPlans() {
       </div>
       <div className="mt-10 space-y-4 text-center">
         <p className="mx-auto max-w-2xl text-sm text-muted">
-          Every plan includes a monthly pool of AI actions — <span className="text-fg">1,500</span> on Operator, <span className="text-fg">10,000</span> pooled on Autopilot.
-          Running a big push? <span className="text-fg">Top up instantly from $29</span> — you&rsquo;re never blocked mid-campaign.
+          Every plan includes a monthly pool of <span className="text-fg">AI messages</span> — each email, text, call, or reply it writes for you.
+          That&rsquo;s <span className="text-fg">1,500/mo</span> on Operator, <span className="text-fg">10,000</span> pooled on Autopilot. Running a big push?{" "}
+          <span className="text-fg">Top up instantly from $29</span> — you&rsquo;re never blocked mid-campaign.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted">
           {["No card to start", "Cancel anytime", "Your data stays yours", "Live in 2 minutes"].map((t) => (

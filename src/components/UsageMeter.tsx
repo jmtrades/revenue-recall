@@ -44,19 +44,19 @@ export function UsageMeter({ meter, topups, billingConfigured, planName }: Usage
   return (
     <div className="rounded-lg border border-border p-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-fg">AI actions this month</p>
+        <p className="text-sm font-medium text-fg">AI messages this month</p>
         <span className="pill bg-surface-2 text-muted">{planName}</span>
       </div>
-      <p className="mt-0.5 text-xs text-muted">Each live email, text, call prep, and reply the AI writes is one action.</p>
+      <p className="mt-0.5 text-xs text-muted">Each email, text, call script, or reply the AI writes for you counts as one.</p>
 
       {meter.unlimited ? (
-        <p className="mt-3 flex items-center gap-2 text-sm text-fg"><Icon name="autopilot" size={15} className="text-brand" /> Unlimited actions on your plan — send all you like.</p>
+        <p className="mt-3 flex items-center gap-2 text-sm text-fg"><Icon name="autopilot" size={15} className="text-brand" /> Unlimited AI messages on your plan — send all you like.</p>
       ) : (
         <div className="mt-3">
           <div className="flex items-end justify-between text-sm">
             <span className="text-fg">{fmt(meter.used)} <span className="text-muted">/ {fmt(meter.limit)} used</span></span>
             <span className={`text-xs font-medium ${out ? "text-danger" : low ? "text-warn" : "text-success"}`}>
-              {out ? "No actions left" : `${fmt(meter.remaining)} left`}
+              {out ? "No messages left" : `${fmt(meter.remaining)} left`}
             </span>
           </div>
           <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-2">
@@ -72,7 +72,7 @@ export function UsageMeter({ meter, topups, billingConfigured, planName }: Usage
       {!meter.unlimited && (
         <div className="mt-4 border-t border-border/60 pt-4">
           <p className="text-sm font-medium text-fg">{low ? "Running low — top up so nothing stalls" : "Need more this month?"}</p>
-          <p className="mt-0.5 text-xs text-muted">Instant, one-time. Extra actions apply to this month — your plan price doesn&apos;t change.</p>
+          <p className="mt-0.5 text-xs text-muted">Instant, one-time. Extra messages apply to this month — your plan price doesn&apos;t change.</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             {topups.map((t) => (
               <div key={t.id} className={`rounded-xl border p-3 ${t.featured ? "border-brand bg-brand-soft/15" : "border-border bg-surface"}`}>
