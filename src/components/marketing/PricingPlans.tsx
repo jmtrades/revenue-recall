@@ -45,7 +45,7 @@ const PLANS: Plan[] = [
   },
   {
     name: "Operator",
-    monthly: 149,
+    monthly: 299,
     unit: "/rep/mo",
     tagline: "One autonomous AI rep, working 24/7.",
     cta: "Start free trial",
@@ -62,7 +62,7 @@ const PLANS: Plan[] = [
   },
   {
     name: "Autopilot",
-    monthly: 549,
+    monthly: 899,
     unit: "/mo",
     tagline: "An autonomous sales team for the whole desk.",
     cta: "Start free trial",

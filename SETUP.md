@@ -75,8 +75,8 @@ point a webhook at `…/api/billing/webhook`.
 |---|---|
 | `STRIPE_SECRET_KEY` | API key (Stripe → Developers → API keys) |
 | `STRIPE_WEBHOOK_SECRET` | from the `…/api/billing/webhook` endpoint |
-| `STRIPE_PRICE_GROWTH` (Operator, $149 **per unit**) / `STRIPE_PRICE_TEAM` (Autopilot, $549 flat) | monthly price IDs |
-| `STRIPE_PRICE_GROWTH_ANNUAL` ($1,490/yr per unit) / `STRIPE_PRICE_TEAM_ANNUAL` ($5,490/yr) | optional annual price IDs (~2 months free) |
+| `STRIPE_PRICE_GROWTH` (Operator, $299 **per unit**) / `STRIPE_PRICE_TEAM` (Autopilot, $899 flat) | monthly price IDs |
+| `STRIPE_PRICE_GROWTH_ANNUAL` ($2,990/yr per unit) / `STRIPE_PRICE_TEAM_ANNUAL` ($8,990/yr) | optional annual price IDs (~2 months free) |
 | `BILLING_ENFORCE=true` | enforce plan limits + action allowances (off = unrestricted trial) |
 
 **Usage top-ups (buy extra AI actions):** create **one-time** prices in Stripe and paste the ids — each pack is purchasable only once its price is set. Amounts are defined in `src/lib/billing/topups.ts`.
