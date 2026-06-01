@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logError, errMessage } from "@/lib/log";
 
 /**
  * Wrap an API route handler so any unhandled throw becomes a clean JSON 500
@@ -19,7 +20,7 @@ export function withGuard<C = unknown>(handler: RouteHandler<C>): RouteHandler<C
       return await handler(req, ctx);
     } catch (err) {
       // One place to observe unexpected failures; never leak internals to clients.
-      console.error(`[api] unhandled error on ${req.method} ${new URL(req.url).pathname}:`, err);
+      logError("api.unhandled", { method: req.method, path: new URL(req.url).pathname, error: errMessage(err) });
       return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
     }
   };

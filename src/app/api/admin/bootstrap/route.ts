@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { bootstrapOrg } from "@/lib/supabase/bootstrap";
+import { requireAdmin } from "@/lib/admin";
+import { logError, errMessage } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -20,11 +22,8 @@ export async function POST(req: Request) {
   if (!isSupabaseConfigured()) {
     return NextResponse.json({ error: "Supabase is not configured" }, { status: 409 });
   }
-  const adminToken = process.env.ADMIN_TOKEN;
-  const auth = req.headers.get("authorization") ?? "";
-  if (!adminToken || auth !== `Bearer ${adminToken}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = requireAdmin(req, "bootstrap");
+  if (denied) return denied;
 
   const parsed = Body.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: "Invalid body" }, { status: 400 });
@@ -33,6 +32,7 @@ export async function POST(req: Request) {
     const result = await bootstrapOrg(parsed.data);
     return NextResponse.json({ ok: true, ...result }, { status: 201 });
   } catch (err) {
+    logError("admin.bootstrap.failed", { error: errMessage(err) });
     return NextResponse.json({ error: err instanceof Error ? err.message : "Bootstrap failed" }, { status: 500 });
   }
 }

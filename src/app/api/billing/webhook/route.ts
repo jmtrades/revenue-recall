@@ -3,6 +3,7 @@ import { verifyStripeSignature, planForPrice } from "@/lib/billing/stripe";
 import { saveSubscriptionForOrg, saveSubscriptionForCustomer, type SubStatus } from "@/lib/billing/store";
 import { isPlanId } from "@/lib/billing/plans";
 import { addUsageCredits } from "@/lib/ai/usage";
+import { logError, errMessage } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
@@ -105,9 +106,11 @@ export async function POST(req: Request) {
         // Unhandled event types are acknowledged so Stripe stops retrying.
         break;
     }
-  } catch {
+  } catch (err) {
     // Swallow handler errors with a 200 so Stripe doesn't hammer retries on a
     // transient DB hiccup; the next event (or a manual sync) will reconcile.
+    // Log it though — a silently-failing webhook leaves billing state stale.
+    logError("billing.webhook.handler_failed", { error: errMessage(err) });
     return NextResponse.json({ received: true, handled: false });
   }
 
