@@ -32,7 +32,16 @@ export interface ChannelStatus {
 
 export interface EmailMessage { to: string; subject: string; body: string; from?: string }
 export interface SmsMessage { to: string; body: string }
-export interface VoiceCall { to: string }
+export interface VoiceCall {
+  to: string;
+  /** Who/what the call is about — fed to the in-house agent's brain so it talks
+   *  like it knows the prospect (ignored by transports that don't run our agent). */
+  context?: string;
+  /** Neural-voice id to speak in (e.g. a rep's cloned voice). */
+  voiceId?: string;
+  /** Personalized opening line. */
+  opener?: string;
+}
 
 export interface EmailTransport { id: string; available(): boolean; send(m: EmailMessage): Promise<SendResult> }
 export interface SmsTransport { id: string; available(): boolean; send(m: SmsMessage): Promise<SendResult> }
@@ -162,9 +171,11 @@ const twilioSms: SmsTransport = {
 const webhookVoice: VoiceTransport = {
   id: "webhook",
   available: () => Boolean(env("VOICE_WEBHOOK_URL")),
-  async place({ to }) {
+  async place({ to, context, voiceId, opener }) {
     try {
-      const r = await postWebhook(env("VOICE_WEBHOOK_URL")!, { channel: "voice", to, from: env("OUTBOUND_FROM_NUMBER") });
+      // Undefined fields are dropped by JSON.stringify, so this stays compatible
+      // with any gateway; our in-house call-gateway uses context/voiceId/opener.
+      const r = await postWebhook(env("VOICE_WEBHOOK_URL")!, { channel: "voice", to, from: env("OUTBOUND_FROM_NUMBER"), context, voiceId, opener });
       return { id: r.id ?? "webhook", status: "queued", provider: "webhook" };
     } catch (e) {
       return { id: "", status: "failed", provider: "webhook", detail: e instanceof Error ? e.message : "call failed" };
@@ -229,8 +240,11 @@ export async function sendSms(to: string, body: string): Promise<SendResult> {
   return t ? t.send({ to, body: compliant }) : logResult();
 }
 
-/** Place an outbound call via the resolved voice transport, else log it. */
-export async function placeCall(to: string): Promise<SendResult> {
+/** Place an outbound call via the resolved voice transport, else log it.
+ *  `opts` (context/voiceId/opener) is passed to the in-house agent gateway so
+ *  the AI knows who it's calling and why; transports that don't run our agent
+ *  simply ignore it. */
+export async function placeCall(to: string, opts: { context?: string; voiceId?: string; opener?: string } = {}): Promise<SendResult> {
   const t = resolveVoice();
-  return t ? t.place({ to }) : logResult();
+  return t ? t.place({ to, ...opts }) : logResult();
 }
