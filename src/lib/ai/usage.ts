@@ -1,6 +1,8 @@
 import { isSupabaseConfigured, getSupabase } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getActiveOrgId } from "@/lib/supabase/tenant";
+import { entitlements } from "@/lib/billing/entitlements";
+import { getSubscription } from "@/lib/billing/store";
 
 /**
  * AI usage ledger + budget guard. Records every live AI call's tokens and cost so
@@ -110,6 +112,85 @@ export async function isWithinBudget(now: Date = new Date()): Promise<boolean> {
   if (cap <= 0) return true;
   const { costUsd } = await usageSummary(now);
   return costUsd < cap;
+}
+
+// ---------------------------------------------------------------------------
+// Action allowance + top-up credits (customer-facing usage meter).
+// An "action" = one live AI completion. Each plan includes a monthly pool;
+// customers buy extra "actions" (top-ups) that stack onto the current month.
+// ---------------------------------------------------------------------------
+
+function periodKey(now: Date = new Date()): string {
+  return now.toISOString().slice(0, 7); // YYYY-MM
+}
+
+/** Extra AI actions purchased for the current billing month (top-ups). */
+export async function creditsThisPeriod(now: Date = new Date()): Promise<number> {
+  try {
+    if (!isSupabaseConfigured()) return 0;
+    const id = await orgId();
+    if (!id) return 0;
+    const { data } = await getSupabase()!
+      .from("usage_credits")
+      .select("actions")
+      .eq("org_id", id)
+      .eq("period", periodKey(now));
+    return (data ?? []).reduce((s, r) => s + Number(r.actions ?? 0), 0);
+  } catch {
+    return 0;
+  }
+}
+
+export interface UsageMeter {
+  /** Live AI actions used this month. */
+  used: number;
+  /** Plan's included monthly actions (Infinity = unmetered). */
+  included: number;
+  /** Purchased top-up actions active this month. */
+  credits: number;
+  /** included + credits (Infinity = unmetered). */
+  limit: number;
+  /** max(0, limit − used) (Infinity = unmetered). */
+  remaining: number;
+  /** used / limit, clamped 0–1 (0 when unmetered). */
+  fraction: number;
+  unlimited: boolean;
+}
+
+/** The current org's usage meter: actions used vs included + purchased credits. */
+export async function usageMeter(now: Date = new Date()): Promise<UsageMeter> {
+  const [{ calls }, credits, sub] = await Promise.all([usageSummary(now), creditsThisPeriod(now), getSubscription()]);
+  const included = entitlements(sub.plan).actionsPerMonth;
+  const unlimited = !Number.isFinite(included);
+  const limit = unlimited ? Infinity : included + credits;
+  const remaining = unlimited ? Infinity : Math.max(0, limit - calls);
+  const fraction = unlimited || limit <= 0 ? 0 : Math.min(1, calls / limit);
+  return { used: calls, included, credits, limit, remaining, fraction, unlimited };
+}
+
+/** True when the org still has live AI actions left this month (or is unmetered). */
+export async function isWithinActionAllowance(now: Date = new Date()): Promise<boolean> {
+  const m = await usageMeter(now);
+  return m.unlimited || m.used < m.limit;
+}
+
+/** Credit purchased top-up actions to the current period. Idempotent on `ref`
+ *  (the Stripe session id), so webhook retries never double-credit. */
+export async function addUsageCredits(input: { orgId: string; actions: number; source?: string; ref?: string; now?: Date }): Promise<void> {
+  if (!isSupabaseConfigured() || !(input.actions > 0)) return;
+  try {
+    await getSupabase()!
+      .from("usage_credits")
+      .insert({
+        org_id: input.orgId,
+        period: periodKey(input.now ?? new Date()),
+        actions: Math.floor(input.actions),
+        source: input.source ?? "topup",
+        ref: input.ref ?? null,
+      });
+  } catch {
+    /* unique(ref) rejects a retried webhook — that's the idempotency working */
+  }
 }
 
 /** Test-only reset of the in-memory ledger. */

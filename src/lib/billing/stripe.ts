@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { getPlan, type PlanId } from "@/lib/billing/plans";
+import { getTopupPack } from "@/lib/billing/topups";
 
 /**
  * Stripe integration over the REST API (no SDK dependency — same fetch pattern
@@ -100,6 +101,51 @@ export async function createCheckoutSession(input: CheckoutInput): Promise<strin
     client_reference_id: input.orgId,
     "metadata[plan]": input.plan,
     "subscription_data[metadata][org_id]": input.orgId,
+    allow_promotion_codes: "true",
+  };
+  if (input.customerEmail) form.customer_email = input.customerEmail;
+  const session = await stripePost("checkout/sessions", form);
+  const url = session.url as string | undefined;
+  if (!url) throw new Error("Stripe did not return a checkout URL.");
+  return url;
+}
+
+/** Stripe one-time price id for a top-up pack, if wired via env. */
+export function topupPriceId(packId: string): string | undefined {
+  const pack = getTopupPack(packId);
+  return pack ? env(pack.priceEnv) : undefined;
+}
+
+/** Whether a top-up pack is purchasable (its Stripe price is configured). */
+export function topupConfigured(packId: string): boolean {
+  return Boolean(topupPriceId(packId));
+}
+
+export interface TopupCheckoutInput {
+  packId: string;
+  orgId: string;
+  customerEmail?: string;
+  successUrl: string;
+  cancelUrl: string;
+}
+
+/** Create a one-time Checkout session for a usage top-up and return its URL. */
+export async function createTopupCheckout(input: TopupCheckoutInput): Promise<string> {
+  const pack = getTopupPack(input.packId);
+  if (!pack) throw new Error("Unknown top-up pack.");
+  const price = topupPriceId(input.packId);
+  if (!price) throw new Error(`No Stripe price configured for the ${pack.label} top-up.`);
+  const form: Record<string, string> = {
+    mode: "payment",
+    "line_items[0][price]": price,
+    "line_items[0][quantity]": "1",
+    success_url: input.successUrl,
+    cancel_url: input.cancelUrl,
+    client_reference_id: input.orgId,
+    "metadata[kind]": "topup",
+    "metadata[org_id]": input.orgId,
+    "metadata[topup_actions]": String(pack.actions),
+    "payment_intent_data[metadata][org_id]": input.orgId,
     allow_promotion_codes: "true",
   };
   if (input.customerEmail) form.customer_email = input.customerEmail;

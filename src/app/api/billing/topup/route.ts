@@ -1,0 +1,41 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { billingConfigured, createTopupCheckout } from "@/lib/billing/stripe";
+import { getTopupPack } from "@/lib/billing/topups";
+import { getSessionUser } from "@/lib/auth";
+import { resolveActiveOrgId } from "@/lib/supabase/active-org";
+import { getSupabase } from "@/lib/supabase/client";
+import { getActiveOrgId } from "@/lib/supabase/tenant";
+
+export const dynamic = "force-dynamic";
+
+const Body = z.object({ pack: z.string() });
+
+/** Start a one-time Checkout for a usage top-up pack. */
+export async function POST(req: Request) {
+  if (!billingConfigured()) {
+    return NextResponse.json({ error: "Billing isn't configured. Set STRIPE_SECRET_KEY to enable top-ups." }, { status: 503 });
+  }
+  const parsed = Body.safeParse(await req.json().catch(() => null));
+  if (!parsed.success || !getTopupPack(parsed.data.pack)) {
+    return NextResponse.json({ error: "Invalid top-up pack" }, { status: 400 });
+  }
+
+  const orgId = (await resolveActiveOrgId()) ?? (getSupabase() ? await getActiveOrgId(getSupabase()!) : null);
+  if (!orgId) return NextResponse.json({ error: "No active org" }, { status: 400 });
+
+  const user = await getSessionUser();
+  const origin = new URL(req.url).origin;
+  try {
+    const url = await createTopupCheckout({
+      packId: parsed.data.pack,
+      orgId,
+      customerEmail: user?.email,
+      successUrl: `${origin}/settings?billing=topup`,
+      cancelUrl: `${origin}/settings?billing=cancelled`,
+    });
+    return NextResponse.json({ url });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Top-up failed" }, { status: 502 });
+  }
+}

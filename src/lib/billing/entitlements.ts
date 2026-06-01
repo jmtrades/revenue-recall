@@ -19,13 +19,15 @@ export interface Entitlements {
   autopilot: boolean;
   /** Connect external CRMs / providers. */
   integrations: boolean;
+  /** Live AI actions included per month before top-ups are needed (Infinity = unmetered). */
+  actionsPerMonth: number;
 }
 
 export const PLAN_LIMITS: Record<PlanId, Entitlements> = {
-  free: { seats: 1, pipelines: 1, aiLive: false, autopilot: false, integrations: false },
-  growth: { seats: 1, pipelines: Infinity, aiLive: true, autopilot: true, integrations: true },
-  team: { seats: 5, pipelines: Infinity, aiLive: true, autopilot: true, integrations: true },
-  scale: { seats: Infinity, pipelines: Infinity, aiLive: true, autopilot: true, integrations: true },
+  free: { seats: 1, pipelines: 1, aiLive: false, autopilot: false, integrations: false, actionsPerMonth: 50 },
+  growth: { seats: 1, pipelines: Infinity, aiLive: true, autopilot: true, integrations: true, actionsPerMonth: 1500 },
+  team: { seats: 5, pipelines: Infinity, aiLive: true, autopilot: true, integrations: true, actionsPerMonth: 10000 },
+  scale: { seats: Infinity, pipelines: Infinity, aiLive: true, autopilot: true, integrations: true, actionsPerMonth: Infinity },
 };
 
 export function entitlements(plan: PlanId): Entitlements {

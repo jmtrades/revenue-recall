@@ -164,9 +164,22 @@ export function PricingPlans() {
           );
         })}
       </div>
-      <p className="mt-8 text-center text-sm text-muted">
-        Every plan starts free — no card to begin. Need more volume? Top up AI actions anytime. Cancel whenever.
-      </p>
+      <div className="mt-10 space-y-4 text-center">
+        <p className="mx-auto max-w-2xl text-sm text-muted">
+          Every plan includes a monthly pool of AI actions — <span className="text-fg">1,500</span> on Operator, <span className="text-fg">10,000</span> pooled on Autopilot.
+          Running a big push? <span className="text-fg">Top up instantly from $29</span> — you&rsquo;re never blocked mid-campaign.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted">
+          {["No card to start", "Cancel anytime", "Your data stays yours", "Live in 2 minutes"].map((t) => (
+            <span key={t} className="inline-flex items-center gap-1.5">
+              <span className="grid h-4 w-4 place-items-center rounded-full bg-brand/15 text-brand">
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+              </span>
+              {t}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
