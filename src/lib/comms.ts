@@ -41,6 +41,9 @@ export interface VoiceCall {
   voiceId?: string;
   /** Personalized opening line. */
   opener?: string;
+  /** Opaque per-call metadata (e.g. contactId/dealId) the gateway echoes back to
+   *  /api/calls/log so the transcript attaches to the right record. */
+  meta?: Record<string, string>;
 }
 
 export interface EmailTransport { id: string; available(): boolean; send(m: EmailMessage): Promise<SendResult> }
@@ -171,11 +174,11 @@ const twilioSms: SmsTransport = {
 const webhookVoice: VoiceTransport = {
   id: "webhook",
   available: () => Boolean(env("VOICE_WEBHOOK_URL")),
-  async place({ to, context, voiceId, opener }) {
+  async place({ to, context, voiceId, opener, meta }) {
     try {
       // Undefined fields are dropped by JSON.stringify, so this stays compatible
-      // with any gateway; our in-house call-gateway uses context/voiceId/opener.
-      const r = await postWebhook(env("VOICE_WEBHOOK_URL")!, { channel: "voice", to, from: env("OUTBOUND_FROM_NUMBER"), context, voiceId, opener });
+      // with any gateway; our in-house call-gateway uses context/voiceId/opener/meta.
+      const r = await postWebhook(env("VOICE_WEBHOOK_URL")!, { channel: "voice", to, from: env("OUTBOUND_FROM_NUMBER"), context, voiceId, opener, meta });
       return { id: r.id ?? "webhook", status: "queued", provider: "webhook" };
     } catch (e) {
       return { id: "", status: "failed", provider: "webhook", detail: e instanceof Error ? e.message : "call failed" };
@@ -244,7 +247,7 @@ export async function sendSms(to: string, body: string): Promise<SendResult> {
  *  `opts` (context/voiceId/opener) is passed to the in-house agent gateway so
  *  the AI knows who it's calling and why; transports that don't run our agent
  *  simply ignore it. */
-export async function placeCall(to: string, opts: { context?: string; voiceId?: string; opener?: string } = {}): Promise<SendResult> {
+export async function placeCall(to: string, opts: { context?: string; voiceId?: string; opener?: string; meta?: Record<string, string> } = {}): Promise<SendResult> {
   const t = resolveVoice();
   return t ? t.place({ to, ...opts }) : logResult();
 }

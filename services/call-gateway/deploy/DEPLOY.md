@@ -28,6 +28,7 @@ only shown here — see the repo's `.env.example` for the full descriptions):
 | `SIP_TRUNK_GATEWAY` | the FreeSWITCH gateway name for your SIP trunk |
 | `OUTBOUND_FROM_NUMBER` | your caller-ID number |
 | `COMMS_WEBHOOK_TOKEN` | the shared webhook secret (same value as the app) |
+| `CALL_STATUS_WEBHOOK_URL` | the app's `https://<app>/api/calls/log` — where finished-call transcripts are posted so they land on the CRM timeline |
 | `PUBLIC_WS_BASE` | `ws://` URL of the gateway, reachable by FreeSWITCH |
 
 Then bring it up and check health:
