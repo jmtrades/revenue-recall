@@ -1,4 +1,4 @@
-import { getAnthropic, aiModel, buildMessageParams } from "@/lib/ai/client";
+import { getAnthropic, aiModel, buildMessageParams, type EffortLevel } from "@/lib/ai/client";
 import { buildDraftUserPrompt, DRAFT_SYSTEM, DRAFT_SCHEMA, type DraftInput } from "@/lib/ai/draft";
 import { costOf } from "@/lib/ai/cost";
 import { recordUsage, budgetFraction } from "@/lib/ai/usage";
@@ -13,11 +13,20 @@ import { getActiveOrgId } from "@/lib/supabase/tenant";
  * map now (submitDraftBatch), then a later cron tick collects results
  * (collectBatch) and the caller queues them to Approvals.
  *
- * Tradeoff vs the synchronous path: batched drafts skip the two-pass humanness
- * refine (no second call), so they run thinking at "medium" to stay sharp while
- * keeping the cost win. Use the synchronous path when top quality matters more
- * than cost.
+ * Tradeoff vs the synchronous path: batched drafts can't do the second
+ * humanness-refine call, so to keep the autonomous (Autopilot) copy close to the
+ * manually-drafted quality they think at "high" by default — narrowing the gap
+ * while still ~50% cheaper than the synchronous two-pass. Tune with
+ * SEQUENCE_BATCH_EFFORT (low|medium|high|xhigh|max) if cost matters more.
  */
+
+const EFFORTS = new Set<EffortLevel>(["low", "medium", "high", "xhigh", "max"]);
+
+/** Thinking effort for batched drafts (default "high"; env-tunable). */
+export function batchEffort(): EffortLevel {
+  const v = process.env.SEQUENCE_BATCH_EFFORT as EffortLevel | undefined;
+  return v && EFFORTS.has(v) ? v : "high";
+}
 
 /** Routing info for one batched draft — maps a batch custom_id back to its target. */
 export interface BatchDraftItem {
@@ -78,9 +87,10 @@ export async function submitDraftBatch(requests: BatchDraftRequest[]): Promise<s
     const items = requests.map((r) => ({ ...r.item, customId: sanitizeCustomId(r.item.customId) }));
     const apiRequests = requests.map((r, i) => ({
       custom_id: items[i].customId,
-      // Batched drafts: thinking at medium (no refine pass), shared param builder
-      // so model/schema/output_config match the synchronous path exactly.
-      params: buildMessageParams({ system: DRAFT_SYSTEM, user: buildDraftUserPrompt(r.input), schema: DRAFT_SCHEMA, maxTokens: 1024, think: true, effort: "medium" }),
+      // Batched drafts: no refine pass, so think at batchEffort() ("high" default)
+      // to stay close to manual quality. Shared param builder so model/schema/
+      // output_config match the synchronous path exactly.
+      params: buildMessageParams({ system: DRAFT_SYSTEM, user: buildDraftUserPrompt(r.input), schema: DRAFT_SCHEMA, maxTokens: 1024, think: true, effort: batchEffort() }),
     }));
     // messages.batches is GA; params shape is built untyped (current API fields).
     const batch = await (client as unknown as { messages: { batches: { create: (b: unknown) => Promise<{ id: string }> } } }).messages.batches.create({ requests: apiRequests } as unknown);

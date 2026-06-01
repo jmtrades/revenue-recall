@@ -4,6 +4,7 @@ import { refineForHumanness } from "@/lib/ai/refine";
 import { getPlaybook } from "@/lib/industries";
 import { languageDirective } from "@/lib/languages";
 import { getTone, type ToneId } from "@/lib/tones";
+import { reactToText } from "@/lib/voice/reactive";
 import {
   AI_TELLS,
   capitalize as cap,
@@ -448,7 +449,7 @@ ${input.voice?.business ? `THE BUSINESS YOU WRITE FOR — what they actually sel
 ${playbookBlock(input)}
 ${input.voice?.customNextSteps?.length ? `\nThis rep's own go-to next steps (prefer one of these when it fits): ${input.voice.customNextSteps.join(" / ")}` : ""}
 ${input.recallReason ? `\nRe-engagement openers (for inspiration): ${(input.voice?.customReengage?.length ? input.voice.customReengage : pb.reengage).join(" / ")}` : ""}
-${input.voice?.profile ? `\nWrite in THIS person's voice — match it exactly so it sounds like them, not an AI:\n"""${input.voice.profile}"""` : ""}${input.timingHint ? `\nHow they engage: ${input.timingHint} Let this quietly shape the framing if it helps — never say it out loud or sound like you're profiling them.` : ""}${input.instruction ? `\nAlso follow this instruction for this message:\n"""${input.instruction}"""` : ""}${input.variant ? `\nThis is alternative take #${input.variant + 1}. Open differently and restructure it so it reads as a genuinely distinct message from a default version — same intent, fresh wording.` : ""}
+${input.voice?.profile ? `\nWrite in THIS person's voice — match it exactly so it sounds like them, not an AI:\n"""${input.voice.profile}"""` : ""}${input.timingHint ? `\nHow they engage: ${input.timingHint} Let this quietly shape the framing if it helps — never say it out loud or sound like you're profiling them.` : ""}${input.lastInbound ? `\nHow they sound right now: ${reactToText(input.lastInbound).note}` : ""}${input.history && input.history.length ? `\nDon't repeat the angle or opening from the recent history above — open differently and bring a fresh reason or hook.` : ""}${input.instruction ? `\nAlso follow this instruction for this message:\n"""${input.instruction}"""` : ""}${input.variant ? `\nThis is alternative take #${input.variant + 1}. Open differently and restructure it so it reads as a genuinely distinct message from a default version — same intent, fresh wording.` : ""}
 
 ${languageDirective(input.language) ? `\n${languageDirective(input.language)}` : ""}
 Write the ${input.channel} message now, as this human. Make it impossible to tell AI was involved.`;
