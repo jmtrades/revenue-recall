@@ -1,0 +1,31 @@
+# In-house voice stack: the call-gateway (AI agent) + your neural-voice service.
+# Your FreeSWITCH + SIP trunk run alongside this (see DEPLOY.md) and reach the
+# gateway's /media WebSocket. Bring real values via a .env file next to this one.
+#
+#   docker compose up -d --build
+services:
+  neural-voice:
+    build: ../../neural-voice          # the in-house TTS service (your voices)
+    restart: unless-stopped
+    # No host port needed; the gateway reaches it on the internal network.
+
+  call-gateway:
+    build: ..                          # services/call-gateway (this service)
+    restart: unless-stopped
+    ports:
+      - "8080:8080"                    # /voice, /sms, /media, /health
+    environment:
+      NEURAL_VOICE_URL: ws://neural-voice:8765
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?required}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
+      WHISPER_MODEL: ${WHISPER_MODEL:-base.en}
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+      FREESWITCH_ESL_HOST: ${FREESWITCH_ESL_HOST:-host.docker.internal}
+      FREESWITCH_ESL_PORT: ${FREESWITCH_ESL_PORT:-8021}
+      FREESWITCH_ESL_PASSWORD: ${FREESWITCH_ESL_PASSWORD:?required}
+      SIP_TRUNK_GATEWAY: ${SIP_TRUNK_GATEWAY:?required}
+      OUTBOUND_FROM_NUMBER: ${OUTBOUND_FROM_NUMBER}
+      COMMS_WEBHOOK_TOKEN: ${COMMS_WEBHOOK_TOKEN:?required}
+      PUBLIC_WS_BASE: ${PUBLIC_WS_BASE:-ws://call-gateway:8080}
+    depends_on:
+      - neural-voice

@@ -63,7 +63,7 @@ pip install -r requirements.txt
 
 # point at your own services + trunk (see config.py for all vars):
 export NEURAL_VOICE_URL=ws://localhost:8765          # your neural-voice service
-export ANTHROPIC_API_KEY=sk-ant-...                  # your Opus brain
+export ANTHROPIC_API_KEY="<your Opus key>"           # your Opus brain
 export FREESWITCH_ESL_HOST=127.0.0.1                 # your FreeSWITCH
 export SIP_TRUNK_GATEWAY=my_trunk                    # your SIP trunk (in FreeSWITCH)
 export COMMS_WEBHOOK_TOKEN=<shared secret>
