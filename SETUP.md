@@ -89,6 +89,16 @@ point a webhook at `…/api/billing/webhook`.
 
 An "AI message" = each email, text, call script, or reply the AI writes. Included monthly pools: Starter 50 · Operator 1,500 · Autopilot 10,000 · Scale unlimited. Customers see a live meter + buy top-ups in Settings → Billing.
 
+### Skip the Stripe dashboard — auto-create everything
+You don't have to create products/prices by hand. Set **`STRIPE_SECRET_KEY`** (and `ADMIN_TOKEN`) in Vercel, redeploy, then run this **once**:
+
+```bash
+curl -X POST https://recall-touch.com/api/billing/setup \
+     -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+It creates every product, plan price (monthly + annual), and top-up pack in your Stripe — at the exact public prices — and **wires them automatically** (resolved by stable lookup keys, so no `STRIPE_PRICE_*` vars needed). It's idempotent: safe to re-run, and any `STRIPE_PRICE_*` you *do* set still overrides. You only ever add the webhook + `STRIPE_WEBHOOK_SECRET` yourself.
+
 ---
 
 ## 3) Connect an existing CRM (optional — built-in CRM works with none)

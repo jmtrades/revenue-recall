@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { getPlan, type PlanId } from "@/lib/billing/plans";
 import { getTopupPack } from "@/lib/billing/topups";
+import { catalogForPlan, catalogForTopup } from "@/lib/billing/catalog";
 
 /**
  * Stripe integration over the REST API (no SDK dependency — same fetch pattern
@@ -52,7 +53,7 @@ export function planForPrice(price: string | undefined): PlanId | undefined {
   return undefined;
 }
 
-async function stripePost(path: string, form: Record<string, string>): Promise<Record<string, unknown>> {
+export async function stripePost(path: string, form: Record<string, string>): Promise<Record<string, unknown>> {
   const res = await fetch(`https://api.stripe.com/v1/${path}`, {
     method: "POST",
     headers: {
@@ -67,6 +68,58 @@ async function stripePost(path: string, form: Record<string, string>): Promise<R
     throw new Error(err?.message ?? `Stripe ${res.status}`);
   }
   return json;
+}
+
+export async function stripeGet(path: string): Promise<Record<string, unknown>> {
+  const res = await fetch(`https://api.stripe.com/v1/${path}`, {
+    headers: { Authorization: `Bearer ${env("STRIPE_SECRET_KEY")}` },
+  });
+  const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    const err = json.error as { message?: string } | undefined;
+    throw new Error(err?.message ?? `Stripe ${res.status}`);
+  }
+  return json;
+}
+
+// Resolve a Stripe price id by its stable lookup_key (cached per server
+// instance). This is what lets auto-provisioned prices work with zero pasted
+// STRIPE_PRICE_* env vars — the operator env override always wins when set.
+const priceIdCache = new Map<string, string>();
+export async function priceIdByLookupKey(lookupKey: string): Promise<string | undefined> {
+  if (priceIdCache.has(lookupKey)) return priceIdCache.get(lookupKey);
+  if (!billingConfigured()) return undefined;
+  try {
+    const res = await stripeGet(`prices?lookup_keys[]=${encodeURIComponent(lookupKey)}&active=true&limit=1`);
+    const id = ((res.data as { id?: string }[] | undefined)?.[0]?.id) ?? undefined;
+    if (id) priceIdCache.set(lookupKey, id);
+    return id;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Clear the lookup cache (after provisioning creates/updates prices). */
+export function clearPriceCache(): void {
+  priceIdCache.clear();
+}
+
+/** Price id for a plan+cycle: operator env override first, else the
+ *  auto-provisioned price resolved by lookup_key. Annual falls back to monthly. */
+export async function resolvePriceId(plan: PlanId, cycle: BillingCycle = "monthly"): Promise<string | undefined> {
+  if (plan === "free") return undefined;
+  const envId = priceId(plan, cycle);
+  if (envId) return envId;
+  const item = catalogForPlan(plan, cycle) ?? catalogForPlan(plan, "monthly");
+  return item ? priceIdByLookupKey(item.lookupKey) : undefined;
+}
+
+/** Top-up price id: env override first, else auto-provisioned by lookup_key. */
+export async function resolveTopupPriceId(packId: string): Promise<string | undefined> {
+  const envId = topupPriceId(packId);
+  if (envId) return envId;
+  const item = catalogForTopup(packId);
+  return item ? priceIdByLookupKey(item.lookupKey) : undefined;
 }
 
 export interface CheckoutInput {
@@ -90,7 +143,7 @@ export function checkoutQuantity(plan: PlanId, seats: number): number {
 
 /** Create a Checkout session and return its hosted URL. */
 export async function createCheckoutSession(input: CheckoutInput): Promise<string> {
-  const price = priceId(input.plan, input.cycle ?? "monthly");
+  const price = await resolvePriceId(input.plan, input.cycle ?? "monthly");
   if (!price) throw new Error(`No Stripe price configured for the ${input.plan} plan.`);
   const form: Record<string, string> = {
     mode: "subscription",
@@ -133,7 +186,7 @@ export interface TopupCheckoutInput {
 export async function createTopupCheckout(input: TopupCheckoutInput): Promise<string> {
   const pack = getTopupPack(input.packId);
   if (!pack) throw new Error("Unknown top-up pack.");
-  const price = topupPriceId(input.packId);
+  const price = await resolveTopupPriceId(input.packId);
   if (!price) throw new Error(`No Stripe price configured for the ${pack.label} top-up.`);
   const form: Record<string, string> = {
     mode: "payment",
