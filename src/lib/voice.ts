@@ -16,6 +16,9 @@ export interface Voice {
   customNextSteps?: string[];
   /** Workspace's own re-engagement openers; override the industry defaults. */
   customReengage?: string[];
+  /** Booking/scheduling link (Calendly, Cal.com, …). When set, the AI offers it
+   *  so prospects can self-schedule — turning a warm reply into a booked call. */
+  bookingUrl?: string;
 }
 
 /** Split a newline/textarea blob into clean, non-empty lines. */
@@ -43,6 +46,7 @@ export const getActiveVoice = cache(async (): Promise<Voice> => {
     business: data.business ?? undefined,
     customNextSteps: lines(data.custom_next_steps),
     customReengage: lines(data.custom_reengage),
+    bookingUrl: data.booking_url ?? undefined,
   };
 });
 
@@ -78,6 +82,7 @@ export async function learnVoice(input: {
   business?: string;
   customNextSteps?: string;
   customReengage?: string;
+  bookingUrl?: string;
 }): Promise<Voice & { aiDistilled: boolean }> {
   const samples = input.samples?.trim() ?? "";
   const client = isSupabaseConfigured() ? getSupabase() : null;
@@ -109,6 +114,8 @@ export async function learnVoice(input: {
     // Only touch `business` when explicitly provided, so editing just the voice
     // never erases the workspace's business description (and vice-versa).
     if (input.business !== undefined) row.business = input.business.trim() || null;
+    // Same guard for the booking link: only touch it when explicitly provided.
+    if (input.bookingUrl !== undefined) row.booking_url = input.bookingUrl.trim() || null;
     const { error } = await client.from("personas").upsert(row, { onConflict: "org_id" });
     if (error) throw new Error(error.message);
   }
@@ -122,6 +129,7 @@ export async function learnVoice(input: {
     business: input.business?.trim() || undefined,
     customNextSteps: lines(input.customNextSteps),
     customReengage: lines(input.customReengage),
+    bookingUrl: input.bookingUrl?.trim() || undefined,
     aiDistilled,
   };
 }

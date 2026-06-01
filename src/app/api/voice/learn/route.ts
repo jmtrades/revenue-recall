@@ -14,17 +14,19 @@ const Body = z.object({
   business: z.string().max(4000).optional(),
   customNextSteps: z.string().max(4000).optional(),
   customReengage: z.string().max(4000).optional(),
+  // A valid URL, or "" to clear it.
+  bookingUrl: z.union([z.string().url().max(500), z.literal("")]).optional(),
 });
 
 export async function POST(req: Request) {
   if (!aiRateLimit(req, "voice-learn").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Add a description or a writing sample first." }, { status: 400 });
-  const { senderName, role, signature, samples, business, customNextSteps, customReengage } = parsed.data;
+  const { senderName, role, signature, samples, business, customNextSteps, customReengage, bookingUrl } = parsed.data;
   // Accept anything worth saving — name/role/signature are useful on their own
   // (they shape sign-offs), even before a writing sample is added. Only reject a
   // wholly empty request.
-  const hasSomething = [senderName, role, signature, samples, business, customNextSteps, customReengage].some((v) => v?.trim());
+  const hasSomething = [senderName, role, signature, samples, business, customNextSteps, customReengage, bookingUrl].some((v) => v?.trim());
   if (!hasSomething) {
     return NextResponse.json({ error: "Add your name, a writing sample, or some go-to lines first." }, { status: 400 });
   }
