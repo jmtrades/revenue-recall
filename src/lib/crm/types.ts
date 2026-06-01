@@ -144,6 +144,12 @@ export interface CrmProvider {
   listContacts(): Promise<Contact[]>;
   getContact(id: Id): Promise<Contact | null>;
   createContact(input: Omit<Contact, "id">): Promise<Contact>;
+  /**
+   * Optional: patch a contact (e.g. set an email-bounce suppression flag in
+   * attributes). Providers that can't write contacts omit it; callers degrade
+   * gracefully (bounce suppression simply no-ops on read-only / external CRMs).
+   */
+  updateContact?(id: Id, patch: Partial<Omit<Contact, "id">>): Promise<Contact>;
 
   listOpportunities(filter?: OpportunityFilter): Promise<Opportunity[]>;
   getOpportunity(id: Id): Promise<Opportunity | null>;

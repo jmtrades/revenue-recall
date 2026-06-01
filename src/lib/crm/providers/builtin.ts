@@ -120,6 +120,14 @@ export class BuiltinProvider implements CrmProvider {
     return contact;
   }
 
+  async updateContact(id: Id, patch: Partial<Omit<Contact, "id">>): Promise<Contact> {
+    const contact = db().contacts.find((c) => c.id === id);
+    if (!contact) throw new Error(`contact ${id} not found`);
+    Object.assign(contact, patch);
+    persist();
+    return contact;
+  }
+
   async listOpportunities(filter?: OpportunityFilter): Promise<Opportunity[]> {
     const d = db();
     return d.opportunities.filter((o) => matches(o, filter, d.pipelines));

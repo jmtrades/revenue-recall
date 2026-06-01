@@ -2,6 +2,7 @@ import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getActiveOrgId } from "@/lib/supabase/tenant";
 import { getProvider } from "@/lib/crm/registry";
+import { isEmailBounced } from "@/lib/bounce";
 import { getOrgSettings } from "@/lib/org";
 import { getActiveVoice } from "@/lib/voice";
 import { getIndustry, recallThresholdsFor } from "@/lib/industries";
@@ -67,10 +68,12 @@ export interface CadenceTickResult {
   batched: number;
 }
 
-/** The address to reach a contact on a given channel (email vs phone), if any. */
+/** The address to reach a contact on a given channel (email vs phone), if any.
+ *  A hard-bounced email is treated as unreachable so the cadence skips email for
+ *  that contact (and naturally falls through to the next due step / channel). */
 export function addressFor(contact: Contact | undefined, channel: "email" | "sms" | "call"): string | undefined {
   if (!contact) return undefined;
-  if (channel === "email") return contact.points.find((p) => p.channel === "email")?.value;
+  if (channel === "email") return isEmailBounced(contact) ? undefined : contact.points.find((p) => p.channel === "email")?.value;
   return contact.points.find((p) => p.channel === "phone" || p.channel === "sms")?.value;
 }
 
