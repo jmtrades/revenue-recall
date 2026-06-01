@@ -88,12 +88,6 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       steps: ["Open Settings → General", "Enter your business name and postal address", "Save"],
     },
     {
-      label: "Email confirmation setting", ok: false, manual: true, required: false, where: "Supabase",
-      detail: "While email isn't connected, turn this OFF so password signups get an instant session. Google sign-in works either way.",
-      steps: ["Supabase → Authentication → Providers → Email", "Turn OFF “Confirm email”", "Save"],
-      link: { href: "https://supabase.com/dashboard", label: "Open Supabase Auth" },
-    },
-    {
       label: "Self-serve connections (encryption)", ok: encAvailable, required: false, where: "Vercel",
       detail: "Unlocks the in-app Connect buttons so each user links their own CRM, database, and social accounts (stored encrypted).",
       steps: ["Generate a random key, e.g. openssl rand -base64 32", "Add it as ENCRYPTION_KEY in Vercel (keep it stable)", "Redeploy"],
