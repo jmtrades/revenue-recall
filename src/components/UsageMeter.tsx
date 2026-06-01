@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/icons";
 import { EmbeddedCheckoutModal, type CheckoutRequest } from "@/components/EmbeddedCheckoutModal";
+import { perMessageCents } from "@/lib/billing/topups";
 
 export interface UsageMeterProps {
   /** Already sanitized server-side (no Infinity crosses to the client). */
@@ -52,6 +53,11 @@ export function UsageMeter({ meter, topups, billingConfigured, planName }: Usage
           <p className="mt-1.5 text-xs text-muted">
             {fmt(meter.included)} included{meter.credits > 0 ? ` + ${fmt(meter.credits)} from top-ups` : ""} · resets on the 1st
           </p>
+          {out && (
+            <p className="mt-2 rounded-lg bg-danger/10 px-2.5 py-1.5 text-xs text-danger">
+              You&apos;re out of AI messages. Until you top up (or the 1st), the AI keeps drafting with smart templates — nothing stops, the writing just isn&apos;t live-AI.
+            </p>
+          )}
         </div>
       )}
 
@@ -76,6 +82,7 @@ export function UsageMeter({ meter, topups, billingConfigured, planName }: Usage
                 >
                   {`Buy · $${t.suggestedUsd}`}
                 </button>
+                <p className="mt-1 text-center text-[10px] text-muted">{perMessageCents(t.suggestedUsd, t.actions)}¢ per message</p>
               </div>
             ))}
           </div>
