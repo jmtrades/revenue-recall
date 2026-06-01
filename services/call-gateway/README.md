@@ -1,0 +1,79 @@
+# In-house call gateway
+
+The self-hosted telephony brain for Revenue Recall. It lets the product place
+and hold **real phone calls** where the AI listens and speaks — with **your**
+speech-to-text, **your** Opus brain, and **your** neural voice — running on
+**your** hardware. No voice vendor, no per-minute platform markup. The honest
+meaning of "in-house": every layer is yours except the wholesale dial-tone.
+
+```
+ Revenue Recall app ──(webhook: place call)──▶  call-gateway
+                                                   │
+                          ┌────────────────────────┼─────────────────────────┐
+                          ▼                         ▼                          ▼
+                   FreeSWITCH / SIP          STT (faster-whisper)      TTS (your neural-voice
+                   ↕ media (RTP)             — hears the prospect       service over WebSocket)
+                          │                         │                          ▲
+                          └──────────▶ agent loop: STT ▶ Opus (brain) ▶ TTS ───┘
+                                                   │
+                                          SIP trunk (dial-tone) ──▶ ☎ real phone
+```
+
+## What's yours vs the one unavoidable outside line
+| Layer | In-house? |
+|---|---|
+| Speech-to-text (listening) | ✅ `faster-whisper`, your hardware, open model |
+| Brain (what to say) | ✅ Opus via your `ANTHROPIC_API_KEY` (you chose Opus) |
+| Voice (speaking) | ✅ your `neural-voice` service (your weights, your cloning) |
+| Call control + media | ✅ self-hosted **FreeSWITCH** (open-source, MPL) |
+| **Reaching a real phone number** | ⚠️ a **SIP trunk** — wholesale dial-tone. *Physics + telecom law: no one can originate a PSTN call without carrier interconnect.* Commodity (≈¢/min), not a software/voice vendor. |
+
+So: you own the AI, the voice, the logic, the media server. The only thing you
+"pay outside" for is the phone line itself — and that's true for everyone,
+including the big platforms (they resell the same trunks with a markup you skip).
+
+## Honest status (read this)
+- **AI voice-agent core — real and built here:** the STT → Opus → neural-voice
+  turn-taking loop (`agent.py`, `stt.py`, `brain.py`, `tts.py`) and the app
+  webhook contract (`server.py`) are real, importable Python.
+- **Live PSTN media — your stand-up:** the SIP/RTP bridge (`sip.py`) drives
+  **FreeSWITCH** (originate + `audio_fork` media over WebSocket). FreeSWITCH and
+  a SIP trunk run on *your* box; that part can't be exercised from CI without a
+  trunk + a phone. It's wired and documented, not magic.
+- **Reaching true "better than everyone" on live calls is earned in production**
+  — latency tuning, barge-in feel, voice quality — on your hardware. This gives
+  you the best possible foundation to get there; it does not pretend a phone
+  agent is flawless on day one.
+
+## How the app talks to it
+The app's comms layer (`src/lib/comms.ts`) already routes voice/SMS to a generic
+webhook with **zero app code** — point it here:
+```
+VOICE_WEBHOOK_URL = https://your-gateway/voice
+SMS_WEBHOOK_URL   = https://your-gateway/sms        # optional, same trunk
+COMMS_WEBHOOK_TOKEN = <shared secret>               # sent as Bearer; we verify it
+```
+The app POSTs `{ channel, to, from }`; the gateway originates the call and runs
+the agent. Nothing in the app changes — flip the env var and calls go in-house.
+
+## Run it
+```bash
+cd services/call-gateway
+pip install -r requirements.txt
+
+# point at your own services + trunk (see config.py for all vars):
+export NEURAL_VOICE_URL=ws://localhost:8765          # your neural-voice service
+export ANTHROPIC_API_KEY=sk-ant-...                  # your Opus brain
+export FREESWITCH_ESL_HOST=127.0.0.1                 # your FreeSWITCH
+export SIP_TRUNK_GATEWAY=my_trunk                    # your SIP trunk (in FreeSWITCH)
+export COMMS_WEBHOOK_TOKEN=<shared secret>
+
+uvicorn server:app --host 0.0.0.0 --port 8080
+```
+`docker build -t rr-call-gateway . && docker run -p 8080:8080 rr-call-gateway`
+
+## Why this beats a managed platform for you
+- **Your voice, unlimited** — clone each rep, no per-character bill.
+- **Your data** — call audio never leaves your infra (STT + TTS are local).
+- **Your economics** — wholesale trunk minutes, no platform markup on voice/AI.
+- **Your control** — swap the STT/voice/brain models freely; the seams are stable.
