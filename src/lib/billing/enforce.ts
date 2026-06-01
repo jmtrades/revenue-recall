@@ -1,15 +1,21 @@
 import { getSubscription } from "@/lib/billing/store";
 import { entitlements, type Entitlements } from "@/lib/billing/entitlements";
+import { billingConfigured } from "@/lib/billing/stripe";
 
 /**
- * Optional hard gating. Off by default (BILLING_ENFORCE !== "true") so the demo
- * and trials are unrestricted; turn it on to actually enforce plan limits. The
- * gates are designed to never hard-break — a non-entitled org still drafts and
- * queues to Approvals, it just can't auto-send. That's the free → paid boundary.
+ * Plan-limit gating (the free → paid boundary). Margin-safe by default: the
+ * moment real billing (Stripe) is connected, limits are ENFORCED automatically,
+ * so usage is tied to what customers pay for — no unlimited live AI bleeding
+ * money. With no Stripe (demo/trial) it stays open. An explicit BILLING_ENFORCE
+ * always wins (`true`/`false`). Gates never hard-break — an unentitled org still
+ * drafts to Approvals and falls back to free templates, it just can't spend on
+ * live AI or auto-send.
  */
-
 export function enforcementOn(): boolean {
-  return process.env.BILLING_ENFORCE === "true";
+  const v = process.env.BILLING_ENFORCE;
+  if (v === "true") return true;
+  if (v === "false") return false;
+  return billingConfigured();
 }
 
 export async function orgEntitlements(): Promise<Entitlements> {

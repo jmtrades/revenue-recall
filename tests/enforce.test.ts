@@ -9,16 +9,31 @@ import type { AgentTask } from "@/lib/agent/types";
 beforeEach(() => {
   delete process.env.ANTHROPIC_API_KEY;
   delete process.env.BILLING_ENFORCE;
+  delete process.env.STRIPE_SECRET_KEY;
 });
 afterEach(() => {
   delete process.env.BILLING_ENFORCE;
+  delete process.env.STRIPE_SECRET_KEY;
 });
 
 describe("billing enforcement flag", () => {
-  it("everything is entitled when enforcement is off (demo/trial-friendly)", async () => {
+  it("everything is entitled when enforcement is off (no billing = demo/trial)", async () => {
     expect(enforcementOn()).toBe(false);
     expect(await isEntitled("autopilot")).toBe(true);
     expect(await isEntitled("aiLive")).toBe(true);
+  });
+
+  it("auto-enforces the moment Stripe billing is connected (margin-safe default)", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_x"; // billing connected, no explicit flag
+    expect(enforcementOn()).toBe(true);
+    expect(await isEntitled("aiLive")).toBe(false); // free plan no longer gets unlimited live AI
+    expect(await isEntitled("autopilot")).toBe(false);
+  });
+
+  it("explicit BILLING_ENFORCE=false overrides even with Stripe connected", () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_x";
+    process.env.BILLING_ENFORCE = "false";
+    expect(enforcementOn()).toBe(false);
   });
 
   it("gates paid features when enforcement is on and the org is free", async () => {

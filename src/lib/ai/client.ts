@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { costOf } from "@/lib/ai/cost";
 import { recordUsage, budgetFraction, isWithinActionAllowance } from "@/lib/ai/usage";
+import { enforcementOn } from "@/lib/billing/enforce";
 
 /**
  * Anthropic client factory. Returns null when no API key is configured, so the
@@ -148,10 +149,11 @@ export async function completeJson<T>(opts: {
   const spent = await budgetFraction();
   if (spent >= 1) throw new Error("AI monthly budget reached");
 
-  // Plan action allowance (monetization). Only gates when billing enforcement is
-  // on, so the open demo/trial is never limited. Over the monthly pool (plus any
-  // purchased top-ups) → caller falls back to templates, nudging a top-up.
-  if (process.env.BILLING_ENFORCE === "true" && !(await isWithinActionAllowance())) {
+  // Plan action allowance (monetization). Gates whenever enforcement is on
+  // (auto-on once Stripe is connected), so a paid org can't run unlimited live
+  // AI past the pool it bought. Over the monthly pool (+ purchased top-ups) →
+  // caller falls back to templates, nudging a top-up. Open demo stays unlimited.
+  if (enforcementOn() && !(await isWithinActionAllowance())) {
     throw new Error("AI action allowance reached");
   }
 
