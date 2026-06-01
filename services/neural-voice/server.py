@@ -48,6 +48,8 @@ import numpy as np
 import websockets
 from scipy.signal import resample_poly
 
+from text_norm import normalize, split_sentences
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)s  %(message)s")
 log = logging.getLogger("neural-voice")
 
@@ -175,8 +177,9 @@ def _clone_synth(text: str, voice_id: str) -> tuple[np.ndarray, int]:
     return samples, int(model.sr)
 
 
-def synthesize(text: str, rate: float = 1.0, voice: str | None = None) -> tuple[np.ndarray, int]:
-    """Run the active neural engine → mono float32 waveform in [-1,1] + sample rate."""
+def _synthesize_raw(text: str, rate: float = 1.0, voice: str | None = None) -> tuple[np.ndarray, int]:
+    """Run the active neural engine → mono float32 waveform in [-1,1] + sample rate.
+    Assumes `text` is already normalized (see `normalize`)."""
     v = voice or DEFAULT_VOICE
     # A "clone:<id>" voice id routes to the cloning engine (the rep's own voice).
     if v.startswith("clone:"):
@@ -185,6 +188,13 @@ def synthesize(text: str, rate: float = 1.0, voice: str | None = None) -> tuple[
     if ENGINE == "kokoro":
         return _kokoro_synth(text, v, rate)
     return _piper_synth(text, v, rate)
+
+
+def synthesize(text: str, rate: float = 1.0, voice: str | None = None) -> tuple[np.ndarray, int]:
+    """Normalize sales text to spoken form, then synthesize the whole utterance.
+    (The WebSocket path in `handle` normalizes once and synthesizes per sentence
+    for lower first-audio latency; this one-shot form backs the offline helpers.)"""
+    return _synthesize_raw(normalize(text), rate, voice)
 
 
 def to_pcm16(samples: np.ndarray, src_rate: int, dst_rate: int) -> bytes:
@@ -213,17 +223,23 @@ async def handle(ws: "websockets.WebSocketServerProtocol") -> None:
         voice = req.get("voiceId") or None
         log.info("synthesize %d chars for %s @ %dHz (voice=%s)", len(text), peer, dst_rate, voice or DEFAULT_VOICE)
 
-        # Synthesis is CPU/GPU-bound: run it off the event loop so the socket
-        # stays responsive (and a future client can barge-in / disconnect).
-        samples, src_rate = await asyncio.to_thread(synthesize, text, rate, voice)
-        pcm = to_pcm16(samples, src_rate, dst_rate)
-
-        # Stream in small chunks for low first-audio latency + barge-in support.
-        step = CHUNK_FRAMES * 2  # bytes (2 per frame, mono)
-        for i in range(0, len(pcm), step):
-            await ws.send(pcm[i : i + step])
+        # Normalize sales content (money/percent/times/acronyms → spoken form) ONCE,
+        # then synthesize sentence-by-sentence and stream each as it's ready: the
+        # caller hears sentence one while the rest is still rendering — a big
+        # first-audio latency win on long lines (and natural sentence pauses).
+        sentences = split_sentences(normalize(text))
+        step = CHUNK_FRAMES * 2  # bytes (2 per frame, mono) — small = low latency + barge-in
+        total = 0
+        for sent in sentences:
+            # Synthesis is CPU/GPU-bound: run it off the event loop so the socket
+            # stays responsive (client can barge-in / disconnect mid-utterance).
+            samples, src_rate = await asyncio.to_thread(_synthesize_raw, sent, rate, voice)
+            pcm = to_pcm16(samples, src_rate, dst_rate)
+            for i in range(0, len(pcm), step):
+                await ws.send(pcm[i : i + step])
+            total += len(pcm)
         await ws.send(json.dumps({"type": "end"}))
-        log.info("done: %d PCM bytes streamed to %s", len(pcm), peer)
+        log.info("done: %d PCM bytes streamed to %s (%d sentence(s))", total, peer, len(sentences))
     except asyncio.TimeoutError:
         await _safe_error(ws, "timed out waiting for request")
     except json.JSONDecodeError:

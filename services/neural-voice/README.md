@@ -28,6 +28,26 @@ audio-model training effort in `docs/neural-voice.md`; getting there swaps only
 `synthesize()` in `server.py` — the protocol, the app, and this deployment stay
 identical.
 
+## Naturalness: spoken-form front-end + sentence streaming
+
+Two engine-independent wins applied to **every** utterance (`text_norm.py`):
+
+- **Spoken-form normalization.** Raw neural TTS mangles real sales content. We
+  expand it to how a person actually *says* it **before** synthesis:
+  `$4.2 million` → "four point two million dollars", `17%` → "seventeen percent",
+  `2:30pm` → "two thirty PM", `Q3` → "Q three", `21st` → "twenty first",
+  `sales@acme.com` → "sales at acme dot com", `+1 (555) 123-4567` → grouped
+  spoken digits, and revenue acronyms (`ARR`, `CRM`, `ROI`, …) → spelled out.
+  Pure stdlib, so it's fully unit-tested without loading a model.
+- **Per-sentence streaming.** `handle()` normalizes once, splits into sentences,
+  and synthesizes/streams them one at a time — the caller hears sentence one
+  while the rest is still rendering. Big **first-audio latency** drop on long
+  lines, plus natural sentence pauses, and barge-in cuts off cleanly mid-stream.
+
+Tested end-to-end here (no GPU/model needed): normalization on a battery of
+sales inputs, and the WebSocket path driving per-sentence synth → binary PCM
+frames → `end` frame, with empty-text and barge-in handled.
+
 ## Verified working
 
 Run end-to-end in CI/sandbox: model loads (54 voices), a WebSocket client sending
