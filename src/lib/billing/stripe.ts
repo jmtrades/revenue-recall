@@ -130,6 +130,15 @@ export interface CheckoutInput {
   customerEmail?: string;
   successUrl: string;
   cancelUrl: string;
+  /** Embedded (on-domain) checkout: returns a clientSecret instead of a URL. */
+  embedded?: boolean;
+  /** Where Stripe returns the buyer after embedded checkout (use {CHECKOUT_SESSION_ID}). */
+  returnUrl?: string;
+}
+
+export interface CheckoutResult {
+  url?: string;
+  clientSecret?: string;
 }
 
 /**
@@ -141,26 +150,37 @@ export function checkoutQuantity(plan: PlanId, seats: number): number {
   return getPlan(plan).perSeat ? Math.max(1, Math.floor(seats) || 1) : 1;
 }
 
-/** Create a Checkout session and return its hosted URL. */
-export async function createCheckoutSession(input: CheckoutInput): Promise<string> {
+/** Create a Checkout session. Returns a hosted URL, or (embedded) a clientSecret
+ *  so the payment runs on our own domain. */
+export async function createCheckoutSession(input: CheckoutInput): Promise<CheckoutResult> {
   const price = await resolvePriceId(input.plan, input.cycle ?? "monthly");
   if (!price) throw new Error(`No Stripe price configured for the ${input.plan} plan.`);
   const form: Record<string, string> = {
     mode: "subscription",
     "line_items[0][price]": price,
     "line_items[0][quantity]": String(checkoutQuantity(input.plan, input.seats)),
-    success_url: input.successUrl,
-    cancel_url: input.cancelUrl,
     client_reference_id: input.orgId,
     "metadata[plan]": input.plan,
     "subscription_data[metadata][org_id]": input.orgId,
     allow_promotion_codes: "true",
   };
+  if (input.embedded) {
+    form.ui_mode = "embedded";
+    form.return_url = input.returnUrl ?? input.successUrl;
+  } else {
+    form.success_url = input.successUrl;
+    form.cancel_url = input.cancelUrl;
+  }
   if (input.customerEmail) form.customer_email = input.customerEmail;
   const session = await stripePost("checkout/sessions", form);
+  if (input.embedded) {
+    const clientSecret = session.client_secret as string | undefined;
+    if (!clientSecret) throw new Error("Stripe did not return a client secret.");
+    return { clientSecret };
+  }
   const url = session.url as string | undefined;
   if (!url) throw new Error("Stripe did not return a checkout URL.");
-  return url;
+  return { url };
 }
 
 /** Stripe one-time price id for a top-up pack, if wired via env. */
@@ -180,10 +200,13 @@ export interface TopupCheckoutInput {
   customerEmail?: string;
   successUrl: string;
   cancelUrl: string;
+  embedded?: boolean;
+  returnUrl?: string;
 }
 
-/** Create a one-time Checkout session for a usage top-up and return its URL. */
-export async function createTopupCheckout(input: TopupCheckoutInput): Promise<string> {
+/** Create a one-time Checkout session for a usage top-up. Hosted URL, or
+ *  (embedded) a clientSecret for on-domain payment. */
+export async function createTopupCheckout(input: TopupCheckoutInput): Promise<CheckoutResult> {
   const pack = getTopupPack(input.packId);
   if (!pack) throw new Error("Unknown top-up pack.");
   const price = await resolveTopupPriceId(input.packId);
@@ -192,8 +215,6 @@ export async function createTopupCheckout(input: TopupCheckoutInput): Promise<st
     mode: "payment",
     "line_items[0][price]": price,
     "line_items[0][quantity]": "1",
-    success_url: input.successUrl,
-    cancel_url: input.cancelUrl,
     client_reference_id: input.orgId,
     "metadata[kind]": "topup",
     "metadata[org_id]": input.orgId,
@@ -201,11 +222,23 @@ export async function createTopupCheckout(input: TopupCheckoutInput): Promise<st
     "payment_intent_data[metadata][org_id]": input.orgId,
     allow_promotion_codes: "true",
   };
+  if (input.embedded) {
+    form.ui_mode = "embedded";
+    form.return_url = input.returnUrl ?? input.successUrl;
+  } else {
+    form.success_url = input.successUrl;
+    form.cancel_url = input.cancelUrl;
+  }
   if (input.customerEmail) form.customer_email = input.customerEmail;
   const session = await stripePost("checkout/sessions", form);
+  if (input.embedded) {
+    const clientSecret = session.client_secret as string | undefined;
+    if (!clientSecret) throw new Error("Stripe did not return a client secret.");
+    return { clientSecret };
+  }
   const url = session.url as string | undefined;
   if (!url) throw new Error("Stripe did not return a checkout URL.");
-  return url;
+  return { url };
 }
 
 /** Create a customer-portal session so a customer can manage/cancel billing. */

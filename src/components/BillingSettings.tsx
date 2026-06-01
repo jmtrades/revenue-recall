@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/icons";
 import { PLANS, getPlan, type PlanId } from "@/lib/billing/plans";
+import { EmbeddedCheckoutModal, embeddedCheckoutAvailable, type CheckoutRequest } from "@/components/EmbeddedCheckoutModal";
 
 interface Props {
   configured: boolean;
@@ -24,7 +25,17 @@ const STATUS_STYLE: Record<string, string> = {
 export function BillingSettings({ configured, plan, status, seats, currentPeriodEnd, hasCustomer }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [checkout, setCheckout] = useState<CheckoutRequest | null>(null);
   const current = getPlan(plan);
+
+  // Upgrade: pay on our own domain (embedded) when available, else hosted redirect.
+  function upgrade(planId: PlanId) {
+    if (embeddedCheckoutAvailable()) {
+      setCheckout({ endpoint: "/api/billing/checkout", body: { plan: planId, seats } });
+    } else {
+      void go("/api/billing/checkout", { plan: planId, seats });
+    }
+  }
 
   async function go(path: string, body?: unknown) {
     setBusy(path);
@@ -103,7 +114,7 @@ export function BillingSettings({ configured, plan, status, seats, currentPeriod
                   <span className="block rounded-lg bg-surface-2 px-3 py-1.5 text-center text-xs text-muted">Current plan</span>
                 ) : p.purchasable ? (
                   <button
-                    onClick={() => go("/api/billing/checkout", { plan: p.id, seats })}
+                    onClick={() => upgrade(p.id)}
                     disabled={!configured || busy !== null}
                     className="block w-full rounded-lg bg-brand px-3 py-1.5 text-center text-xs font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
                   >
@@ -126,6 +137,7 @@ export function BillingSettings({ configured, plan, status, seats, currentPeriod
         </p>
       )}
       {error && <p className="text-sm text-danger">{error}</p>}
+      <EmbeddedCheckoutModal request={checkout} onClose={() => setCheckout(null)} />
     </div>
   );
 }

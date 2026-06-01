@@ -9,7 +9,7 @@ import { getActiveOrgId } from "@/lib/supabase/tenant";
 
 export const dynamic = "force-dynamic";
 
-const Body = z.object({ pack: z.string() });
+const Body = z.object({ pack: z.string(), embedded: z.boolean().optional() });
 
 /** Start a one-time Checkout for a usage top-up pack. */
 export async function POST(req: Request) {
@@ -27,14 +27,16 @@ export async function POST(req: Request) {
   const user = await getSessionUser();
   const origin = new URL(req.url).origin;
   try {
-    const url = await createTopupCheckout({
+    const result = await createTopupCheckout({
       packId: parsed.data.pack,
       orgId,
       customerEmail: user?.email,
+      embedded: parsed.data.embedded,
       successUrl: `${origin}/settings?billing=topup`,
       cancelUrl: `${origin}/settings?billing=cancelled`,
+      returnUrl: `${origin}/settings?billing=topup&session_id={CHECKOUT_SESSION_ID}`,
     });
-    return NextResponse.json({ url });
+    return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Top-up failed" }, { status: 502 });
   }

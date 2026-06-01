@@ -108,7 +108,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
     {
       label: "Billing — charge customers", ok: billingOn, required: false, where: "Stripe + Vercel",
       detail: "Turns on self-serve checkout, the customer portal, and usage top-ups.",
-      steps: ["Add STRIPE_SECRET_KEY (Stripe → Developers → API keys)", "Add a webhook to /api/billing/webhook and paste STRIPE_WEBHOOK_SECRET", "Redeploy"],
+      steps: ["Add STRIPE_SECRET_KEY (Stripe → Developers → API keys)", "Add a webhook to /api/billing/webhook and paste STRIPE_WEBHOOK_SECRET", "Add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY so checkout runs on your own domain", "Redeploy"],
       link: { href: "https://dashboard.stripe.com", label: "Open Stripe" },
     },
     {

@@ -14,6 +14,7 @@ const Body = z.object({
   plan: z.string(),
   seats: z.number().int().positive().max(1000).optional(),
   cycle: z.enum(["monthly", "annual"]).optional(),
+  embedded: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {
@@ -32,18 +33,20 @@ export async function POST(req: Request) {
   const origin = new URL(req.url).origin;
 
   try {
-    const url = await createCheckoutSession({
+    const result = await createCheckoutSession({
       plan: parsed.data.plan,
       orgId,
       seats: parsed.data.seats ?? sub.seats,
       cycle: parsed.data.cycle,
       customerEmail: user?.email,
+      embedded: parsed.data.embedded,
       successUrl: `${origin}/settings?billing=success`,
       cancelUrl: `${origin}/settings?billing=cancelled`,
+      returnUrl: `${origin}/settings?billing=success&session_id={CHECKOUT_SESSION_ID}`,
     });
     // Record intent so the webhook (or success redirect) can reconcile.
     await saveSubscription({ status: sub.status === "none" ? "trialing" : sub.status });
-    return NextResponse.json({ url });
+    return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Checkout failed" }, { status: 502 });
   }
