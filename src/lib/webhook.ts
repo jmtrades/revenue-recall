@@ -24,3 +24,18 @@ export function verifyTwilioSignature(authToken: string, url: string, params: Re
   // Length check first — timingSafeEqual throws on length mismatch.
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
+
+/**
+ * Verify a generic HMAC-SHA256 signature (hex) over the raw request body — for
+ * inbound webhooks where you control the sender (e.g. an email-forwarding
+ * bridge). The sender signs the exact bytes with a shared secret and sends the
+ * digest as a header (optionally "sha256=" prefixed). Proves authenticity +
+ * integrity, and is timing-safe.
+ */
+export function verifyHmacSignature(secret: string, rawBody: string, signature: string | null): boolean {
+  if (!signature) return false;
+  const expected = crypto.createHmac("sha256", secret).update(Buffer.from(rawBody, "utf-8")).digest("hex");
+  const a = Buffer.from(expected);
+  const b = Buffer.from(signature.startsWith("sha256=") ? signature.slice(7) : signature);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}

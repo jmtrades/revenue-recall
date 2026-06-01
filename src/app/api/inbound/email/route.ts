@@ -3,6 +3,8 @@ import { z } from "zod";
 import { handleInbound } from "@/lib/inbound";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { withGuard } from "@/lib/api/guard";
+import { verifyHmacSignature } from "@/lib/webhook";
+import { logWarn } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -14,15 +16,34 @@ const Body = z.object({
 });
 
 /** Generic inbound-email webhook (JSON). Point your email provider's inbound
- *  parse / forwarding webhook here. Token-gated via ?token=INBOUND_TOKEN. */
+ *  parse / forwarding webhook here. Auth precedence: a strong HMAC signature
+ *  (INBOUND_SIGNING_SECRET, verified over the raw body, fail-closed) beats the
+ *  legacy ?token=INBOUND_TOKEN. With neither set it stays open for local/dev but
+ *  logs a warning, so an unauthenticated production endpoint is visible. */
 export const POST = withGuard(async (req: Request) => {
   if (!writeRateLimit(req, "inbound-email").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const url = new URL(req.url);
+  const raw = await req.text();
+
+  const signingSecret = process.env.INBOUND_SIGNING_SECRET;
   const token = process.env.INBOUND_TOKEN;
-  if (token && url.searchParams.get("token") !== token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (signingSecret) {
+    if (!verifyHmacSignature(signingSecret, raw, req.headers.get("x-rr-signature"))) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  } else if (token) {
+    if (url.searchParams.get("token") !== token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } else {
+    logWarn("inbound.email.unauthenticated", { note: "set INBOUND_SIGNING_SECRET (preferred) or INBOUND_TOKEN" });
   }
-  const parsed = Body.safeParse(await req.json().catch(() => null));
+
+  let json: unknown;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  }
+  const parsed = Body.safeParse(json);
   if (!parsed.success) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
 
   const result = await handleInbound("email", parsed.data.from, parsed.data.text, parsed.data.subject);
