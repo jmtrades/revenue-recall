@@ -86,6 +86,17 @@ export function cooldownDays(): number {
   return Number.isFinite(n) && n >= 0 ? n : 3;
 }
 
+/**
+ * Call-recording disclosure spoken at the very top of a call when the operator
+ * configures one via CALL_RECORDING_DISCLOSURE. Required for two-party-consent
+ * jurisdictions; empty/unset = no disclosure (single-party setups). Kept here so
+ * the placement route prepends it to the opener for every outbound call.
+ */
+export function recordingDisclosure(): string | null {
+  const v = (process.env.CALL_RECORDING_DISCLOSURE ?? "").trim();
+  return v.length > 0 ? v : null;
+}
+
 /** Current guardrail configuration, for showing operators what's in effect. */
 export function guardrailConfig(): { cooldownDays: number; declineCooldownDays: number; dailyCap: number | null; quietHours: string | null } {
   const cap = dailySendCap();

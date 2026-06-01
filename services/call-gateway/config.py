@@ -25,6 +25,10 @@ SIP_TRUNK_GATEWAY = env("SIP_TRUNK_GATEWAY", "")
 CALLER_ID = env("OUTBOUND_FROM_NUMBER", "")
 # Shared secret the app signs its webhook with (COMMS_WEBHOOK_TOKEN in the app).
 COMMS_WEBHOOK_TOKEN = env("COMMS_WEBHOOK_TOKEN")
+# Where we POST each finished call's transcript + outcome so the app logs it to
+# the CRM timeline (the app's /api/calls/log). Unset → calls aren't logged back.
+CALL_STATUS_WEBHOOK_URL = env("CALL_STATUS_WEBHOOK_URL")
+# Optional URL where call recordings are hosted, echoed into the call log.
 # Where FreeSWITCH reaches us back for media (audio_fork target).
 PUBLIC_WS_BASE = env("PUBLIC_WS_BASE", "ws://127.0.0.1:8080")
 

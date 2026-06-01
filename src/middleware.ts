@@ -16,6 +16,7 @@ const PUBLIC_API = [
   "/api/billing/config", // publishable key only (public by design)
   "/api/agent/cron",
   "/api/inbound/", // email + sms
+  "/api/calls/log", // call-gateway posts finished-call transcripts — self-authed by COMMS_WEBHOOK_TOKEN (Bearer)
   "/api/social/", // social webhooks (WhatsApp, Instagram, Messenger, Telegram, X) — each verifies its own signature/secret
   "/api/unsubscribe",
   "/api/health",

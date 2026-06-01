@@ -5,6 +5,8 @@ import { placeCall } from "@/lib/comms";
 import { getActiveVoice } from "@/lib/voice";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { withGuard } from "@/lib/api/guard";
+import { hasOptedOut, recordingDisclosure } from "@/lib/agent/guardrails";
+import type { Activity } from "@/lib/crm/types";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +26,19 @@ export const POST = withGuard(async (req: Request) => {
   const contact = contactId ? await provider.getContact(contactId) : null;
   if (!to) to = contact?.points.find((p) => p.channel === "phone")?.value;
   if (!to) return NextResponse.json({ error: "No phone number on file" }, { status: 400 });
+
+  // Compliance gate: never dial someone who opted out or is marked do-not-contact.
+  // Attribute-level flags are caught even if call history can't be loaded.
+  let activities: Activity[] = [];
+  try {
+    if (contactId && provider.listActivitiesByContact) activities = await provider.listActivitiesByContact(contactId);
+    else if (parsed.data.dealId) activities = await provider.listActivities(parsed.data.dealId);
+  } catch {
+    /* history is best-effort; attribute checks below still apply */
+  }
+  if (hasOptedOut(contact ?? undefined, opp ?? undefined, activities)) {
+    return NextResponse.json({ error: "This contact has opted out or is marked do-not-contact." }, { status: 403 });
+  }
 
   // Brief the in-house agent so it talks like it knows the prospect. Best-effort:
   // never let context-building block the call.
@@ -46,7 +61,18 @@ export const POST = withGuard(async (req: Request) => {
     /* context is a nicety; place the call regardless */
   }
 
-  const result = await placeCall(to, { context, opener });
+  // Recording disclosure (two-party-consent jurisdictions) is spoken first, even
+  // if context-building above failed.
+  const disclosure = recordingDisclosure();
+  if (disclosure) opener = opener ? `${disclosure} ${opener}` : disclosure;
+
+  // Tag the call so the gateway can echo it back to /api/calls/log and the
+  // transcript attaches to the right record.
+  const meta: Record<string, string> = {};
+  if (contactId) meta.contactId = contactId;
+  if (parsed.data.dealId) meta.dealId = parsed.data.dealId;
+
+  const result = await placeCall(to, { context, opener, meta: Object.keys(meta).length ? meta : undefined });
   if (result.status === "failed") return NextResponse.json({ error: result.detail ?? "Call failed" }, { status: 502 });
   return NextResponse.json({ ok: true, to, ...result });
 });

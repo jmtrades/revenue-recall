@@ -26,6 +26,7 @@ services:
       SIP_TRUNK_GATEWAY: ${SIP_TRUNK_GATEWAY:?required}
       OUTBOUND_FROM_NUMBER: ${OUTBOUND_FROM_NUMBER}
       COMMS_WEBHOOK_TOKEN: ${COMMS_WEBHOOK_TOKEN:?required}
+      CALL_STATUS_WEBHOOK_URL: ${CALL_STATUS_WEBHOOK_URL}
       PUBLIC_WS_BASE: ${PUBLIC_WS_BASE:-ws://call-gateway:8080}
     depends_on:
       - neural-voice
