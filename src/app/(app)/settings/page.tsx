@@ -28,7 +28,8 @@ import { AiHealthCheck } from "@/components/AiHealthCheck";
 import { VoiceStudio } from "@/components/VoiceStudio";
 import { VoiceControls } from "@/components/VoiceControls";
 import { getSubscription } from "@/lib/billing/store";
-import { billingConfigured, topupConfigured } from "@/lib/billing/stripe";
+import { billingConfigured, topupConfigured, priceId } from "@/lib/billing/stripe";
+import { isAuthRequired } from "@/lib/config";
 import { getPlan } from "@/lib/billing/plans";
 import { TOPUP_PACKS } from "@/lib/billing/topups";
 import { usageSummary, monthlyBudgetUsd, usageMeter } from "@/lib/ai/usage";
@@ -59,13 +60,82 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
   // Org-level compliance wins over env (multi-tenant identity).
   const compliance = complianceConfig({ orgName: org.compliance.senderName ?? org.name, address: org.compliance.address });
   const setupItems: SetupItem[] = [
-    { label: "Workspace storage", ok: isSupabaseConfigured(), required: true, detail: "Your data is saved and your account is private to you and your team." },
-    { label: "AI writing live", ok: isAiConfigured(), required: false, detail: "Outreach is written live in your voice. Until connected, polished templates are used." },
-    { label: "Email sending", ok: ch.email.live, required: true, detail: "Connect email so messages actually send. Until then, they're saved to the timeline." },
-    { label: "SMS sending", ok: ch.sms.live, required: false, detail: "Connect texting to send SMS for real instead of logging it." },
-    { label: "A sending number", ok: (await listOwnedNumbers().catch(() => [])).length > 0, required: false, detail: "Bring your own number, or get one in the Numbers tab." },
-    { label: "Compliance address", ok: Boolean(compliance.address), required: true, detail: "A real postal address is legally required on commercial email." },
-    { label: "Billing connected", ok: billingConfigured(), required: false, detail: "Turn on self-serve checkout to charge customers." },
+    {
+      label: "Workspace database", ok: isSupabaseConfigured(), required: true, where: "Supabase + Vercel",
+      detail: "Stores every account's data, privately. Already connected.",
+      steps: ["Create a project at supabase.com", "Run the migrations in supabase/migrations", "Add NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY in Vercel", "Redeploy"],
+      link: { href: "https://supabase.com/dashboard", label: "Open Supabase" },
+    },
+    {
+      label: "Private per-user accounts", ok: isAuthRequired(), required: true, where: "Automatic",
+      detail: "Every user gets their own isolated workspace — turns on automatically once a database is connected.",
+      steps: ["Connect the database above; sign-in then becomes required automatically (nothing to set)"],
+    },
+    {
+      label: "Account provisioning key", ok: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY), required: true, where: "Vercel",
+      detail: "Lets a brand-new sign-up get their own workspace created. Without it, signups can't be provisioned.",
+      steps: ["Supabase → Settings → API → copy the service_role key", "Add it as SUPABASE_SERVICE_ROLE_KEY in Vercel", "Redeploy"],
+    },
+    {
+      label: "Email sending", ok: ch.email.live, required: true, where: "Resend + Vercel",
+      detail: "So signup confirmations, invites, and outreach actually send instead of just logging.",
+      steps: ["Create a Resend account and verify your sending domain", "Add RESEND_API_KEY and EMAIL_FROM in Vercel", "Redeploy"],
+      link: { href: "https://resend.com", label: "Open Resend" },
+    },
+    {
+      label: "Compliance address", ok: Boolean(compliance.address), required: true, where: "Settings → General",
+      detail: "A real postal address is legally required on commercial email (CAN-SPAM).",
+      steps: ["Open Settings → General", "Enter your business name and postal address", "Save"],
+    },
+    {
+      label: "Email confirmation setting", ok: false, manual: true, required: false, where: "Supabase",
+      detail: "While email isn't connected, turn this OFF so password signups get an instant session. Google sign-in works either way.",
+      steps: ["Supabase → Authentication → Providers → Email", "Turn OFF “Confirm email”", "Save"],
+      link: { href: "https://supabase.com/dashboard", label: "Open Supabase Auth" },
+    },
+    {
+      label: "Self-serve connections (encryption)", ok: encAvailable, required: false, where: "Vercel",
+      detail: "Unlocks the in-app Connect buttons so each user links their own CRM, database, and social accounts (stored encrypted).",
+      steps: ["Generate a random key, e.g. openssl rand -base64 32", "Add it as ENCRYPTION_KEY in Vercel (keep it stable)", "Redeploy"],
+    },
+    {
+      label: "Live AI writing", ok: isAiConfigured(), required: false, where: "Vercel",
+      detail: "Writes outreach live in each user's voice. Until connected, polished templates are used.",
+      steps: ["Get an API key at console.anthropic.com", "Add it as ANTHROPIC_API_KEY in Vercel", "Redeploy"],
+      link: { href: "https://console.anthropic.com", label: "Open Anthropic" },
+    },
+    {
+      label: "Billing — charge customers", ok: billingConfigured(), required: false, where: "Stripe + Vercel",
+      detail: "Turns on self-serve checkout, the customer portal, and usage top-ups.",
+      steps: ["Add STRIPE_SECRET_KEY (Stripe → Developers → API keys)", "Add a webhook to /api/billing/webhook and paste STRIPE_WEBHOOK_SECRET", "Redeploy"],
+      link: { href: "https://dashboard.stripe.com", label: "Open Stripe" },
+    },
+    {
+      label: "Plan prices wired", ok: Boolean(priceId("growth") && priceId("team")), required: false, where: "Stripe + Vercel",
+      detail: "Connects the Operator and Autopilot plans to real Stripe prices.",
+      steps: ["Create a $149/mo per-unit price → STRIPE_PRICE_GROWTH", "Create a $549/mo flat price → STRIPE_PRICE_TEAM", "Optional annual prices → the *_ANNUAL vars"],
+    },
+    {
+      label: "Usage top-ups", ok: TOPUP_PACKS.some((p) => topupConfigured(p.id)), required: false, where: "Stripe + Vercel",
+      detail: "Lets customers buy extra AI messages when they run low — pure-margin revenue.",
+      steps: ["Create one-time prices in Stripe ($29 / $99 / $399)", "Add STRIPE_PRICE_TOPUP_1K / _5K / _25K in Vercel"],
+    },
+    {
+      label: "SMS & calls", ok: ch.sms.live, required: false, where: "Twilio + Vercel",
+      detail: "Send real texts and run the power dialer (optional — email works on its own).",
+      steps: ["Create a Twilio account and get a number", "Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER in Vercel", "Redeploy"],
+      link: { href: "https://console.twilio.com", label: "Open Twilio" },
+    },
+    {
+      label: "Autopilot", ok: process.env.SEQUENCE_AUTOPILOT === "true" || process.env.REPLY_AUTOPILOT === "true", required: false, where: "Vercel",
+      detail: "Let it send sequences and replies hands-off (takes effect once a channel above is connected).",
+      steps: ["Set SEQUENCE_AUTOPILOT=true and REPLY_AUTOPILOT=true in Vercel", "Redeploy"],
+    },
+    {
+      label: "Scheduled runs", ok: Boolean(process.env.CRON_SECRET), required: false, where: "Vercel",
+      detail: "Secures the daily autopilot job (Vercel Cron is already scheduled).",
+      steps: ["Set CRON_SECRET to a random string in Vercel", "Redeploy"],
+    },
   ];
   const setupTab = (
     <Card>
