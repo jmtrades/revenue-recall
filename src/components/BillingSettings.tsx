@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/icons";
 import { PLANS, getPlan, type PlanId } from "@/lib/billing/plans";
-import { EmbeddedCheckoutModal, embeddedCheckoutAvailable, type CheckoutRequest } from "@/components/EmbeddedCheckoutModal";
+import { EmbeddedCheckoutModal, type CheckoutRequest } from "@/components/EmbeddedCheckoutModal";
 
 interface Props {
   configured: boolean;
@@ -28,13 +28,10 @@ export function BillingSettings({ configured, plan, status, seats, currentPeriod
   const [checkout, setCheckout] = useState<CheckoutRequest | null>(null);
   const current = getPlan(plan);
 
-  // Upgrade: pay on our own domain (embedded) when available, else hosted redirect.
+  // Open checkout — the modal does embedded (on our domain) when a publishable
+  // key is set, else falls back to hosted Stripe automatically.
   function upgrade(planId: PlanId) {
-    if (embeddedCheckoutAvailable()) {
-      setCheckout({ endpoint: "/api/billing/checkout", body: { plan: planId, seats } });
-    } else {
-      void go("/api/billing/checkout", { plan: planId, seats });
-    }
+    setCheckout({ endpoint: "/api/billing/checkout", body: { plan: planId, seats } });
   }
 
   async function go(path: string, body?: unknown) {

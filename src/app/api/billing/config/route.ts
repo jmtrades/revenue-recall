@@ -1,0 +1,14 @@
+import { NextResponse } from "next/server";
+import { publishableKey } from "@/lib/billing/stripe";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * Public client config for billing. The publishable key is designed to be
+ * public (it ships in client JS normally), so this is safe to expose. Serving
+ * it at runtime means embedded checkout works the instant the key is set — no
+ * NEXT_PUBLIC build-time inlining, no redeploy-cache surprises.
+ */
+export async function GET() {
+  return NextResponse.json({ publishable: publishableKey() ?? null });
+}
