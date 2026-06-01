@@ -4,6 +4,7 @@ import { refineForHumanness } from "@/lib/ai/refine";
 import { getPlaybook } from "@/lib/industries";
 import { getLanguage, DEFAULT_LANGUAGE } from "@/lib/languages";
 import { getTone, type ToneId } from "@/lib/tones";
+import { reactToText } from "@/lib/voice/reactive";
 import { capitalize, firstName, pickVariant, pick, seeded, sentence, GREETINGS_EMAIL } from "@/lib/copy";
 
 export interface ReplyInput {
@@ -141,7 +142,11 @@ function fallback(input: ReplyInput): ReplyResult {
   const first = firstName(input.contactName);
   const pb = getPlaybook(input.industryId ?? "generic");
   const tonePart = input.tone && input.tone !== "warm" ? `|${input.tone}` : "";
-  const seed = `${input.dealTitle}|${input.contactName}|${input.incoming.length}${tonePart}`;
+  // Fold prior-touch count into the seed so a follow-up to the same kind of
+  // message rotates to a different (still vetted-clean) line instead of repeating
+  // itself. Absent history keeps the seed byte-identical to before.
+  const histPart = input.history?.length ? `|h${input.history.length}` : "";
+  const seed = `${input.dealTitle}|${input.contactName}|${input.incoming.length}${tonePart}${histPart}`;
   const sig = input.voice?.signature || input.voice?.senderName || "";
   const sigLine = sig ? `\n\n${sig}` : "";
   const intent = detectIntent(input.incoming);
@@ -194,7 +199,11 @@ export async function draftReply(input: ReplyInput): Promise<ReplyResult> {
   // when enforcement is on and the plan lacks aiLive; no-op otherwise.
   if (!isAiConfigured() || !input.incoming.trim() || !(await isEntitled("aiLive"))) return fallback(input);
   const pb = getPlaybook(input.industryId ?? "generic");
-  const tone = getTone(input.tone);
+  // Read the prospect's mood from what they just said and let it steer tone +
+  // delivery (frustrated → reassuring, excited → enthusiastic, …). An explicitly
+  // chosen tone still wins; otherwise mood picks it.
+  const reaction = reactToText(input.incoming);
+  const tone = getTone(input.tone ?? reaction.tone);
   const user = `Channel: ${input.channel}
 ${input.industryLabel ? `Industry: ${input.industryLabel}\n` : ""}Tone: ${tone.label} — ${tone.directive}
 Prospect: ${input.contactName}${input.company ? ` at ${input.company}` : ""}
@@ -213,6 +222,7 @@ How a real ${input.industryLabel ?? "sales"} rep talks (match the spirit, don't 
   • Skeptical: ${pb.objectionAngles.trust}
   • "Just send info": ${pb.objectionAngles.info}
 ${input.voice?.customNextSteps?.length ? `\nThis rep's own go-to next steps (prefer one when it fits): ${input.voice.customNextSteps.join(" / ")}` : ""}${input.voice?.profile ? `\nWrite in THIS person's voice — match it so it sounds like them, not an AI:\n"""${input.voice.profile}"""` : ""}
+Read the room — ${reaction.note}${input.history && input.history.length ? "\nYou've already sent the earlier touches shown above — do NOT repeat the same angle or opening; bring a genuinely new reason or hook." : ""}
 ${replyLanguageDirective(input.language)}
 Write the reply now, as this human. Answer what they actually said.`;
   try {
