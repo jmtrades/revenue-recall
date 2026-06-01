@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyStripeSignature, planForPrice } from "@/lib/billing/stripe";
 import { saveSubscriptionForOrg, saveSubscriptionForCustomer, type SubStatus } from "@/lib/billing/store";
 import { isPlanId } from "@/lib/billing/plans";
+import { addUsageCredits } from "@/lib/ai/usage";
 
 export const dynamic = "force-dynamic";
 
@@ -44,8 +45,19 @@ export async function POST(req: Request) {
   try {
     switch (event.type) {
       case "checkout.session.completed": {
-        const orgId = (obj.client_reference_id as string) || ((obj.metadata as Record<string, unknown>)?.org_id as string);
-        const metaPlan = (obj.metadata as Record<string, unknown>)?.plan;
+        const meta = (obj.metadata as Record<string, unknown>) ?? {};
+        // One-time usage top-up → credit actions for the current month, not a
+        // plan change. Idempotent on the session id (webhook retries are safe).
+        if (obj.mode === "payment" && meta.kind === "topup") {
+          const topupOrg = (obj.client_reference_id as string) || (meta.org_id as string);
+          const actions = Number(meta.topup_actions);
+          if (topupOrg && actions > 0) {
+            await addUsageCredits({ orgId: topupOrg, actions, source: "topup", ref: obj.id as string });
+          }
+          break;
+        }
+        const orgId = (obj.client_reference_id as string) || (meta.org_id as string);
+        const metaPlan = meta.plan;
         if (orgId) {
           await saveSubscriptionForOrg(orgId, {
             plan: isPlanId(metaPlan) ? metaPlan : "growth",

@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { costOf } from "@/lib/ai/cost";
-import { recordUsage, budgetFraction } from "@/lib/ai/usage";
+import { recordUsage, budgetFraction, isWithinActionAllowance } from "@/lib/ai/usage";
 
 /**
  * Anthropic client factory. Returns null when no API key is configured, so the
@@ -147,6 +147,13 @@ export async function completeJson<T>(opts: {
   // (see effortCeiling) rather than dropping off a cliff.
   const spent = await budgetFraction();
   if (spent >= 1) throw new Error("AI monthly budget reached");
+
+  // Plan action allowance (monetization). Only gates when billing enforcement is
+  // on, so the open demo/trial is never limited. Over the monthly pool (plus any
+  // purchased top-ups) → caller falls back to templates, nudging a top-up.
+  if (process.env.BILLING_ENFORCE === "true" && !(await isWithinActionAllowance())) {
+    throw new Error("AI action allowance reached");
+  }
 
   const params = buildMessageParams({ ...opts, spent });
   const res = await client.messages.create(params as any);

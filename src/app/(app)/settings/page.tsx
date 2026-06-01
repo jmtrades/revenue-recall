@@ -28,8 +28,11 @@ import { AiHealthCheck } from "@/components/AiHealthCheck";
 import { VoiceStudio } from "@/components/VoiceStudio";
 import { VoiceControls } from "@/components/VoiceControls";
 import { getSubscription } from "@/lib/billing/store";
-import { billingConfigured } from "@/lib/billing/stripe";
-import { usageSummary, monthlyBudgetUsd } from "@/lib/ai/usage";
+import { billingConfigured, topupConfigured } from "@/lib/billing/stripe";
+import { getPlan } from "@/lib/billing/plans";
+import { TOPUP_PACKS } from "@/lib/billing/topups";
+import { usageSummary, monthlyBudgetUsd, usageMeter } from "@/lib/ai/usage";
+import { UsageMeter } from "@/components/UsageMeter";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { ImportCsv } from "@/components/ImportCsv";
 import { TeamInvites } from "@/components/TeamInvites";
@@ -81,6 +84,18 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
   const { users, pipeline } = await getTeamAndPipeline();
   const subscription = await getSubscription();
   const aiUsage = await usageSummary();
+  // Customer-facing action meter (sanitize Infinity — it can't cross to a client component).
+  const meter = await usageMeter();
+  const usageProps = {
+    used: meter.used,
+    credits: meter.credits,
+    unlimited: meter.unlimited,
+    included: Number.isFinite(meter.included) ? meter.included : 0,
+    limit: Number.isFinite(meter.limit) ? meter.limit : 0,
+    remaining: Number.isFinite(meter.remaining) ? meter.remaining : 0,
+    fraction: meter.fraction,
+  };
+  const topupPacks = TOPUP_PACKS.map((p) => ({ id: p.id, label: p.label, actions: p.actions, suggestedUsd: p.suggestedUsd, blurb: p.blurb, featured: Boolean(p.featured), purchasable: topupConfigured(p.id) }));
   const aiBudget = monthlyBudgetUsd();
 
   const general = (
@@ -274,8 +289,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
         currentPeriodEnd={subscription.currentPeriodEnd}
         hasCustomer={Boolean(subscription.stripeCustomerId)}
       />
+      <div className="mt-4">
+        <UsageMeter meter={usageProps} topups={topupPacks} billingConfigured={billingConfigured()} planName={getPlan(subscription.plan).name} />
+      </div>
       <div className="mt-4 rounded-lg border border-border p-4">
-        <p className="text-sm font-medium text-fg">AI usage this month</p>
+        <p className="text-sm font-medium text-fg">AI usage this month <span className="text-xs font-normal text-muted">(cost &amp; margin)</span></p>
         <p className="mt-0.5 text-xs text-muted">Live drafting/brief/voice cost. Margin guard auto-falls back to free templates if a budget is hit.</p>
         <div className="mt-3">
           <InfoRow label="Cost">${aiUsage.costUsd.toFixed(2)}{aiBudget > 0 ? ` / $${aiBudget.toFixed(0)} budget` : " (no cap set)"}</InfoRow>
