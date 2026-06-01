@@ -13,15 +13,23 @@
 // Verified with `next build && next start`: prod serves script-src
 // 'self' 'unsafe-inline' (no eval) and all interactive flows hydrate clean.
 const isDev = process.env.NODE_ENV !== "production";
-const scriptSrc = isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self' 'unsafe-inline'";
+// Stripe needs js.stripe.com for its script and an iframe origin for embedded
+// Checkout/Elements (so on-domain checkout renders); api.stripe.com is already
+// covered by the broad connect-src below.
+const STRIPE_SCRIPT = "https://js.stripe.com";
+const STRIPE_FRAME = "https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com";
+const scriptSrc = isDev
+  ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${STRIPE_SCRIPT}`
+  : `script-src 'self' 'unsafe-inline' ${STRIPE_SCRIPT}`;
 const csp = [
   "default-src 'self'",
   scriptSrc,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  "img-src 'self' data: blob: https://*.stripe.com",
   "font-src 'self' data:",
   "connect-src 'self' https: wss:",
   "media-src 'self' blob:",
+  `frame-src 'self' ${STRIPE_FRAME}`,
   "object-src 'none'",
   "base-uri 'self'",
   "frame-ancestors 'self'",

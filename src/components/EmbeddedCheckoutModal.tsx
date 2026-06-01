@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { loadStripe, type Stripe } from "@stripe/stripe-js";
+// `/pure` so Stripe.js only loads when checkout actually opens — not eagerly on
+// every page that imports this component. (Types come from the main entry.)
+import { loadStripe } from "@stripe/stripe-js/pure";
+import type { Stripe } from "@stripe/stripe-js";
 
 // Publishable key is public + inlined at build. When absent, embedded checkout
 // is unavailable and callers fall back to the hosted redirect — nothing breaks.
