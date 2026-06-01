@@ -12,6 +12,8 @@ const PUBLIC = new Set(["/", "/login", "/signup"]);
 // subscriptions un-activated. Each of these enforces its own auth internally.
 const PUBLIC_API = [
   "/api/billing/webhook",
+  "/api/billing/setup", // operator setup — self-authed by ADMIN_TOKEN (Bearer)
+  "/api/billing/config", // publishable key only (public by design)
   "/api/agent/cron",
   "/api/inbound/", // email + sms
   "/api/social/", // social webhooks (WhatsApp, Instagram, Messenger, Telegram, X) — each verifies its own signature/secret
