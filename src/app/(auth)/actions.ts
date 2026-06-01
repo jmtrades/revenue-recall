@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { getSupabase } from "@/lib/supabase/client";
+import { channelStatus } from "@/lib/comms";
 
 export interface AuthState {
   error?: string;
@@ -49,6 +51,25 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
 
   // If the project requires email confirmation, there's no session yet.
   if (!data.session) {
+    // No way to deliver a confirmation email yet (no provider wired)? Then
+    // confirm the account server-side with the service role and sign them
+    // straight in, so signup never dead-ends. The moment a real email provider
+    // is connected, Supabase's normal email confirmation takes over instead.
+    const emailLive = channelStatus().email.live;
+    if (!emailLive && data.user && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const admin = getSupabase();
+      let signedIn = false;
+      if (admin) {
+        try {
+          await admin.auth.admin.updateUserById(data.user.id, { email_confirm: true });
+          const { error: signInError } = await sb.auth.signInWithPassword({ email, password });
+          signedIn = !signInError;
+        } catch {
+          signedIn = false;
+        }
+      }
+      if (signedIn) redirect("/onboarding"); // redirect() throws — must be outside the try
+    }
     return { message: "Check your email to confirm your account, then sign in." };
   }
   // Org is provisioned lazily on first authenticated request.
