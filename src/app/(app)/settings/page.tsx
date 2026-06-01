@@ -28,7 +28,7 @@ import { AiHealthCheck } from "@/components/AiHealthCheck";
 import { VoiceStudio } from "@/components/VoiceStudio";
 import { VoiceControls } from "@/components/VoiceControls";
 import { getSubscription } from "@/lib/billing/store";
-import { billingConfigured, topupConfigured, priceId } from "@/lib/billing/stripe";
+import { billingConfigured, resolvePriceId, resolveTopupPriceId } from "@/lib/billing/stripe";
 import { isAuthRequired } from "@/lib/config";
 import { getPlan } from "@/lib/billing/plans";
 import { TOPUP_PACKS } from "@/lib/billing/topups";
@@ -59,6 +59,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
   const oauthProviders = (Object.keys(OAUTH_PROVIDERS) as OAuthPlatform[]).filter((p) => oauthConfigured(p));
   // Org-level compliance wins over env (multi-tenant identity).
   const compliance = complianceConfig({ orgName: org.compliance.senderName ?? org.name, address: org.compliance.address });
+  // Billing prices may be auto-provisioned (resolved by lookup_key) or set via
+  // env — resolve once so the checklist + top-up buttons reflect either.
+  const billingOn = billingConfigured();
+  const [growthPrice, teamPrice] = billingOn ? await Promise.all([resolvePriceId("growth"), resolvePriceId("team")]) : [undefined, undefined];
+  const topupResolved = billingOn ? await Promise.all(TOPUP_PACKS.map((p) => resolveTopupPriceId(p.id))) : TOPUP_PACKS.map(() => undefined);
+  const plansWired = Boolean(growthPrice && teamPrice);
+  const topupsWired = topupResolved.some(Boolean);
   const setupItems: SetupItem[] = [
     {
       label: "Workspace database", ok: isSupabaseConfigured(), required: true, where: "Supabase + Vercel",
@@ -99,20 +106,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       link: { href: "https://console.anthropic.com", label: "Open Anthropic" },
     },
     {
-      label: "Billing — charge customers", ok: billingConfigured(), required: false, where: "Stripe + Vercel",
+      label: "Billing — charge customers", ok: billingOn, required: false, where: "Stripe + Vercel",
       detail: "Turns on self-serve checkout, the customer portal, and usage top-ups.",
       steps: ["Add STRIPE_SECRET_KEY (Stripe → Developers → API keys)", "Add a webhook to /api/billing/webhook and paste STRIPE_WEBHOOK_SECRET", "Redeploy"],
       link: { href: "https://dashboard.stripe.com", label: "Open Stripe" },
     },
     {
-      label: "Plan prices wired", ok: Boolean(priceId("growth") && priceId("team")), required: false, where: "Stripe + Vercel",
-      detail: "Connects the Operator and Autopilot plans to real Stripe prices.",
-      steps: ["Create a $149/mo per-unit price → STRIPE_PRICE_GROWTH", "Create a $549/mo flat price → STRIPE_PRICE_TEAM", "Optional annual prices → the *_ANNUAL vars"],
-    },
-    {
-      label: "Usage top-ups", ok: TOPUP_PACKS.some((p) => topupConfigured(p.id)), required: false, where: "Stripe + Vercel",
-      detail: "Lets customers buy extra AI messages when they run low — pure-margin revenue.",
-      steps: ["Create one-time prices in Stripe ($29 / $99 / $399)", "Add STRIPE_PRICE_TOPUP_1K / _5K / _25K in Vercel"],
+      label: "Plans & top-ups auto-created", ok: plansWired && topupsWired, required: false, where: "One command",
+      detail: "Creates every plan, annual, and top-up price in your Stripe for you — no dashboard work, no price IDs to paste.",
+      steps: ["After STRIPE_SECRET_KEY is set, run once:", "curl -X POST https://recall-touch.com/api/billing/setup -H \"Authorization: Bearer $ADMIN_TOKEN\"", "Prices wire themselves automatically (lookup keys)"],
     },
     {
       label: "SMS & calls", ok: ch.sms.live, required: false, where: "Twilio + Vercel",
@@ -159,7 +161,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
     remaining: Number.isFinite(meter.remaining) ? meter.remaining : 0,
     fraction: meter.fraction,
   };
-  const topupPacks = TOPUP_PACKS.map((p) => ({ id: p.id, label: p.label, actions: p.actions, suggestedUsd: p.suggestedUsd, blurb: p.blurb, featured: Boolean(p.featured), purchasable: topupConfigured(p.id) }));
+  const topupPacks = TOPUP_PACKS.map((p, i) => ({ id: p.id, label: p.label, actions: p.actions, suggestedUsd: p.suggestedUsd, blurb: p.blurb, featured: Boolean(p.featured), purchasable: Boolean(topupResolved[i]) }));
   const aiBudget = monthlyBudgetUsd();
 
   const general = (
