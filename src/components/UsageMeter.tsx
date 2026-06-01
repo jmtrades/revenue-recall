@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/icons";
+import { EmbeddedCheckoutModal, embeddedCheckoutAvailable, type CheckoutRequest } from "@/components/EmbeddedCheckoutModal";
 
 export interface UsageMeterProps {
   /** Already sanitized server-side (no Infinity crosses to the client). */
@@ -16,13 +17,23 @@ const fmt = (n: number) => n.toLocaleString();
 export function UsageMeter({ meter, topups, billingConfigured, planName }: UsageMeterProps) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [checkout, setCheckout] = useState<CheckoutRequest | null>(null);
 
   const pct = Math.round(meter.fraction * 100);
   const low = !meter.unlimited && meter.fraction >= 0.8;
   const out = !meter.unlimited && meter.remaining <= 0;
   const barColor = out ? "bg-danger" : low ? "bg-warn" : "bg-brand";
 
-  async function buy(pack: string) {
+  function buy(pack: string) {
+    // Pay on our own domain when embedded checkout is available, else hosted redirect.
+    if (embeddedCheckoutAvailable()) {
+      setCheckout({ endpoint: "/api/billing/topup", body: { pack } });
+      return;
+    }
+    void buyHosted(pack);
+  }
+
+  async function buyHosted(pack: string) {
     setBusy(pack);
     setError(null);
     try {
@@ -96,6 +107,7 @@ export function UsageMeter({ meter, topups, billingConfigured, planName }: Usage
           {error && <p className="mt-2 text-sm text-danger">{error}</p>}
         </div>
       )}
+      <EmbeddedCheckoutModal request={checkout} onClose={() => setCheckout(null)} />
     </div>
   );
 }
