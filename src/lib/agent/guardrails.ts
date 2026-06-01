@@ -65,12 +65,26 @@ export function inCooldown(activities: Activity[], days: number, now: number = D
   return activities.some((act) => act.direction === "outbound" && OUTBOUND_KINDS.has(act.kind) && new Date(act.occurredAt).getTime() >= cutoff);
 }
 
-/** True when we're inside a configured quiet-hours window (UTC) and should hold sends. */
+/** Hour-of-day (0–23) in a given IANA timezone, falling back to UTC. */
+function hourInZone(now: Date, tz?: string): number {
+  if (!tz) return now.getUTCHours();
+  try {
+    const h = parseInt(new Intl.DateTimeFormat("en-US", { hour: "numeric", hour12: false, timeZone: tz }).format(now), 10);
+    return Number.isFinite(h) ? h % 24 : now.getUTCHours();
+  } catch {
+    return now.getUTCHours(); // bad/unknown tz → safe UTC fallback
+  }
+}
+
+/** True when we're inside the configured quiet-hours window and should hold sends.
+ *  The window (AGENT_QUIET_START_UTC..END) is interpreted in AGENT_TIMEZONE when
+ *  set — so "no sends 8pm–8am" actually means the recipient's local evening, not
+ *  UTC. Now that the cron runs hourly, this is what keeps autopilot off at night. */
 export function quietHoursNow(now: Date = new Date()): boolean {
   const start = Number(process.env.AGENT_QUIET_START_UTC);
   const end = Number(process.env.AGENT_QUIET_END_UTC);
   if (!Number.isInteger(start) || !Number.isInteger(end) || start === end) return false;
-  const h = now.getUTCHours();
+  const h = hourInZone(now, process.env.AGENT_TIMEZONE);
   return start < end ? h >= start && h < end : h >= start || h < end; // supports windows that wrap midnight
 }
 
@@ -102,7 +116,8 @@ export function guardrailConfig(): { cooldownDays: number; declineCooldownDays: 
   const cap = dailySendCap();
   const start = Number(process.env.AGENT_QUIET_START_UTC);
   const end = Number(process.env.AGENT_QUIET_END_UTC);
-  const quiet = Number.isInteger(start) && Number.isInteger(end) && start !== end ? `${start}:00–${end}:00 UTC` : null;
+  const tz = process.env.AGENT_TIMEZONE || "UTC";
+  const quiet = Number.isInteger(start) && Number.isInteger(end) && start !== end ? `${start}:00–${end}:00 ${tz}` : null;
   return {
     cooldownDays: cooldownDays(),
     declineCooldownDays: declineCooldownDays(),
