@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import type { PlanId } from "@/lib/billing/plans";
+import { getPlan, type PlanId } from "@/lib/billing/plans";
 
 /**
  * Stripe integration over the REST API (no SDK dependency — same fetch pattern
@@ -78,6 +78,15 @@ export interface CheckoutInput {
   cancelUrl: string;
 }
 
+/**
+ * Stripe line-item quantity for a plan. Per-rep plans (Operator) bill
+ * quantity = seats; flat plans (Autopilot, Scale) always bill quantity 1, so a
+ * larger team can never inflate a flat price into seats × price.
+ */
+export function checkoutQuantity(plan: PlanId, seats: number): number {
+  return getPlan(plan).perSeat ? Math.max(1, Math.floor(seats) || 1) : 1;
+}
+
 /** Create a Checkout session and return its hosted URL. */
 export async function createCheckoutSession(input: CheckoutInput): Promise<string> {
   const price = priceId(input.plan, input.cycle ?? "monthly");
@@ -85,7 +94,7 @@ export async function createCheckoutSession(input: CheckoutInput): Promise<strin
   const form: Record<string, string> = {
     mode: "subscription",
     "line_items[0][price]": price,
-    "line_items[0][quantity]": String(Math.max(1, input.seats)),
+    "line_items[0][quantity]": String(checkoutQuantity(input.plan, input.seats)),
     success_url: input.successUrl,
     cancel_url: input.cancelUrl,
     client_reference_id: input.orgId,
