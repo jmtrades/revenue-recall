@@ -167,8 +167,9 @@ export function PricingPlans() {
       <div className="mt-10 space-y-4 text-center">
         <p className="mx-auto max-w-2xl text-sm text-muted">
           Every plan includes a monthly pool of <span className="text-fg">AI messages</span> — each email, text, call, or reply it writes for you.
-          That&rsquo;s <span className="text-fg">1,500/mo</span> on Operator, <span className="text-fg">10,000</span> pooled on Autopilot. Running a big push?{" "}
-          <span className="text-fg">Top up instantly from $29</span> — you&rsquo;re never blocked mid-campaign.
+          That&rsquo;s <span className="text-fg">1,500/mo</span> on Operator, <span className="text-fg">10,000</span> pooled on Autopilot — about{" "}
+          <span className="text-fg">20¢ a message</span> on Operator, under <span className="text-fg">9¢</span> pooled on Autopilot. Running a big push?{" "}
+          <span className="text-fg">Top up instantly from $29</span> (as low as 1.6¢ a message) — you&rsquo;re never blocked mid-campaign.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted">
           {["No card to start", "Cancel anytime", "Your data stays yours", "Live in 2 minutes"].map((t) => (

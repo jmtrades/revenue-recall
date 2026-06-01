@@ -27,3 +27,14 @@ export const TOPUP_PACKS: TopupPack[] = [
 export function getTopupPack(id: string): TopupPack | undefined {
   return TOPUP_PACKS.find((p) => p.id === id);
 }
+
+/** Effective price per message, in cents (1 decimal) — so customers see the
+ *  per-message economics (and the volume discount on the bigger packs). */
+export function perMessageCents(suggestedUsd: number, actions: number): number {
+  if (actions <= 0) return 0;
+  return Math.round(((suggestedUsd * 100) / actions) * 10) / 10;
+}
+
+export function centsPerMessage(pack: TopupPack): number {
+  return perMessageCents(pack.suggestedUsd, pack.actions);
+}
