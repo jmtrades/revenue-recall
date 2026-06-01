@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
  * Mirrors the isPublic() logic in src/middleware.ts.
  */
 const PUBLIC = new Set(["/", "/login", "/signup"]);
-const PUBLIC_API = ["/api/billing/webhook", "/api/agent/cron", "/api/inbound/", "/api/social/", "/api/unsubscribe", "/api/health", "/api/meta"];
+const PUBLIC_API = ["/api/billing/webhook", "/api/billing/setup", "/api/billing/config", "/api/agent/cron", "/api/inbound/", "/api/social/", "/api/unsubscribe", "/api/health", "/api/meta"];
 
 function isPublic(path: string): boolean {
   if (PUBLIC.has(path)) return true;
@@ -22,6 +22,8 @@ describe("middleware auth-gate allowlist", () => {
   it("lets secret-authed machine endpoints through (no login redirect)", () => {
     for (const p of [
       "/api/billing/webhook",
+      "/api/billing/setup",
+      "/api/billing/config",
       "/api/agent/cron",
       "/api/inbound/email",
       "/api/inbound/sms",
