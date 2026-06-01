@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/icons";
-import { EmbeddedCheckoutModal, embeddedCheckoutAvailable, type CheckoutRequest } from "@/components/EmbeddedCheckoutModal";
+import { EmbeddedCheckoutModal, type CheckoutRequest } from "@/components/EmbeddedCheckoutModal";
 
 export interface UsageMeterProps {
   /** Already sanitized server-side (no Infinity crosses to the client). */
@@ -15,8 +15,6 @@ export interface UsageMeterProps {
 const fmt = (n: number) => n.toLocaleString();
 
 export function UsageMeter({ meter, topups, billingConfigured, planName }: UsageMeterProps) {
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [checkout, setCheckout] = useState<CheckoutRequest | null>(null);
 
   const pct = Math.round(meter.fraction * 100);
@@ -24,32 +22,10 @@ export function UsageMeter({ meter, topups, billingConfigured, planName }: Usage
   const out = !meter.unlimited && meter.remaining <= 0;
   const barColor = out ? "bg-danger" : low ? "bg-warn" : "bg-brand";
 
+  // Open checkout — embedded on our domain when a publishable key is set, else
+  // the modal falls back to hosted Stripe automatically.
   function buy(pack: string) {
-    // Pay on our own domain when embedded checkout is available, else hosted redirect.
-    if (embeddedCheckoutAvailable()) {
-      setCheckout({ endpoint: "/api/billing/topup", body: { pack } });
-      return;
-    }
-    void buyHosted(pack);
-  }
-
-  async function buyHosted(pack: string) {
-    setBusy(pack);
-    setError(null);
-    try {
-      const res = await fetch("/api/billing/topup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pack }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error ?? "Couldn't start checkout");
-      if (data.url) window.location.href = data.url as string;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't start checkout");
-    } finally {
-      setBusy(null);
-    }
+    setCheckout({ endpoint: "/api/billing/topup", body: { pack } });
   }
 
   return (
@@ -94,17 +70,16 @@ export function UsageMeter({ meter, topups, billingConfigured, planName }: Usage
                 <p className="mt-0.5 text-xs text-muted">{t.blurb}</p>
                 <button
                   onClick={() => buy(t.id)}
-                  disabled={!t.purchasable || busy !== null}
+                  disabled={!t.purchasable}
                   className="mt-2 block w-full rounded-lg bg-brand px-3 py-1.5 text-center text-xs font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
                   title={t.purchasable ? undefined : "Connect billing to enable top-ups"}
                 >
-                  {busy === t.id ? "Starting…" : `Buy · $${t.suggestedUsd}`}
+                  {`Buy · $${t.suggestedUsd}`}
                 </button>
               </div>
             ))}
           </div>
           {!billingConfigured && <p className="mt-2 text-xs text-muted">Top-ups activate once billing is connected in your workspace.</p>}
-          {error && <p className="mt-2 text-sm text-danger">{error}</p>}
         </div>
       )}
       <EmbeddedCheckoutModal request={checkout} onClose={() => setCheckout(null)} />

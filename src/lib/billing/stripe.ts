@@ -19,6 +19,17 @@ export function billingConfigured(): boolean {
   return Boolean(env("STRIPE_SECRET_KEY"));
 }
 
+/**
+ * Publishable key for client-side Stripe.js (embedded on-domain checkout).
+ * Read at RUNTIME from STRIPE_PUBLISHABLE_KEY (no rebuild needed), with the
+ * build-time NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY accepted as a fallback. The
+ * client fetches it from /api/billing/config, so embedded checkout switches on
+ * the moment you set the key — no redeploy-cache gotcha.
+ */
+export function publishableKey(): string | undefined {
+  return env("STRIPE_PUBLISHABLE_KEY") ?? env("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY");
+}
+
 export type BillingCycle = "monthly" | "annual";
 
 const MONTHLY_PRICE: Record<Exclude<PlanId, "free">, string> = {

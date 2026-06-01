@@ -1,23 +1,14 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-// `/pure` so Stripe.js only loads when checkout actually opens — not eagerly on
-// every page that imports this component. (Types come from the main entry.)
+import { useEffect, useRef, useState } from "react";
+// `/pure` so Stripe.js loads only when checkout opens. (Type from the main entry.)
 import { loadStripe } from "@stripe/stripe-js/pure";
 import type { Stripe } from "@stripe/stripe-js";
 
-// Publishable key is public + inlined at build. When absent, embedded checkout
-// is unavailable and callers fall back to the hosted redirect — nothing breaks.
-const PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 let stripePromise: Promise<Stripe | null> | null = null;
-function getStripe(): Promise<Stripe | null> | null {
-  if (!stripePromise && PK) stripePromise = loadStripe(PK);
+function getStripe(pk: string): Promise<Stripe | null> {
+  if (!stripePromise) stripePromise = loadStripe(pk);
   return stripePromise;
-}
-
-/** Whether on-domain embedded checkout can run (publishable key present). */
-export function embeddedCheckoutAvailable(): boolean {
-  return Boolean(PK);
 }
 
 export interface CheckoutRequest {
@@ -26,19 +17,42 @@ export interface CheckoutRequest {
 }
 
 /**
- * Stripe Embedded Checkout in a modal — the payment runs on our own domain, so
- * the buyer never leaves the app. Reads the clientSecret from our API (with
- * embedded:true). Tears the instance down on close to avoid leaks.
+ * Opens checkout. If a Stripe publishable key is configured (fetched at runtime
+ * from /api/billing/config), payment runs EMBEDDED on our own domain — the buyer
+ * never leaves the app. If not, it transparently falls back to hosted Stripe
+ * Checkout (redirect). Callers just hand it a request; no config branching.
  */
 export function EmbeddedCheckoutModal({ request, onClose }: { request: CheckoutRequest | null; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!request) return;
+    setReady(false);
+    setError(null);
     let checkout: { destroy: () => void } | null = null;
     let cancelled = false;
+
     (async () => {
-      const stripe = await getStripe();
+      const cfg = await fetch("/api/billing/config").then((r) => r.json()).catch(() => ({}));
+      const pk = cfg?.publishable as string | undefined;
+
+      // No publishable key → hosted Checkout: get a URL and redirect.
+      if (!pk) {
+        const res = await fetch(request.endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(request.body),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.url) throw new Error(data.error ?? "Couldn't start checkout");
+        window.location.href = data.url as string;
+        return;
+      }
+
+      // Embedded, on-domain checkout.
+      const stripe = await getStripe(pk);
       if (!stripe || cancelled || !ref.current) return;
       const instance = await stripe.createEmbeddedCheckoutPage({
         fetchClientSecret: async () => {
@@ -58,7 +72,9 @@ export function EmbeddedCheckoutModal({ request, onClose }: { request: CheckoutR
       }
       checkout = instance;
       instance.mount(ref.current);
-    })().catch(() => onClose());
+      setReady(true);
+    })().catch((e) => setError(e instanceof Error ? e.message : "Couldn't start checkout"));
+
     return () => {
       cancelled = true;
       try {
@@ -67,7 +83,7 @@ export function EmbeddedCheckoutModal({ request, onClose }: { request: CheckoutR
         /* already torn down */
       }
     };
-  }, [request, onClose]);
+  }, [request]);
 
   if (!request) return null;
   return (
@@ -76,7 +92,24 @@ export function EmbeddedCheckoutModal({ request, onClose }: { request: CheckoutR
         <button onClick={onClose} aria-label="Close" className="absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full bg-surface-2 text-muted transition hover:text-fg">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
         </button>
-        <div ref={ref} className="min-h-[60vh]" />
+        {error ? (
+          <div className="grid min-h-[40vh] place-items-center p-6 text-center">
+            <div>
+              <p className="text-sm text-danger">{error}</p>
+              <button onClick={onClose} className="mt-3 rounded-lg border border-border px-4 py-2 text-sm text-fg transition hover:bg-surface-2">Close</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {!ready && (
+              <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted">
+                <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round" /></svg>
+                Loading secure checkout…
+              </div>
+            )}
+            <div ref={ref} className={ready ? "min-h-[55vh]" : ""} />
+          </>
+        )}
       </div>
     </div>
   );
