@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { billingConfigured, createCheckoutSession } from "@/lib/billing/stripe";
-import { getSubscription, saveSubscription } from "@/lib/billing/store";
+import { billingConfigured, createCheckoutSession, trialDays } from "@/lib/billing/stripe";
+import { getSubscription } from "@/lib/billing/store";
 import { isPlanId } from "@/lib/billing/plans";
 import { getSessionUser } from "@/lib/auth";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
@@ -40,12 +40,14 @@ export async function POST(req: Request) {
       cycle: parsed.data.cycle,
       customerEmail: user?.email,
       embedded: parsed.data.embedded,
+      // Card-required free trial: a card is collected now; the trial (and the
+      // "trialing" status) only begins once checkout completes, via the webhook —
+      // never on intent alone, so there's no card-less trial.
+      trialDays: trialDays(),
       successUrl: `${origin}/settings?billing=success`,
       cancelUrl: `${origin}/settings?billing=cancelled`,
       returnUrl: `${origin}/settings?billing=success&session_id={CHECKOUT_SESSION_ID}`,
     });
-    // Record intent so the webhook (or success redirect) can reconcile.
-    await saveSubscription({ status: sub.status === "none" ? "trialing" : sub.status });
     return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Checkout failed" }, { status: 502 });

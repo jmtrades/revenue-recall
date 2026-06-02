@@ -33,7 +33,7 @@ describe("stripe webhook route", () => {
     expect(res.status).toBe(400);
   });
 
-  it("activates the plan on a signed checkout.session.completed", async () => {
+  it("starts a card-required trial on a signed checkout.session.completed", async () => {
     const { POST } = await import("@/app/api/billing/webhook/route");
     const { getSubscription } = await import("@/lib/billing/store");
     const body = JSON.stringify({
@@ -44,8 +44,22 @@ describe("stripe webhook route", () => {
     expect(res.status).toBe(200);
     const sub = await getSubscription();
     expect(sub.plan).toBe("growth");
-    expect(sub.status).toBe("active");
+    // Card collected at checkout, trial begins → "trialing" (default 14 days);
+    // invoice.payment_succeeded later flips it to "active".
+    expect(sub.status).toBe("trialing");
     expect(sub.stripeCustomerId).toBe("cus_1");
+  });
+
+  it("activates immediately when trials are disabled (STRIPE_TRIAL_DAYS=0)", async () => {
+    vi.stubEnv("STRIPE_TRIAL_DAYS", "0");
+    const { POST } = await import("@/app/api/billing/webhook/route");
+    const { getSubscription } = await import("@/lib/billing/store");
+    await POST(signed(JSON.stringify({
+      type: "checkout.session.completed",
+      data: { object: { client_reference_id: "org_1", metadata: { plan: "growth" }, customer: "cus_1", subscription: "sub_1" } },
+    })));
+    expect((await getSubscription()).status).toBe("active");
+    vi.unstubAllEnvs();
   });
 
   it("marks past_due on invoice.payment_failed", async () => {
