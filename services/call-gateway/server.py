@@ -6,8 +6,11 @@
 - GET /health : liveness + which in-house pieces are wired.
 """
 import asyncio
+import hmac
 import json
 import logging
+import os
+import re
 import time
 import urllib.request
 import uuid
@@ -53,10 +56,25 @@ def _post_call_status(payload: dict) -> None:
 
 
 def _authorized(request: Request) -> bool:
-    """Verify the app's shared webhook secret (COMMS_WEBHOOK_TOKEN)."""
-    if not config.COMMS_WEBHOOK_TOKEN:
-        return True  # no secret configured → open (set one in prod)
-    return request.headers.get("authorization", "") == f"Bearer {config.COMMS_WEBHOOK_TOKEN}"
+    """Verify the app's shared webhook secret (COMMS_WEBHOOK_TOKEN), constant-time.
+    Fail CLOSED when no secret is set — an open call endpoint can burn real money.
+    Set GATEWAY_ALLOW_INSECURE=true to deliberately allow it (local dev only)."""
+    token = config.COMMS_WEBHOOK_TOKEN
+    if not token:
+        if os.environ.get("GATEWAY_ALLOW_INSECURE", "").lower() in ("1", "true", "yes"):
+            return True
+        log.error("refusing request: COMMS_WEBHOOK_TOKEN is not set (set it, or GATEWAY_ALLOW_INSECURE=true for local dev)")
+        return False
+    return hmac.compare_digest(request.headers.get("authorization", ""), f"Bearer {token}")
+
+
+# A real dialable number — rejects SIP URIs, hostnames, paths, or script payloads
+# that could turn originate() into an SSRF / call-routing abuse.
+_PHONE_RE = re.compile(r"^\+?[0-9][0-9\s().\-]{5,38}$")
+
+
+def _valid_number(to: str) -> bool:
+    return bool(isinstance(to, str) and _PHONE_RE.match(to.strip()))
 
 
 @app.get("/health")
@@ -78,6 +96,8 @@ async def voice(request: Request):
     to = (body or {}).get("to")
     if not to:
         return JSONResponse({"error": "missing 'to'"}, status_code=400)
+    if not _valid_number(to):
+        return JSONResponse({"error": "invalid 'to' — must be a phone number"}, status_code=400)
     call_id = uuid.uuid4().hex
     # Optional richer context the app can send (deal/contact/brief) — used by the
     # agent for what to say. Falls back to a generic opener if absent.

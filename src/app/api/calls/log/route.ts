@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { logCallOutcome } from "@/lib/calls";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
+import { safeEqual } from "@/lib/safe-compare";
 
 export const dynamic = "force-dynamic";
 
+// Phone-ish: digits with the usual separators; rejects script/markup payloads.
+const PHONE = /^[+]?[0-9][0-9\s().\-]{5,38}$/;
+
 const Body = z.object({
-  to: z.string().max(40).optional(),
+  to: z.string().max(40).regex(PHONE).optional(),
   contactId: z.string().max(200).optional(),
   dealId: z.string().max(200).optional(),
   // The gateway echoes the per-call meta it received from /api/calls/place.
@@ -14,16 +18,16 @@ const Body = z.object({
   outcome: z.string().max(80).optional(),
   transcript: z.string().max(20000).optional(),
   durationSec: z.number().nonnegative().optional(),
-  recordingUrl: z.string().max(2000).optional(),
+  recordingUrl: z.string().url().max(2000).optional(),
 });
 
 /** Bearer check against the shared COMMS_WEBHOOK_TOKEN (same secret the gateway
- *  is given). When no token is configured we accept the post (dev/log-only),
- *  mirroring the other inbound webhooks. */
+ *  is given), constant-time. When no token is configured we accept the post
+ *  (dev/log-only), mirroring the other inbound webhooks. */
 function authorized(req: Request): boolean {
   const token = process.env.COMMS_WEBHOOK_TOKEN;
   if (!token) return true;
-  return req.headers.get("authorization") === `Bearer ${token}`;
+  return safeEqual(req.headers.get("authorization") ?? "", `Bearer ${token}`);
 }
 
 /**

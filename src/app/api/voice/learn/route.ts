@@ -14,8 +14,9 @@ const Body = z.object({
   business: z.string().max(4000).optional(),
   customNextSteps: z.string().max(4000).optional(),
   customReengage: z.string().max(4000).optional(),
-  // A valid URL, or "" to clear it.
-  bookingUrl: z.union([z.string().url().max(500), z.literal("")]).optional(),
+  // An http(s) URL, or "" to clear it. Restricting the protocol blocks
+  // javascript:/data: links from ever reaching a drafted email or SMS.
+  bookingUrl: z.union([z.string().url().max(500).regex(/^https?:\/\//i), z.literal("")]).optional(),
 });
 
 export async function POST(req: Request) {

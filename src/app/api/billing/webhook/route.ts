@@ -52,8 +52,11 @@ export async function POST(req: Request) {
         if (obj.mode === "payment" && meta.kind === "topup") {
           const topupOrg = (obj.client_reference_id as string) || (meta.org_id as string);
           const actions = Number(meta.topup_actions);
-          if (topupOrg && actions > 0) {
+          if (topupOrg && Number.isFinite(actions) && actions > 0) {
             await addUsageCredits({ orgId: topupOrg, actions, source: "topup", ref: obj.id as string });
+          } else {
+            // A customer paid but we can't credit it — never swallow this silently.
+            logError("billing.topup.uncreditable", { session: obj.id as string, hasOrg: Boolean(topupOrg), actions: meta.topup_actions });
           }
           break;
         }

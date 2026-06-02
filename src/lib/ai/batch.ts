@@ -140,8 +140,9 @@ export async function collectBatch(providerBatchId: string): Promise<CollectedDr
       try {
         const parsed = JSON.parse(text) as { subject?: string; body: string };
         if (parsed.body) out.push({ item, subject: item.channel === "email" ? parsed.subject : undefined, body: parsed.body });
+        else console.error(`[batch] empty body for ${row.custom_id} — dropped`);
       } catch {
-        /* drop malformed entries */
+        console.error(`[batch] malformed JSON for ${row.custom_id} — dropped`);
       }
     }
     return out;
