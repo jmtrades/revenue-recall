@@ -16,6 +16,51 @@ audio back to the gateway's `/media` WebSocket.
 > your box** (or use [Jambonz](https://jambonz.org), open-source, which does the
 > WebSocket-media-to-agent bridge cleanly and points at the same `/media` URL).
 
+---
+
+## ⚡ Fastest path to LIVE calls — Twilio (no FreeSWITCH)
+
+If you want real calls working this week, **skip FreeSWITCH** and let Twilio be
+the dial-tone. Twilio places the call and streams its audio to the gateway over a
+WebSocket (Media Streams); the in-house agent — **your** Whisper STT, **your**
+Opus brain, **your** neural voice — runs the whole conversation. The only thing
+"outside" is the phone line itself (≈¢/min), which is unavoidable for *anyone*
+making PSTN calls. This is built in and turnkey: set four env vars.
+
+> Honest note on quality: this makes calls **work**, end to end. Voice fidelity
+> is whatever your `neural-voice` service produces (in-house Kokoro = genuinely
+> good, yours, unlimited, zero per-word cost) — swap in a higher-fidelity model
+> behind the same WS protocol if you want frontier timbre. We're a full *calling
+> agent* (listen→think→speak→log), not just a TTS — that's the part vendors don't
+> give you.
+
+**Steps (~30 min):**
+1. **Twilio**: create an account, buy a voice-capable number, grab your Account
+   SID + Auth Token. (US: complete number/voice registration Twilio prompts for.)
+2. **Deploy** the gateway + neural-voice (the `docker-compose.yml` here) on a host
+   with a public HTTPS/WSS domain (Fly.io, Render, Railway, or a VPS behind
+   Caddy/nginx TLS). The gateway must be reachable at a `wss://` URL.
+3. **Env** (next to `docker-compose.yml`):
+
+   | Variable | What to put |
+   |---|---|
+   | `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | from the Twilio console |
+   | `TWILIO_FROM_NUMBER` | your Twilio number, E.164 (e.g. `+14155551234`) |
+   | `PUBLIC_WSS_BASE` | public `wss://` URL of this gateway (e.g. `wss://calls.yourco.com`) |
+   | `ANTHROPIC_API_KEY` · `NEURAL_VOICE_URL` · `COMMS_WEBHOOK_TOKEN` · `CALL_STATUS_WEBHOOK_URL` | as in the table below |
+
+   When these are set, `/health` reports `"transport":"twilio"` and the gateway
+   originates via Twilio + bridges media on `/twilio/media` automatically — no
+   FreeSWITCH, no SIP-trunk vars needed.
+4. **Point the app** at the gateway (same as step 4 below): `VOICE_WEBHOOK_URL =
+   https://<your-gateway>/voice`, `COMMS_WEBHOOK_TOKEN = <shared secret>`.
+5. **Call**: from the app (Power Dialer / `POST /api/calls/place`) → gateway →
+   Twilio dials → audio streams to the agent → it greets, listens, thinks, speaks
+   → transcript posts back to your CRM.
+
+The FreeSWITCH/SIP path below is the **fully-in-house alternative** (you own the
+media server too) — more setup, no Twilio. Same agent either way.
+
 ## 1–2) Gateway + voices
 Create a `.env` file next to `docker-compose.yml` with these values (var names
 only shown here — see the repo's `.env.example` for the full descriptions):

@@ -23,6 +23,22 @@ FREESWITCH_ESL_PASSWORD = env("FREESWITCH_ESL_PASSWORD")
 # Your SIP trunk (the only outside line) — the gateway name configured in FreeSWITCH.
 SIP_TRUNK_GATEWAY = env("SIP_TRUNK_GATEWAY", "")
 CALLER_ID = env("OUTBOUND_FROM_NUMBER", "")
+# ── Twilio path (fastest way live — no FreeSWITCH) ──────────────────────────
+# When these are set, the gateway places calls via Twilio's REST API and bridges
+# call audio over Twilio Media Streams to the in-house agent. Twilio is just the
+# dial-tone + number (the one unavoidable carrier); STT, brain, and voice stay
+# in-house. Leave unset to use the FreeSWITCH/SIP-trunk path above instead.
+TWILIO_ACCOUNT_SID = env("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = env("TWILIO_AUTH_TOKEN")
+TWILIO_FROM_NUMBER = env("TWILIO_FROM_NUMBER")
+# Public wss:// URL of THIS gateway, reachable by Twilio (e.g. wss://calls.acme.com).
+PUBLIC_WSS_BASE = env("PUBLIC_WSS_BASE")
+
+
+def twilio_ready() -> bool:
+    return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER and PUBLIC_WSS_BASE)
+
+
 # Shared secret the app signs its webhook with (COMMS_WEBHOOK_TOKEN in the app).
 COMMS_WEBHOOK_TOKEN = env("COMMS_WEBHOOK_TOKEN")
 # Where we POST each finished call's transcript + outcome so the app logs it to

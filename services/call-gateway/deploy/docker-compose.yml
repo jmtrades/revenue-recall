@@ -1,8 +1,8 @@
 # In-house voice stack: the call-gateway (AI agent) + your neural-voice service.
-# Your FreeSWITCH + SIP trunk run alongside this (see DEPLOY.md) and reach the
-# gateway's /media WebSocket. Bring real values via a .env file next to this one.
-#
-#   docker compose up -d --build
+# Pick ONE telephony path (see DEPLOY.md):
+#   • Twilio Media Streams (fastest, no FreeSWITCH) — set the TWILIO_* + PUBLIC_WSS_BASE vars
+#   • FreeSWITCH + SIP trunk (fully in-house) — set the FREESWITCH_* + SIP_TRUNK_GATEWAY vars
+# Bring real values via a .env file next to this one.  docker compose up -d --build
 services:
   neural-voice:
     build: ../../neural-voice          # the in-house TTS service (your voices)
@@ -13,20 +13,26 @@ services:
     build: ..                          # services/call-gateway (this service)
     restart: unless-stopped
     ports:
-      - "8080:8080"                    # /voice, /sms, /media, /health
+      - "8080:8080"                    # /voice, /sms, /media, /twilio/media, /health
     environment:
       NEURAL_VOICE_URL: ws://neural-voice:8765
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?required}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
       WHISPER_MODEL: ${WHISPER_MODEL:-base.en}
       WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
-      FREESWITCH_ESL_HOST: ${FREESWITCH_ESL_HOST:-host.docker.internal}
-      FREESWITCH_ESL_PORT: ${FREESWITCH_ESL_PORT:-8021}
-      FREESWITCH_ESL_PASSWORD: ${FREESWITCH_ESL_PASSWORD:?required}
-      SIP_TRUNK_GATEWAY: ${SIP_TRUNK_GATEWAY:?required}
-      OUTBOUND_FROM_NUMBER: ${OUTBOUND_FROM_NUMBER}
       COMMS_WEBHOOK_TOKEN: ${COMMS_WEBHOOK_TOKEN:?required}
       CALL_STATUS_WEBHOOK_URL: ${CALL_STATUS_WEBHOOK_URL}
+      # — Twilio path (fastest; no FreeSWITCH) —
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER}
+      PUBLIC_WSS_BASE: ${PUBLIC_WSS_BASE}
+      # — FreeSWITCH path (fully in-house alternative) —
+      FREESWITCH_ESL_HOST: ${FREESWITCH_ESL_HOST:-host.docker.internal}
+      FREESWITCH_ESL_PORT: ${FREESWITCH_ESL_PORT:-8021}
+      FREESWITCH_ESL_PASSWORD: ${FREESWITCH_ESL_PASSWORD:-}
+      SIP_TRUNK_GATEWAY: ${SIP_TRUNK_GATEWAY:-}
+      OUTBOUND_FROM_NUMBER: ${OUTBOUND_FROM_NUMBER:-}
       PUBLIC_WS_BASE: ${PUBLIC_WS_BASE:-ws://call-gateway:8080}
     depends_on:
       - neural-voice

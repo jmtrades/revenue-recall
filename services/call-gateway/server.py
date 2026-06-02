@@ -21,6 +21,7 @@ from fastapi.responses import JSONResponse
 import config
 from agent import CallAgent, DEFAULT_OPENER
 from transport import WebSocketMediaTransport
+from twilio_media import TwilioMediaTransport
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)s  %(message)s")
 log = logging.getLogger("call-gateway")
@@ -84,6 +85,8 @@ async def health():
         "voice": bool(config.NEURAL_VOICE_URL),
         "brain": bool(config.ANTHROPIC_API_KEY),
         "trunk": bool(config.SIP_TRUNK_GATEWAY),
+        "twilio": config.twilio_ready(),
+        "transport": "twilio" if config.twilio_ready() else "freeswitch",
         "logsBack": bool(config.CALL_STATUS_WEBHOOK_URL),
     }
 
@@ -108,14 +111,19 @@ async def voice(request: Request):
         "opener": (body or {}).get("opener"),
         "meta": (body or {}).get("meta") or {},
     }
+    # Twilio path (fastest, no FreeSWITCH) when configured; else the SIP trunk.
+    provider = "twilio-stream" if config.twilio_ready() else "call-gateway"
     try:
-        from sip import originate
-
+        if config.twilio_ready():
+            from twilio_out import originate
+        else:
+            from sip import originate
         reply = originate(to, call_id)
-    except Exception as e:  # FreeSWITCH/trunk not reachable from here — surfaced honestly
-        return JSONResponse({"id": call_id, "status": "failed", "provider": "call-gateway", "detail": str(e)}, status_code=502)
-    log.info("placed call %s to %s", call_id, to)
-    return {"id": call_id, "status": "queued", "provider": "call-gateway", "detail": reply.strip()}
+    except Exception as e:  # carrier/trunk not reachable from here — surfaced honestly
+        _pending.pop(call_id, None)
+        return JSONResponse({"id": call_id, "status": "failed", "provider": provider, "detail": str(e)}, status_code=502)
+    log.info("placed call %s to %s via %s", call_id, to, provider)
+    return {"id": call_id, "status": "queued", "provider": provider, "detail": str(reply).strip()}
 
 
 @app.post("/sms")
@@ -126,6 +134,58 @@ async def sms(request: Request):
     # Wire it here; until then the app's own SMS_WEBHOOK_URL/Twilio path can serve.
     return JSONResponse({"status": "not_implemented", "provider": "call-gateway",
                          "detail": "Wire your SIP-trunk SMS API here."}, status_code=501)
+
+
+async def _finish_call(call_id: str, ctx: dict, agent: CallAgent, started: float) -> None:
+    """Close the loop after any call (FreeSWITCH or Twilio): POST the transcript +
+    heuristic outcome back to the app so it lands on the CRM timeline."""
+    heard_prospect = any(t.get("role") == "prospect" for t in agent.turns)
+    payload = {
+        "to": ctx.get("to"),
+        "meta": ctx.get("meta") or {},
+        "outcome": "completed" if heard_prospect else "no-answer",
+        "transcript": _transcript_text(agent.turns),
+        "durationSec": round(time.monotonic() - started, 1),
+    }
+    log.info("call %s ended (%s, %d turns)", call_id, payload["outcome"], len(agent.turns))
+    await asyncio.to_thread(_post_call_status, payload)
+
+
+@app.websocket("/twilio/media")
+async def twilio_media(ws: WebSocket):
+    """Twilio Media Streams connects here (via inline TwiML). We read the `start`
+    event to learn the streamSid + which call this is (callId rides in as a custom
+    parameter), then run the in-house agent over the bridged audio — no FreeSWITCH."""
+    await ws.accept()
+    transport = TwilioMediaTransport(ws)
+    call_id = ""
+    # Read leading events until the stream starts (connected → start).
+    while not transport.closed():
+        ev = await transport.recv_event()
+        if ev is None:
+            return
+        if ev.get("event") == "start":
+            start = ev.get("start", {}) or {}
+            transport.stream_sid = start.get("streamSid") or ev.get("streamSid")
+            call_id = (start.get("customParameters") or {}).get("callId", "")
+            break
+        if ev.get("event") == "stop":
+            return
+    ctx = _pending.pop(call_id, {}) if call_id else {}
+    agent = CallAgent(context=ctx.get("context", ""), voice_id=ctx.get("voiceId"), opener=ctx.get("opener") or DEFAULT_OPENER)
+    started = time.monotonic()
+    try:
+        await agent.run(transport)
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:  # pragma: no cover - defensive
+        log.warning("twilio media error on %s: %s", call_id, e)
+    finally:
+        try:
+            await ws.close()
+        except Exception:
+            pass
+    await _finish_call(call_id, ctx, agent, started)
 
 
 @app.websocket("/media/{call_id}")
@@ -149,16 +209,4 @@ async def media(ws: WebSocket, call_id: str):
             await ws.close()
         except Exception:
             pass
-    # Close the loop: POST the transcript + outcome back to the app so the call
-    # lands on the CRM timeline. Outcome is heuristic — no prospect turn means
-    # the call wasn't really had (no-answer / voicemail).
-    heard_prospect = any(t.get("role") == "prospect" for t in agent.turns)
-    payload = {
-        "to": ctx.get("to"),
-        "meta": ctx.get("meta") or {},
-        "outcome": "completed" if heard_prospect else "no-answer",
-        "transcript": _transcript_text(agent.turns),
-        "durationSec": round(time.monotonic() - started, 1),
-    }
-    log.info("call %s ended (%s, %d turns)", call_id, payload["outcome"], len(agent.turns))
-    await asyncio.to_thread(_post_call_status, payload)
+    await _finish_call(call_id, ctx, agent, started)
