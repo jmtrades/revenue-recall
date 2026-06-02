@@ -11,7 +11,7 @@ export default function SignupPage({ searchParams }: { searchParams?: { plan?: s
     <div>
       <RememberTrialPlan plan={plan} />
       <h2 className="font-display text-2xl font-semibold tracking-tight text-fg">Create your account</h2>
-      <p className="mt-1 text-sm text-muted">{isTrial ? "Create your account — you'll connect a card next to start your 14-day free trial." : "Start recovering revenue in minutes."}</p>
+      <p className="mt-1 text-sm text-muted">{isTrial ? "Create your account to start your 14-day free trial — free for 14 days, cancel anytime." : "Start recovering revenue in minutes."}</p>
       <AuthForm mode="signup" />
       <p className="mt-6 text-center text-sm text-muted">
         Already have an account?{" "}

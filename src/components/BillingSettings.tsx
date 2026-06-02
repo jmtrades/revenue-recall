@@ -129,7 +129,7 @@ export function BillingSettings({ configured, plan, status, seats, currentPeriod
       </div>
 
       <p className="text-xs text-muted">
-        Paid plans start with a <span className="text-fg">14-day free trial</span> — a card is collected now, and you can cancel anytime before it ends without being charged.
+        Start with a <span className="text-fg">14-day free trial</span> — you won&apos;t be charged until it ends, and you can cancel anytime.
       </p>
       {!configured && (
         <p className="text-xs text-muted">
