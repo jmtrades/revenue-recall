@@ -8,6 +8,7 @@ import { buildRecallQueue, summarizeRecall, computeRecallOutcomes, recallByOwner
 import { listEnrollments } from "@/lib/cadence";
 import { listRecallTouches, earliestTouchByDeal, touchesByWeek } from "@/lib/recall/events";
 import type { Activity, Contact, Opportunity, Pipeline, Stage, User } from "@/lib/crm/types";
+import { normalizeLeadStatus, type LeadStatus } from "@/lib/crm/lead-status";
 
 /**
  * Guarantee a usable pipeline. A provider can legitimately return zero pipelines
@@ -201,6 +202,8 @@ export interface LeadRow {
   value: number | null;
   currency: string;
   stage: string;
+  /** Editable sales lifecycle status (new/working/qualified/…), from attributes. */
+  status?: LeadStatus;
 }
 
 export async function getLeadRows(): Promise<{ rows: LeadRow[]; owners: string[]; valueLabel: string }> {
@@ -228,6 +231,7 @@ export async function getLeadRows(): Promise<{ rows: LeadRow[]; owners: string[]
       value: opp?.value ?? null,
       currency: opp?.currency ?? "USD",
       stage: opp ? stageById.get(opp.stageId) ?? "—" : "—",
+      status: normalizeLeadStatus(c.attributes?.status),
     };
   });
 

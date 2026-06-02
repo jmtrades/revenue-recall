@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar, EmptyState, Button } from "@/components/ui";
 import { money } from "@/lib/format";
+import { LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_STATUS_TONE, type LeadStatus } from "@/lib/crm/lead-status";
 
 export interface LeadRow {
   id: string;
@@ -15,21 +16,39 @@ export interface LeadRow {
   value: number | null;
   currency: string;
   stage: string;
+  status?: LeadStatus;
 }
 
 export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owners: string[]; valueLabel: string }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [owner, setOwner] = useState("");
+  const [status, setStatus] = useState("");
+  const [saving, setSaving] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     return rows.filter((r) => {
       if (owner && r.owner !== owner) return false;
+      if (status && r.status !== status) return false;
       if (!term) return true;
       return r.name.toLowerCase().includes(term) || r.company.toLowerCase().includes(term) || r.email.toLowerCase().includes(term);
     });
-  }, [rows, q, owner]);
+  }, [rows, q, owner, status]);
+
+  async function changeStatus(id: string, next: LeadStatus) {
+    setSaving(id);
+    try {
+      const res = await fetch("/api/contacts", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: next }),
+      });
+      if (res.ok) router.refresh();
+    } finally {
+      setSaving(null);
+    }
+  }
 
   // True empty workspace (no records at all) — guide the user to add data
   // rather than showing an empty filter UI and a confusing "no match" row.
@@ -64,6 +83,12 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
             <option key={o} value={o}>{o}</option>
           ))}
         </select>
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand">
+          <option value="">All statuses</option>
+          {LEAD_STATUSES.map((s) => (
+            <option key={s} value={s}>{LEAD_STATUS_LABELS[s]}</option>
+          ))}
+        </select>
         <span className="ml-auto text-sm text-muted">{filtered.length} of {rows.length}</span>
       </div>
 
@@ -74,6 +99,7 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Company</th>
               <th className="px-4 py-3 font-medium">Stage</th>
+              <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Owner</th>
               <th className="px-4 py-3 text-right font-medium">{valueLabel}</th>
             </tr>
@@ -92,12 +118,26 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
                 </td>
                 <td className="px-4 py-3 text-muted">{r.company || "—"}</td>
                 <td className="px-4 py-3"><span className="pill bg-surface-2 text-muted">{r.stage}</span></td>
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <select
+                    value={r.status ?? ""}
+                    disabled={saving === r.id}
+                    onChange={(e) => changeStatus(r.id, e.target.value as LeadStatus)}
+                    className={`rounded-md border border-border px-2 py-1 text-xs outline-none focus:border-brand disabled:opacity-50 ${r.status ? LEAD_STATUS_TONE[r.status] : "bg-surface text-muted"}`}
+                    aria-label={`Lead status for ${r.name}`}
+                  >
+                    <option value="" disabled>Set status…</option>
+                    {LEAD_STATUSES.map((s) => (
+                      <option key={s} value={s}>{LEAD_STATUS_LABELS[s]}</option>
+                    ))}
+                  </select>
+                </td>
                 <td className="px-4 py-3 text-muted">{r.owner}</td>
                 <td className="px-4 py-3 text-right tabular-nums text-fg">{r.value !== null ? money(r.value, r.currency) : "—"}</td>
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-muted">No leads match your search or filter.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-muted">No leads match your search or filter.</td></tr>
             )}
           </tbody>
         </table>
