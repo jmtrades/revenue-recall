@@ -1,0 +1,40 @@
+name: Autopilot tick
+
+# Free hourly autopilot for Vercel Hobby. Vercel's own cron (vercel.json) runs
+# once a day on Hobby; this optional workflow pings the same endpoint hourly so
+# sequence steps fire near their due time and the timezone-aware quiet hours
+# actually matter — without needing Vercel Pro.
+#
+# To enable: add two repository secrets
+#   AGENT_CRON_URL  = https://<your-domain>/api/agent/cron   (e.g. https://recall-touch.com/api/agent/cron)
+#   CRON_SECRET     = the same value set in the app's environment
+# Until both are set this workflow runs but safely no-ops (it never fails CI).
+
+on:
+  schedule:
+    - cron: "0 * * * *" # hourly, on the hour (UTC)
+  workflow_dispatch: {} # allow a manual run from the Actions tab
+
+# Don't pile up ticks if one is slow; the newest wins.
+concurrency:
+  group: autopilot-tick
+  cancel-in-progress: true
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping agent cron
+        env:
+          URL: ${{ secrets.AGENT_CRON_URL }}
+          SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$SECRET" ]; then
+            echo "Hourly autopilot not configured — set the AGENT_CRON_URL and CRON_SECRET repository secrets to enable. Skipping."
+            exit 0
+          fi
+          code=$(curl -sS -m 300 -o /dev/null -w "%{http_code}" -X POST "$URL" -H "Authorization: Bearer $SECRET" || echo "000")
+          echo "agent cron -> HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "::warning::agent cron returned HTTP $code (expected 200)"
+          fi
