@@ -54,7 +54,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)s  %(me
 log = logging.getLogger("neural-voice")
 
 HOST = os.environ.get("NEURAL_VOICE_HOST", "0.0.0.0")
-PORT = int(os.environ.get("NEURAL_VOICE_PORT", "8765"))
+# Bind $PORT when the host injects one (Render/Railway/Fly), else NEURAL_VOICE_PORT, else 8765.
+PORT = int(os.environ.get("PORT") or os.environ.get("NEURAL_VOICE_PORT") or "8765")
 # Engine: "kokoro" (frontier-class open model, default) or "piper" (lighter fallback).
 ENGINE = os.environ.get("VOICE_ENGINE", "kokoro").lower()
 # Default voice id per engine; the client may override via `voiceId`.

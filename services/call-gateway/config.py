@@ -7,8 +7,12 @@ def env(name, default=None):
     return v if v not in (None, "") else default
 
 
-# Your in-house voice (the neural-voice service) — WebSocket URL.
+# Your in-house voice (the neural-voice service) — WebSocket URL. If NEURAL_VOICE_URL
+# isn't set directly, build it from NEURAL_VOICE_HOST/PORT (lets Render's
+# fromService auto-wire the gateway to the private neural-voice service).
 NEURAL_VOICE_URL = env("NEURAL_VOICE_URL")
+if not NEURAL_VOICE_URL and env("NEURAL_VOICE_HOST"):
+    NEURAL_VOICE_URL = f"ws://{env('NEURAL_VOICE_HOST')}:{env('NEURAL_VOICE_PORT', '8765')}"
 # Your Opus brain.
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY")
 ANTHROPIC_MODEL = env("ANTHROPIC_MODEL", "claude-opus-4-8")
