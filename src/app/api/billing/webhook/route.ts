@@ -3,6 +3,7 @@ import { verifyStripeSignature, planForPrice } from "@/lib/billing/stripe";
 import { saveSubscriptionForOrg, saveSubscriptionForCustomer, type SubStatus } from "@/lib/billing/store";
 import { isPlanId } from "@/lib/billing/plans";
 import { addUsageCredits } from "@/lib/ai/usage";
+import { trialDays } from "@/lib/billing/stripe";
 import { logError, errMessage } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
@@ -65,7 +66,10 @@ export async function POST(req: Request) {
         if (orgId) {
           await saveSubscriptionForOrg(orgId, {
             plan: isPlanId(metaPlan) ? metaPlan : "growth",
-            status: "active",
+            // Card-required trials start in "trialing"; the subscription.* and
+            // invoice.payment_succeeded events flip it to "active" when the trial
+            // converts. (Stripe also sends subscription.created right after.)
+            status: trialDays() > 0 ? "trialing" : "active",
             stripeCustomerId: (obj.customer as string) ?? undefined,
             stripeSubscriptionId: (obj.subscription as string) ?? undefined,
           });

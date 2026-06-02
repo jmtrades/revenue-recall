@@ -43,13 +43,14 @@ export default function PrivacyPage() {
         {
           heading: "Data retention and deletion",
           body: [
-            "We retain your data while your account is active. You can export or request deletion at any time; we remove it within 30 days of a verified request, except where law requires retention.",
+            "We retain your data while your account is active. You can export everything, or permanently delete your account yourself, anytime from Settings → Billing → Your data — deletion is immediate and irreversible, except where law requires retention.",
           ],
         },
         {
           heading: "Your rights",
           body: [
-            "Depending on where you live, you may have rights to access, correct, export, or delete your personal data. Contact us to exercise them.",
+            "Depending on where you live (including under GDPR and CCPA), you may have rights to access, correct, export, or delete your personal data. Access and erasure are self-serve in the app (Settings → Billing → Your data); for anything else, email us and we'll action it.",
+            "We do not sell personal information, and we do not discriminate against you for exercising these rights.",
           ],
         },
       ]}

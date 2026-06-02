@@ -22,6 +22,7 @@ import { BillingReturnBanner } from "@/components/BillingReturnBanner";
 import { OrgSettingsForm } from "@/components/OrgSettingsForm";
 import { AppearanceSettings } from "@/components/AppearanceSettings";
 import { BillingSettings } from "@/components/BillingSettings";
+import { DataRights } from "@/components/DataRights";
 import { NumbersManager } from "@/components/NumbersManager";
 import { TestSend } from "@/components/TestSend";
 import { AiHealthCheck } from "@/components/AiHealthCheck";
@@ -346,6 +347,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
   );
 
   const billingTab = (
+    <div className="space-y-4">
     <Card>
       <BillingSettings
         configured={billingConfigured()}
@@ -384,6 +386,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       </div>
       <AiHealthCheck />
     </Card>
+    <DataRights />
+    </div>
   );
 
   const importTab = (

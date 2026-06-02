@@ -115,7 +115,7 @@ export function BillingSettings({ configured, plan, status, seats, currentPeriod
                     disabled={!configured || busy !== null}
                     className="block w-full rounded-lg bg-brand px-3 py-1.5 text-center text-xs font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
                   >
-                    {busy === "/api/billing/checkout" ? "Starting…" : `Upgrade to ${p.name}`}
+                    {busy === "/api/billing/checkout" ? "Starting…" : `Start ${p.name} trial`}
                   </button>
                 ) : (
                   <a href="/security" className="block rounded-lg border border-border px-3 py-1.5 text-center text-xs text-fg transition hover:bg-surface-2">
@@ -128,6 +128,9 @@ export function BillingSettings({ configured, plan, status, seats, currentPeriod
         })}
       </div>
 
+      <p className="text-xs text-muted">
+        Paid plans start with a <span className="text-fg">14-day free trial</span> — a card is collected now, and you can cancel anytime before it ends without being charged.
+      </p>
       {!configured && (
         <p className="text-xs text-muted">
           Self-serve checkout activates once billing is connected in your workspace settings.

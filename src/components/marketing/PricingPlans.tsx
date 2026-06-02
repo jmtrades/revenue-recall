@@ -49,7 +49,7 @@ const PLANS: Plan[] = [
     unit: "/rep/mo",
     tagline: "One autonomous AI rep, working 24/7.",
     cta: "Start free trial",
-    href: "/signup",
+    href: "/signup?plan=growth",
     featured: false,
     anchor: "An SDR costs $5,000+/mo for 8 hrs a day. This is one rep that never clocks out.",
     features: [
@@ -66,7 +66,7 @@ const PLANS: Plan[] = [
     unit: "/mo",
     tagline: "An autonomous sales team for the whole desk.",
     cta: "Start free trial",
-    href: "/signup",
+    href: "/signup?plan=team",
     featured: true,
     anchor: "Replaces an SDR pod + your sequencer + your dialer — for less than one hire.",
     features: [
@@ -149,6 +149,9 @@ export function PricingPlans() {
               >
                 {p.cta}
               </Link>
+              {!isCustom && !isFree && (
+                <p className="mt-2 text-center text-[11px] font-medium text-brand">14-day free trial · card required · cancel anytime</p>
+              )}
               <p className="mt-3 text-xs leading-relaxed text-muted">{p.anchor}</p>
               <ul className="mt-5 space-y-2.5 border-t border-border/60 pt-5">
                 {p.features.map((f) => (
@@ -172,7 +175,7 @@ export function PricingPlans() {
           <span className="text-fg">Top up instantly from $29</span> (as low as 1.6¢ a message) — you&rsquo;re never blocked mid-campaign.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted">
-          {["No card to start", "Cancel anytime", "Your data stays yours", "Live in 2 minutes"].map((t) => (
+          {["Starter is free, no card", "14-day trial on paid plans", "Cancel anytime", "Your data stays yours"].map((t) => (
             <span key={t} className="inline-flex items-center gap-1.5">
               <span className="grid h-4 w-4 place-items-center rounded-full bg-brand/15 text-brand">
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>

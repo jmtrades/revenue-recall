@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Avatar, EmptyState, Button } from "@/components/ui";
 import { money } from "@/lib/format";
 import { LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_STATUS_TONE, type LeadStatus } from "@/lib/crm/lead-status";
+import { SEGMENTS, getSegment, highValueThreshold } from "@/lib/crm/segments";
 
 export interface LeadRow {
   id: string;
@@ -24,17 +25,28 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
   const [q, setQ] = useState("");
   const [owner, setOwner] = useState("");
   const [status, setStatus] = useState("");
+  const [segment, setSegment] = useState("all");
   const [saving, setSaving] = useState<string | null>(null);
+
+  // "High value" = the top quartile of THIS pipeline's deal values, so the
+  // segment means something for any business (not a hard-coded number).
+  const hvt = useMemo(() => highValueThreshold(rows.map((r) => r.value)), [rows]);
+  const counts = useMemo(() => {
+    const ctx = { highValueThreshold: hvt };
+    return Object.fromEntries(SEGMENTS.map((s) => [s.id, rows.filter((r) => s.match(r, ctx)).length]));
+  }, [rows, hvt]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
+    const seg = getSegment(segment);
     return rows.filter((r) => {
+      if (!seg.match(r, { highValueThreshold: hvt })) return false;
       if (owner && r.owner !== owner) return false;
       if (status && r.status !== status) return false;
       if (!term) return true;
       return r.name.toLowerCase().includes(term) || r.company.toLowerCase().includes(term) || r.email.toLowerCase().includes(term);
     });
-  }, [rows, q, owner, status]);
+  }, [rows, q, owner, status, segment, hvt]);
 
   async function changeStatus(id: string, next: LeadStatus) {
     setSaving(id);
@@ -70,6 +82,18 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
 
   return (
     <div>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {SEGMENTS.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => setSegment(s.id)}
+            aria-pressed={segment === s.id}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${segment === s.id ? "bg-brand text-white" : "bg-surface-2 text-muted hover:text-fg"}`}
+          >
+            {s.label} <span className={segment === s.id ? "text-white/70" : "text-muted/60"}>{counts[s.id] ?? 0}</span>
+          </button>
+        ))}
+      </div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input
           value={q}
