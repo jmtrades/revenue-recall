@@ -79,7 +79,8 @@ function hourInZone(now: Date, tz?: string): number {
 /** True when we're inside the configured quiet-hours window and should hold sends.
  *  The window (AGENT_QUIET_START_UTC..END) is interpreted in AGENT_TIMEZONE when
  *  set — so "no sends 8pm–8am" actually means the recipient's local evening, not
- *  UTC. Now that the cron runs hourly, this is what keeps autopilot off at night. */
+ *  UTC. Matters most when autopilot ticks more than once a day (e.g. the hourly
+ *  GitHub Actions schedule), keeping it off at night. */
 export function quietHoursNow(now: Date = new Date()): boolean {
   const start = Number(process.env.AGENT_QUIET_START_UTC);
   const end = Number(process.env.AGENT_QUIET_END_UTC);
