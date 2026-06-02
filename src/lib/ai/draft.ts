@@ -51,7 +51,7 @@ export interface DraftInput {
    *  Used only to make live-AI copy feel naturally timed — never stated mechanically. */
   timingHint?: string;
   /** The rep's distilled writing voice + sign-off, so messages sound like them. */
-  voice?: { senderName?: string; profile?: string; signature?: string; business?: string; customNextSteps?: string[]; customReengage?: string[] };
+  voice?: { senderName?: string; profile?: string; signature?: string; business?: string; customNextSteps?: string[]; customReengage?: string[]; bookingUrl?: string };
 }
 
 export interface DraftResult {
@@ -447,7 +447,7 @@ ${input.recallReason ? `Recall reason: ${input.recallReason} (re-engagement — 
 
 ${input.voice?.business ? `THE BUSINESS YOU WRITE FOR — what they actually sell and who they serve. Ground every line in this (it matters most when the industry is generic):\n"""${input.voice.business}"""\n` : ""}
 ${playbookBlock(input)}
-${input.voice?.customNextSteps?.length ? `\nThis rep's own go-to next steps (prefer one of these when it fits): ${input.voice.customNextSteps.join(" / ")}` : ""}
+${input.voice?.customNextSteps?.length ? `\nThis rep's own go-to next steps (prefer one of these when it fits): ${input.voice.customNextSteps.join(" / ")}` : ""}${input.voice?.bookingUrl ? `\nIf — and only if — proposing a call/meeting is the right ask for THIS message, offer this booking link so they can self-schedule: ${input.voice.bookingUrl}\nPaste it verbatim, exactly once; never reword, shorten, or wrap it in markdown. If a meeting isn't the natural next step here, leave the link out entirely.` : ""}
 ${input.recallReason ? `\nRe-engagement openers (for inspiration): ${(input.voice?.customReengage?.length ? input.voice.customReengage : pb.reengage).join(" / ")}` : ""}
 ${input.voice?.profile ? `\nWrite in THIS person's voice — match it exactly so it sounds like them, not an AI:\n"""${input.voice.profile}"""` : ""}${input.timingHint ? `\nHow they engage: ${input.timingHint} Let this quietly shape the framing if it helps — never say it out loud or sound like you're profiling them.` : ""}${input.lastInbound ? `\nHow they sound right now: ${reactToText(input.lastInbound).note}` : ""}${input.history && input.history.length ? `\nDon't repeat the angle or opening from the recent history above — open differently and bring a fresh reason or hook.` : ""}${input.instruction ? `\nAlso follow this instruction for this message:\n"""${input.instruction}"""` : ""}${input.variant ? `\nThis is alternative take #${input.variant + 1}. Open differently and restructure it so it reads as a genuinely distinct message from a default version — same intent, fresh wording.` : ""}
 

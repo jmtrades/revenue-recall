@@ -8,7 +8,7 @@ export function VoiceStudio({
   initial,
   persisted,
 }: {
-  initial: { senderName?: string; role?: string; signature?: string; samples?: string; profile?: string; business?: string; customNextSteps?: string[]; customReengage?: string[] };
+  initial: { senderName?: string; role?: string; signature?: string; samples?: string; profile?: string; business?: string; customNextSteps?: string[]; customReengage?: string[]; bookingUrl?: string };
   persisted: boolean;
 }) {
   const router = useRouter();
@@ -19,12 +19,13 @@ export function VoiceStudio({
   const [profile, setProfile] = useState(initial.profile ?? "");
   const [customNextSteps, setCustomNextSteps] = useState((initial.customNextSteps ?? []).join("\n"));
   const [customReengage, setCustomReengage] = useState((initial.customReengage ?? []).join("\n"));
+  const [bookingUrl, setBookingUrl] = useState(initial.bookingUrl ?? "");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const input = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand";
-  const canSave = Boolean(business.trim() || samples.trim() || customNextSteps.trim() || customReengage.trim());
+  const canSave = Boolean(business.trim() || samples.trim() || customNextSteps.trim() || customReengage.trim() || bookingUrl.trim());
 
   async function learn() {
     if (!canSave) return;
@@ -33,7 +34,7 @@ export function VoiceStudio({
       const res = await fetch("/api/voice/learn", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ senderName, signature, business, samples, customNextSteps, customReengage }),
+        body: JSON.stringify({ senderName, signature, business, samples, customNextSteps, customReengage, bookingUrl: bookingUrl.trim() }),
       });
       const b = await res.json();
       if (!res.ok) throw new Error(b.error ?? "Failed");
@@ -70,6 +71,17 @@ export function VoiceStudio({
       <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
         <input className={input} placeholder="Your name (e.g. Sam)" value={senderName} onChange={(e) => setSenderName(e.target.value)} />
         <input className={input} placeholder="Sign-off (e.g. — Sam, Acme Realty)" value={signature} onChange={(e) => setSignature(e.target.value)} />
+      </div>
+      <div className="mt-2">
+        <input
+          className={input}
+          type="url"
+          inputMode="url"
+          placeholder="Booking link (e.g. https://cal.com/sam/15min)"
+          value={bookingUrl}
+          onChange={(e) => setBookingUrl(e.target.value)}
+        />
+        <p className="mt-1 text-xs text-muted">Optional. When a message proposes a call, the AI drops in this exact link so they can self-schedule — no calendar tag.</p>
       </div>
       <textarea
         className={`${input} mt-2 resize-none`}
