@@ -8,6 +8,7 @@ import { PageHeader, Stat, ReasonBadge, ScoreDot, Card, Avatar, ActivityIcon, Bu
 import { Funnel, ProgressRing, BarChart, Sparkline } from "@/components/charts";
 import { Icon } from "@/components/icons";
 import { DashboardWelcome } from "@/components/DashboardWelcome";
+import { StartTrialWatcher } from "@/components/StartTrialWatcher";
 
 export const dynamic = "force-dynamic";
 
@@ -48,10 +49,11 @@ export default async function DashboardPage() {
   // Brand-new workspace: no deals and nothing logged yet. Zero-filled stats and
   // empty charts read as broken — show a guided first-run experience instead.
   const isEmpty = m.openCount + m.wonCount + m.lostCount === 0 && feed.length === 0;
-  if (isEmpty) return <DashboardWelcome greeting={greeting} />;
+  if (isEmpty) return (<><StartTrialWatcher /><DashboardWelcome greeting={greeting} /></>);
 
   return (
     <div className="space-y-6">
+      <StartTrialWatcher />
       <PageHeader
         title={greeting}
         subtitle={focusLine(o.recallSummary.itemCount, o.recallSummary.totalRecoverable, m.currency)}
