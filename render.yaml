@@ -30,8 +30,18 @@ services:
     healthCheckPath: /health
     autoDeploy: false
     envVars:
-      - key: NEURAL_VOICE_URL
-        value: ws://rr-neural-voice:8765        # Render private network (service name)
+      # Auto-wire to the private neural-voice service (host + port from Render),
+      # so you never paste an internal address. config.py builds ws://host:port.
+      - key: NEURAL_VOICE_HOST
+        fromService:
+          type: pserv
+          name: rr-neural-voice
+          property: host
+      - key: NEURAL_VOICE_PORT
+        fromService:
+          type: pserv
+          name: rr-neural-voice
+          property: port
       - key: CALL_STATUS_WEBHOOK_URL
         value: https://recall-touch.com/api/calls/log
       - key: WHISPER_MODEL
