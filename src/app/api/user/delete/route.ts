@@ -1,0 +1,63 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { getSessionUser } from "@/lib/auth";
+import { getSupabase } from "@/lib/supabase/client";
+import { getServerSupabase } from "@/lib/supabase/server";
+import { rateLimit, clientKey } from "@/lib/ratelimit";
+import { logInfo, logError, errMessage } from "@/lib/log";
+
+export const dynamic = "force-dynamic";
+
+const Body = z.object({ confirm: z.string() });
+
+/**
+ * GDPR/CCPA erasure: delete the signed-in user's account. An owner deletes the
+ * whole workspace (orgs ON DELETE CASCADE removes its contacts, deals,
+ * activities, members, …); a non-owner just leaves the org. Then the auth
+ * identity is removed. Requires a typed "DELETE" confirmation and is
+ * irreversible — guarded accordingly.
+ */
+export async function POST(req: Request) {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+  if (!rateLimit(clientKey(req, "data-delete"), 5, 60_000).ok) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+  const parsed = Body.safeParse(await req.json().catch(() => null));
+  if (!parsed.success || parsed.data.confirm !== "DELETE") {
+    return NextResponse.json({ error: 'Type DELETE to confirm — this permanently erases your account.' }, { status: 400 });
+  }
+
+  const admin = getSupabase(); // service-role: needed to delete across RLS + remove the auth user
+  if (!admin) return NextResponse.json({ error: "Account deletion isn't available on this deployment." }, { status: 503 });
+
+  try {
+    const { data: members } = await admin.from("members").select("org_id, role").eq("auth_user_id", user.id).limit(1);
+    const member = members?.[0] as { org_id?: string; role?: string } | undefined;
+    if (member?.org_id) {
+      if (member.role === "owner") {
+        await admin.from("orgs").delete().eq("id", member.org_id); // cascades all org data + members
+      } else {
+        await admin.from("members").delete().eq("auth_user_id", user.id).eq("org_id", member.org_id);
+      }
+    }
+    // Remove the login/identity.
+    try {
+      await admin.auth.admin.deleteUser(user.id);
+    } catch (e) {
+      logError("user.delete.auth_failed", { error: errMessage(e) });
+    }
+    // Best-effort clear this session (the user no longer exists anyway).
+    try {
+      const sb = getServerSupabase();
+      if (sb) await sb.auth.signOut();
+    } catch {
+      /* session already invalid */
+    }
+    logInfo("user.deleted", { ownerDeletedOrg: member?.role === "owner" });
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    logError("user.delete.failed", { error: errMessage(e) });
+    return NextResponse.json({ error: "Couldn't delete the account. Please contact support." }, { status: 500 });
+  }
+}
