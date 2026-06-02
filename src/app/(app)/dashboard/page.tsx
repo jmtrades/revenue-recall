@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getOverview, getActivityFeed, getReports } from "@/lib/queries";
 import { getOrgSettings } from "@/lib/org";
+import { getSubscription } from "@/lib/billing/store";
 import { getSessionUser } from "@/lib/auth";
 import { firstName } from "@/lib/copy";
 import { compactMoney, money, pct, relativeDays } from "@/lib/format";
@@ -30,13 +31,17 @@ function focusLine(recallCount: number, recoverable: number, currency: string): 
 }
 
 export default async function DashboardPage() {
-  const [o, feed, reports, org, user] = await Promise.all([
+  const [o, feed, reports, org, user, sub] = await Promise.all([
     getOverview(),
     getActivityFeed(8),
     getReports(),
     getOrgSettings(),
     getSessionUser(),
+    getSubscription(),
   ]);
+  // Only auto-open the trial checkout for someone who can actually start one —
+  // never re-prompt a customer who's already trialing or active.
+  const canStartTrial = sub.status === "none" || sub.status === "canceled";
   const m = o.metrics;
   const wonSeries = reports.monthlyWon;
   const wonThisMonth = wonSeries[wonSeries.length - 1]?.value ?? 0;
@@ -49,11 +54,11 @@ export default async function DashboardPage() {
   // Brand-new workspace: no deals and nothing logged yet. Zero-filled stats and
   // empty charts read as broken — show a guided first-run experience instead.
   const isEmpty = m.openCount + m.wonCount + m.lostCount === 0 && feed.length === 0;
-  if (isEmpty) return (<><StartTrialWatcher /><DashboardWelcome greeting={greeting} /></>);
+  if (isEmpty) return (<><StartTrialWatcher eligible={canStartTrial} /><DashboardWelcome greeting={greeting} /></>);
 
   return (
     <div className="space-y-6">
-      <StartTrialWatcher />
+      <StartTrialWatcher eligible={canStartTrial} />
       <PageHeader
         title={greeting}
         subtitle={focusLine(o.recallSummary.itemCount, o.recallSummary.totalRecoverable, m.currency)}

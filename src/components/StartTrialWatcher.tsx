@@ -20,14 +20,17 @@ function clearCookie(name: string): void {
  * instead of making them hunt for it in Settings. Fires once, then clears the
  * cookie. Renders nothing until/unless it has a plan to start.
  */
-export function StartTrialWatcher() {
+export function StartTrialWatcher({ eligible = true }: { eligible?: boolean }) {
   const [checkout, setCheckout] = useState<CheckoutRequest | null>(null);
   useEffect(() => {
     const plan = readCookie("rr_trial_plan");
-    if (plan && TRIAL_PLANS.has(plan)) {
-      clearCookie("rr_trial_plan");
+    // Consume the cookie regardless, so a stale intent never lingers — but only
+    // open checkout for someone who can actually start a trial (never re-prompt
+    // a customer who's already trialing/active).
+    if (plan) clearCookie("rr_trial_plan");
+    if (eligible && plan && TRIAL_PLANS.has(plan)) {
       setCheckout({ endpoint: "/api/billing/checkout", body: { plan } });
     }
-  }, []);
+  }, [eligible]);
   return <EmbeddedCheckoutModal request={checkout} onClose={() => setCheckout(null)} />;
 }
