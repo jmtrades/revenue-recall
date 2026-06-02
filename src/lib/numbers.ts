@@ -73,9 +73,68 @@ const webhookProvider: NumberProvider = {
   listOwned: async () => arr(await postWebhook("list", {})),
 };
 
+// ---- built-in Twilio provider: search / buy / list your own numbers ----
+// Uses the same TWILIO_ACCOUNT_SID/AUTH_TOKEN you set for calling, so numbers are
+// fully self-serve in-app (Settings → Numbers) with no extra setup.
+interface TwilioNumberRow {
+  phone_number?: string;
+  friendly_name?: string;
+  capabilities?: { voice?: boolean; SMS?: boolean; sms?: boolean };
+}
+
+function twilioCreds(): { sid: string; token: string } | null {
+  const sid = env("TWILIO_ACCOUNT_SID");
+  const token = env("TWILIO_AUTH_TOKEN");
+  return sid && token ? { sid, token } : null;
+}
+
+async function twilioApi(path: string, form?: Record<string, string>): Promise<Record<string, unknown>> {
+  const c = twilioCreds();
+  if (!c) throw new Error("Twilio not configured");
+  const auth = Buffer.from(`${c.sid}:${c.token}`).toString("base64");
+  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${c.sid}/${path}`, {
+    method: form ? "POST" : "GET",
+    headers: { Authorization: `Basic ${auth}`, ...(form ? { "Content-Type": "application/x-www-form-urlencoded" } : {}) },
+    body: form ? new URLSearchParams(form).toString() : undefined,
+  });
+  if (!res.ok) throw new Error(`Twilio numbers API ${res.status}`);
+  return (await res.json()) as Record<string, unknown>;
+}
+
+function mapTwilioRow(n: TwilioNumberRow, status: "owned" | "available"): PhoneNumber {
+  return {
+    number: n.phone_number ?? "",
+    label: n.friendly_name,
+    status,
+    capabilities: { voice: Boolean(n.capabilities?.voice), sms: Boolean(n.capabilities?.SMS ?? n.capabilities?.sms) },
+  };
+}
+
+const twilioProvider: NumberProvider = {
+  id: "twilio",
+  available: () => Boolean(twilioCreds()),
+  search: async (opts) => {
+    const country = (opts.country || "US").toUpperCase();
+    const qs = new URLSearchParams({ VoiceEnabled: "true" });
+    if (opts.areaCode) qs.set("AreaCode", opts.areaCode);
+    if (opts.contains) qs.set("Contains", opts.contains);
+    const data = await twilioApi(`AvailablePhoneNumbers/${country}/Local.json?${qs.toString()}`);
+    return ((data.available_phone_numbers as TwilioNumberRow[]) ?? []).map((n) => mapTwilioRow(n, "available"));
+  },
+  buy: async (number) => {
+    const data = await twilioApi("IncomingPhoneNumbers.json", { PhoneNumber: number });
+    return mapTwilioRow(data as TwilioNumberRow, "owned");
+  },
+  listOwned: async () => {
+    const data = await twilioApi("IncomingPhoneNumbers.json?PageSize=100");
+    return ((data.incoming_phone_numbers as TwilioNumberRow[]) ?? []).map((n) => mapTwilioRow(n, "owned"));
+  },
+};
+
 function resolve(): NumberProvider | null {
   if (custom && custom.available()) return custom;
   if (webhookProvider.available()) return webhookProvider;
+  if (twilioProvider.available()) return twilioProvider;
   return null;
 }
 

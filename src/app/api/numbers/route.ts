@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   if (!numbersConfigured()) {
-    return NextResponse.json({ error: "Connect a number provider to search or buy (set NUMBERS_WEBHOOK_URL)." }, { status: 503 });
+    return NextResponse.json({ error: "Connect a number provider to search or buy — set your Twilio credentials (TWILIO_ACCOUNT_SID/AUTH_TOKEN) or NUMBERS_WEBHOOK_URL." }, { status: 503 });
   }
   try {
     if (parsed.data.action === "search") {
