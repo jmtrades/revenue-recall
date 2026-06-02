@@ -1,0 +1,50 @@
+# Render Blueprint — deploy the in-house calling stack (the AI call-gateway + the
+# neural-voice service) in a few clicks. This is what makes real AI phone calls
+# go live without running FreeSWITCH yourself.
+#
+# HOW: Render dashboard → New + → Blueprint → connect this repo → Apply. Render
+# reads this file, builds both services, and prompts you for the secret values
+# (the ones marked sync:false). After the FIRST deploy, copy the call-gateway's
+# public URL and set PUBLIC_WSS_BASE = wss://<that-host> (see GO-LIVE-CALLS.md).
+#
+# Notes:
+#  • "standard" plan — the neural-voice TTS model needs ~1–2 GB RAM. A GPU plan
+#    makes calls snappier but isn't required to go live.
+#  • rr-neural-voice is private (pserv); the gateway reaches it on Render's
+#    private network at ws://rr-neural-voice:8765.
+services:
+  - type: pserv                       # private — no public URL needed
+    name: rr-neural-voice
+    runtime: docker
+    rootDir: services/neural-voice
+    dockerfilePath: ./Dockerfile
+    plan: standard
+    autoDeploy: false
+
+  - type: web                         # public — Twilio reaches this over wss://
+    name: rr-call-gateway
+    runtime: docker
+    rootDir: services/call-gateway
+    dockerfilePath: ./Dockerfile
+    plan: standard
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: NEURAL_VOICE_URL
+        value: ws://rr-neural-voice:8765        # Render private network (service name)
+      - key: CALL_STATUS_WEBHOOK_URL
+        value: https://recall-touch.com/api/calls/log
+      - key: WHISPER_MODEL
+        value: base.en
+      - key: ANTHROPIC_API_KEY
+        sync: false                              # paste: your Anthropic key
+      - key: TWILIO_ACCOUNT_SID
+        sync: false                              # paste: from Twilio console
+      - key: TWILIO_AUTH_TOKEN
+        sync: false                              # paste: from Twilio console
+      - key: TWILIO_FROM_NUMBER
+        sync: false                              # paste: your Twilio number, e.g. +14155551234
+      - key: COMMS_WEBHOOK_TOKEN
+        sync: false                              # paste: same secret as in Vercel
+      - key: PUBLIC_WSS_BASE
+        sync: false                              # set AFTER first deploy: wss://<gateway host>
