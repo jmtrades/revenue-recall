@@ -29,6 +29,7 @@ import { TestSend } from "@/components/TestSend";
 import { AiHealthCheck } from "@/components/AiHealthCheck";
 import { VoiceStudio } from "@/components/VoiceStudio";
 import { VoiceControls } from "@/components/VoiceControls";
+import { CallVoicePicker } from "@/components/CallVoicePicker";
 import { getSubscription } from "@/lib/billing/store";
 import { billingConfigured, resolvePriceId, resolveTopupPriceId } from "@/lib/billing/stripe";
 import { isAuthRequired } from "@/lib/config";
@@ -145,6 +146,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       <VoiceStudio initial={voice} persisted={org.persisted} />
       <Card className="mt-4">
         <VoiceControls />
+        <CallVoicePicker initialVoiceId={org.voiceId ?? null} />
       </Card>
     </>
   );
