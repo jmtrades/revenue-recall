@@ -1,14 +1,22 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 
-vi.mock("@/lib/calls", () => ({ logCallOutcome: vi.fn(async () => ({ id: "act_1" })) }));
+const { logCallOutcome, seenInboundEvent } = vi.hoisted(() => ({
+  logCallOutcome: vi.fn(async () => ({ id: "act_1" })),
+  seenInboundEvent: vi.fn(async () => false),
+}));
+vi.mock("@/lib/calls", () => ({ logCallOutcome }));
 vi.mock("@/lib/supabase/org-context", () => ({
   runWithOrg: vi.fn(async (_orgId: string, fn: () => unknown) => fn()),
 }));
+vi.mock("@/lib/inbound-dedup", () => ({ seenInboundEvent }));
 
 import { POST } from "@/app/api/calls/log/route";
 import { runWithOrg } from "@/lib/supabase/org-context";
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+  seenInboundEvent.mockResolvedValue(false);
+});
 
 const post = (body: unknown) =>
   new Request("http://localhost/api/calls/log", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -25,5 +33,13 @@ describe("calls/log routes the transcript to the owning org", () => {
     const res = await POST(post({ to: "+15551234567", outcome: "completed", meta: { contactId: "c1" } }));
     expect(res.status).toBe(200);
     expect(vi.mocked(runWithOrg)).not.toHaveBeenCalled();
+  });
+
+  it("no-ops a retried post-back with the same callId (idempotent)", async () => {
+    seenInboundEvent.mockResolvedValue(true);
+    const res = await POST(post({ callId: "call_1", to: "+15551234567", outcome: "completed" }));
+    expect(res.status).toBe(200);
+    expect((await res.json()).duplicate).toBe(true);
+    expect(logCallOutcome).not.toHaveBeenCalled();
   });
 });
