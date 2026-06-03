@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { entitlements, subscriptionStanding, PLAN_LIMITS } from "@/lib/billing/entitlements";
+import { entitlements, effectivePlan, subscriptionStanding, PLAN_LIMITS } from "@/lib/billing/entitlements";
 
 describe("plan entitlements", () => {
   it("free is the most limited; paid plans unlock the value features", () => {
@@ -15,6 +15,22 @@ describe("plan entitlements", () => {
   it("falls back to free for an unknown plan", () => {
     // @ts-expect-error invalid plan id
     expect(entitlements("enterprise")).toEqual(PLAN_LIMITS.free);
+  });
+});
+
+describe("effectivePlan gates on standing", () => {
+  it("keeps the plan while active or trialing", () => {
+    expect(effectivePlan("growth", "active")).toBe("growth");
+    expect(effectivePlan("team", "trialing")).toBe("team");
+  });
+  it("drops a non-paying org to free", () => {
+    expect(effectivePlan("growth", "past_due")).toBe("free");
+    expect(effectivePlan("team", "canceled")).toBe("free");
+    expect(effectivePlan("scale", "none")).toBe("free");
+  });
+  it("so a past_due paid org loses live-AI/autopilot entitlements", () => {
+    expect(entitlements(effectivePlan("growth", "past_due")).aiLive).toBe(false);
+    expect(entitlements(effectivePlan("growth", "past_due")).autopilot).toBe(false);
   });
 });
 

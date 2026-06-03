@@ -67,14 +67,18 @@ export const POST = withGuard(async (req: Request) => {
   const disclosure = recordingDisclosure();
   if (disclosure) opener = opener ? `${disclosure} ${opener}` : disclosure;
 
+  // This org's settings: its own caller-ID number, and its id — both echoed by
+  // the gateway back to /api/calls/log so the call dials from the right number
+  // AND the transcript lands on the right tenant's timeline (not the first org).
+  const org = await getOrgSettings().catch(() => null);
+  const from = org?.callerId;
+
   // Tag the call so the gateway can echo it back to /api/calls/log and the
-  // transcript attaches to the right record.
+  // transcript attaches to the right record (and the right org).
   const meta: Record<string, string> = {};
   if (contactId) meta.contactId = contactId;
   if (parsed.data.dealId) meta.dealId = parsed.data.dealId;
-
-  // This org's own caller-ID number (each org calls from their own number).
-  const from = (await getOrgSettings().catch(() => null))?.callerId;
+  if (org?.id) meta.orgId = org.id;
 
   const result = await placeCall(to, { from, context, opener, meta: Object.keys(meta).length ? meta : undefined });
   if (result.status === "failed") return NextResponse.json({ error: result.detail ?? "Call failed" }, { status: 502 });

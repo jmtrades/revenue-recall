@@ -3,6 +3,7 @@ import { z } from "zod";
 import { logCallOutcome } from "@/lib/calls";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 import { safeEqual } from "@/lib/safe-compare";
+import { runWithOrg } from "@/lib/supabase/org-context";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +14,10 @@ const Body = z.object({
   to: z.string().max(40).regex(PHONE).optional(),
   contactId: z.string().max(200).optional(),
   dealId: z.string().max(200).optional(),
-  // The gateway echoes the per-call meta it received from /api/calls/place.
-  meta: z.object({ contactId: z.string().optional(), dealId: z.string().optional() }).partial().optional(),
+  // The gateway echoes the per-call meta it received from /api/calls/place —
+  // including the owning org id, so the transcript lands on the RIGHT tenant's
+  // timeline instead of falling back to the first org.
+  meta: z.object({ contactId: z.string().optional(), dealId: z.string().optional(), orgId: z.string().max(200).optional() }).partial().optional(),
   outcome: z.string().max(80).optional(),
   transcript: z.string().max(20000).optional(),
   durationSec: z.number().nonnegative().optional(),
@@ -44,14 +47,19 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 
   const b = parsed.data;
-  const activity = await logCallOutcome({
-    to: b.to,
-    contactId: b.contactId ?? b.meta?.contactId,
-    dealId: b.dealId ?? b.meta?.dealId,
-    outcome: b.outcome,
-    transcript: b.transcript,
-    durationSec: b.durationSec,
-    recordingUrl: b.recordingUrl,
-  });
+  const log = () =>
+    logCallOutcome({
+      to: b.to,
+      contactId: b.contactId ?? b.meta?.contactId,
+      dealId: b.dealId ?? b.meta?.dealId,
+      outcome: b.outcome,
+      transcript: b.transcript,
+      durationSec: b.durationSec,
+      recordingUrl: b.recordingUrl,
+    });
+  // Scope the write to the org that placed the call (the webhook has no session,
+  // so without this it would fall back to the first org — a cross-tenant leak).
+  const orgId = b.meta?.orgId;
+  const activity = orgId ? await runWithOrg(orgId, log) : await log();
   return NextResponse.json({ ok: true, logged: Boolean(activity), id: activity?.id });
 }
