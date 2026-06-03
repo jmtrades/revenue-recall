@@ -67,7 +67,8 @@ describe("unified outbound — reply on the channel it arrived on", () => {
 
   it("routes sms replies through the comms sms transport", async () => {
     const r = await sendReply({ contact: contact(), channel: "sms", body: "Yo" });
-    expect(vi.mocked(sendSms)).toHaveBeenCalledWith("+1 555 111 2222", "Yo");
+    // Now carries the org's caller ID as `from` (undefined here → transport falls back).
+    expect(vi.mocked(sendSms)).toHaveBeenCalledWith("+1 555 111 2222", "Yo", { from: undefined });
     expect(r.provider).toBe("mock-sms");
   });
 

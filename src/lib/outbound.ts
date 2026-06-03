@@ -3,6 +3,7 @@ import type { SocialPlatform } from "@/lib/social/types";
 import { getSocialChannel } from "@/lib/social/registry";
 import { socialAddress } from "@/lib/social/ingest";
 import { sendEmail, sendSms } from "@/lib/comms";
+import { getOrgSettings } from "@/lib/org";
 
 /**
  * Unified outbound — reply on whatever channel the conversation arrived on.
@@ -70,7 +71,9 @@ export async function sendReply(reply: OutboundReply): Promise<OutboundResult> {
     return { status: r.status, provider: r.provider, id: r.id, detail: r.detail };
   }
   if (channel === "sms") {
-    const r = await sendSms(address, body);
+    // Text from this org's own caller-ID number (falls back inside sendSms).
+    const from = (await getOrgSettings().catch(() => null))?.callerId;
+    const r = await sendSms(address, body, { from });
     return { status: r.status, provider: r.provider, id: r.id, detail: r.detail };
   }
 

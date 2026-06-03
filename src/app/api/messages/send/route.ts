@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getProvider } from "@/lib/crm/registry";
 import { sendEmail, sendSms } from "@/lib/comms";
+import { getOrgSettings } from "@/lib/org";
 import { sendReply, isSocialChannel } from "@/lib/outbound";
 import { platformTag } from "@/lib/social/ingest";
 import type { SocialPlatform } from "@/lib/social/types";
@@ -67,7 +68,8 @@ export const POST = withGuard(async (req: Request) => {
   }
   if (!to) return NextResponse.json({ error: "No destination address/number" }, { status: 400 });
 
-  const result = channel === "email" ? await sendEmail(to, subject ?? "", body) : await sendSms(to, body);
+  const from = channel === "sms" ? (await getOrgSettings().catch(() => null))?.callerId : undefined;
+  const result = channel === "email" ? await sendEmail(to, subject ?? "", body) : await sendSms(to, body, { from });
   if (result.status === "failed") {
     return NextResponse.json({ error: result.detail ?? "Send failed", provider: result.provider }, { status: 502 });
   }
