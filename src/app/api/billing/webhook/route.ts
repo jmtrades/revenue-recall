@@ -114,11 +114,14 @@ export async function POST(req: Request) {
         break;
     }
   } catch (err) {
-    // Swallow handler errors with a 200 so Stripe doesn't hammer retries on a
-    // transient DB hiccup; the next event (or a manual sync) will reconcile.
-    // Log it though — a silently-failing webhook leaves billing state stale.
-    logError("billing.webhook.handler_failed", { error: errMessage(err) });
-    return NextResponse.json({ received: true, handled: false });
+    // Return 5xx so Stripe RETRIES (its backoff over ~3 days is the safety net).
+    // A handler error here usually means a failed DB write — swallowing it with a
+    // 200 would permanently strand a paying customer on `free`, because the
+    // webhook is the ONLY path that grants a plan (there's no reconcile job).
+    // Every handler is idempotent (top-ups keyed on the Stripe session id;
+    // subscription writes upsert by org/customer), so a retry can't double-apply.
+    logError("billing.webhook.handler_failed", { type: event.type, error: errMessage(err) });
+    return NextResponse.json({ error: "handler failed; will retry" }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });
