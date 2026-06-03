@@ -34,6 +34,17 @@ export function entitlements(plan: PlanId): Entitlements {
   return PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
 }
 
+/**
+ * A subscription only grants its plan's entitlements while in GOOD STANDING
+ * (active or trialing). past_due / canceled / none fall back to `free`, so a
+ * non-paying org can't keep live AI, autopilot, and its full monthly action
+ * pool after a failed payment. (canceled already rewrites plan→free in the
+ * webhook; this also covers past_due, where the plan is intentionally unchanged.)
+ */
+export function effectivePlan(plan: PlanId, status: SubStatus): PlanId {
+  return status === "active" || status === "trialing" ? plan : "free";
+}
+
 export type Standing = "active" | "trial" | "free" | "action_needed";
 
 export interface StandingInfo {
