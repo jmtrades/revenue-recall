@@ -79,13 +79,20 @@ export async function POST(req: Request) {
       case "customer.subscription.updated":
       case "customer.subscription.created": {
         const customer = obj.customer as string;
-        const items = (obj.items as { data?: { price?: { id?: string } }[] })?.data ?? [];
-        const plan = planForPrice(items[0]?.price?.id);
+        const items = (obj.items as { data?: { price?: { id?: string }; quantity?: number; current_period_end?: number }[] })?.data ?? [];
+        const first = items[0];
+        const plan = planForPrice(first?.price?.id);
+        // In Stripe API 2025-03-31+, current_period_end moved from the
+        // subscription top level onto the items — read both so "renews on" and
+        // the period are never silently blank on a newer API version.
+        const periodEnd = iso(obj.current_period_end ?? first?.current_period_end);
         if (customer) {
           await saveSubscriptionForCustomer(customer, {
             ...(plan ? { plan } : {}),
+            // Keep seats in sync when a customer changes quantity in the portal.
+            ...(typeof first?.quantity === "number" ? { seats: first.quantity } : {}),
             status: mapStatus(String(obj.status)),
-            currentPeriodEnd: iso(obj.current_period_end),
+            currentPeriodEnd: periodEnd,
           });
         }
         break;
