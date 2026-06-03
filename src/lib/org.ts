@@ -30,6 +30,9 @@ export interface OrgSettings {
   /** This org's own caller-ID / "from" number (E.164) for calls + SMS. Each org
    *  brings/buys their own, so this is per-org, not a single platform number. */
   callerId?: string;
+  /** This org's outbound CALL voice — an in-house Kokoro voice id (e.g.
+   *  "af_heart") or a "clone:<id>" signature voice. Undefined = gateway default. */
+  voiceId?: string;
   /** true when backed by a database row (editable), false when env-derived. */
   persisted: boolean;
 }
@@ -54,6 +57,7 @@ function envFallback(): OrgSettings {
     theme: defaultTheme(),
     compliance: {},
     callerId: process.env.OUTBOUND_FROM_NUMBER || undefined,
+    voiceId: process.env.OUTBOUND_VOICE_ID || undefined,
     persisted: false,
   };
 }
@@ -65,7 +69,7 @@ async function read(): Promise<OrgSettings> {
   if (!orgId) return envFallback();
   const { data } = await client
     .from("orgs")
-    .select("id,name,industry_id,language,currency,monthly_quota,notification_prefs,theme,compliance,caller_id")
+    .select("id,name,industry_id,language,currency,monthly_quota,notification_prefs,theme,compliance,caller_id,voice_id")
     .eq("id", orgId)
     .maybeSingle();
   if (!data) return envFallback();
@@ -80,6 +84,7 @@ async function read(): Promise<OrgSettings> {
     theme: mergeTheme(data.theme as Record<string, unknown> | null),
     compliance: mergeCompliance(data.compliance as Record<string, unknown> | null),
     callerId: (data.caller_id as string) || process.env.OUTBOUND_FROM_NUMBER || undefined,
+    voiceId: (data.voice_id as string) || process.env.OUTBOUND_VOICE_ID || undefined,
     persisted: true,
   };
 }
@@ -97,6 +102,8 @@ export async function updateOrgSettings(patch: {
   compliance?: OrgCompliance;
   /** This org's caller-ID / from number (E.164), or "" to clear. */
   callerId?: string;
+  /** This org's outbound call voice id (house id or "clone:<id>"), or "" to clear. */
+  voiceId?: string;
 }): Promise<OrgSettings> {
   const client = getSupabase();
   if (!client) throw new Error("Settings are read-only without a database.");
@@ -124,6 +131,7 @@ export async function updateOrgSettings(patch: {
     update.compliance = mergeCompliance({ ...current.compliance, ...patch.compliance });
   }
   if (patch.callerId !== undefined) update.caller_id = patch.callerId.trim() || null;
+  if (patch.voiceId !== undefined) update.voice_id = patch.voiceId.trim() || null;
   if (Object.keys(update).length === 0) return read();
   const { error } = await client.from("orgs").update(update).eq("id", orgId);
   if (error) throw new Error(error.message);

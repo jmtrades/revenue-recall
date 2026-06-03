@@ -80,7 +80,7 @@ export const POST = withGuard(async (req: Request) => {
   if (parsed.data.dealId) meta.dealId = parsed.data.dealId;
   if (org?.id) meta.orgId = org.id;
 
-  const result = await placeCall(to, { from, context, opener, meta: Object.keys(meta).length ? meta : undefined });
+  const result = await placeCall(to, { from, voiceId: org?.voiceId, context, opener, meta: Object.keys(meta).length ? meta : undefined });
   if (result.status === "failed") return NextResponse.json({ error: result.detail ?? "Call failed" }, { status: 502 });
   return NextResponse.json({ ok: true, to, ...result });
 });
