@@ -62,7 +62,11 @@ export async function saveSubscription(patch: Partial<Subscription>): Promise<Su
   }
   const id = await orgId();
   if (!id) return next;
-  await getSupabase()!.from("subscriptions").upsert(
+  // The Supabase client RETURNS errors (it doesn't throw). If we don't inspect
+  // and re-throw, a failed write looks successful — a paid plan silently never
+  // gets granted. Throwing lets the billing webhook return non-200 so Stripe
+  // retries. (Upsert is idempotent on org_id, so retries are safe.)
+  const { error } = await getSupabase()!.from("subscriptions").upsert(
     {
       org_id: id,
       plan: next.plan,
@@ -75,6 +79,7 @@ export async function saveSubscription(patch: Partial<Subscription>): Promise<Su
     },
     { onConflict: "org_id" },
   );
+  if (error) throw new Error(`subscription upsert failed: ${error.message}`);
   return next;
 }
 
@@ -85,7 +90,7 @@ export async function saveSubscriptionForOrg(id: string, patch: Partial<Subscrip
     memSub = { ...(memSub ?? freeSubscription()), ...patch, updatedAt: new Date().toISOString() };
     return;
   }
-  await getSupabase()!.from("subscriptions").upsert(
+  const { error } = await getSupabase()!.from("subscriptions").upsert(
     {
       org_id: id,
       ...(patch.plan ? { plan: patch.plan } : {}),
@@ -98,6 +103,9 @@ export async function saveSubscriptionForOrg(id: string, patch: Partial<Subscrip
     },
     { onConflict: "org_id" },
   );
+  // Throw on a failed write so the webhook returns non-200 and Stripe retries —
+  // never strand a paying customer on `free` because of a transient DB error.
+  if (error) throw new Error(`subscription upsert failed (org ${id}): ${error.message}`);
 }
 
 /** Find which org a Stripe customer belongs to (webhook → org resolution). */
@@ -115,7 +123,7 @@ export async function saveSubscriptionForCustomer(customerId: string, patch: Par
   }
   const id = await orgIdForCustomer(customerId);
   if (!id) return;
-  await getSupabase()!
+  const { error } = await getSupabase()!
     .from("subscriptions")
     .update({
       ...(patch.plan ? { plan: patch.plan } : {}),
@@ -126,4 +134,5 @@ export async function saveSubscriptionForCustomer(customerId: string, patch: Par
       updated_at: new Date().toISOString(),
     })
     .eq("org_id", id);
+  if (error) throw new Error(`subscription update failed (customer ${customerId}): ${error.message}`);
 }

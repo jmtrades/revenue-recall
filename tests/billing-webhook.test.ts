@@ -101,4 +101,20 @@ describe("stripe webhook route", () => {
     const res = await POST(signed(JSON.stringify({ type: "charge.refunded", data: { object: {} } })));
     expect(res.status).toBe(200);
   });
+
+  it("returns 500 (so Stripe retries) when a subscription write fails", async () => {
+    // A failed DB write must NOT be swallowed with a 200 — that would strand a
+    // paying customer on `free`. Simulate the write throwing and assert 5xx.
+    vi.doMock("@/lib/billing/store", async () => {
+      const actual = await vi.importActual<typeof import("@/lib/billing/store")>("@/lib/billing/store");
+      return { ...actual, saveSubscriptionForOrg: async () => { throw new Error("db write failed"); } };
+    });
+    const { POST } = await import("@/app/api/billing/webhook/route");
+    const res = await POST(signed(JSON.stringify({
+      type: "checkout.session.completed",
+      data: { object: { client_reference_id: "org_1", metadata: { plan: "growth" }, customer: "cus_1", subscription: "sub_1" } },
+    })));
+    expect(res.status).toBe(500);
+    vi.doUnmock("@/lib/billing/store");
+  });
 });

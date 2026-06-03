@@ -20,7 +20,6 @@ const PUBLIC_API = [
   "/api/social/", // social webhooks (WhatsApp, Instagram, Messenger, Telegram, X) — each verifies its own signature/secret
   "/api/unsubscribe",
   "/api/health",
-  "/api/meta",
 ];
 
 function isPublic(path: string): boolean {
