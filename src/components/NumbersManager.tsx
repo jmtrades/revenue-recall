@@ -17,13 +17,34 @@ const caps = (n: PhoneNumber) => [n.capabilities?.sms && "SMS", n.capabilities?.
  * When none is connected it still shows the bring-your-own number and explains
  * how to connect one. All actions go through /api/numbers (provider-agnostic).
  */
-export function NumbersManager({ configured, provider, byoNumber, initialOwned }: { configured: boolean; provider: string; byoNumber: string | null; initialOwned: PhoneNumber[] }) {
+export function NumbersManager({ configured, provider, byoNumber, initialOwned, initialCallerId }: { configured: boolean; provider: string; byoNumber: string | null; initialOwned: PhoneNumber[]; initialCallerId?: string | null }) {
   const [owned, setOwned] = useState<PhoneNumber[]>(initialOwned);
+  const [callerId, setCallerId] = useState<string | null>(initialCallerId ?? null);
   const [areaCode, setAreaCode] = useState("");
   const [results, setResults] = useState<PhoneNumber[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  async function chooseCallerId(number: string) {
+    setBusy(number);
+    setError(null);
+    try {
+      const res = await fetch("/api/numbers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "set_caller_id", number }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed");
+      setCallerId(data.callerId ?? number);
+      setNotice(`Calls and texts now come from ${number}.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function search() {
     setBusy("search");
@@ -89,8 +110,15 @@ export function NumbersManager({ configured, provider, byoNumber, initialOwned }
                 <div>
                   <span className="font-mono text-sm text-fg">{n.number}</span>
                   {n.label && <span className="ml-2 text-xs text-muted">{n.label}</span>}
+                  <span className="ml-2 text-xs text-muted">{caps(n) || "owned"}</span>
                 </div>
-                <span className="text-xs text-muted">{caps(n) || "owned"}</span>
+                {callerId === n.number ? (
+                  <span className="pill bg-brand/15 text-brand text-[11px]">Caller ID</span>
+                ) : (
+                  <button onClick={() => chooseCallerId(n.number)} disabled={busy !== null} className="rounded-lg border border-border px-2.5 py-1 text-xs text-muted transition hover:text-fg disabled:opacity-50">
+                    {busy === n.number ? "Saving…" : "Use as caller ID"}
+                  </button>
+                )}
               </li>
             ))}
           </ul>

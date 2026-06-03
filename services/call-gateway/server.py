@@ -111,14 +111,19 @@ async def voice(request: Request):
         "opener": (body or {}).get("opener"),
         "meta": (body or {}).get("meta") or {},
     }
+    # Per-call caller ID = this org's own number (the app sends it as "from");
+    # falls back to TWILIO_FROM_NUMBER if absent. This is what makes every org
+    # call from their OWN number rather than one shared line.
+    frm = ((body or {}).get("from") or "").strip()
     # Twilio path (fastest, no FreeSWITCH) when configured; else the SIP trunk.
     provider = "twilio-stream" if config.twilio_ready() else "call-gateway"
     try:
         if config.twilio_ready():
             from twilio_out import originate
+            reply = originate(to, call_id, frm)
         else:
             from sip import originate
-        reply = originate(to, call_id)
+            reply = originate(to, call_id)
     except Exception as e:  # carrier/trunk not reachable from here — surfaced honestly
         _pending.pop(call_id, None)
         return JSONResponse({"id": call_id, "status": "failed", "provider": provider, "detail": str(e)}, status_code=502)

@@ -34,6 +34,9 @@ export interface EmailMessage { to: string; subject: string; body: string; from?
 export interface SmsMessage { to: string; body: string }
 export interface VoiceCall {
   to: string;
+  /** Caller ID — this org's own "from" number. Lets every org call from their
+   *  own number; falls back to OUTBOUND_FROM_NUMBER when absent. */
+  from?: string;
   /** Who/what the call is about — fed to the in-house agent's brain so it talks
    *  like it knows the prospect (ignored by transports that don't run our agent). */
   context?: string;
@@ -174,11 +177,11 @@ const twilioSms: SmsTransport = {
 const webhookVoice: VoiceTransport = {
   id: "webhook",
   available: () => Boolean(env("VOICE_WEBHOOK_URL")),
-  async place({ to, context, voiceId, opener, meta }) {
+  async place({ to, from, context, voiceId, opener, meta }) {
     try {
       // Undefined fields are dropped by JSON.stringify, so this stays compatible
       // with any gateway; our in-house call-gateway uses context/voiceId/opener/meta.
-      const r = await postWebhook(env("VOICE_WEBHOOK_URL")!, { channel: "voice", to, from: env("OUTBOUND_FROM_NUMBER"), context, voiceId, opener, meta });
+      const r = await postWebhook(env("VOICE_WEBHOOK_URL")!, { channel: "voice", to, from: from ?? env("OUTBOUND_FROM_NUMBER"), context, voiceId, opener, meta });
       return { id: r.id ?? "webhook", status: "queued", provider: "webhook" };
     } catch (e) {
       return { id: "", status: "failed", provider: "webhook", detail: e instanceof Error ? e.message : "call failed" };
@@ -247,7 +250,7 @@ export async function sendSms(to: string, body: string): Promise<SendResult> {
  *  `opts` (context/voiceId/opener) is passed to the in-house agent gateway so
  *  the AI knows who it's calling and why; transports that don't run our agent
  *  simply ignore it. */
-export async function placeCall(to: string, opts: { context?: string; voiceId?: string; opener?: string; meta?: Record<string, string> } = {}): Promise<SendResult> {
+export async function placeCall(to: string, opts: { from?: string; context?: string; voiceId?: string; opener?: string; meta?: Record<string, string> } = {}): Promise<SendResult> {
   const t = resolveVoice();
   return t ? t.place({ to, ...opts }) : logResult();
 }

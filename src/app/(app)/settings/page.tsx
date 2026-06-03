@@ -336,6 +336,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
         provider={numbersProviderId()}
         byoNumber={outboundFromNumber() ?? null}
         initialOwned={ownedNumbers}
+        initialCallerId={org.callerId ?? null}
       />
     </Card>
   );

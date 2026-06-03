@@ -24,14 +24,18 @@ def _twiml(call_id: str) -> str:
     )
 
 
-def originate(to: str, call_id: str) -> str:
+def originate(to: str, call_id: str, from_number: str = "") -> str:
     """Dial `to` and stream media to us. Returns the Twilio call SID. Raises on
-    a non-2xx so the caller can surface the failure honestly."""
+    a non-2xx so the caller can surface the failure honestly. `from_number` is the
+    per-call caller ID (this org's own number); falls back to TWILIO_FROM_NUMBER."""
     sid = config.TWILIO_ACCOUNT_SID
+    caller_id = (from_number or config.TWILIO_FROM_NUMBER or "").strip()
+    if not caller_id:
+        raise RuntimeError("no caller-ID number (set the org's number, or TWILIO_FROM_NUMBER)")
     url = f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Calls.json"
     form = urllib.parse.urlencode({
         "To": to,
-        "From": config.TWILIO_FROM_NUMBER,
+        "From": caller_id,
         "Twiml": _twiml(call_id),
     }).encode("utf-8")
     auth = base64.b64encode(f"{sid}:{config.TWILIO_AUTH_TOKEN}".encode()).decode("ascii")

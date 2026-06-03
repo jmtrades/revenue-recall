@@ -27,6 +27,9 @@ export interface OrgSettings {
   notificationPrefs: NotificationPrefs;
   theme: Theme;
   compliance: OrgCompliance;
+  /** This org's own caller-ID / "from" number (E.164) for calls + SMS. Each org
+   *  brings/buys their own, so this is per-org, not a single platform number. */
+  callerId?: string;
   /** true when backed by a database row (editable), false when env-derived. */
   persisted: boolean;
 }
@@ -50,6 +53,7 @@ function envFallback(): OrgSettings {
     notificationPrefs: defaultNotificationPrefs(),
     theme: defaultTheme(),
     compliance: {},
+    callerId: process.env.OUTBOUND_FROM_NUMBER || undefined,
     persisted: false,
   };
 }
@@ -61,7 +65,7 @@ async function read(): Promise<OrgSettings> {
   if (!orgId) return envFallback();
   const { data } = await client
     .from("orgs")
-    .select("id,name,industry_id,language,currency,monthly_quota,notification_prefs,theme,compliance")
+    .select("id,name,industry_id,language,currency,monthly_quota,notification_prefs,theme,compliance,caller_id")
     .eq("id", orgId)
     .maybeSingle();
   if (!data) return envFallback();
@@ -75,6 +79,7 @@ async function read(): Promise<OrgSettings> {
     notificationPrefs: mergeNotificationPrefs(data.notification_prefs as Record<string, unknown> | null),
     theme: mergeTheme(data.theme as Record<string, unknown> | null),
     compliance: mergeCompliance(data.compliance as Record<string, unknown> | null),
+    callerId: (data.caller_id as string) || process.env.OUTBOUND_FROM_NUMBER || undefined,
     persisted: true,
   };
 }
@@ -90,6 +95,8 @@ export async function updateOrgSettings(patch: {
   notificationPrefs?: NotificationPrefs;
   theme?: Partial<Theme>;
   compliance?: OrgCompliance;
+  /** This org's caller-ID / from number (E.164), or "" to clear. */
+  callerId?: string;
 }): Promise<OrgSettings> {
   const client = getSupabase();
   if (!client) throw new Error("Settings are read-only without a database.");
@@ -116,6 +123,7 @@ export async function updateOrgSettings(patch: {
     const current = await read();
     update.compliance = mergeCompliance({ ...current.compliance, ...patch.compliance });
   }
+  if (patch.callerId !== undefined) update.caller_id = patch.callerId.trim() || null;
   if (Object.keys(update).length === 0) return read();
   const { error } = await client.from("orgs").update(update).eq("id", orgId);
   if (error) throw new Error(error.message);
