@@ -1,36 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isAuthRequired } from "@/lib/config";
-
-// Public routes that never require a session. (/reset/update is intentionally
-// NOT here — it needs the short recovery session the email link establishes.)
-const PUBLIC = new Set(["/", "/login", "/signup", "/reset"]);
-
-// Machine-to-machine API endpoints that authenticate by their OWN secret
-// (Stripe signature, CRON_SECRET, INBOUND_TOKEN, UNSUBSCRIBE_SECRET) and must
-// never be redirected to an HTML /login — a 307 there would silently break the
-// caller. Most critically the billing webhook: gating it would leave paid
-// subscriptions un-activated. Each of these enforces its own auth internally.
-const PUBLIC_API = [
-  "/api/billing/webhook",
-  "/api/billing/setup", // operator setup — self-authed by ADMIN_TOKEN (Bearer)
-  "/api/billing/config", // publishable key only (public by design)
-  "/api/agent/cron",
-  "/api/inbound/", // email + sms
-  "/api/calls/log", // call-gateway posts finished-call transcripts — self-authed by COMMS_WEBHOOK_TOKEN (Bearer)
-  "/api/social/", // social webhooks (WhatsApp, Instagram, Messenger, Telegram, X) — each verifies its own signature/secret
-  "/api/unsubscribe",
-  "/api/health",
-];
-
-function isPublic(path: string): boolean {
-  if (PUBLIC.has(path)) return true;
-  if (path.startsWith("/auth/")) return true; // OAuth / email-confirm callback
-  // Social OAuth callback: the platform redirects here with no session; the
-  // signed `state` authenticates the org binding. (The /start route stays gated.)
-  if (path.startsWith("/api/oauth/") && path.endsWith("/callback")) return true;
-  return PUBLIC_API.some((p) => (p.endsWith("/") ? path.startsWith(p) : path === p));
-}
+import { isPublicRoute } from "@/lib/route-access";
 
 export async function middleware(req: NextRequest) {
   let res = NextResponse.next({ request: req });
@@ -77,7 +48,7 @@ export async function middleware(req: NextRequest) {
   // demo working). isPublic() allowlists the auth screens + the secret-authed
   // machine endpoints, so the Stripe webhook/cron/inbound keep working while
   // user pages and user-facing API routes still require a session.
-  if (authRequired && !userId && !isPublic(path)) {
+  if (authRequired && !userId && !isPublicRoute(path)) {
     const to = new URL("/login", req.url);
     to.searchParams.set("next", path);
     return NextResponse.redirect(to);
