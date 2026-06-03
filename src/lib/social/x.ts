@@ -71,7 +71,11 @@ export const xChannel: SocialChannel = {
     // Verify Account Activity signature (HMAC-SHA256 of the raw body, base64,
     // in the x-twitter-webhooks-signature header) when the secret is set.
     const { apiSecret: secret } = await resolveSocialCreds("x", X_KEYS);
-    if (secret) {
+    // Fail closed in production when no secret is configured (an unsigned body
+    // would otherwise be ingested into the resolved tenant's inbox).
+    if (!secret) {
+      if (process.env.NODE_ENV === "production") throw new Error("x webhook secret not configured — refusing unverified request");
+    } else {
       const header = req.headers["x-twitter-webhooks-signature"];
       const expected = "sha256=" + crypto.createHmac("sha256", secret).update(req.rawBody, "utf8").digest("base64");
       const ok = !!header && header.length === expected.length && crypto.timingSafeEqual(Buffer.from(header), Buffer.from(expected));

@@ -8,6 +8,7 @@ import type {
 } from "@/lib/social/types";
 import { resolveSocialCreds } from "@/lib/social/creds";
 import { fetchWithRetry } from "@/lib/crm/net";
+import { safeEqual } from "@/lib/safe-compare";
 
 /**
  * Telegram channel — fully functional with just a bot token (no app review),
@@ -59,9 +60,13 @@ export const telegramChannel: SocialChannel = {
 
   async parseWebhook(req: WebhookEnvelope): Promise<InboundSocialMessage[]> {
     const { webhookSecret: expected } = await resolveSocialCreds("telegram", KEYS);
-    if (expected) {
-      const got = req.headers["x-telegram-bot-api-secret-token"];
-      if (got !== expected) throw new Error("bad telegram webhook secret");
+    // Fail closed in production: refuse an unverified webhook when no secret is
+    // configured (otherwise a forged body with ?org=<victim> is ingested into
+    // that tenant's inbox). Constant-time compare when a secret IS set.
+    if (!expected) {
+      if (process.env.NODE_ENV === "production") throw new Error("telegram webhook secret not configured — refusing unverified request");
+    } else if (!safeEqual(req.headers["x-telegram-bot-api-secret-token"] ?? "", expected)) {
+      throw new Error("bad telegram webhook secret");
     }
     let update: TelegramUpdate;
     try {
