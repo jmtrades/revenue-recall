@@ -55,6 +55,17 @@ export const POST = withGuard(async (req: Request) => {
     if (opp?.lossReason) bits.push("This deal went cold / was marked lost — you're re-engaging warmly, no guilt-trip.");
     if (voice.business) bits.push(`Your business: ${voice.business}`);
     if (rep) bits.push(`You are ${rep}.`);
+    // Memory: brief the agent with the recent relationship history (most recent
+    // last) so it speaks like it remembers prior touches, not from a blank slate.
+    const recent = activities
+      .slice(-5)
+      .map((a) => {
+        const when = a.occurredAt ? new Date(a.occurredAt).toISOString().slice(0, 10) : "";
+        const text = (a.summary ?? "").replace(/\s+/g, " ").trim().slice(0, 140);
+        return text ? `${when ? when + " " : ""}${a.direction ?? "out"} ${a.kind}: ${text}` : "";
+      })
+      .filter(Boolean);
+    if (recent.length) bits.push(`Recent history with them (remember this, don't repeat yourself): ${recent.join(" | ")}.`);
     bits.push("Goal: land one real next step — a meeting or a clear yes.");
     context = bits.join(" ");
     opener = rep ? `Hey ${first}, it's ${rep} — caught you at an okay time?` : `Hey ${first} — caught you at an okay time?`;
