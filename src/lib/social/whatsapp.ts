@@ -87,7 +87,11 @@ export const whatsappChannel: SocialChannel = {
 
   async parseWebhook(req: WebhookEnvelope): Promise<InboundSocialMessage[]> {
     const { appSecret } = await resolveSocialCreds("whatsapp", WA_KEYS);
-    if (appSecret && !verifyMetaSignature(req.rawBody, req.headers["x-hub-signature-256"], appSecret)) {
+    // Fail closed in production: an org that connected WhatsApp but has no app
+    // secret must NOT accept unverified (forgeable, cross-tenant) webhooks.
+    if (!appSecret) {
+      if (process.env.NODE_ENV === "production") throw new Error("whatsapp webhook secret not configured — refusing unverified request");
+    } else if (!verifyMetaSignature(req.rawBody, req.headers["x-hub-signature-256"], appSecret)) {
       throw new Error("bad whatsapp signature");
     }
     let body: MetaWebhook;

@@ -16,6 +16,7 @@ import { getConfig } from "@/lib/config";
 import { getIndustry } from "@/lib/industries";
 import { getConnection } from "@/lib/connections/store";
 import { fetchWithRetry } from "@/lib/crm/net";
+import { assertSafeOutboundUrl } from "@/lib/net/ssrf-guard";
 
 /**
  * Generic database / data-source adapter — "connect any database, even if it's
@@ -247,6 +248,9 @@ export class DatabaseProvider implements CrmProvider {
   private async fetchRows(): Promise<{ rows: Row[]; mapping: Partial<Record<DataField, string>> }> {
     const { url, token, mapping } = await this.resolve();
     if (!url) return { rows: [], mapping };
+    // The URL is org-supplied — block SSRF to our own metadata/loopback/private
+    // network before fetching it server-side.
+    assertSafeOutboundUrl(url);
     const headers: Record<string, string> = { Accept: "application/json" };
     if (token) headers.Authorization = `Bearer ${token}`;
     // Retry transient blips + abort a hung endpoint — a customer's slow database

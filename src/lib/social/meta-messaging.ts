@@ -79,7 +79,11 @@ export function metaMessagingChannel(platform: "instagram" | "messenger"): Socia
 
     async parseWebhook(req: WebhookEnvelope): Promise<InboundSocialMessage[]> {
       const { appSecret } = await resolveSocialCreds(platform as SocialPlatform, credKeys);
-      if (appSecret && !verifyMetaSignature(req.rawBody, req.headers["x-hub-signature-256"], appSecret)) {
+      // Fail closed in production when no app secret is configured (otherwise a
+      // forged webhook is ingested into the resolved tenant's inbox).
+      if (!appSecret) {
+        if (process.env.NODE_ENV === "production") throw new Error(`${platform} webhook secret not configured — refusing unverified request`);
+      } else if (!verifyMetaSignature(req.rawBody, req.headers["x-hub-signature-256"], appSecret)) {
         throw new Error(`bad ${platform} signature`);
       }
       let body: MetaMsgWebhook;
