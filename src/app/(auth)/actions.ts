@@ -81,3 +81,31 @@ export async function signOut(): Promise<void> {
   if (sb) await sb.auth.signOut();
   redirect("/login");
 }
+
+/** Send a password-reset email. The link lands on /auth/callback (which
+ *  establishes a short recovery session) → /reset/update to set a new password.
+ *  Always reports success so we never reveal whether an account exists. */
+export async function requestPasswordReset(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  const sb = getServerSupabase();
+  if (!sb) return { error: "Authentication is not configured." };
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email) return { error: "Enter your email address." };
+  const origin = headers().get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "";
+  await sb.auth
+    .resetPasswordForEmail(email, { redirectTo: origin ? `${origin}/auth/callback?next=/reset/update` : undefined })
+    .catch(() => undefined); // don't leak existence / transport errors
+  return { message: "If an account exists for that email, we've sent a reset link. Check your inbox." };
+}
+
+/** Set a new password for the user in the current (recovery) session. */
+export async function updatePassword(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  const sb = getServerSupabase();
+  if (!sb) return { error: "Authentication is not configured." };
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 8) return { error: "Use at least 8 characters for your password." };
+  // Requires an active session — the recovery link establishes one via the
+  // callback. If it expired, Supabase returns an auth error we surface.
+  const { error } = await sb.auth.updateUser({ password });
+  if (error) return { error: "Your reset link has expired. Request a new one from the sign-in page." };
+  redirect("/dashboard");
+}
