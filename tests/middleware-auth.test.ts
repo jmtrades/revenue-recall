@@ -1,24 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { isPublicRoute } from "@/lib/route-access";
 
 /**
- * Locks in the middleware auth-gate allowlist: when NEXT_PUBLIC_AUTH_REQUIRED is
- * on, machine-to-machine endpoints (secret-authed) must NOT be redirected to the
- * HTML login page, while user pages and user-facing API routes must be. A
- * regression here silently breaks the Stripe webhook (un-activated paid subs).
- *
- * Mirrors the isPublic() logic in src/middleware.ts.
+ * Locks the REAL middleware auth-gate allowlist (imported, not a copy — a copy
+ * drifts and gives false assurance). Machine endpoints (secret-authed) and
+ * legal/auth pages must bypass the login gate; tenant-data routes and user pages
+ * must require a session. A regression here either leaks data or breaks a
+ * machine webhook (e.g. un-activated paid subs).
  */
-const PUBLIC = new Set(["/", "/login", "/signup"]);
-const PUBLIC_API = ["/api/billing/webhook", "/api/billing/setup", "/api/billing/config", "/api/agent/cron", "/api/inbound/", "/api/social/", "/api/unsubscribe", "/api/health", "/api/meta"];
-
-function isPublic(path: string): boolean {
-  if (PUBLIC.has(path)) return true;
-  if (path.startsWith("/auth/")) return true;
-  if (path.startsWith("/api/oauth/") && path.endsWith("/callback")) return true;
-  return PUBLIC_API.some((p) => (p.endsWith("/") ? path.startsWith(p) : path === p));
-}
-
-describe("middleware auth-gate allowlist", () => {
+describe("middleware auth-gate allowlist (real isPublicRoute)", () => {
   it("lets secret-authed machine endpoints through (no login redirect)", () => {
     for (const p of [
       "/api/billing/webhook",
@@ -27,34 +17,36 @@ describe("middleware auth-gate allowlist", () => {
       "/api/agent/cron",
       "/api/inbound/email",
       "/api/inbound/sms",
+      "/api/calls/log",
       "/api/unsubscribe",
       "/api/health",
-      "/api/meta",
     ]) {
-      expect(isPublic(p), `${p} must bypass the auth gate`).toBe(true);
+      expect(isPublicRoute(p), `${p} must bypass the auth gate`).toBe(true);
     }
   });
 
-  it("keeps auth screens + callbacks public", () => {
-    for (const p of ["/", "/login", "/signup", "/auth/callback", "/api/social/whatsapp", "/api/oauth/x/callback", "/api/oauth/instagram/callback"]) {
-      expect(isPublic(p)).toBe(true);
+  it("keeps auth screens, legal pages, and callbacks public", () => {
+    for (const p of ["/", "/login", "/signup", "/reset", "/privacy", "/terms", "/security", "/auth/callback", "/api/social/whatsapp", "/api/oauth/x/callback"]) {
+      expect(isPublicRoute(p), `${p} must be public`).toBe(true);
     }
   });
 
-  it("gates user pages and user-facing API routes (incl. OAuth start)", () => {
+  it("gates tenant-data + user-facing routes (incl. /api/meta and OAuth start)", () => {
     for (const p of [
       "/dashboard",
       "/settings",
       "/recall",
+      "/reset/update", // needs the recovery session
+      "/api/meta", // returns tenant data — must NOT be public (PII-leak fix)
       "/api/ai/draft",
       "/api/contacts",
       "/api/messages/send",
-      "/api/billing/checkout", // user-initiated → must require a session
-      "/api/org",
-      "/api/connections",
-      "/api/oauth/x/start", // starting a connection must be done by a signed-in member
+      "/api/billing/checkout",
+      "/api/voice/select",
+      "/api/calls/diagnostics",
+      "/api/oauth/x/start",
     ]) {
-      expect(isPublic(p), `${p} must require auth`).toBe(false);
+      expect(isPublicRoute(p), `${p} must require auth`).toBe(false);
     }
   });
 });
