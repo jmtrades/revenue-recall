@@ -133,6 +133,11 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
         </button>
       </div>
       {mode === "signup" && <p className="-mt-1 text-[11px] text-muted">At least 8 characters.</p>}
+      {mode === "login" && (
+        <div className="-mt-1 text-right">
+          <Link href="/reset" className="text-xs font-medium text-muted hover:text-fg">Forgot password?</Link>
+        </div>
+      )}
       {next && <input type="hidden" name="next" value={next} />}
 
       {state?.error && (

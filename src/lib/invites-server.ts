@@ -3,7 +3,8 @@ import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getSessionUser, type SessionUser } from "@/lib/auth";
 import { sendEmail } from "@/lib/comms";
 import { getConfig } from "@/lib/config";
-import { parseInviteEmails, normalizeRole, inviteToken, type Invitation, type InviteRole } from "@/lib/invites";
+import { parseInviteEmails, normalizeRole, inviteToken, seatBudget, type Invitation, type InviteRole } from "@/lib/invites";
+import { enforcementOn, orgEntitlements } from "@/lib/billing/enforce";
 
 /**
  * Team invitations — server side. An owner/admin invites teammates by email;
@@ -56,11 +57,29 @@ export async function createInvites(emails: string[], role: InviteRole = "rep"):
   const wanted = parseInviteEmails(emails.join("\n"));
   if (wanted.length === 0) return [];
 
-  // Don't invite people who are already members.
-  const { data: existingMembers } = await client.from("members").select("email").eq("org_id", orgId);
+  // Don't invite people who are already members or already pending (those
+  // already hold a seat).
+  const [{ data: existingMembers }, { data: pendingInv }] = await Promise.all([
+    client.from("members").select("email").eq("org_id", orgId),
+    client.from("invitations").select("email").eq("org_id", orgId).eq("status", "pending"),
+  ]);
   const memberEmails = new Set(((existingMembers as { email: string | null }[] | null) ?? []).map((m) => (m.email ?? "").toLowerCase()).filter(Boolean));
+  const pendingEmails = new Set(((pendingInv as { email: string | null }[] | null) ?? []).map((i) => (i.email ?? "").toLowerCase()).filter(Boolean));
   const fresh = wanted.filter((e) => !memberEmails.has(e));
   if (fresh.length === 0) return [];
+
+  // Enforce the plan's seat cap (members + pending invites) once billing is on,
+  // so a 1-seat/5-seat plan can't be filled with unlimited users (revenue leak).
+  if (enforcementOn()) {
+    const { seats } = await orgEntitlements();
+    const occupied = memberEmails.size + pendingEmails.size;
+    const newSeats = fresh.filter((e) => !pendingEmails.has(e)).length; // re-inviting a pending email is free
+    const { remaining, exceeded } = seatBudget(occupied, newSeats, seats);
+    if (exceeded) {
+      const plural = seats === 1 ? "seat" : "seats";
+      throw new Error(`Your plan includes ${seats} ${plural} and ${occupied} are in use. You can invite ${remaining} more — remove some or upgrade your plan.`);
+    }
+  }
 
   const inviter = await getSessionUser().catch(() => null);
   const rows = fresh.map((email) => ({ org_id: orgId, email, role: normalizeRole(role), token: inviteToken(), status: "pending", invited_by: inviter?.id ?? null }));

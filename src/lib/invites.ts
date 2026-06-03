@@ -41,3 +41,15 @@ export function normalizeRole(r: unknown): InviteRole {
 export function inviteToken(): string {
   return `${globalThis.crypto.randomUUID()}${globalThis.crypto.randomUUID()}`.replace(/-/g, "");
 }
+
+/**
+ * Seat-cap check for inviting teammates. `occupied` = members + pending invites
+ * that already hold a seat; `adding` = brand-new seats this batch would add;
+ * `seatLimit` = the plan's seat entitlement (Infinity = unlimited). Returns how
+ * many of `adding` fit, and whether the batch must be rejected.
+ */
+export function seatBudget(occupied: number, adding: number, seatLimit: number): { remaining: number; exceeded: boolean } {
+  if (!Number.isFinite(seatLimit)) return { remaining: Infinity, exceeded: false };
+  const remaining = Math.max(0, seatLimit - occupied);
+  return { remaining, exceeded: adding > remaining };
+}

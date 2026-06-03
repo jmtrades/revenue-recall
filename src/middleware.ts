@@ -2,8 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isAuthRequired } from "@/lib/config";
 
-// Public routes that never require a session.
-const PUBLIC = new Set(["/", "/login", "/signup"]);
+// Public routes that never require a session. (/reset/update is intentionally
+// NOT here — it needs the short recovery session the email link establishes.)
+const PUBLIC = new Set(["/", "/login", "/signup", "/reset"]);
 
 // Machine-to-machine API endpoints that authenticate by their OWN secret
 // (Stripe signature, CRON_SECRET, INBOUND_TOKEN, UNSUBSCRIBE_SECRET) and must
