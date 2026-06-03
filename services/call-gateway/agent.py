@@ -1,5 +1,7 @@
 """The live-call agent: listen → think → speak, with barge-in. Pure orchestration
 over the STT / brain / TTS seams and a media transport — fully in-house."""
+import asyncio
+
 from brain import next_line
 from stt import transcribe
 from tts import synthesize
@@ -29,11 +31,15 @@ class CallAgent:
             pcm = await transport.collect_utterance()
             if pcm is None:
                 break
-            heard = transcribe(pcm, TELEPHONY_SAMPLE_RATE)
+            # STT (faster-whisper) and the brain (synchronous Anthropic HTTP) are
+            # blocking — run them OFF the event loop so a concurrent call's media
+            # keeps flowing and barge-in stays responsive instead of one call
+            # freezing every other call sharing this worker.
+            heard = await asyncio.to_thread(transcribe, pcm, TELEPHONY_SAMPLE_RATE)
             if not heard:
                 continue
             self.turns.append({"role": "prospect", "text": heard})
-            line = next_line(self.turns, self.context)
+            line = await asyncio.to_thread(next_line, self.turns, self.context)
             if not line:
                 continue
             self.turns.append({"role": "rep", "text": line})
