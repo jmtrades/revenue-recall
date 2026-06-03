@@ -4,6 +4,7 @@ import { getActiveOrgId } from "@/lib/supabase/tenant";
 import { getProvider } from "@/lib/crm/registry";
 import { isEmailBounced } from "@/lib/bounce";
 import { getOrgSettings } from "@/lib/org";
+import { acquireCronLock, releaseCronLock } from "@/lib/cron-lock";
 import { getActiveVoice } from "@/lib/voice";
 import { getIndustry, recallThresholdsFor } from "@/lib/industries";
 import { contactPreferredLanguage } from "@/lib/languages";
@@ -283,7 +284,16 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
   const batchMode = process.env.SEQUENCE_BATCH === "true" && isAiConfigured();
   const batchRequests: BatchDraftRequest[] = [];
 
-  const active = await listActiveEnrollments();
+  // Serialize cadence sending per org: two overlapping cron runs (a scheduled
+  // tick plus a manual trigger, or a run that exceeds the interval) must not both
+  // send the same step to a prospect. If another run holds the lock, this one
+  // yields — it'll catch any still-due steps on the next tick.
+  const lockKey = `cadence:${org.id ?? "default"}`;
+  if (!(await acquireCronLock(lockKey))) {
+    return { due: 0, processed: 0, sent: 0, queued: 0, completed: 0, stopped: 0, skipped: 0, batched: 0 };
+  }
+  try {
+    const active = await listActiveEnrollments();
   const due = active.filter((e) => e.nextDueAt <= now);
   // Prefetch activities for every due deal in one batch (avoids N+1 opt-out lookups).
   const actByOpp = await batchActivities(provider, due.map((e) => e.dealId).filter((id): id is string => Boolean(id)));
@@ -417,7 +427,10 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
   // to Approvals by collectDueBatches() on a later tick.
   if (batchRequests.length > 0) await submitDraftBatch(batchRequests);
 
-  return result;
+    return result;
+  } finally {
+    await releaseCronLock(lockKey);
+  }
 }
 
 export interface BatchCollectResult {
