@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getProvider } from "@/lib/crm/registry";
 import { placeCall } from "@/lib/comms";
 import { getActiveVoice } from "@/lib/voice";
+import { getOrgSettings } from "@/lib/org";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { withGuard } from "@/lib/api/guard";
 import { hasOptedOut, recordingDisclosure } from "@/lib/agent/guardrails";
@@ -72,7 +73,10 @@ export const POST = withGuard(async (req: Request) => {
   if (contactId) meta.contactId = contactId;
   if (parsed.data.dealId) meta.dealId = parsed.data.dealId;
 
-  const result = await placeCall(to, { context, opener, meta: Object.keys(meta).length ? meta : undefined });
+  // This org's own caller-ID number (each org calls from their own number).
+  const from = (await getOrgSettings().catch(() => null))?.callerId;
+
+  const result = await placeCall(to, { from, context, opener, meta: Object.keys(meta).length ? meta : undefined });
   if (result.status === "failed") return NextResponse.json({ error: result.detail ?? "Call failed" }, { status: 502 });
   return NextResponse.json({ ok: true, to, ...result });
 });
