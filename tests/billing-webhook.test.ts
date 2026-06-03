@@ -117,4 +117,20 @@ describe("stripe webhook route", () => {
     expect(res.status).toBe(500);
     vi.doUnmock("@/lib/billing/store");
   });
+
+  it("syncs seats + item-level current_period_end on subscription.updated", async () => {
+    const { POST } = await import("@/app/api/billing/webhook/route");
+    const { getSubscription } = await import("@/lib/billing/store");
+    await POST(signed(JSON.stringify({ type: "checkout.session.completed", data: { object: { client_reference_id: "org_1", metadata: { plan: "team" }, customer: "cus_1" } } })));
+    const periodEnd = 1893456000; // 2030-01-01
+    const res = await POST(signed(JSON.stringify({
+      type: "customer.subscription.updated",
+      data: { object: { customer: "cus_1", status: "active", items: { data: [{ price: { id: "price_x" }, quantity: 4, current_period_end: periodEnd }] } } },
+    })));
+    expect(res.status).toBe(200);
+    const sub = await getSubscription();
+    expect(sub.seats).toBe(4);
+    expect(sub.status).toBe("active");
+    expect(sub.currentPeriodEnd).toBe(new Date(periodEnd * 1000).toISOString());
+  });
 });
