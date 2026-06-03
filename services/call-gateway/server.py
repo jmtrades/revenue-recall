@@ -31,6 +31,18 @@ app = FastAPI(title="Revenue Recall — in-house call gateway")
 # call_id -> context passed from /voice to the media agent.
 _pending: dict[str, dict] = {}
 
+# Calls that never open a media WS (no-answer, busy, voicemail-then-hangup,
+# carrier reject, or Twilio failing to reach our wss) would otherwise leave their
+# context in _pending forever. Reap entries older than this on each new call so a
+# high-volume dialer can't grow _pending unbounded → OOM.
+_PENDING_TTL_SEC = 300
+
+
+def _reap_pending() -> None:
+    now = time.monotonic()
+    for cid in [c for c, ctx in _pending.items() if now - ctx.get("_ts", now) > _PENDING_TTL_SEC]:
+        _pending.pop(cid, None)
+
 
 def _transcript_text(turns: list[dict]) -> str:
     """Render the agent's turns as a readable transcript for the CRM timeline."""
@@ -102,6 +114,7 @@ async def voice(request: Request):
     if not _valid_number(to):
         return JSONResponse({"error": "invalid 'to' — must be a phone number"}, status_code=400)
     call_id = uuid.uuid4().hex
+    _reap_pending()  # drop contexts from calls that never connected media
     # Optional richer context the app can send (deal/contact/brief) — used by the
     # agent for what to say. Falls back to a generic opener if absent.
     _pending[call_id] = {
@@ -110,6 +123,7 @@ async def voice(request: Request):
         "voiceId": (body or {}).get("voiceId"),
         "opener": (body or {}).get("opener"),
         "meta": (body or {}).get("meta") or {},
+        "_ts": time.monotonic(),
     }
     # Per-call caller ID = this org's own number (the app sends it as "from");
     # falls back to TWILIO_FROM_NUMBER if absent. This is what makes every org
