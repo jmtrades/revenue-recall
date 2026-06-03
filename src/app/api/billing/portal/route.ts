@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { billingConfigured, createPortalSession } from "@/lib/billing/stripe";
 import { getSubscription } from "@/lib/billing/store";
+import { requireRole } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
 /** Open the Stripe customer portal so a customer can manage or cancel billing. */
 export async function POST(req: Request) {
+  const denied = await requireRole("owner", "admin");
+  if (denied) return denied;
   if (!billingConfigured()) {
     return NextResponse.json({ error: "Billing isn't configured." }, { status: 503 });
   }

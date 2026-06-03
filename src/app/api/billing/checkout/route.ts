@@ -7,6 +7,7 @@ import { getSessionUser } from "@/lib/auth";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getSupabase } from "@/lib/supabase/client";
 import { getActiveOrgId } from "@/lib/supabase/tenant";
+import { requireRole } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,8 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  const denied = await requireRole("owner", "admin");
+  if (denied) return denied;
   if (!billingConfigured()) {
     return NextResponse.json({ error: "Billing isn't configured. Set STRIPE_SECRET_KEY to enable checkout." }, { status: 503 });
   }

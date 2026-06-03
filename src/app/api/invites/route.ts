@@ -3,6 +3,7 @@ import { z } from "zod";
 import { listInvites, createInvites, revokeInvite } from "@/lib/invites-server";
 import { parseInviteEmails, normalizeRole, INVITE_ROLES } from "@/lib/invites";
 import { writeRateLimit } from "@/lib/ratelimit";
+import { requireRole } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,8 @@ const Body = z.object({
 
 export async function POST(req: Request) {
   if (!writeRateLimit(req, "invites").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  const denied = await requireRole("owner", "admin");
+  if (denied) return denied;
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
@@ -33,6 +36,8 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const denied = await requireRole("owner", "admin");
+  if (denied) return denied;
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
   try {
