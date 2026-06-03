@@ -31,7 +31,13 @@ export interface ChannelStatus {
 }
 
 export interface EmailMessage { to: string; subject: string; body: string; from?: string }
-export interface SmsMessage { to: string; body: string }
+export interface SmsMessage {
+  to: string;
+  body: string;
+  /** Caller ID — this org's own "from" number, so every org texts from their
+   *  own number; falls back to OUTBOUND_FROM_NUMBER / TWILIO_FROM_NUMBER. */
+  from?: string;
+}
 export interface VoiceCall {
   to: string;
   /** Caller ID — this org's own "from" number. Lets every org call from their
@@ -151,9 +157,9 @@ async function twilioRequest(path: string, form: Record<string, string>): Promis
 const webhookSms: SmsTransport = {
   id: "webhook",
   available: () => Boolean(env("SMS_WEBHOOK_URL")),
-  async send({ to, body }) {
+  async send({ to, body, from }) {
     try {
-      const r = await postWebhook(env("SMS_WEBHOOK_URL")!, { channel: "sms", to, body, from: env("OUTBOUND_FROM_NUMBER") });
+      const r = await postWebhook(env("SMS_WEBHOOK_URL")!, { channel: "sms", to, body, from: from ?? env("OUTBOUND_FROM_NUMBER") });
       return { id: r.id ?? "webhook", status: "sent", provider: "webhook" };
     } catch (e) {
       return { id: "", status: "failed", provider: "webhook", detail: e instanceof Error ? e.message : "send failed" };
@@ -164,9 +170,11 @@ const webhookSms: SmsTransport = {
 const twilioSms: SmsTransport = {
   id: "twilio",
   available: twilioReady,
-  async send({ to, body }) {
+  async send({ to, body, from }) {
     try {
-      const r = await twilioRequest("Messages.json", { To: to, From: env("TWILIO_FROM_NUMBER")!, Body: body });
+      // Per-org caller ID wins; TWILIO_FROM_NUMBER is the platform fallback
+      // (guaranteed present by twilioReady()).
+      const r = await twilioRequest("Messages.json", { To: to, From: from || env("TWILIO_FROM_NUMBER")!, Body: body });
       return { id: r.sid ?? "twilio", status: "queued", provider: "twilio" };
     } catch (e) {
       return { id: "", status: "failed", provider: "twilio", detail: e instanceof Error ? e.message : "send failed" };
@@ -240,10 +248,10 @@ export async function sendEmail(
   return t ? t.send({ to, subject, body: compliant }) : logResult();
 }
 
-export async function sendSms(to: string, body: string): Promise<SendResult> {
+export async function sendSms(to: string, body: string, opts: { from?: string } = {}): Promise<SendResult> {
   const t = resolveSms();
   const compliant = appendSmsCompliance(body);
-  return t ? t.send({ to, body: compliant }) : logResult();
+  return t ? t.send({ to, body: compliant, from: opts.from }) : logResult();
 }
 
 /** Place an outbound call via the resolved voice transport, else log it.
