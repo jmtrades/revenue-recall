@@ -4,6 +4,7 @@ import { logCallOutcome } from "@/lib/calls";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 import { safeEqual } from "@/lib/safe-compare";
 import { runWithOrg } from "@/lib/supabase/org-context";
+import { seenInboundEvent } from "@/lib/inbound-dedup";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,9 @@ export const dynamic = "force-dynamic";
 const PHONE = /^[+]?[0-9][0-9\s().\-]{5,38}$/;
 
 const Body = z.object({
+  // Stable per-call id from the gateway — makes logging idempotent so a retried
+  // post-back (succeeded-but-timed-out) doesn't double-log the call.
+  callId: z.string().max(80).optional(),
   to: z.string().max(40).regex(PHONE).optional(),
   contactId: z.string().max(200).optional(),
   dealId: z.string().max(200).optional(),
@@ -47,6 +51,10 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 
   const b = parsed.data;
+  // Idempotency: a retried post-back with the same callId no-ops (no double log).
+  if (b.callId && (await seenInboundEvent("call", b.callId))) {
+    return NextResponse.json({ ok: true, duplicate: true });
+  }
   const log = () =>
     logCallOutcome({
       to: b.to,

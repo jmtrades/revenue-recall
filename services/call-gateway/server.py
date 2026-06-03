@@ -60,12 +60,21 @@ def _post_call_status(payload: dict) -> None:
     headers = {"Content-Type": "application/json"}
     if config.COMMS_WEBHOOK_TOKEN:
         headers["Authorization"] = f"Bearer {config.COMMS_WEBHOOK_TOKEN}"
-    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310 (operator-configured URL)
-            resp.read()
-    except Exception as e:  # never let logging-back break the call
-        log.warning("call status post failed: %s", e)
+    # Retry with backoff: the POST is the ONLY path a call's transcript/outcome
+    # reaches the CRM, so a transient blip when the call ends must not lose it.
+    # Runs off the event loop (asyncio.to_thread), so the sleeps are harmless; the
+    # app dedupes a rare double on the call id.
+    for attempt in range(3):
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310 (operator-configured URL)
+                resp.read()
+            return
+        except Exception as e:  # never let logging-back break the call
+            log.warning("call status post failed (attempt %d/3): %s", attempt + 1, e)
+            if attempt < 2:
+                time.sleep(2 ** attempt)  # 1s, then 2s
+    log.error("call status permanently undelivered for %s — transcript not logged", payload.get("to"))
 
 
 def _authorized(request: Request) -> bool:
@@ -160,6 +169,7 @@ async def _finish_call(call_id: str, ctx: dict, agent: CallAgent, started: float
     heuristic outcome back to the app so it lands on the CRM timeline."""
     heard_prospect = any(t.get("role") == "prospect" for t in agent.turns)
     payload = {
+        "callId": call_id,  # stable id so the app dedupes a retried post-back
         "to": ctx.get("to"),
         "meta": ctx.get("meta") or {},
         "outcome": "completed" if heard_prospect else "no-answer",
