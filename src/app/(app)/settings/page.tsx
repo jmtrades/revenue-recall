@@ -24,6 +24,7 @@ import { AppearanceSettings } from "@/components/AppearanceSettings";
 import { BillingSettings } from "@/components/BillingSettings";
 import { DataRights } from "@/components/DataRights";
 import { NumbersManager } from "@/components/NumbersManager";
+import { CallingStatus } from "@/components/CallingStatus";
 import { TestSend } from "@/components/TestSend";
 import { AiHealthCheck } from "@/components/AiHealthCheck";
 import { VoiceStudio } from "@/components/VoiceStudio";
@@ -308,6 +309,16 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
           ))}
         </ul>
         <TestSend />
+      </Card>
+
+      <Card className="mt-4">
+        <h2 className="font-semibold text-fg">Calling gateway</h2>
+        <p className="mt-1 text-sm text-muted">
+          A live check that outbound AI calls are wired end to end — it pings your gateway, so a wrong or down URL shows red instead of a false green.
+        </p>
+        <div className="mt-4">
+          <CallingStatus />
+        </div>
       </Card>
 
       <Card className="mt-4">
