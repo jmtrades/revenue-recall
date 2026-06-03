@@ -5,6 +5,7 @@ import { writeRateLimit } from "@/lib/ratelimit";
 import { withGuard } from "@/lib/api/guard";
 import { verifyHmacSignature } from "@/lib/webhook";
 import { logWarn } from "@/lib/log";
+import { seenInboundEvent } from "@/lib/inbound-dedup";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -13,6 +14,9 @@ const Body = z.object({
   from: z.string().min(3),
   subject: z.string().optional(),
   text: z.string().min(1),
+  // Provider's message id (Message-Id / id). Optional — when present it makes
+  // delivery idempotent so a retry doesn't double-reply.
+  messageId: z.string().max(400).optional(),
 });
 
 /** Generic inbound-email webhook (JSON). Point your email provider's inbound
@@ -45,6 +49,11 @@ export const POST = withGuard(async (req: Request) => {
   }
   const parsed = Body.safeParse(json);
   if (!parsed.success) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+
+  // Idempotency on the provider message id when supplied (retries no-op).
+  if (parsed.data.messageId && (await seenInboundEvent("email", parsed.data.messageId))) {
+    return NextResponse.json({ ok: true, duplicate: true });
+  }
 
   const result = await handleInbound("email", parsed.data.from, parsed.data.text, parsed.data.subject);
   return NextResponse.json(result);

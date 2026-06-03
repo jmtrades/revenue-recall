@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { handleInbound } from "@/lib/inbound";
 import { verifyTwilioSignature } from "@/lib/webhook";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
+import { seenInboundEvent } from "@/lib/inbound-dedup";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -43,6 +44,11 @@ export async function POST(req: Request) {
   const from = params.From ?? "";
   const body = params.Body ?? "";
   if (!from || !body) return new NextResponse(TWIML, { headers: { "Content-Type": "text/xml" } });
+
+  // Idempotency: Twilio retries on timeout — don't log + auto-reply twice.
+  if (await seenInboundEvent("sms", params.MessageSid ?? "")) {
+    return new NextResponse(TWIML, { headers: { "Content-Type": "text/xml" } });
+  }
 
   await handleInbound("sms", from, body).catch(() => undefined);
   // Empty TwiML: we handle replies ourselves (queue/auto-send), not via Twilio.
