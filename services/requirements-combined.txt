@@ -1,0 +1,14 @@
+# Combined "call-stack" image deps — the in-house neural voice (Kokoro, ONNX)
+# AND the call-gateway (FastAPI + faster-whisper STT + Anthropic brain) in one
+# image. Lean by design: Kokoro is the default engine, so this omits the heavier
+# optional pieces (the Piper fallback and the chatterbox/torch voice-cloning
+# engine). Add those back if you want cloning or the fallback voice.
+kokoro-onnx>=0.5.0      # frontier-class open neural TTS (Apache-2.0), ONNX — no torch
+websockets>=12.0        # streaming PCM transport (voice) + Twilio media bridge
+numpy>=1.26
+scipy>=1.10             # polyphase resampling (24k native -> 8k telephony)
+soundfile>=0.12
+fastapi>=0.110
+uvicorn[standard]>=0.29
+faster-whisper>=1.0     # local STT (CTranslate2 — no torch)
+anthropic>=0.39         # the Opus brain (the only outside API in the loop)
