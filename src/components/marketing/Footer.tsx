@@ -1,5 +1,9 @@
 import Link from "next/link";
 
+// Support address — overridable per deploy; buyers expect a visible way to reach
+// a human before they'll trust (and pay for) the product.
+const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@recall-touch.com";
+
 const COLS: { heading: string; links: { label: string; href: string }[] }[] = [
   {
     heading: "Product",
@@ -25,6 +29,7 @@ const COLS: { heading: string; links: { label: string; href: string }[] }[] = [
       { label: "Sign in", href: "/login" },
       { label: "Start free", href: "/signup" },
       { label: "Live demo", href: "/dashboard" },
+      { label: "Contact support", href: `mailto:${SUPPORT_EMAIL}` },
     ],
   },
 ];
@@ -54,7 +59,11 @@ export function Footer() {
               <ul className="mt-3 space-y-2">
                 {col.links.map((l) => (
                   <li key={l.label}>
-                    <Link href={l.href} className="text-sm text-muted transition hover:text-fg">{l.label}</Link>
+                    {l.href.startsWith("mailto:") ? (
+                      <a href={l.href} className="text-sm text-muted transition hover:text-fg">{l.label}</a>
+                    ) : (
+                      <Link href={l.href} className="text-sm text-muted transition hover:text-fg">{l.label}</Link>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -64,6 +73,7 @@ export function Footer() {
         <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 text-xs text-muted sm:flex-row">
           <span>© {new Date().getFullYear()} Revenue Recall. All rights reserved.</span>
           <span className="flex gap-5">
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="transition hover:text-fg">Support</a>
             <Link href="/privacy" className="transition hover:text-fg">Privacy</Link>
             <Link href="/terms" className="transition hover:text-fg">Terms</Link>
             <Link href="/security" className="transition hover:text-fg">Security</Link>
