@@ -5,6 +5,7 @@ import { getOrgSettings } from "@/lib/org";
 import { getIndustry, recallThresholdsFor } from "@/lib/industries";
 import { computeMetrics, type PipelineMetrics } from "@/lib/analytics";
 import { buildRecallQueue, summarizeRecall, computeRecallOutcomes, recallByOwner, type RecallItem, type RecallSummary, type RecallOutcomes } from "@/lib/recall/engine";
+import { MAX_CALL_ATTEMPTS } from "@/lib/calls/retry";
 import { listEnrollments } from "@/lib/cadence";
 import { listRecallTouches, earliestTouchByDeal, touchesByWeek } from "@/lib/recall/events";
 import type { Activity, Contact, Opportunity, Pipeline, Stage, User } from "@/lib/crm/types";
@@ -153,16 +154,28 @@ export interface CallQueueItem {
   reason: string;
   score: number;
   recommendation: string;
+  /** Prior outbound call attempts to this contact (so the dialer shows "#N"). */
+  attempts: number;
 }
 
 export async function getCallQueue(): Promise<CallQueueItem[]> {
   const provider = getProvider();
-  const [pipelines, opps, contacts] = await Promise.all([
+  const [pipelines, opps, contacts, recent] = await Promise.all([
     provider.listPipelines(),
     provider.listOpportunities(),
     provider.listContacts(),
+    provider.listRecentActivities(500).catch(() => [] as Activity[]),
   ]);
   const cById = new Map(contacts.map((c) => [c.id, c]));
+  // Count prior outbound calls per contact so the dialer can show the attempt
+  // number and skip numbers we've already exhausted (work those by another
+  // channel instead of burning more dials).
+  const callAttempts = new Map<string, number>();
+  for (const a of recent) {
+    if (a.kind === "call" && a.direction === "outbound" && a.contactId) {
+      callAttempts.set(a.contactId, (callAttempts.get(a.contactId) ?? 0) + 1);
+    }
+  }
   const recall = buildRecallQueue(opps, pipelines);
   const items: CallQueueItem[] = [];
   for (const r of recall) {
@@ -171,6 +184,8 @@ export async function getCallQueue(): Promise<CallQueueItem[]> {
     const contact = cById.get(opp.contactId);
     const phone = contact?.points.find((p) => p.channel === "phone")?.value;
     if (!contact || !phone) continue;
+    const attempts = callAttempts.get(contact.id) ?? 0;
+    if (attempts >= MAX_CALL_ATTEMPTS) continue; // exhausted by phone — pivot to another channel
     items.push({
       dealId: r.opportunityId,
       contactId: contact.id,
@@ -181,6 +196,7 @@ export async function getCallQueue(): Promise<CallQueueItem[]> {
       reason: r.reason,
       score: r.score,
       recommendation: r.recommendation,
+      attempts,
     });
   }
   return items.slice(0, 40);

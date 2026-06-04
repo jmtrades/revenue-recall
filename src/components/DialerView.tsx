@@ -128,6 +128,11 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
                 <div className="truncate text-sm text-fg">{q.contactName}</div>
                 <div className="truncate text-xs text-muted">{q.phone}</div>
               </div>
+              {q.attempts > 0 && !done[q.dealId] && (
+                <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-muted" title={`${q.attempts} prior call attempt${q.attempts === 1 ? "" : "s"}`}>
+                  #{q.attempts + 1}
+                </span>
+              )}
               {done[q.dealId] && <Icon name="check" size={13} strokeWidth={3} className="text-success" />}
             </button>
           ))}
