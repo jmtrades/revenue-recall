@@ -105,6 +105,18 @@ x-api-key: rr_live_xxxxxxxxxxxxxxxx`}</Code>
 # 200 OK
 { "data": [ { "id": "o_…", "title": "Acme — Jane Doe", "value": 5000,
   "currency": "USD", "stage": "New", "contactId": "c_…" } ], "count": 1, "total": 1 }`}</Code>
+          <p className="pt-1">
+            Update a deal with <code className="text-fg">PATCH /api/v1/deals/:id</code> — move its stage with{" "}
+            <code className="text-fg">stageId</code>, or mark the outcome with{" "}
+            <code className="text-fg">status: &quot;won&quot;</code> / <code className="text-fg">&quot;lost&quot;</code>.
+          </p>
+          <Code>{`curl -X PATCH ${BASE}/api/v1/deals/o_123 \\
+  -H "Authorization: Bearer rr_live_xxxxxxxxxxxxxxxx" \\
+  -H "Content-Type: application/json" \\
+  -d '{"status":"won"}'
+
+# 200 OK
+{ "ok": true, "deal": { "id": "o_123", "title": "Acme — Jane Doe", "stage": "Won" } }`}</Code>
         </Section>
 
         <Section id="form" title="Embeddable capture form">
@@ -119,9 +131,11 @@ x-api-key: rr_live_xxxxxxxxxxxxxxxx`}</Code>
 
         <Section id="webhooks" title="Webhooks">
           <p>
-            Set an https endpoint in Settings → Developer to receive events. We POST signed JSON; today we emit{" "}
-            <code className="text-fg">lead.created</code> (every API and form capture). Verify each delivery with the
-            signing secret shown when you save the endpoint.
+            Set an https endpoint in Settings → Developer to receive events. We POST signed JSON. Events:{" "}
+            <code className="text-fg">lead.created</code> (every API and form capture),{" "}
+            <code className="text-fg">deal.stage_changed</code>, <code className="text-fg">deal.won</code>, and{" "}
+            <code className="text-fg">deal.lost</code> (whenever a deal moves). Verify each delivery with the signing
+            secret shown when you save the endpoint.
           </p>
           <Code>{`POST (your endpoint)
 X-RR-Event: lead.created

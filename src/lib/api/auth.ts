@@ -11,17 +11,17 @@ import { rateLimit, clientKey } from "@/lib/ratelimit";
  * downstream provider/store call targets the key's org. Returns 401 when the key
  * is missing/unknown — so no v1 route ever touches tenant data unauthenticated.
  */
-type ApiHandler = (req: Request, orgId: string) => Promise<Response> | Response;
+type ApiHandler<C> = (req: Request, orgId: string, ctx: C) => Promise<Response> | Response;
 
-export function withApiKey(handler: ApiHandler): (req: Request) => Promise<Response> {
-  return async (req: Request): Promise<Response> => {
+export function withApiKey<C = unknown>(handler: ApiHandler<C>): (req: Request, ctx: C) => Promise<Response> {
+  return async (req: Request, ctx: C): Promise<Response> => {
     // The API key is the real gate; this just caps abuse per source.
     if (!rateLimit(clientKey(req, "apiv1"), 600, 60_000).ok) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
     const orgId = await resolveOrgByApiKey(readApiKey(req.headers));
     if (!orgId) return NextResponse.json({ error: "Invalid or missing API key" }, { status: 401 });
-    return runWithOrg(orgId, () => handler(req, orgId));
+    return runWithOrg(orgId, () => handler(req, orgId, ctx));
   };
 }
 
