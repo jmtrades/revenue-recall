@@ -2,6 +2,7 @@ import { getProvider } from "@/lib/crm/registry";
 import { safePipeline } from "@/lib/queries";
 import { getOrgSettings } from "@/lib/org";
 import { enroll } from "@/lib/cadence";
+import { emitWebhook } from "@/lib/webhooks-out";
 import type { ContactPoint } from "@/lib/crm/types";
 
 /**
@@ -73,6 +74,18 @@ export async function captureLead(lead: LeadInput): Promise<CaptureResult> {
     const res = await enroll(lead.sequenceId, `deal:${opp.id}`).catch(() => null);
     enrolled = Boolean(res && res.enrolled > 0);
   }
+
+  // Notify the org's webhook (if any). Best-effort — never affects the capture.
+  await emitWebhook("lead.created", {
+    contactId: contact.id,
+    dealId: opp.id,
+    name: lead.name,
+    email: lead.email ?? null,
+    phone: lead.phone ?? null,
+    company: lead.company ?? null,
+    value: lead.value ?? 0,
+    source: lead.source || "API",
+  });
 
   return { contactId: contact.id, dealId: opp.id, enrolled };
 }

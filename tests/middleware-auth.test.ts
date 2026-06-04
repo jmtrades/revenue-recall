@@ -49,6 +49,8 @@ describe("middleware auth-gate allowlist (real isPublicRoute)", () => {
       "/api/calls/diagnostics",
       "/api/oauth/x/start",
       "/api/keys", // API-key management is session-gated (owner/admin)
+      "/api/webhooks", // webhook config is session-gated (owner/admin)
+      "/api/webhooks/test",
     ]) {
       expect(isPublicRoute(p), `${p} must require auth`).toBe(false);
     }

@@ -46,6 +46,7 @@ import { TeamInvites } from "@/components/TeamInvites";
 import { AuditLog } from "@/components/AuditLog";
 import { ApiKeySettings } from "@/components/ApiKeySettings";
 import { LeadFormEmbed } from "@/components/LeadFormEmbed";
+import { WebhookSettings } from "@/components/WebhookSettings";
 import { hostedFormUrl, formEmbedSnippet } from "@/lib/forms";
 import { listInvites } from "@/lib/invites-server";
 
@@ -470,6 +471,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
           <LeadFormEmbed formUrl={orgFormUrl} embed={orgFormEmbed} />
         </Card>
       )}
+      <Card title="Webhooks">
+        <WebhookSettings />
+      </Card>
     </div>
   );
 
