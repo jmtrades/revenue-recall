@@ -89,7 +89,8 @@ export function ApiKeySettings({ endpoint }: { endpoint: string }) {
       <div>
         <p className="text-sm text-muted">
           Push leads straight into outreach from your website, Zapier, or your backend. Every captured lead becomes a
-          contact and an open deal the autonomous engine immediately starts working.
+          contact and an open deal the autonomous engine immediately starts working.{" "}
+          <a href="/docs/api" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">Read the API docs →</a>
         </p>
       </div>
 

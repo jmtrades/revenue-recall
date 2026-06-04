@@ -32,13 +32,22 @@ const COLS: { heading: string; links: { label: string; href: string }[] }[] = [
       { label: "Contact support", href: `mailto:${SUPPORT_EMAIL}` },
     ],
   },
+  {
+    heading: "Developers",
+    links: [
+      { label: "API & integrations", href: "/docs/api" },
+      { label: "Lead Capture API", href: "/docs/api#create" },
+      { label: "Webhooks", href: "/docs/api#webhooks" },
+      { label: "Embeddable form", href: "/docs/api#form" },
+    ],
+  },
 ];
 
 export function Footer() {
   return (
     <footer className="border-t border-border bg-surface/40">
       <div className="mx-auto max-w-6xl px-5 py-14">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-5">
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2.5">
               <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-brand text-[13px] font-bold tracking-tight text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)] ring-1 ring-inset ring-white/10">RR</span>
