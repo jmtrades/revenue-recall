@@ -5,6 +5,8 @@ import { runDueSteps, collectDueBatches } from "@/lib/cadence";
 import { runDigests } from "@/lib/digest";
 import { getSupabase } from "@/lib/supabase/client";
 import { runWithOrg } from "@/lib/supabase/org-context";
+import { autopilotLockKey } from "@/lib/agent/lock";
+import { acquireCronLock, releaseCronLock } from "@/lib/cron-lock";
 import { safeEqual } from "@/lib/safe-compare";
 
 export const dynamic = "force-dynamic";
@@ -48,16 +50,27 @@ async function allOrgIds(): Promise<string[]> {
 /** Process the CURRENTLY-active org (resolved from the runWithOrg override, the
  *  DEFAULT_ORG_ID, or the single-org fallback). */
 async function runForCurrentOrg() {
-  const tasks = (await listTasks()).filter((t) => t.enabled && t.trigger !== "manual");
   const results = [];
-  for (const t of tasks) {
-    const r = await runTask(t);
-    results.push({ task: t.name, trigger: t.trigger, status: r.status, processed: r.itemsProcessed });
+  // Serialize Autopilot per org: skip the task loop if another run (an
+  // overlapping tick or a manual "run now") already holds the lock, so we never
+  // double-send. Cadence/digests self-guard with their own locks/idempotency.
+  const lockKey = await autopilotLockKey();
+  const fence = await acquireCronLock(lockKey);
+  if (fence) {
+    try {
+      const tasks = (await listTasks()).filter((t) => t.enabled && t.trigger !== "manual");
+      for (const t of tasks) {
+        const r = await runTask(t);
+        results.push({ task: t.name, trigger: t.trigger, status: r.status, processed: r.itemsProcessed });
+      }
+    } finally {
+      await releaseCronLock(lockKey, fence);
+    }
   }
   const cadence = await runDueSteps().catch((e) => ({ error: e instanceof Error ? e.message : "cadence failed" }));
   const batches = await collectDueBatches().catch((e) => ({ error: e instanceof Error ? e.message : "batch collect failed" }));
   const digests = await runDigests().catch((e) => ({ error: e instanceof Error ? e.message : "digests failed" }));
-  return { ran: results.length, results, cadence, batches, digests };
+  return { ran: results.length, results, autopilotLocked: !fence, cadence, batches, digests };
 }
 
 /** Fan out: process every org in its own authenticated sub-request so each gets
