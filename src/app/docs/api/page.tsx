@@ -92,12 +92,17 @@ x-api-key: rr_live_xxxxxxxxxxxxxxxx`}</Code>
 
 # 201 Created
 { "ok": true, "contactId": "c_…", "dealId": "o_…", "enrolled": false }`}</Code>
+          <p className="pt-1">
+            Need a contact without a deal? <code className="text-fg">POST /api/v1/contacts</code> (same fields, no deal
+            created) and <code className="text-fg">PATCH /api/v1/contacts/:id</code> to update one.
+          </p>
         </Section>
 
         <Section id="list" title="List leads & deals">
           <p>
-            <code className="text-fg">GET /api/v1/leads</code> and <code className="text-fg">GET /api/v1/deals</code> —
-            return your records in a stable shape. Both accept <code className="text-fg">?limit=</code> (default 50, max 200).
+            <code className="text-fg">GET /api/v1/leads</code>, <code className="text-fg">GET /api/v1/deals</code>, and{" "}
+            <code className="text-fg">GET /api/v1/contacts</code> — return your records in a stable shape. All accept{" "}
+            <code className="text-fg">?limit=</code> (default 50, max 200).
           </p>
           <Code>{`curl ${BASE}/api/v1/deals?limit=50 \\
   -H "Authorization: Bearer rr_live_xxxxxxxxxxxxxxxx"
@@ -133,9 +138,10 @@ x-api-key: rr_live_xxxxxxxxxxxxxxxx`}</Code>
           <p>
             Set an https endpoint in Settings → Developer to receive events. We POST signed JSON. Events:{" "}
             <code className="text-fg">lead.created</code> (every API and form capture),{" "}
+            <code className="text-fg">contact.created</code>, <code className="text-fg">contact.updated</code>,{" "}
             <code className="text-fg">deal.stage_changed</code>, <code className="text-fg">deal.won</code>, and{" "}
-            <code className="text-fg">deal.lost</code> (whenever a deal moves). Verify each delivery with the signing
-            secret shown when you save the endpoint.
+            <code className="text-fg">deal.lost</code>. Verify each delivery with the signing secret shown when you save
+            the endpoint.
           </p>
           <Code>{`POST (your endpoint)
 X-RR-Event: lead.created
