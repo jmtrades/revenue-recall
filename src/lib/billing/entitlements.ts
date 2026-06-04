@@ -1,4 +1,4 @@
-import type { PlanId } from "@/lib/billing/plans";
+import { getPlan, type PlanId } from "@/lib/billing/plans";
 import type { SubStatus } from "@/lib/billing/store";
 
 /**
@@ -32,6 +32,18 @@ export const PLAN_LIMITS: Record<PlanId, Entitlements> = {
 
 export function entitlements(plan: PlanId): Entitlements {
   return PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
+}
+
+/**
+ * Effective seat cap for an org. Per-seat plans bill Stripe quantity = seats, so
+ * the org is entitled to every seat they PAID for — not just the static plan
+ * minimum (e.g. `growth` lists seats:1 but a customer who bought 5 must get 5).
+ * Flat plans use their fixed cap; unlimited stays unlimited.
+ */
+export function effectiveSeats(plan: PlanId, subscribedSeats: number): number {
+  const base = PLAN_LIMITS[plan]?.seats ?? PLAN_LIMITS.free.seats;
+  if (!Number.isFinite(base)) return base; // unlimited (scale)
+  return getPlan(plan).perSeat ? Math.max(base, Math.floor(subscribedSeats) || 1) : base;
 }
 
 /**

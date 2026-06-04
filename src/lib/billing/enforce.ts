@@ -1,5 +1,5 @@
 import { getSubscription } from "@/lib/billing/store";
-import { entitlements, effectivePlan, type Entitlements } from "@/lib/billing/entitlements";
+import { entitlements, effectivePlan, effectiveSeats, type Entitlements } from "@/lib/billing/entitlements";
 import { billingConfigured } from "@/lib/billing/stripe";
 
 /**
@@ -21,7 +21,10 @@ export function enforcementOn(): boolean {
 export async function orgEntitlements(): Promise<Entitlements> {
   const sub = await getSubscription();
   // Gate on standing: a past_due/canceled org drops to free entitlements.
-  return entitlements(effectivePlan(sub.plan, sub.status));
+  const plan = effectivePlan(sub.plan, sub.status);
+  // …but honor the seats they actually paid for on a per-seat plan (Stripe
+  // quantity = seats), so a customer billed for 5 reps can invite 5.
+  return { ...entitlements(plan), seats: effectiveSeats(plan, sub.seats) };
 }
 
 /** When enforcing, is this boolean feature available to the current org? When
