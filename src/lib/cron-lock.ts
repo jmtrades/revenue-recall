@@ -4,27 +4,36 @@ import { getSupabase } from "@/lib/supabase/client";
  * Short-TTL advisory locks for scheduled work, so the same unit (e.g. an org's
  * cadence sending) can't run concurrently across two overlapping cron
  * invocations — which would double-send to a prospect. A crashed holder's lock
- * auto-expires after the TTL, so the next run can always make progress.
+ * auto-expires after the TTL.
+ *
+ * acquire returns a FENCE token (the exact expires_at it wrote) which release
+ * must present, so a slow run whose lock has already expired and been re-taken
+ * by another run cannot delete that newer run's lock (a lost-mutex / steal).
  *
  * With no database (single-process demo) there's no concurrency to guard, so
- * acquire is a no-op success.
+ * acquire returns a sentinel fence and release is a no-op.
  */
 
-/** Try to take the lock. Returns true if acquired (caller must releaseCronLock
- *  in a finally), false if another live holder has it. */
-export async function acquireCronLock(key: string, ttlMs = 120_000): Promise<boolean> {
+const NO_DB_FENCE = "no-db";
+
+/** Take the lock. Returns a fence token to pass to releaseCronLock, or null if
+ *  another live holder has it. */
+export async function acquireCronLock(key: string, ttlMs = 120_000): Promise<string | null> {
   const client = getSupabase();
-  if (!client) return true;
+  if (!client) return NO_DB_FENCE;
   const now = Date.now();
-  // Clear our own key if its prior holder's lock has expired (crash recovery).
+  // Clear our own key only if the prior holder's lock has expired (crash recovery).
   await client.from("cron_locks").delete().eq("key", key).lt("expires_at", new Date(now).toISOString());
-  // Atomic claim: the primary key makes a concurrent insert fail (→ not acquired).
-  const { error } = await client.from("cron_locks").insert({ key, expires_at: new Date(now + ttlMs).toISOString() });
-  return !error;
+  // A small random offset guarantees the fence is unique even if two runs hit
+  // the same millisecond, so release can't match the wrong holder's row.
+  const fence = new Date(now + ttlMs + Math.floor(Math.random() * 1000)).toISOString();
+  const { error } = await client.from("cron_locks").insert({ key, expires_at: fence });
+  return error ? null : fence; // unique-violation → another holder has it
 }
 
-export async function releaseCronLock(key: string): Promise<void> {
+/** Release the lock ONLY if we still hold it (our fence is current). */
+export async function releaseCronLock(key: string, fence: string): Promise<void> {
   const client = getSupabase();
-  if (!client) return;
-  await client.from("cron_locks").delete().eq("key", key);
+  if (!client || fence === NO_DB_FENCE) return;
+  await client.from("cron_locks").delete().eq("key", key).eq("expires_at", fence);
 }

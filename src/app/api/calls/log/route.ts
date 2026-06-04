@@ -4,7 +4,8 @@ import { logCallOutcome } from "@/lib/calls";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 import { safeEqual } from "@/lib/safe-compare";
 import { runWithOrg } from "@/lib/supabase/org-context";
-import { seenInboundEvent } from "@/lib/inbound-dedup";
+import { seenInboundEvent, forgetInboundEvent } from "@/lib/inbound-dedup";
+import { withGuard } from "@/lib/api/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -29,11 +30,12 @@ const Body = z.object({
 });
 
 /** Bearer check against the shared COMMS_WEBHOOK_TOKEN (same secret the gateway
- *  is given), constant-time. When no token is configured we accept the post
- *  (dev/log-only), mirroring the other inbound webhooks. */
+ *  is given), constant-time. With no token configured we accept only outside
+ *  production; in prod we fail closed — an open endpoint lets anyone forge a
+ *  transcript onto a tenant's timeline (the body carries meta.orgId). */
 function authorized(req: Request): boolean {
   const token = process.env.COMMS_WEBHOOK_TOKEN;
-  if (!token) return true;
+  if (!token) return process.env.NODE_ENV !== "production";
   return safeEqual(req.headers.get("authorization") ?? "", `Bearer ${token}`);
 }
 
@@ -42,7 +44,7 @@ function authorized(req: Request): boolean {
  * transcript + outcome land on the CRM timeline (closing the loop the gateway
  * couldn't on its own).
  */
-export async function POST(req: Request) {
+export const POST = withGuard(async (req: Request) => {
   if (!rateLimit(clientKey(req, "calls-log"), 120, 60_000).ok) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
@@ -68,6 +70,13 @@ export async function POST(req: Request) {
   // Scope the write to the org that placed the call (the webhook has no session,
   // so without this it would fall back to the first org — a cross-tenant leak).
   const orgId = b.meta?.orgId;
-  const activity = orgId ? await runWithOrg(orgId, log) : await log();
-  return NextResponse.json({ ok: true, logged: Boolean(activity), id: activity?.id });
-}
+  try {
+    const activity = orgId ? await runWithOrg(orgId, log) : await log();
+    return NextResponse.json({ ok: true, logged: Boolean(activity), id: activity?.id });
+  } catch (e) {
+    // Un-record the dedup key so the gateway's retry can reprocess (don't lose
+    // the transcript to a dedup after a transient failure).
+    if (b.callId) await forgetInboundEvent("call", b.callId);
+    throw e;
+  }
+});

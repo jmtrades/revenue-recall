@@ -26,7 +26,10 @@ function authorized(req: Request, url: URL, params: Record<string, string>): boo
   if (authToken) {
     return verifyTwilioSignature(authToken, req.url, params, req.headers.get("x-twilio-signature"));
   }
-  return tokenOk(url);
+  if (process.env.INBOUND_TOKEN) return tokenOk(url);
+  // No secret configured at all: accept only outside production (local/dev). In
+  // prod, fail closed — an open inbound endpoint lets anyone forge a contact reply.
+  return process.env.NODE_ENV !== "production";
 }
 
 /** Twilio inbound SMS webhook (application/x-www-form-urlencoded). */

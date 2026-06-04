@@ -8,6 +8,9 @@ import { requireRole } from "@/lib/authz";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  // Pending invitee emails + roles are admin info — don't expose them to reps.
+  const denied = await requireRole("owner", "admin");
+  if (denied) return denied;
   return NextResponse.json({ invites: await listInvites() });
 }
 
