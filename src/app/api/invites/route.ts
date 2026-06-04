@@ -4,6 +4,7 @@ import { listInvites, createInvites, revokeInvite } from "@/lib/invites-server";
 import { parseInviteEmails, normalizeRole, INVITE_ROLES } from "@/lib/invites";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { requireRole } from "@/lib/authz";
+import { recordAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
 
   try {
     const invites = await createInvites(emails, normalizeRole(parsed.data.role));
+    await recordAudit("invite.created", emails.join(", "));
     return NextResponse.json({ invites });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Invite failed" }, { status: 409 });
@@ -45,6 +47,7 @@ export async function DELETE(req: Request) {
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
   try {
     await revokeInvite(id);
+    await recordAudit("invite.revoked", id);
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Revoke failed" }, { status: 409 });

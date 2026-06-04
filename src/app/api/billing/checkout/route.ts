@@ -8,6 +8,7 @@ import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getSupabase } from "@/lib/supabase/client";
 import { getActiveOrgId } from "@/lib/supabase/tenant";
 import { requireRole } from "@/lib/authz";
+import { recordAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,7 @@ export async function POST(req: Request) {
       cancelUrl: `${origin}/settings?billing=cancelled`,
       returnUrl: `${origin}/settings?billing=success&session_id={CHECKOUT_SESSION_ID}`,
     });
+    await recordAudit("billing.checkout_started", parsed.data.plan);
     return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Checkout failed" }, { status: 502 });
