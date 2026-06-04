@@ -27,6 +27,7 @@ export const PUBLIC_API = [
   "/api/calls/log", // call-gateway posts finished-call transcripts — self-authed by COMMS_WEBHOOK_TOKEN (Bearer)
   "/api/social/", // social webhooks — each verifies its own signature/secret
   "/api/unsubscribe",
+  "/api/calendar/feed", // subscribable .ics — self-authed by an HMAC feed token
   "/api/health",
 ];
 
