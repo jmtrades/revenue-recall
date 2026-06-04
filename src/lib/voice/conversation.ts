@@ -38,6 +38,9 @@ export interface ConversationState {
   tone?: ToneId;
   /** ISO 639-1 language the call is conducted in (default English). */
   language?: string;
+  /** Days since the last touch — when it's a real gap, the rep opens by warmly
+   *  acknowledging it ("it's been a while") instead of a cold-open. */
+  daysSinceContact?: number;
   voice?: { senderName?: string; profile?: string; customNextSteps?: string[] };
   /** Full transcript so far, oldest first. */
   turns: Turn[];
@@ -148,6 +151,19 @@ const OPENERS: ((f: string, co: string) => string)[] = [
   (f) => `Hey ${f}, good to catch you. Quick one — how's everything going on your end?`,
 ];
 
+/** A real gap (days) flips the opener to a warm "it's been a while" reactivation. */
+export const REACTIVATION_GAP_DAYS = 21;
+const REACTIVATION_OPENERS: ((f: string, co: string) => string)[] = [
+  (f) => `Hey ${f}, it's me — been a while, I know. Caught you at an okay time for a quick one?`,
+  (f, co) => `Hi ${f} — it's been a minute since we talked about ${co}. Got twenty seconds?`,
+  (f) => `Hey ${f}, I know it's been a while — promise I'll be quick. That alright?`,
+];
+
+/** Pick the opener pool: warm reactivation when there's a real gap, else a cold-open. */
+function openerPool(daysSinceContact?: number): ((f: string, co: string) => string)[] {
+  return (daysSinceContact ?? 0) >= REACTIVATION_GAP_DAYS ? REACTIVATION_OPENERS : OPENERS;
+}
+
 // Spoken handling for the common intents; anything else falls back to "question"
 // handling while the reactive policy still adapts tone/emotion.
 const SPOKEN: Partial<Record<Intent, (f: string) => string[]>> = {
@@ -213,7 +229,7 @@ function fallbackRepTurn(state: ConversationState): RepTurn {
   const base = { phase, tone, emotion: reaction.emotion, coachNote: reaction.note, source: "template" as const };
 
   if (phase === "opening") {
-    return { ...base, text: pick(OPENERS, seed, "open")(first, co), emotion: "warm", done: false };
+    return { ...base, text: pick(openerPool(state.daysSinceContact), seed, "open")(first, co), emotion: "warm", done: false };
   }
   if (directive.action === "exit") {
     return { ...base, text: pick(SPOKEN.decline!(first), seed, "decline"), done: true };
@@ -250,7 +266,7 @@ About: "${state.dealTitle}"
 Their likely natural next-steps: ${pb.nextSteps.call.join(" / ")}
 Phase: ${phase}
 What to do now: ${directiveGuidance(directive)}
-${state.voice?.profile ? `Speak in this rep's voice:\n"""${state.voice.profile}"""\n` : ""}${languageDirective(state.language) ? `${languageDirective(state.language)}\n` : ""}TRANSCRIPT SO FAR:
+${repCount === 0 && (state.daysSinceContact ?? 0) >= REACTIVATION_GAP_DAYS ? `It's been ${state.daysSinceContact} days since you last spoke — open by warmly owning the gap ("it's been a while"), lightly, no guilt-trip.\n` : ""}${state.voice?.profile ? `Speak in this rep's voice:\n"""${state.voice.profile}"""\n` : ""}${languageDirective(state.language) ? `${languageDirective(state.language)}\n` : ""}TRANSCRIPT SO FAR:
 ${transcript(state.turns, "rep")}
 
 Say only the next line out loud, as the rep.`;
