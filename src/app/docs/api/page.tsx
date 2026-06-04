@@ -111,7 +111,10 @@ x-api-key: rr_live_xxxxxxxxxxxxxxxx`}</Code>
 { "data": [ { "id": "o_…", "title": "Acme — Jane Doe", "value": 5000,
   "currency": "USD", "stage": "New", "contactId": "c_…" } ], "count": 1, "total": 1 }`}</Code>
           <p className="pt-1">
-            Update a deal with <code className="text-fg">PATCH /api/v1/deals/:id</code> — move its stage with{" "}
+            Create a deal for an existing contact with <code className="text-fg">POST /api/v1/deals</code> (
+            <code className="text-fg">contactId</code> required; optional <code className="text-fg">title</code>,{" "}
+            <code className="text-fg">value</code>, <code className="text-fg">stageId</code>). Update one with{" "}
+            <code className="text-fg">PATCH /api/v1/deals/:id</code> — move its stage with{" "}
             <code className="text-fg">stageId</code>, or mark the outcome with{" "}
             <code className="text-fg">status: &quot;won&quot;</code> / <code className="text-fg">&quot;lost&quot;</code>.
           </p>
@@ -139,9 +142,9 @@ x-api-key: rr_live_xxxxxxxxxxxxxxxx`}</Code>
             Set an https endpoint in Settings → Developer to receive events. We POST signed JSON. Events:{" "}
             <code className="text-fg">lead.created</code> (every API and form capture),{" "}
             <code className="text-fg">contact.created</code>, <code className="text-fg">contact.updated</code>,{" "}
-            <code className="text-fg">deal.stage_changed</code>, <code className="text-fg">deal.won</code>, and{" "}
-            <code className="text-fg">deal.lost</code>. Verify each delivery with the signing secret shown when you save
-            the endpoint.
+            <code className="text-fg">deal.created</code>, <code className="text-fg">deal.stage_changed</code>,{" "}
+            <code className="text-fg">deal.won</code>, and <code className="text-fg">deal.lost</code>. Verify each
+            delivery with the signing secret shown when you save the endpoint.
           </p>
           <Code>{`POST (your endpoint)
 X-RR-Event: lead.created
