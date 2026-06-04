@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { logCallOutcome } from "@/lib/calls";
+import { logCallOutcome, scheduleCallRetry } from "@/lib/calls";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 import { safeEqual } from "@/lib/safe-compare";
 import { runWithOrg } from "@/lib/supabase/org-context";
@@ -57,16 +57,22 @@ export const POST = withGuard(async (req: Request) => {
   if (b.callId && (await seenInboundEvent("call", b.callId))) {
     return NextResponse.json({ ok: true, duplicate: true });
   }
-  const log = () =>
-    logCallOutcome({
+  const contactId = b.contactId ?? b.meta?.contactId;
+  const dealId = b.dealId ?? b.meta?.dealId;
+  const log = async () => {
+    const activity = await logCallOutcome({
       to: b.to,
-      contactId: b.contactId ?? b.meta?.contactId,
-      dealId: b.dealId ?? b.meta?.dealId,
+      contactId,
+      dealId,
       outcome: b.outcome,
       transcript: b.transcript,
       durationSec: b.durationSec,
       recordingUrl: b.recordingUrl,
     });
+    // If the call didn't reach a human, schedule the next dial (best-effort).
+    if (activity) await scheduleCallRetry({ contactId, dealId, outcome: b.outcome });
+    return activity;
+  };
   // Scope the write to the org that placed the call (the webhook has no session,
   // so without this it would fall back to the first org — a cross-tenant leak).
   const orgId = b.meta?.orgId;

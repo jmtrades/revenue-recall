@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 
-const { logCallOutcome, seenInboundEvent } = vi.hoisted(() => ({
+const { logCallOutcome, scheduleCallRetry, seenInboundEvent } = vi.hoisted(() => ({
   logCallOutcome: vi.fn(async () => ({ id: "act_1" })),
+  scheduleCallRetry: vi.fn(async () => null),
   seenInboundEvent: vi.fn(async () => false),
 }));
-vi.mock("@/lib/calls", () => ({ logCallOutcome }));
+vi.mock("@/lib/calls", () => ({ logCallOutcome, scheduleCallRetry }));
 vi.mock("@/lib/supabase/org-context", () => ({
   runWithOrg: vi.fn(async (_orgId: string, fn: () => unknown) => fn()),
 }));
