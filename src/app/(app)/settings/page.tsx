@@ -22,6 +22,7 @@ import { BillingReturnBanner } from "@/components/BillingReturnBanner";
 import { OrgSettingsForm } from "@/components/OrgSettingsForm";
 import { AppearanceSettings } from "@/components/AppearanceSettings";
 import { BillingSettings } from "@/components/BillingSettings";
+import { InvoiceHistory } from "@/components/InvoiceHistory";
 import { DataRights } from "@/components/DataRights";
 import { NumbersManager } from "@/components/NumbersManager";
 import { CallingStatus } from "@/components/CallingStatus";
@@ -378,6 +379,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       <div className="mt-4">
         <UsageMeter meter={usageProps} topups={topupPacks} billingConfigured={billingConfigured()} planName={getPlan(subscription.plan).name} />
       </div>
+      <InvoiceHistory />
       <div className="mt-4 rounded-lg border border-border p-4">
         <p className="text-sm font-medium text-fg">AI usage this month <span className="text-xs font-normal text-muted">(cost &amp; margin)</span></p>
         <p className="mt-0.5 text-xs text-muted">Live drafting/brief/voice cost. Margin guard auto-falls back to free templates if a budget is hit.</p>
