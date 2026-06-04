@@ -24,6 +24,7 @@ import { AppearanceSettings } from "@/components/AppearanceSettings";
 import { BillingSettings } from "@/components/BillingSettings";
 import { InvoiceHistory } from "@/components/InvoiceHistory";
 import { DataRights } from "@/components/DataRights";
+import { MfaSettings } from "@/components/MfaSettings";
 import { NumbersManager } from "@/components/NumbersManager";
 import { CallingStatus } from "@/components/CallingStatus";
 import { TestSend } from "@/components/TestSend";
@@ -405,6 +406,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
         )}
       </div>
       <AiHealthCheck />
+    </Card>
+    <Card>
+      <MfaSettings />
     </Card>
     <DataRights />
     </div>
