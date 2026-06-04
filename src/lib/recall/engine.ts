@@ -8,7 +8,7 @@ import type { Activity, Opportunity, Pipeline, Stage } from "@/lib/crm/types";
  * thing to do next. This is the product's core differentiator.
  */
 
-export type RecallReason = "going_cold" | "stalled" | "lost_winnable" | "no_activity";
+export type RecallReason = "no_show" | "going_cold" | "stalled" | "lost_winnable" | "no_activity";
 
 export interface RecallItem {
   opportunityId: string;
@@ -48,6 +48,9 @@ export interface RecallThresholds {
   noActivityDays: number;
   /** Lost deals older than this are too cold to bother re-approaching. */
   lostWindowDays: number;
+  /** A booked meeting that's been the last touch for this many days = a no-show /
+   *  ghosted-after-meeting to chase down. */
+  noShowGraceDays: number;
 }
 
 export const DEFAULT_RECALL_THRESHOLDS: RecallThresholds = {
@@ -55,6 +58,7 @@ export const DEFAULT_RECALL_THRESHOLDS: RecallThresholds = {
   stalledDays: 30,
   noActivityDays: 7,
   lostWindowDays: 180,
+  noShowGraceDays: 2,
 };
 
 const DAY = 1000 * 60 * 60 * 24;
@@ -71,6 +75,7 @@ function stageMap(pipelines: Pipeline[]): Map<string, Stage> {
 }
 
 const REASON_COPY: Record<RecallReason, { rec: (d: number) => string; channel: RecallItem["channel"] }> = {
+  no_show: { rec: () => `A booked meeting went quiet — reach out to reschedule while the intent's still warm.`, channel: "call" },
   going_cold: { rec: (d) => `No touch in ${d} days on a live deal — send a value-add follow-up today.`, channel: "email" },
   stalled: { rec: (d) => `Stalled mid-pipeline for ${d} days — call to surface the real blocker.`, channel: "call" },
   lost_winnable: { rec: () => `Marked lost but high-value — re-approach with a new angle or offer.`, channel: "call" },
@@ -82,6 +87,19 @@ const CHANNELS: ReadonlySet<RecallItem["channel"]> = new Set(["call", "email", "
 const ENGAGEMENT_BOOST = 10;
 /** Max priority bump for an open deal whose close date has slipped. */
 const OVERDUE_BOOST_CAP = 15;
+/** Priority bump for a no-show — a booked meeting is strong, fresh intent. */
+const NO_SHOW_BOOST = 12;
+
+/**
+ * A no-show / ghosted-after-meeting: the most recent touch was a meeting and it's
+ * been quiet for at least the grace window. Booking a meeting is real intent, so
+ * silence right after it is the highest-value, time-sensitive recall.
+ */
+function isNoShow(activities: Activity[] | undefined, graceDays: number): boolean {
+  if (!activities?.length) return false;
+  const latest = activities.reduce((a, b) => ((a.occurredAt ?? "") >= (b.occurredAt ?? "") ? a : b));
+  return latest.kind === "meeting" && daysSince(latest.occurredAt) >= graceDays;
+}
 
 /** The messaging channel the contact most recently replied on, if any. */
 export function preferredChannel(activities?: Activity[]): RecallItem["channel"] | null {
@@ -98,6 +116,11 @@ export function hasEngaged(activities?: Activity[]): boolean {
 }
 
 function recommend(reason: RecallReason, days: number, engaged: boolean, channel: RecallItem["channel"], overrode: boolean, daysOverdue: number): string {
+  // A no-show is its own play — reschedule on the channel they actually answer.
+  if (reason === "no_show") {
+    const how = channel === "call" ? "call to reschedule" : channel === "sms" ? "text to reschedule" : "email to reschedule";
+    return `A booked meeting went quiet — ${how} while the intent's still warm.`;
+  }
   const base = engaged && overrode
     ? `They went quiet after replying by ${channel} — ${(channel === "call" ? "call them back" : channel === "sms" ? "text them" : "email them")} on the thread they actually answer.`
     : REASON_COPY[reason].rec(days);
@@ -129,6 +152,10 @@ export function scoreOpportunity(
     if (days > thresholds.lostWindowDays || opp.value < 1000) return null; // too cold / too small
     reason = "lost_winnable";
     recoverable = 0.25;
+  } else if (isNoShow(signals?.activities, thresholds.noShowGraceDays)) {
+    // Open deal whose last touch was a meeting that's since gone quiet.
+    reason = "no_show";
+    recoverable = Math.max(0.4, prob); // a booked meeting signals real intent
   } else if (days >= thresholds.goingColdDays && prob >= 0.5) {
     reason = "going_cold";
     recoverable = prob;
@@ -161,7 +188,8 @@ export function scoreOpportunity(
   const valueScore = Math.min(60, Math.log10(Math.max(10, weightedValue)) * 14);
   const urgency = Math.min(40, days * (reason === "lost_winnable" ? 0.15 : 0.6));
   const overdueBoost = Math.min(OVERDUE_BOOST_CAP, daysOverdue * 0.5);
-  const score = Math.round(Math.min(100, valueScore + urgency + (engaged ? ENGAGEMENT_BOOST : 0) + overdueBoost));
+  const noShowBoost = reason === "no_show" ? NO_SHOW_BOOST : 0;
+  const score = Math.round(Math.min(100, valueScore + urgency + (engaged ? ENGAGEMENT_BOOST : 0) + overdueBoost + noShowBoost));
 
   return {
     opportunityId: opp.id,
@@ -314,6 +342,7 @@ export function recallByOwner(items: RecallItem[], ownerOf: (oppId: string) => s
 
 export function summarizeRecall(items: RecallItem[], currency: string): RecallSummary {
   const byReason = {
+    no_show: { count: 0, value: 0 },
     going_cold: { count: 0, value: 0 },
     stalled: { count: 0, value: 0 },
     lost_winnable: { count: 0, value: 0 },

@@ -179,6 +179,7 @@ export function Stat({
 }
 
 const REASON_STYLES: Record<string, { label: string; cls: string }> = {
+  no_show: { label: "No-show", cls: "bg-brand/15 text-brand" },
   going_cold: { label: "Going cold", cls: "bg-warn/15 text-warn" },
   stalled: { label: "Stalled", cls: "bg-danger/15 text-danger" },
   lost_winnable: { label: "Winnable loss", cls: "bg-brand-soft text-brand" },
