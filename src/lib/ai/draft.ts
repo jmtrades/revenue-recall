@@ -99,6 +99,22 @@ function signOff(input: DraftInput): string {
   return input.voice?.signature || input.voice?.senderName || input.repName || "";
 }
 
+// Why a deal needs reactivating shapes HOW you re-open it — a no-show is "we
+// missed each other, grab another time", not the same nudge as a cold deal. Maps
+// the recall engine's reason to a concrete re-engagement directive for the draft.
+const REASON_HINT: Record<string, string> = {
+  no_show: "a meeting was booked and then went quiet — lightly own that you missed each other and make it easy to grab another quick time",
+  going_cold: "a live deal has gone quiet — re-open with a genuine, specific reason to talk now, no guilt-trip",
+  stalled: "the deal stalled mid-process — surface the real blocker with one easy, low-pressure question",
+  no_activity: "this lead was never properly worked — make a warm, genuine first real contact",
+  lost_winnable: "they passed before — come back with a genuinely new angle or reason, zero pressure",
+};
+
+/** A reason-specific re-engagement directive (falls back to a generic nudge). */
+export function reEngagementHint(reason?: string): string {
+  return (reason && REASON_HINT[reason]) || "they've gone quiet — re-engage warmly with a real, specific reason";
+}
+
 /**
  * Deterministic, industry-aware, human-sounding fallback used when no API key is
  * set (the default demo path). Composes from multiple body skeletons whose parts
@@ -443,7 +459,7 @@ Industry: ${input.industryLabel}
 Tone for this message: ${tone.label} — ${tone.directive}${scenarioCoaching}${callCoaching}
 Prospect: ${input.contactName}${input.company ? ` at ${input.company}` : ""}
 Deal: "${input.dealTitle}" — ${input.valueLabel} ${input.value} ${input.currency}, currently at stage "${input.stageLabel}"
-${input.recallReason ? `Recall reason: ${input.recallReason} (re-engagement — they've gone quiet)\n` : ""}${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.voice?.senderName || input.repName ? `You are: ${input.voice?.senderName ?? input.repName}\n` : ""}${input.voice?.signature ? `Sign off as: ${input.voice.signature}\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).join("\n- ")}` : "No prior activity logged."}${input.lastInbound ? `\n\nThe last thing THEY said to you (anchor your message to this — acknowledge or build on it, never ignore it):\n"""${input.lastInbound}"""` : ""}
+${input.recallReason ? `Recall reason: ${input.recallReason} — ${reEngagementHint(input.recallReason)}\n` : ""}${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.voice?.senderName || input.repName ? `You are: ${input.voice?.senderName ?? input.repName}\n` : ""}${input.voice?.signature ? `Sign off as: ${input.voice.signature}\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).join("\n- ")}` : "No prior activity logged."}${input.lastInbound ? `\n\nThe last thing THEY said to you (anchor your message to this — acknowledge or build on it, never ignore it):\n"""${input.lastInbound}"""` : ""}
 
 ${input.voice?.business ? `THE BUSINESS YOU WRITE FOR — what they actually sell and who they serve. Ground every line in this (it matters most when the industry is generic):\n"""${input.voice.business}"""\n` : ""}
 ${playbookBlock(input)}

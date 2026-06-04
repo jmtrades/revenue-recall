@@ -3,7 +3,9 @@ import { withGuard } from "@/lib/api/guard";
 import { z } from "zod";
 import { getDealDetail } from "@/lib/queries";
 import { getOrgSettings } from "@/lib/org";
-import { getIndustry } from "@/lib/industries";
+import { getIndustry, recallThresholdsFor } from "@/lib/industries";
+import { scoreOpportunity } from "@/lib/recall/engine";
+import type { Stage } from "@/lib/crm/types";
 import { contactPreferredLanguage } from "@/lib/languages";
 import { draftMessage, draftVariations, type DraftInput } from "@/lib/ai/draft";
 import { getActiveVoice } from "@/lib/voice";
@@ -47,7 +49,12 @@ export const POST = withGuard(async (req: Request) => {
   const industry = getIndustry(org.industryId);
   const voice = await getActiveVoice();
   const days = daysSince(detail.opp.lastActivityAt);
-  const recallReason = detail.opp.lossReason ? "lost_winnable" : undefined;
+  // Tailor re-engagement to WHY the deal needs reactivating: score this deal
+  // against the recall engine (no-show / going-cold / stalled / …) so the message
+  // matches the reason, not a one-size nudge. Lost deals keep lost_winnable.
+  const stageMap = new Map<string, Stage>(detail.pipeline.stages.map((s) => [s.id, s]));
+  const recallItem = scoreOpportunity(detail.opp, stageMap, { activities: detail.activities }, recallThresholdsFor(org.industryId));
+  const recallReason = detail.opp.lossReason ? "lost_winnable" : recallItem?.reason;
   // Explicit tone wins; "auto" (or missing) picks one from the deal's signals.
   const tone = isToneId(parsed.data.tone)
     ? parsed.data.tone
