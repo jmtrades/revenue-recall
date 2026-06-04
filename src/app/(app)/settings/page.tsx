@@ -45,6 +45,8 @@ import { ImportCsv } from "@/components/ImportCsv";
 import { TeamInvites } from "@/components/TeamInvites";
 import { AuditLog } from "@/components/AuditLog";
 import { ApiKeySettings } from "@/components/ApiKeySettings";
+import { LeadFormEmbed } from "@/components/LeadFormEmbed";
+import { hostedFormUrl, formEmbedSnippet } from "@/lib/forms";
 import { listInvites } from "@/lib/invites-server";
 
 export const dynamic = "force-dynamic";
@@ -456,10 +458,19 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
   );
 
   const leadApiEndpoint = `${(process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "")}/api/v1/leads`;
+  const orgFormUrl = org.id ? hostedFormUrl(org.id) : null;
+  const orgFormEmbed = org.id ? formEmbedSnippet(org.id) : null;
   const developerTab = (
-    <Card title="Lead Capture API">
-      <ApiKeySettings endpoint={leadApiEndpoint} />
-    </Card>
+    <div className="space-y-4">
+      <Card title="Lead Capture API">
+        <ApiKeySettings endpoint={leadApiEndpoint} />
+      </Card>
+      {orgFormUrl && orgFormEmbed && (
+        <Card title="Lead capture form">
+          <LeadFormEmbed formUrl={orgFormUrl} embed={orgFormEmbed} />
+        </Card>
+      )}
+    </div>
   );
 
   const billingReturn = searchParams.billing === "success" ? "success" : searchParams.billing === "cancelled" ? "cancelled" : null;

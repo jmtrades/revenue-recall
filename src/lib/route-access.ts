@@ -29,6 +29,7 @@ export const PUBLIC_API = [
   "/api/unsubscribe",
   "/api/calendar/feed", // subscribable .ics — self-authed by an HMAC feed token
   "/api/v1/", // public Lead Capture API — each route self-auths by API key
+  "/api/forms/", // hosted/embeddable lead form submit — self-authed by an HMAC form token
   "/api/health",
 ];
 
@@ -36,6 +37,7 @@ export const PUBLIC_API = [
 export function isPublicRoute(path: string): boolean {
   if (PUBLIC_PAGES.has(path)) return true;
   if (path.startsWith("/auth/")) return true; // OAuth / email-confirm callback
+  if (path.startsWith("/f/")) return true; // hosted lead-capture form (token-authed page)
   // Social OAuth callback: the platform redirects here with no session; the
   // signed `state` authenticates the org binding. (The /start route stays gated.)
   if (path.startsWith("/api/oauth/") && path.endsWith("/callback")) return true;
