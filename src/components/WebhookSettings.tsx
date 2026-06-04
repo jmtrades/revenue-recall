@@ -84,8 +84,9 @@ export function WebhookSettings() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted">
-        Get events pushed to your systems in real time. We POST signed JSON to your endpoint when things happen —
-        starting with <code className="text-fg">lead.created</code> (every API + form capture).
+        Get events pushed to your systems in real time. We POST signed JSON to your endpoint when things happen —{" "}
+        <code className="text-fg">lead.created</code>, <code className="text-fg">deal.stage_changed</code>,{" "}
+        <code className="text-fg">deal.won</code>, and <code className="text-fg">deal.lost</code>.
       </p>
 
       {error && <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div>}

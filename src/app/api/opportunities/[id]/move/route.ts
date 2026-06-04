@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProvider } from "@/lib/crm/registry";
+import { moveDeal } from "@/lib/deals";
 import { z } from "zod";
 
 const Body = z.object({ stageId: z.string().min(1) });
@@ -10,7 +10,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: "stageId is required" }, { status: 400 });
   }
   try {
-    const opp = await getProvider().moveOpportunity(params.id, parsed.data.stageId);
+    const opp = await moveDeal(params.id, parsed.data.stageId);
     return NextResponse.json({ opportunity: opp });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "move failed" }, { status: 409 });
