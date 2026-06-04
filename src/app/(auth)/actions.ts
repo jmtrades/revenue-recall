@@ -82,6 +82,14 @@ export async function signOut(): Promise<void> {
   redirect("/login");
 }
 
+/** Sign out of ALL devices (revoke every session for this user) — for a lost
+ *  laptop or shared-login cleanup. */
+export async function signOutEverywhere(): Promise<void> {
+  const sb = getServerSupabase();
+  if (sb) await sb.auth.signOut({ scope: "global" });
+  redirect("/login");
+}
+
 /** Send a password-reset email. The link lands on /auth/callback (which
  *  establishes a short recovery session) → /reset/update to set a new password.
  *  Always reports success so we never reveal whether an account exists. */

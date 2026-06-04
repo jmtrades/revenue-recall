@@ -25,6 +25,7 @@ import { BillingSettings } from "@/components/BillingSettings";
 import { InvoiceHistory } from "@/components/InvoiceHistory";
 import { DataRights } from "@/components/DataRights";
 import { MfaSettings } from "@/components/MfaSettings";
+import { signOutEverywhere } from "@/app/(auth)/actions";
 import { NumbersManager } from "@/components/NumbersManager";
 import { CallingStatus } from "@/components/CallingStatus";
 import { TestSend } from "@/components/TestSend";
@@ -409,6 +410,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
     </Card>
     <Card>
       <MfaSettings />
+      <form action={signOutEverywhere} className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-5">
+        <div>
+          <p className="text-sm font-medium text-fg">Active sessions</p>
+          <p className="mt-0.5 text-xs text-muted">Signed in on a shared or lost device? Sign out everywhere.</p>
+        </div>
+        <button type="submit" className="shrink-0 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted transition hover:text-fg">Log out of all devices</button>
+      </form>
     </Card>
     <DataRights />
     </div>
