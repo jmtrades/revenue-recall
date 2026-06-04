@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { getCalendar } from "@/lib/queries";
+import { getOrgSettings } from "@/lib/org";
+import { calendarFeedUrl } from "@/lib/calendar-feed";
 import { PageHeader, Card } from "@/components/ui";
+import { CalendarSubscribe } from "@/components/CalendarSubscribe";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +15,8 @@ function dayKey(d: Date) {
 }
 
 export default async function CalendarPage() {
-  const { events } = await getCalendar();
+  const [{ events }, org] = await Promise.all([getCalendar(), getOrgSettings()]);
+  const feedUrl = org.id ? calendarFeedUrl(org.id) : null;
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
@@ -35,7 +39,11 @@ export default async function CalendarPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Calendar" subtitle={now.toLocaleString("en-US", { month: "long", year: "numeric" })} />
+      <PageHeader
+        title="Calendar"
+        subtitle={now.toLocaleString("en-US", { month: "long", year: "numeric" })}
+        action={feedUrl ? <CalendarSubscribe feedUrl={feedUrl} /> : undefined}
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
         <Card>

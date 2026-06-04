@@ -19,6 +19,7 @@ describe("middleware auth-gate allowlist (real isPublicRoute)", () => {
       "/api/inbound/sms",
       "/api/calls/log",
       "/api/unsubscribe",
+      "/api/calendar/feed",
       "/api/health",
     ]) {
       expect(isPublicRoute(p), `${p} must bypass the auth gate`).toBe(true);
