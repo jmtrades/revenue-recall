@@ -23,6 +23,7 @@ export function MarketingNav() {
           <a href="#features" className="transition-colors hover:text-fg">Features</a>
           <a href="#how" className="transition-colors hover:text-fg">How it works</a>
           <a href="#industries" className="transition-colors hover:text-fg">Industries</a>
+          <a href="#integrations" className="transition-colors hover:text-fg">Integrations</a>
           <a href="#who" className="transition-colors hover:text-fg">Who it&rsquo;s for</a>
           <a href="#pricing" className="transition-colors hover:text-fg">Pricing</a>
         </nav>
