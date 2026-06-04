@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getSupabase } from "@/lib/supabase/client";
 import { channelStatus } from "@/lib/comms";
+import { rateLimit } from "@/lib/ratelimit";
 
 export interface AuthState {
   error?: string;
@@ -30,19 +31,25 @@ export async function signIn(_prev: AuthState, formData: FormData): Promise<Auth
 export async function signUp(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const sb = getServerSupabase();
   if (!sb) return { error: "Authentication is not configured." };
+  // Per-IP signup throttle — bounds mass-signup abuse (important with the
+  // confirm-on-create default below, which removes the email-send rate cap).
+  const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() || headers().get("x-real-ip") || "unknown";
+  if (!rateLimit(`signup:${ip}`, 10, 60_000).ok) return { error: "Too many sign-up attempts. Please wait a minute and try again." };
   const name = String(formData.get("name") ?? "");
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
   if (password.length < 8) return { error: "Use at least 8 characters for your password." };
 
-  // Frictionless onboarding switch. Supabase AUTH emails (the confirmation link)
-  // use Supabase's own SMTP — separate from the app's Resend setup — so on the
-  // default SMTP they're rate-limited and often undelivered, dead-ending signup.
-  // With SIGNUP_AUTOCONFIRM=true we create the account already-confirmed via the
-  // service role and sign the user straight in, so onboarding never depends on
-  // Supabase email deliverability. (Leave it unset to keep email confirmation.)
+  // Frictionless onboarding by DEFAULT. Supabase AUTH emails (the confirmation
+  // link) use Supabase's own SMTP — separate from the app's Resend — so on the
+  // default SMTP they're rate-limited (~2-3/hr) and often undelivered, which
+  // dead-ends every signup. So unless email verification is explicitly required,
+  // we create the account already-confirmed via the service role and sign the
+  // user straight in — onboarding never depends on Supabase email deliverability.
+  // To require verification instead, set SIGNUP_REQUIRE_EMAIL_CONFIRM=true AND
+  // configure custom SMTP in Supabase so the emails actually deliver.
   const admin = getSupabase();
-  if (process.env.SIGNUP_AUTOCONFIRM === "true" && admin) {
+  if (admin && process.env.SIGNUP_REQUIRE_EMAIL_CONFIRM !== "true") {
     const { error: createErr } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name } });
     if (createErr && !/registered|already|exists/i.test(createErr.message)) return { error: createErr.message };
     const { error: signInErr } = await sb.auth.signInWithPassword({ email, password });
