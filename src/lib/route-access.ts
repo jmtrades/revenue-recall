@@ -28,6 +28,7 @@ export const PUBLIC_API = [
   "/api/social/", // social webhooks — each verifies its own signature/secret
   "/api/unsubscribe",
   "/api/calendar/feed", // subscribable .ics — self-authed by an HMAC feed token
+  "/api/v1/", // public Lead Capture API — each route self-auths by API key
   "/api/health",
 ];
 

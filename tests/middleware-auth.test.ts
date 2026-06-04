@@ -20,6 +20,7 @@ describe("middleware auth-gate allowlist (real isPublicRoute)", () => {
       "/api/calls/log",
       "/api/unsubscribe",
       "/api/calendar/feed",
+      "/api/v1/leads",
       "/api/health",
     ]) {
       expect(isPublicRoute(p), `${p} must bypass the auth gate`).toBe(true);
@@ -46,6 +47,7 @@ describe("middleware auth-gate allowlist (real isPublicRoute)", () => {
       "/api/voice/select",
       "/api/calls/diagnostics",
       "/api/oauth/x/start",
+      "/api/keys", // API-key management is session-gated (owner/admin)
     ]) {
       expect(isPublicRoute(p), `${p} must require auth`).toBe(false);
     }
