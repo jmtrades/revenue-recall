@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createTask, listTasks } from "@/lib/agent/store";
+import { requireRole } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,10 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  // Configuring an org-wide Autopilot task (which can auto-send) is an admin
+  // action — not something a rep should do. No-ops in the open demo.
+  const denied = await requireRole("owner", "admin");
+  if (denied) return denied;
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid task" }, { status: 400 });
   try {
