@@ -92,6 +92,14 @@ export const POST = withGuard(async (req: Request) => {
   if (org?.id) meta.orgId = org.id;
 
   const result = await placeCall(to, { from, voiceId: org?.voiceId, context, opener, meta: Object.keys(meta).length ? meta : undefined });
-  if (result.status === "failed") return NextResponse.json({ error: result.detail ?? "Call failed" }, { status: 502 });
+  if (result.status === "failed") {
+    // Most "failed" calls in practice are an unreachable gateway (wrong/empty
+    // VOICE_WEBHOOK_URL, or the gateway service down) — point the user at the
+    // self-diagnosing card instead of surfacing a raw fetch error.
+    return NextResponse.json(
+      { error: "Couldn't place the call — your calling gateway didn't respond. Check Settings → Channels → “Calling gateway”.", detail: result.detail },
+      { status: 502 },
+    );
+  }
   return NextResponse.json({ ok: true, to, ...result });
 });
