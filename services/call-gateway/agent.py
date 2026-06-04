@@ -9,6 +9,11 @@ from config import TELEPHONY_SAMPLE_RATE
 
 DEFAULT_OPENER = "Hey, it's me — caught you at an okay time?"
 
+# Hard ceiling on rep turns. The brain already wraps a repeated objection on its
+# own; this is the backstop so a live call can NEVER loop indefinitely — at the
+# cap we force one graceful closing line and hang up.
+MAX_REP_TURNS = 12
+
 
 class CallAgent:
     def __init__(self, context: str = "", voice_id=None, opener: str = DEFAULT_OPENER):
@@ -27,6 +32,7 @@ class CallAgent:
         """Drive the whole conversation until the caller hangs up."""
         self.turns.append({"role": "rep", "text": self.opener})
         await self._speak(self.opener, transport)
+        rep_turns = 1  # the opener counts
         while not transport.closed():
             pcm = await transport.collect_utterance()
             if pcm is None:
@@ -39,9 +45,14 @@ class CallAgent:
             if not heard:
                 continue
             self.turns.append({"role": "prospect", "text": heard})
-            line = await asyncio.to_thread(next_line, self.turns, self.context)
+            # At the cap, force a graceful close so the call can't loop forever.
+            wrap = rep_turns >= MAX_REP_TURNS
+            line = await asyncio.to_thread(next_line, self.turns, self.context, wrap)
             if not line:
                 continue
             self.turns.append({"role": "rep", "text": line})
+            rep_turns += 1
             await self._speak(line, transport)
+            if wrap:
+                break  # delivered the closing line — end the call gracefully
         return self.turns  # full transcript, for logging back to the CRM
