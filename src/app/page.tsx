@@ -420,6 +420,35 @@ export default function LandingPage() {
         </p>
       </section>
 
+      {/* Integrations / developer platform */}
+      <section id="integrations" className="border-y border-border bg-surface/30">
+        <div className="mx-auto max-w-6xl px-5 py-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <span className="eyebrow">Open platform</span>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Connects to everything you run</h2>
+            <p className="mt-4 text-muted">A REST API, webhooks, and a drop-in form — so leads flow in from anywhere and your stack stays in sync, automatically.</p>
+          </div>
+          <div className="mt-12 grid gap-5 md:grid-cols-3">
+            {[
+              { icon: "automations" as IconName, title: "REST API", body: "Push leads, and sync contacts & deals both ways with a workspace API key. Full two-way CRUD." },
+              { icon: "bell" as IconName, title: "Signed webhooks", body: "Get events the moment they happen — lead.created, deal.won, and more — HMAC-signed for your peace of mind." },
+              { icon: "leads" as IconName, title: "Embeddable form", body: "Drop a capture form on any site. Every submission becomes a lead the AI works immediately — no code." },
+            ].map((f) => (
+              <div key={f.title} className="group raised lift rounded-2xl border border-border bg-surface p-6 hover:border-brand/40">
+                <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20 transition-transform duration-200 ease-out group-hover:scale-105"><Icon name={f.icon} size={22} /></div>
+                <h3 className="mt-4 font-semibold text-fg">{f.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted">{f.body}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-8 text-center">
+            <Link href="/docs/api" className="inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline">
+              Read the API docs <Arrow className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing */}
       <section id="pricing" className="border-y border-border bg-surface/30">
         <div className="mx-auto max-w-6xl px-5 py-20">
