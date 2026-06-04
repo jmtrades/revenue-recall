@@ -242,6 +242,38 @@ export async function getLeadRows(): Promise<{ rows: LeadRow[]; owners: string[]
   };
 }
 
+export interface CaptureRow {
+  dealId: string;
+  title: string;
+  contactName: string;
+  source: string;
+  value: number;
+  currency: string;
+  at: string;
+}
+
+/** Recent deals created through the Lead Capture API or the embeddable form —
+ *  a "proof it's working" feed for the Developer settings tab. */
+export async function getRecentCaptures(limit = 8): Promise<CaptureRow[]> {
+  const provider = getProvider();
+  const [opps, contacts] = await Promise.all([provider.listOpportunities(), provider.listContacts()]);
+  const nameById = new Map(contacts.map((c) => [c.id, c.name]));
+  const SOURCES = new Set(["API", "Web form"]);
+  return opps
+    .filter((o) => o.source != null && SOURCES.has(o.source))
+    .sort((a, b) => ((a.createdAt ?? "") < (b.createdAt ?? "") ? 1 : -1))
+    .slice(0, limit)
+    .map((o) => ({
+      dealId: o.id,
+      title: o.title,
+      contactName: nameById.get(o.contactId) ?? "—",
+      source: o.source ?? "",
+      value: o.value,
+      currency: o.currency,
+      at: o.createdAt ?? "",
+    }));
+}
+
 export interface FeedEntry {
   activity: Activity;
   contactName?: string;

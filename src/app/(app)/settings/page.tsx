@@ -12,7 +12,8 @@ import { OAUTH_PROVIDERS, oauthConfigured, type OAuthPlatform } from "@/lib/conn
 import { complianceConfig } from "@/lib/compliance";
 import { listOwnedNumbers, numbersConfigured, numbersProviderId, outboundFromNumber } from "@/lib/numbers";
 import { SetupChecklist, type SetupItem } from "@/components/SetupChecklist";
-import { getTeamAndPipeline } from "@/lib/queries";
+import { getTeamAndPipeline, getRecentCaptures } from "@/lib/queries";
+import { money } from "@/lib/format";
 import { getOrgSettings } from "@/lib/org";
 import { getActiveVoice } from "@/lib/voice";
 import { pct } from "@/lib/format";
@@ -461,6 +462,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
   const leadApiEndpoint = `${(process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "")}/api/v1/leads`;
   const orgFormUrl = org.id ? hostedFormUrl(org.id) : null;
   const orgFormEmbed = org.id ? formEmbedSnippet(org.id) : null;
+  const recentCaptures = await getRecentCaptures(8).catch(() => []);
   const developerTab = (
     <div className="space-y-4">
       <Card title="Lead Capture API">
@@ -473,6 +475,26 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       )}
       <Card title="Webhooks">
         <WebhookSettings />
+      </Card>
+      <Card title="Recent captures">
+        {recentCaptures.length === 0 ? (
+          <p className="text-sm text-muted">No leads captured via the API or form yet — they&apos;ll appear here as they come in.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {recentCaptures.map((c) => (
+              <li key={c.dealId} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <div className="truncate text-sm text-fg">{c.contactName}</div>
+                  <div className="truncate text-xs text-muted">{c.title}</div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="text-sm text-fg">{c.value > 0 ? money(c.value, c.currency) : "—"}</div>
+                  <span className="pill bg-surface-2 text-[10px] text-muted">{c.source}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
     </div>
   );
