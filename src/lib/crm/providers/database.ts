@@ -255,8 +255,11 @@ export class DatabaseProvider implements CrmProvider {
     if (token) headers.Authorization = `Bearer ${token}`;
     // Retry transient blips + abort a hung endpoint — a customer's slow database
     // must never block the request until the platform kills the function.
-    const res = await fetchWithRetry(url, { headers });
-    if (!res.ok) throw new Error(`data source ${res.status}`);
+    // redirect:"manual" closes the SSRF-via-redirect bypass: a validated public
+    // URL that 3xx-redirects to a private/metadata host returns the 3xx (→ !ok →
+    // throw) instead of being followed there.
+    const res = await fetchWithRetry(url, { headers, redirect: "manual" });
+    if (!res.ok) throw new Error(`data source ${res.status} (redirects are not followed)`);
     return { rows: extractRows(await res.json().catch(() => null)), mapping };
   }
 

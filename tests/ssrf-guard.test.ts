@@ -23,6 +23,23 @@ describe("ssrf guard", () => {
     }
   });
 
+  it("blocks loopback/metadata in legacy IP encodings (decimal, hex, octal, short)", () => {
+    for (const u of [
+      "http://2130706433/", // 127.0.0.1 decimal
+      "http://0x7f000001/", // 127.0.0.1 hex
+      "http://0177.0.0.1/", // 127.0.0.1 octal first octet
+      "http://127.1/", // short form → 127.0.0.1
+      "http://2852039166/", // 169.254.169.254 decimal (metadata)
+      "http://[::ffff:127.0.0.1]/", // IPv4-mapped IPv6 loopback
+    ]) {
+      expect(isSafeOutboundUrl(u), u).toBe(false);
+    }
+  });
+
+  it("still allows a genuine public IP", () => {
+    expect(isSafeOutboundUrl("https://93.184.216.34/")).toBe(true); // example.com
+  });
+
   it("blocks non-http(s) schemes and malformed input", () => {
     expect(isSafeOutboundUrl("file:///etc/passwd")).toBe(false);
     expect(isSafeOutboundUrl("gopher://x/")).toBe(false);
