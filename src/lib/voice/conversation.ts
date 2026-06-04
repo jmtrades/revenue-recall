@@ -3,6 +3,7 @@ import { getPlaybook } from "@/lib/industries";
 import { languageDirective } from "@/lib/languages";
 import { getTone, type ToneId } from "@/lib/tones";
 import { detectIntent, type Intent } from "@/lib/ai/intent";
+import { analyzeProgress, decideDirective, type CallDirective } from "@/lib/voice/objection";
 import { reactTo, reactToText, detectSentiment, sentimentToEmotion, type Sentiment } from "@/lib/voice/reactive";
 import { analyzeCall, type CallScore } from "@/lib/voice/scorecard";
 import type { Emotion } from "@/lib/voice/speech";
@@ -86,8 +87,8 @@ Return only the requested JSON.`;
 const REP_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  properties: { text: { type: "string" }, done: { type: "boolean" } },
-  required: ["text", "done"],
+  properties: { text: { type: "string" } },
+  required: ["text"],
 };
 const PROSPECT_SCHEMA = {
   type: "object",
@@ -106,13 +107,38 @@ function lastProspect(turns: Turn[]): string | null {
   return null;
 }
 
-function phaseFor(state: ConversationState, intent: Intent | null): CallPhase {
-  const repTurns = state.turns.filter((t) => t.speaker === "rep").length;
-  if (repTurns === 0) return "opening";
-  if (intent === "decline" || intent === "hostile") return "wrap";
-  if (intent && intent !== "positive" && intent !== "question") return "handling";
-  if (repTurns >= 3 && (intent === "positive" || intent === "question")) return "closing";
-  return "discovery";
+const prospectTexts = (turns: Turn[]): string[] => turns.filter((t) => t.speaker === "prospect").map((t) => t.text);
+const repCountOf = (turns: Turn[]): number => turns.filter((t) => t.speaker === "rep").length;
+
+/** Map a policy directive to the call phase + whether the call ends after this line. */
+function phaseAndDone(directive: CallDirective, repCount: number): { phase: CallPhase; done: boolean } {
+  if (repCount === 0) return { phase: "opening", done: false };
+  switch (directive.action) {
+    case "exit":
+      return { phase: "wrap", done: true };
+    case "book_callback":
+    case "close":
+      return { phase: "closing", done: true };
+    default:
+      return { phase: "handling", done: false };
+  }
+}
+
+/** Prompt guidance the directive adds, so the model phrases the RIGHT move. The
+ *  policy (not the model) decides when to stop — this just shapes the wording. */
+function directiveGuidance(directive: CallDirective): string {
+  switch (directive.action) {
+    case "exit":
+      return directive.reason === "hostile"
+        ? "They're done and irritated. Apologize once, briefly, and let them go — no pitch, no question."
+        : "They've firmly passed. Thank them warmly, leave the door open in one line, and close — no question, no pitch.";
+    case "book_callback":
+      return "You've already addressed this and they're not moving today — do NOT re-explain or pitch again. Acknowledge it, then propose ONE specific callback (a day/time) or offer to send a single proof, and wrap warmly. This is your final line.";
+    case "close":
+      return "There's real interest. Ask for ONE concrete next step with a specific day and time.";
+    default:
+      return "Acknowledge their point as fair — don't argue — then ask one genuine question that moves things forward.";
+  }
 }
 
 // ---- deterministic rep turns (no-key path, and the fallback when AI errors) ----
@@ -164,29 +190,42 @@ const CLOSERS: ((f: string) => string)[] = [
   (f) => `Done. I'll get that on the calendar — looking forward to it, ${f}.`,
 ];
 
+// When an objection keeps coming back (or the call is dragging), we stop
+// re-pitching, secure ONE specific next touch, and bow out gracefully.
+const BOOK_CALLBACK: ((f: string) => string)[] = [
+  (f) => `I hear you, ${f} — I won't keep hammering it. How about I give you a quick ring next Tuesday once you've had a minute to sit with it?`,
+  (f) => `Totally fair, and I don't want to talk your ear off. Let me send over one real example and grab you Thursday — that work?`,
+  (f) => `No worries, ${f} — sounds like now's not the moment. I'll text you the details and try you again early next week, sound alright?`,
+];
+
 function fallbackRepTurn(state: ConversationState): RepTurn {
   const first = firstName(state.contactName);
   const co = state.company ?? "things";
   const seed = `${state.dealTitle}|${state.turns.length}|${state.tone ?? "warm"}`;
   const incoming = lastProspect(state.turns);
   const intent = incoming ? detectIntent(incoming) : null;
-  const phase = phaseFor(state, intent);
+  const repCount = repCountOf(state.turns);
+  const directive = decideDirective(analyzeProgress(prospectTexts(state.turns)), repCount);
+  const { phase, done } = phaseAndDone(directive, repCount);
   // React to the prospect's mood; an explicit rep tone still wins if set.
   const reaction = incoming ? reactToText(incoming) : { tone: "warm" as ToneId, emotion: "warm" as Emotion, note: "Open warm and curious." };
   const tone = state.tone ?? reaction.tone;
-
   const base = { phase, tone, emotion: reaction.emotion, coachNote: reaction.note, source: "template" as const };
+
   if (phase === "opening") {
     return { ...base, text: pick(OPENERS, seed, "open")(first, co), emotion: "warm", done: false };
   }
-  if (intent === "decline" || intent === "hostile") {
-    return { ...base, text: pick(SPOKEN.decline!(first), seed, "decline"), phase: "wrap", done: true };
+  if (directive.action === "exit") {
+    return { ...base, text: pick(SPOKEN.decline!(first), seed, "decline"), done: true };
   }
-  if (phase === "closing") {
+  if (directive.action === "book_callback") {
+    return { ...base, text: pick(BOOK_CALLBACK, seed, "callback")(first), coachNote: "Objection kept coming back — stopped re-pitching, booked a callback, and wrapped.", done: true };
+  }
+  if (directive.action === "close") {
     return { ...base, text: pick(CLOSERS, seed, "close")(first), emotion: "energetic", done: true };
   }
   const pool = (intent && SPOKEN[intent]) || SPOKEN.question!;
-  return { ...base, text: pick(pool(first), seed, intent ?? "discovery"), done: false };
+  return { ...base, text: pick(pool(first), seed, intent ?? "discovery"), done };
 }
 
 /** Decide the rep's next spoken line given the call so far. */
@@ -194,11 +233,14 @@ export async function nextRepTurn(state: ConversationState): Promise<RepTurn> {
   if (!isAiConfigured()) return fallbackRepTurn(state);
   const pb = getPlaybook(state.industryId ?? "generic");
   const incoming = lastProspect(state.turns);
-  const intent = incoming ? detectIntent(incoming) : null;
+  const repCount = repCountOf(state.turns);
+  // The deterministic policy decides the MOVE (handle / close / book a callback /
+  // exit) and whether the call ends — so it can never loop forever re-pitching.
+  const directive = decideDirective(analyzeProgress(prospectTexts(state.turns)), repCount);
+  const { phase, done } = phaseAndDone(directive, repCount);
   const reaction = incoming ? reactToText(incoming) : { tone: "warm" as ToneId, emotion: "warm" as Emotion, note: "Open warm and curious." };
   // Adapt tone to the moment unless the rep pinned one.
   const tone = getTone(state.tone ?? reaction.tone);
-  const phase = phaseFor(state, intent);
   const user = `You're on a live call.
 Read the room: the prospect sounds ${incoming ? detectSentiment(incoming) : "neutral"}. ${reaction.note}
 Tone: ${tone.label} — ${tone.directive}
@@ -206,15 +248,17 @@ Industry: ${state.industryLabel ?? "sales"}
 Prospect: ${state.contactName}${state.company ? ` at ${state.company}` : ""}
 About: "${state.dealTitle}"
 Their likely natural next-steps: ${pb.nextSteps.call.join(" / ")}
-Phase: ${phase}${phase === "closing" ? " (ask for a concrete next step with a day/time)" : ""}
+Phase: ${phase}
+What to do now: ${directiveGuidance(directive)}
 ${state.voice?.profile ? `Speak in this rep's voice:\n"""${state.voice.profile}"""\n` : ""}${languageDirective(state.language) ? `${languageDirective(state.language)}\n` : ""}TRANSCRIPT SO FAR:
 ${transcript(state.turns, "rep")}
 
-Say the next line out loud, as the rep. Set done=true only if the call should naturally end now.`;
+Say only the next line out loud, as the rep.`;
   try {
     // Live call: keep this fast — no thinking/effort, or the latency creates dead air mid-conversation.
-    const out = await completeJson<{ text: string; done: boolean }>({ system: REP_SYSTEM, user, schema: REP_SCHEMA, maxTokens: 220, feature: "call" });
-    return { text: out.text, phase, done: Boolean(out.done), tone: state.tone ?? reaction.tone, emotion: reaction.emotion, coachNote: reaction.note, source: "ai" };
+    const out = await completeJson<{ text: string }>({ system: REP_SYSTEM, user, schema: REP_SCHEMA, maxTokens: 220, feature: "call" });
+    const coachNote = directive.action === "book_callback" ? "Repeated objection — book a callback instead of re-pitching." : reaction.note;
+    return { text: out.text, phase, done, tone: state.tone ?? reaction.tone, emotion: reaction.emotion, coachNote, source: "ai" };
   } catch {
     return fallbackRepTurn(state);
   }
