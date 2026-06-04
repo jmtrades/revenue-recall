@@ -44,6 +44,7 @@ import { NotificationSettings } from "@/components/NotificationSettings";
 import { ImportCsv } from "@/components/ImportCsv";
 import { TeamInvites } from "@/components/TeamInvites";
 import { AuditLog } from "@/components/AuditLog";
+import { ApiKeySettings } from "@/components/ApiKeySettings";
 import { listInvites } from "@/lib/invites-server";
 
 export const dynamic = "force-dynamic";
@@ -454,6 +455,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
     </Card>
   );
 
+  const leadApiEndpoint = `${(process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "")}/api/v1/leads`;
+  const developerTab = (
+    <Card title="Lead Capture API">
+      <ApiKeySettings endpoint={leadApiEndpoint} />
+    </Card>
+  );
+
   const billingReturn = searchParams.billing === "success" ? "success" : searchParams.billing === "cancelled" ? "cancelled" : null;
   const oauthReturn = searchParams.connected; // success | denied | error, from the OAuth callback
 
@@ -486,6 +494,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
           { id: "fields", label: "Fields", content: fieldsTab },
           { id: "notifications", label: "Notifications", content: notificationsTab },
           { id: "import", label: "Import", content: importTab },
+          { id: "developer", label: "Developer", content: developerTab },
           { id: "billing", label: "Billing", content: billingTab },
         ]}
       />
