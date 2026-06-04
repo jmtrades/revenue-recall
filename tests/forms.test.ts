@@ -11,11 +11,28 @@ beforeEach(() => {
 describe("form token", () => {
   it("verifies its own token and rejects tampering / cross-org reuse", () => {
     const t = formToken("org_1");
+    expect(t).toBeTruthy();
     expect(verifyFormToken("org_1", t)).toBe(true);
     expect(verifyFormToken("org_1", t + "x")).toBe(false);
     expect(verifyFormToken("org_2", t)).toBe(false);
     expect(verifyFormToken("org_1", null)).toBe(false);
     expect(verifyFormToken("", t)).toBe(false);
+  });
+
+  it("fails closed in production when no secret is configured (no forgeable constant)", () => {
+    const prevEnv = process.env.NODE_ENV;
+    delete process.env.UNSUBSCRIBE_SECRET;
+    delete process.env.INBOUND_TOKEN;
+    delete process.env.CRON_SECRET;
+    process.env.NODE_ENV = "production";
+    try {
+      expect(formToken("org_1")).toBeNull();
+      expect(verifyFormToken("org_1", "anything")).toBe(false);
+      expect(hostedFormUrl("org_1")).toBeNull();
+    } finally {
+      process.env.NODE_ENV = prevEnv;
+      process.env.UNSUBSCRIBE_SECRET = "test-secret";
+    }
   });
 
   it("builds hosted URL + embed only when a public base is set", () => {
@@ -27,11 +44,13 @@ describe("form token", () => {
   });
 });
 
-function formPost(fields: Record<string, string>) {
+function formPost(fields: Record<string, string | null | undefined>) {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(fields)) params.set(k, v ?? "");
   return new Request("http://x/api/forms/submit", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams(fields),
+    body: params,
   });
 }
 
@@ -70,7 +89,7 @@ describe("POST /api/forms/submit", () => {
       new Request("http://x/api/forms/submit", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ org: "org_1", token: formToken("org_1"), name: "JSON Lead", email: `json-${Date.now()}@acme.com` }),
+        body: JSON.stringify({ org: "org_1", token: formToken("org_1") ?? "", name: "JSON Lead", email: `json-${Date.now()}@acme.com` }),
       }),
     );
     expect(res.status).toBe(200);

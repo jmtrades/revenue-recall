@@ -50,5 +50,5 @@ export function looksLikeApiKey(key: string | null | undefined): key is string {
 export function readApiKey(headers: Headers): string | null {
   const auth = headers.get("authorization");
   if (auth && /^bearer\s+/i.test(auth)) return auth.replace(/^bearer\s+/i, "").trim();
-  return headers.get("x-api-key");
+  return headers.get("x-api-key")?.trim() ?? null;
 }
