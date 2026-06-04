@@ -35,6 +35,21 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   const password = String(formData.get("password") ?? "");
   if (password.length < 8) return { error: "Use at least 8 characters for your password." };
 
+  // Frictionless onboarding switch. Supabase AUTH emails (the confirmation link)
+  // use Supabase's own SMTP — separate from the app's Resend setup — so on the
+  // default SMTP they're rate-limited and often undelivered, dead-ending signup.
+  // With SIGNUP_AUTOCONFIRM=true we create the account already-confirmed via the
+  // service role and sign the user straight in, so onboarding never depends on
+  // Supabase email deliverability. (Leave it unset to keep email confirmation.)
+  const admin = getSupabase();
+  if (process.env.SIGNUP_AUTOCONFIRM === "true" && admin) {
+    const { error: createErr } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name } });
+    if (createErr && !/registered|already|exists/i.test(createErr.message)) return { error: createErr.message };
+    const { error: signInErr } = await sb.auth.signInWithPassword({ email, password });
+    if (signInErr) return { error: createErr ? "An account with this email already exists — try signing in." : signInErr.message };
+    redirect("/onboarding"); // redirect() throws — keep outside any try
+  }
+
   // Point the confirmation link (if the project requires one) back at our
   // callback so it completes the session and lands the user in onboarding,
   // rather than the project's default Site URL.
@@ -57,7 +72,6 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
     // is connected, Supabase's normal email confirmation takes over instead.
     const emailLive = channelStatus().email.live;
     if (!emailLive && data.user && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      const admin = getSupabase();
       let signedIn = false;
       if (admin) {
         try {
