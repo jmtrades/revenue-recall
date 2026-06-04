@@ -178,18 +178,22 @@ export async function isWithinActionAllowance(now: Date = new Date()): Promise<b
  *  (the Stripe session id), so webhook retries never double-credit. */
 export async function addUsageCredits(input: { orgId: string; actions: number; source?: string; ref?: string; now?: Date }): Promise<void> {
   if (!isSupabaseConfigured() || !(input.actions > 0)) return;
-  try {
-    await getSupabase()!
-      .from("usage_credits")
-      .insert({
-        org_id: input.orgId,
-        period: periodKey(input.now ?? new Date()),
-        actions: Math.floor(input.actions),
-        source: input.source ?? "topup",
-        ref: input.ref ?? null,
-      });
-  } catch {
-    /* unique(ref) rejects a retried webhook — that's the idempotency working */
+  const { error } = await getSupabase()!
+    .from("usage_credits")
+    .insert({
+      org_id: input.orgId,
+      period: periodKey(input.now ?? new Date()),
+      actions: Math.floor(input.actions),
+      source: input.source ?? "topup",
+      ref: input.ref ?? null,
+    });
+  // A duplicate `ref` (Postgres 23505) is a retried webhook — idempotency working,
+  // so ignore it. ANY OTHER error means we failed to credit a top-up the customer
+  // already PAID for: throw so the webhook returns 500 and Stripe retries (the
+  // unique(ref) index keeps the retry safe). Previously every error — including
+  // transient DB failures — was swallowed, silently losing paid credits.
+  if (error && (error as { code?: string }).code !== "23505") {
+    throw new Error(`Failed to credit top-up actions: ${error.message}`);
   }
 }
 
