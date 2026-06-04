@@ -59,15 +59,32 @@ export function CallingStatus() {
   }, [load]);
 
   const g = d?.gateway;
-  const voiceLine: { ok: boolean; text: string; detail?: string } = !d
+  const voiceLine: { ok: boolean; text: string; detail?: string; steps?: string[] } = !d
     ? { ok: false, text: "—" }
     : !d.voiceConfigured
-      ? { ok: false, text: "Not wired", detail: "Set VOICE_WEBHOOK_URL to your gateway's https://<host>/voice." }
+      ? {
+          ok: false,
+          text: "Not wired",
+          detail: "Calls aren't pointed at a gateway yet.",
+          steps: [
+            "In Vercel, set VOICE_WEBHOOK_URL to your gateway's URL ending in /voice.",
+            "Use the Render service's own https://<name>.onrender.com/voice — no custom domain or DNS needed.",
+          ],
+        }
       : g?.misdirected
         ? { ok: false, text: "Wrong URL", detail: g.detail }
         : g?.reachable
           ? { ok: true, text: "Gateway reachable" }
-          : { ok: false, text: "Gateway unreachable", detail: g?.detail };
+          : {
+              ok: false,
+              text: "Gateway unreachable",
+              detail: "VOICE_WEBHOOK_URL is set, but nothing answers at that address.",
+              steps: [
+                "Open Render → your call-stack web service. No service in the list? It was never deployed — deploy the image first; Render then gives it a URL.",
+                "Service shows “Live”? Copy its https://<name>.onrender.com address and set VOICE_WEBHOOK_URL = https://<that-host>/voice.",
+                "Avoid a custom domain (calls.yourdomain.com) unless you've added its DNS record — the onrender.com URL always resolves.",
+              ],
+            };
 
   return (
     <div className="space-y-3">
@@ -98,6 +115,13 @@ export function CallingStatus() {
               <span className={`text-xs ${voiceLine.ok ? "text-success" : "text-muted"}`}>{voiceLine.text}</span>
             </div>
             {voiceLine.detail && <p className="mt-1.5 text-xs text-danger/90">{voiceLine.detail}</p>}
+            {voiceLine.steps && (
+              <ol className="mt-1.5 list-decimal space-y-1 pl-4 text-xs text-muted">
+                {voiceLine.steps.map((s) => (
+                  <li key={s}>{s}</li>
+                ))}
+              </ol>
+            )}
             {g?.reachable && !g.misdirected && (
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
                 <Sub ok={Boolean(g.voice)} label="neural voice" />
