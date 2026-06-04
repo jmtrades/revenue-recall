@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { handleInbound } from "@/lib/inbound";
 import { verifyTwilioSignature } from "@/lib/webhook";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
-import { seenInboundEvent } from "@/lib/inbound-dedup";
+import { seenInboundEvent, forgetInboundEvent } from "@/lib/inbound-dedup";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -49,11 +49,19 @@ export async function POST(req: Request) {
   if (!from || !body) return new NextResponse(TWIML, { headers: { "Content-Type": "text/xml" } });
 
   // Idempotency: Twilio retries on timeout — don't log + auto-reply twice.
-  if (await seenInboundEvent("sms", params.MessageSid ?? "")) {
+  const messageSid = params.MessageSid ?? "";
+  if (await seenInboundEvent("sms", messageSid)) {
     return new NextResponse(TWIML, { headers: { "Content-Type": "text/xml" } });
   }
 
-  await handleInbound("sms", from, body).catch(() => undefined);
+  try {
+    await handleInbound("sms", from, body);
+  } catch {
+    // Roll back the dedup marker so Twilio's retry can re-process — otherwise a
+    // transient failure here silently drops the customer's reply (matches the
+    // email route's fail-open contract).
+    await forgetInboundEvent("sms", messageSid);
+  }
   // Empty TwiML: we handle replies ourselves (queue/auto-send), not via Twilio.
   return new NextResponse(TWIML, { headers: { "Content-Type": "text/xml" } });
 }
