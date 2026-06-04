@@ -167,6 +167,10 @@ export function ApiKeySettings({ endpoint }: { endpoint: string }) {
           <code className="text-fg">source</code>, <code className="text-fg">notes</code>,{" "}
           <code className="text-fg">sequenceId</code>.
         </p>
+        <p className="mt-3 text-xs text-muted">
+          Read your data back (same key): <code className="text-fg">GET /api/v1/leads</code> ·{" "}
+          <code className="text-fg">GET /api/v1/deals</code> (supports <code className="text-fg">?limit=</code>).
+        </p>
       </div>
     </div>
   );
