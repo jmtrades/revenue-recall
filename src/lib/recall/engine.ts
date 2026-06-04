@@ -97,7 +97,16 @@ const NO_SHOW_BOOST = 12;
  */
 function isNoShow(activities: Activity[] | undefined, graceDays: number): boolean {
   if (!activities?.length) return false;
-  const latest = activities.reduce((a, b) => ((a.occurredAt ?? "") >= (b.occurredAt ?? "") ? a : b));
+  // Pick the latest activity deterministically: on equal/missing timestamps prefer
+  // a meeting, so a meeting logged alongside a same-instant confirmation note still
+  // reads as the meeting (otherwise the result would depend on array order).
+  const latest = activities.reduce((a, b) => {
+    const ta = a.occurredAt ?? "";
+    const tb = b.occurredAt ?? "";
+    if (tb > ta) return b;
+    if (tb < ta) return a;
+    return b.kind === "meeting" ? b : a;
+  });
   return latest.kind === "meeting" && daysSince(latest.occurredAt) >= graceDays;
 }
 

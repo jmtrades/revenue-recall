@@ -114,8 +114,8 @@ const prospectTexts = (turns: Turn[]): string[] => turns.filter((t) => t.speaker
 const repCountOf = (turns: Turn[]): number => turns.filter((t) => t.speaker === "rep").length;
 
 /** Map a policy directive to the call phase + whether the call ends after this line. */
-function phaseAndDone(directive: CallDirective, repCount: number): { phase: CallPhase; done: boolean } {
-  if (repCount === 0) return { phase: "opening", done: false };
+function phaseAndDone(directive: CallDirective, opening: boolean): { phase: CallPhase; done: boolean } {
+  if (opening) return { phase: "opening", done: false };
   switch (directive.action) {
     case "exit":
       return { phase: "wrap", done: true };
@@ -221,8 +221,11 @@ function fallbackRepTurn(state: ConversationState): RepTurn {
   const incoming = lastProspect(state.turns);
   const intent = incoming ? detectIntent(incoming) : null;
   const repCount = repCountOf(state.turns);
+  // "Opening" = nobody has spoken yet. A prospect-first turn (inbound-initiated)
+  // is answered, not cold-opened over.
+  const opening = state.turns.length === 0;
   const directive = decideDirective(analyzeProgress(prospectTexts(state.turns)), repCount);
-  const { phase, done } = phaseAndDone(directive, repCount);
+  const { phase, done } = phaseAndDone(directive, opening);
   // React to the prospect's mood; an explicit rep tone still wins if set.
   const reaction = incoming ? reactToText(incoming) : { tone: "warm" as ToneId, emotion: "warm" as Emotion, note: "Open warm and curious." };
   const tone = state.tone ?? reaction.tone;
@@ -252,8 +255,9 @@ export async function nextRepTurn(state: ConversationState): Promise<RepTurn> {
   const repCount = repCountOf(state.turns);
   // The deterministic policy decides the MOVE (handle / close / book a callback /
   // exit) and whether the call ends — so it can never loop forever re-pitching.
+  const opening = state.turns.length === 0;
   const directive = decideDirective(analyzeProgress(prospectTexts(state.turns)), repCount);
-  const { phase, done } = phaseAndDone(directive, repCount);
+  const { phase, done } = phaseAndDone(directive, opening);
   const reaction = incoming ? reactToText(incoming) : { tone: "warm" as ToneId, emotion: "warm" as Emotion, note: "Open warm and curious." };
   // Adapt tone to the moment unless the rep pinned one.
   const tone = getTone(state.tone ?? reaction.tone);
@@ -266,7 +270,7 @@ About: "${state.dealTitle}"
 Their likely natural next-steps: ${pb.nextSteps.call.join(" / ")}
 Phase: ${phase}
 What to do now: ${directiveGuidance(directive)}
-${repCount === 0 && (state.daysSinceContact ?? 0) >= REACTIVATION_GAP_DAYS ? `It's been ${state.daysSinceContact} days since you last spoke — open by warmly owning the gap ("it's been a while"), lightly, no guilt-trip.\n` : ""}${state.voice?.profile ? `Speak in this rep's voice:\n"""${state.voice.profile}"""\n` : ""}${languageDirective(state.language) ? `${languageDirective(state.language)}\n` : ""}TRANSCRIPT SO FAR:
+${opening && (state.daysSinceContact ?? 0) >= REACTIVATION_GAP_DAYS ? `It's been ${state.daysSinceContact} days since you last spoke — open by warmly owning the gap ("it's been a while"), lightly, no guilt-trip.\n` : ""}${state.voice?.profile ? `Speak in this rep's voice:\n"""${state.voice.profile}"""\n` : ""}${languageDirective(state.language) ? `${languageDirective(state.language)}\n` : ""}TRANSCRIPT SO FAR:
 ${transcript(state.turns, "rep")}
 
 Say only the next line out loud, as the rep.`;

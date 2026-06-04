@@ -66,6 +66,13 @@ describe("conversation engine never loops on a repeated objection", () => {
     expect(t.text.toLowerCase()).not.toContain("range");
   });
 
+  it("answers a prospect-first turn instead of cold-opening over it", async () => {
+    // Inbound-initiated: the prospect spoke first, no rep turn yet. The engine
+    // should respond to what they said, not emit a canned opener.
+    const t = await nextRepTurn(state([{ speaker: "prospect", text: "how much does this cost?" }]));
+    expect(t.phase).not.toBe("opening");
+  });
+
   it("a call dragging through four objections wraps instead of continuing", async () => {
     const turns: Turn[] = [
       { speaker: "rep", text: "hey" },

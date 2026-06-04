@@ -38,6 +38,14 @@ describe("call retry: planning", () => {
     expect(planCallRetry({ outcome: "no_answer", priorAttempts: MAX_CALL_ATTEMPTS - 1 }).retry).toBe(true);
   });
 
+  it("never re-dials the SAME window — including the final retry (made=3)", () => {
+    const lastHour = 15; // afternoon
+    for (let made = 0; made < MAX_CALL_ATTEMPTS; made++) {
+      const plan = planCallRetry({ outcome: "no_answer", priorAttempts: made, lastHour });
+      if (plan.retry) expect(plan.window, `made=${made}`).not.toBe(windowForHour(lastHour));
+    }
+  });
+
   it("spreads later attempts across the day and backs off", () => {
     const a2 = planCallRetry({ outcome: "voicemail", priorAttempts: 1, lastHour: 9 });
     const a3 = planCallRetry({ outcome: "voicemail", priorAttempts: 2, lastHour: 9 });

@@ -13,6 +13,9 @@ DEFAULT_OPENER = "Hey, it's me — caught you at an okay time?"
 # own; this is the backstop so a live call can NEVER loop indefinitely — at the
 # cap we force one graceful closing line and hang up.
 MAX_REP_TURNS = 12
+# Spoken if the model returns nothing exactly when we hit the cap, so the close
+# (and hang-up) still happens instead of the loop continuing.
+WRAP_FALLBACK = "I'll let you go for now — I'll send a quick note and try you another time. Take care."
 
 
 class CallAgent:
@@ -49,7 +52,12 @@ class CallAgent:
             wrap = rep_turns >= MAX_REP_TURNS
             line = await asyncio.to_thread(next_line, self.turns, self.context, wrap)
             if not line:
-                continue
+                # Below the cap, just keep listening. AT the cap we must still close —
+                # otherwise an empty model line would skip the break and the safety
+                # cap becomes bypassable (the call runs until the caller hangs up).
+                if not wrap:
+                    continue
+                line = WRAP_FALLBACK
             self.turns.append({"role": "rep", "text": line})
             rep_turns += 1
             await self._speak(line, transport)
