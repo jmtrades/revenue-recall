@@ -36,6 +36,7 @@ export default async function RecallPage() {
   });
 
   const segments = [
+    { label: "No-shows", value: summary.byReason.no_show.count, color: "rgb(var(--brand-rgb))" },
     { label: "Going cold", value: summary.byReason.going_cold.count, color: "#fbbf24" },
     { label: "Stalled", value: summary.byReason.stalled.count, color: "#f87171" },
     { label: "Winnable losses", value: summary.byReason.lost_winnable.count, color: "rgb(var(--brand-rgb))" },

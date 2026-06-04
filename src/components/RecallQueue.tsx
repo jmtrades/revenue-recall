@@ -26,6 +26,7 @@ export interface RecallRow {
 
 const FILTERS = [
   { id: "all", label: "All" },
+  { id: "no_show", label: "No-shows" },
   { id: "going_cold", label: "Going cold" },
   { id: "stalled", label: "Stalled" },
   { id: "lost_winnable", label: "Winnable losses" },
