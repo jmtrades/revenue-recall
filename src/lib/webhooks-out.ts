@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { getSupabase } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { assertSafeOutboundUrl, isSafeOutboundUrl } from "@/lib/net/ssrf-guard";
+import { encryptionAvailable, encryptSecret, decryptSecret, isEncrypted } from "@/lib/crypto";
 import { logError, errMessage } from "@/lib/log";
 
 /**
@@ -23,6 +24,19 @@ export function signWebhook(secret: string, body: string): string {
   return crypto.createHmac("sha256", secret).update(body, "utf8").digest("hex");
 }
 
+// The signing secret must be reproducible (to sign outgoing payloads), so it
+// can't be hashed like the API key — but we encrypt it at rest (AES-256-GCM,
+// same as social tokens) so a DB dump alone can't forge signed events. Falls
+// back to plaintext when ENCRYPTION_KEY isn't configured, so webhooks still work.
+export function encodeWebhookSecret(plain: string): string {
+  return encryptionAvailable() ? encryptSecret(plain) : plain;
+}
+
+export function decodeWebhookSecret(stored: string | null | undefined): string | null {
+  if (!stored) return null;
+  return isEncrypted(stored) ? decryptSecret(stored) : stored;
+}
+
 /** Validate a customer-supplied webhook URL: https-only + not an internal host. */
 export function isValidWebhookUrl(url: string): boolean {
   return /^https:\/\//i.test(url.trim()) && isSafeOutboundUrl(url.trim());
@@ -36,7 +50,7 @@ export async function getWebhookConfig(): Promise<WebhookConfig | null> {
   if (!orgId) return null;
   const { data } = await client.from("orgs").select("webhook_url,webhook_secret").eq("id", orgId).maybeSingle();
   const url = data?.webhook_url as string | undefined;
-  const secret = data?.webhook_secret as string | undefined;
+  const secret = decodeWebhookSecret(data?.webhook_secret as string | undefined);
   return url && secret ? { url, secret } : null;
 }
 
@@ -56,9 +70,9 @@ export async function setWebhook(url: string): Promise<{ secret: string }> {
   const orgId = await resolveActiveOrgId();
   if (!orgId) throw new Error("No active org.");
   const secret = `whsec_${crypto.randomBytes(24).toString("hex")}`;
-  const { error } = await client.from("orgs").update({ webhook_url: trimmed, webhook_secret: secret }).eq("id", orgId);
+  const { error } = await client.from("orgs").update({ webhook_url: trimmed, webhook_secret: encodeWebhookSecret(secret) }).eq("id", orgId);
   if (error) throw new Error(error.message);
-  return { secret };
+  return { secret }; // plaintext returned once; only the encrypted copy is stored
 }
 
 export async function removeWebhook(): Promise<void> {

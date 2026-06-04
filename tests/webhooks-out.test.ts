@@ -1,7 +1,27 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { signWebhook, isValidWebhookUrl, postWebhook } from "@/lib/webhooks-out";
+import { signWebhook, isValidWebhookUrl, postWebhook, encodeWebhookSecret, decodeWebhookSecret } from "@/lib/webhooks-out";
+import { isEncrypted } from "@/lib/crypto";
 
 afterEach(() => vi.restoreAllMocks());
+
+describe("webhook secret at rest", () => {
+  it("stores plaintext when no ENCRYPTION_KEY, encrypted when present — round-trips both", () => {
+    const original = process.env.ENCRYPTION_KEY;
+
+    delete process.env.ENCRYPTION_KEY;
+    expect(encodeWebhookSecret("whsec_abc")).toBe("whsec_abc"); // graceful fallback
+    expect(decodeWebhookSecret("whsec_abc")).toBe("whsec_abc");
+
+    process.env.ENCRYPTION_KEY = "an-encryption-key-at-least-16-chars";
+    const enc = encodeWebhookSecret("whsec_abc");
+    expect(enc).not.toBe("whsec_abc");
+    expect(isEncrypted(enc)).toBe(true); // a DB dump can't read it
+    expect(decodeWebhookSecret(enc)).toBe("whsec_abc"); // signer still recovers it
+
+    if (original === undefined) delete process.env.ENCRYPTION_KEY;
+    else process.env.ENCRYPTION_KEY = original;
+  });
+});
 
 describe("webhook signing", () => {
   it("signs deterministically and differs by body or secret", () => {
