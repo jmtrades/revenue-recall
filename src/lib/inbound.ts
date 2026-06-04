@@ -10,7 +10,8 @@ import { sendEmail, sendSms } from "@/lib/comms";
 import { createOutboxItem } from "@/lib/agent/store";
 import { fireSpeedToLead } from "@/lib/agent/speed-to-lead";
 import { emitWebhook } from "@/lib/webhooks-out";
-import type { Contact, CrmProvider, Opportunity } from "@/lib/crm/types";
+import { hasOptedOut, isHardOptOut } from "@/lib/agent/guardrails";
+import type { Activity, Contact, CrmProvider, Opportunity } from "@/lib/crm/types";
 
 /** Notify the org's webhook that a lead replied (best-effort, never throws). */
 async function emitMessageReceived(
@@ -76,10 +77,16 @@ async function captureUnmatched(
   const now = new Date().toISOString();
   const name = channel === "email" ? from.split("@")[0] || "New contact" : `Caller ${digits(from).slice(-4) || ""}`.trim();
   try {
+    const optedOut = isHardOptOut(subject ? `${subject}\n\n${body}` : body);
     const contact = await provider.createContact({ name, points: [{ channel: channel === "email" ? "email" : "phone", value: from }] });
     await provider.logActivity({ contactId: contact.id, kind: channel, summary: subject ? `${subject}\n\n${body}` : body, direction: "inbound", occurredAt: now });
-    await provider.logActivity({ contactId: contact.id, kind: "task", summary: `New inbound from ${name} — follow up`, occurredAt: now });
     await emitMessageReceived(channel, from, body, subject, contact.id, undefined, false);
+    // If the very first message is an opt-out, record it but never start working
+    // the lead (no follow-up task, no speed-to-lead outreach).
+    if (optedOut) {
+      return { matched: false, contactId: contact.id, action: "logged", messageTaken: false, intent: "optout" };
+    }
+    await provider.logActivity({ contactId: contact.id, kind: "task", summary: `New inbound from ${name} — follow up`, occurredAt: now });
     // Speed-to-lead: if the org runs new-lead autopilot, start working this fresh
     // lead immediately rather than waiting for the daily cron.
     await fireSpeedToLead(contact.id);
@@ -113,6 +120,22 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     occurredAt: new Date().toISOString(),
   });
   await emitMessageReceived(channel, from, body, subject, contact.id, deal?.id, true);
+
+  // Honor opt-out before ANY automated reply (TCPA / CTIA / CAN-SPAM): if this
+  // message is a hard opt-out ("STOP", "unsubscribe", …) or the contact already
+  // opted out, never auto-send or even queue a reply. The inbound message is
+  // logged above, so future cron/approvals already suppress this contact.
+  const incoming = subject ? `${subject}\n\n${body}` : body;
+  let priorActs: Activity[] = [];
+  try {
+    if (provider.listActivitiesByContact) priorActs = await provider.listActivitiesByContact(contact.id);
+    else if (deal) priorActs = await provider.listActivities(deal.id);
+  } catch {
+    /* best-effort — fall back to the current message's own opt-out check */
+  }
+  if (isHardOptOut(incoming) || hasOptedOut(contact, deal, priorActs)) {
+    return { matched: true, contactId: contact.id, dealId: deal?.id, action: "logged", messageTaken: false, intent: "optout" };
+  }
 
   // If they're unavailable / it's a gatekeeper, take a message: capture a
   // callback task so the follow-up is never lost (and still reply below).

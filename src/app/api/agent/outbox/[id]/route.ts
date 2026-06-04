@@ -3,8 +3,10 @@ import { z } from "zod";
 import { getOutboxItem, setOutboxStatus } from "@/lib/agent/store";
 import { getProvider } from "@/lib/crm/registry";
 import { sendReply, isSocialChannel } from "@/lib/outbound";
+import { hasOptedOut } from "@/lib/agent/guardrails";
 import { platformTag } from "@/lib/social/ingest";
 import type { SocialPlatform } from "@/lib/social/types";
+import type { Activity } from "@/lib/crm/types";
 import { withGuard } from "@/lib/api/guard";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +33,21 @@ export const POST = withGuard(async (req: Request, { params }: { params: { id: s
   if (!item.contactId) return NextResponse.json({ error: "No contact on file" }, { status: 400 });
   const contact = await provider.getContact(item.contactId);
   if (!contact) return NextResponse.json({ error: "Contact not found" }, { status: 404 });
+
+  // Re-check opt-out at SEND time, not just when the draft was queued — a contact
+  // may have replied "STOP" (or unsubscribed) while the draft sat in Approvals.
+  let activities: Activity[] = [];
+  try {
+    if (provider.listActivitiesByContact) activities = await provider.listActivitiesByContact(item.contactId);
+    else if (item.dealId) activities = await provider.listActivities(item.dealId);
+  } catch {
+    /* best-effort */
+  }
+  const opp = item.dealId ? await provider.getOpportunity(item.dealId).catch(() => null) : null;
+  if (hasOptedOut(contact, opp ?? undefined, activities)) {
+    await setOutboxStatus(item.id, "dismissed");
+    return NextResponse.json({ error: "This contact has opted out — not sending." }, { status: 403 });
+  }
 
   const res = await sendReply({ contact, channel: item.channel, subject: item.subject, body: item.body });
   if (res.status === "failed") return NextResponse.json({ error: res.detail ?? "Send failed" }, { status: 502 });
