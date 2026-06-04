@@ -27,6 +27,9 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
   const [status, setStatus] = useState("");
   const [segment, setSegment] = useState("all");
   const [saving, setSaving] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<LeadStatus | "">("");
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   // "High value" = the top quartile of THIS pipeline's deal values, so the
   // segment means something for any business (not a hard-coded number).
@@ -59,6 +62,39 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
       if (res.ok) router.refresh();
     } finally {
       setSaving(null);
+    }
+  }
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  const filteredIds = useMemo(() => filtered.map((r) => r.id), [filtered]);
+  const allSelected = filteredIds.length > 0 && filteredIds.every((id) => selected.has(id));
+  function toggleAll() {
+    setSelected((prev) => (filteredIds.every((id) => prev.has(id)) ? new Set() : new Set(filteredIds)));
+  }
+
+  async function applyBulkStatus() {
+    if (!bulkStatus || selected.size === 0) return;
+    setBulkBusy(true);
+    try {
+      const res = await fetch("/api/contacts/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [...selected], status: bulkStatus }),
+      });
+      if (res.ok) {
+        setSelected(new Set());
+        setBulkStatus("");
+        router.refresh();
+      }
+    } finally {
+      setBulkBusy(false);
     }
   }
 
@@ -116,10 +152,38 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
         <span className="ml-auto text-sm text-muted">{filtered.length} of {rows.length}</span>
       </div>
 
+      {selected.size > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-brand/40 bg-brand-soft/20 px-3 py-2 text-sm">
+          <span className="font-medium text-fg">{selected.size} selected</span>
+          <select
+            value={bulkStatus}
+            onChange={(e) => setBulkStatus(e.target.value as LeadStatus)}
+            className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-fg outline-none focus:border-brand"
+            aria-label="Bulk status"
+          >
+            <option value="">Set status…</option>
+            {LEAD_STATUSES.map((s) => (
+              <option key={s} value={s}>{LEAD_STATUS_LABELS[s]}</option>
+            ))}
+          </select>
+          <button
+            onClick={applyBulkStatus}
+            disabled={!bulkStatus || bulkBusy}
+            className="rounded-md bg-brand px-3 py-1 text-xs font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
+          >
+            {bulkBusy ? "Applying…" : `Apply to ${selected.size}`}
+          </button>
+          <button onClick={() => setSelected(new Set())} className="text-xs text-muted hover:text-fg">Clear</button>
+        </div>
+      )}
+
       <div className="card p-0">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
+              <th className="w-8 px-4 py-3">
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all" className="accent-brand" />
+              </th>
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Company</th>
               <th className="px-4 py-3 font-medium">Stage</th>
@@ -131,6 +195,9 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
           <tbody>
             {filtered.map((r) => (
               <tr key={r.id} onClick={() => router.push(`/leads/${r.id}`)} className="cursor-pointer border-b border-border/60 last:border-0 hover:bg-surface-2/40">
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} aria-label={`Select ${r.name}`} className="accent-brand" />
+                </td>
                 <td className="px-4 py-3">
                   <span className="flex items-center gap-2">
                     <Avatar name={r.name} size={28} />
@@ -161,7 +228,7 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-muted">No leads match your search or filter.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-muted">No leads match your search or filter.</td></tr>
             )}
           </tbody>
         </table>
