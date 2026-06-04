@@ -48,7 +48,7 @@ export const POST = withGuard(async (req: Request) => {
   const phone = (fields.phone ?? "").trim();
   if (!name || (!email && !phone)) {
     if (wantsJson) return NextResponse.json({ error: "Name and an email or phone are required." }, { status: 400 });
-    return NextResponse.redirect(new URL(`/f/${encodeURIComponent(org)}?k=${token}&error=1`, req.url), 303);
+    return NextResponse.redirect(formUrl(req, org, token, "error=1"), 303);
   }
 
   await runWithOrg(org, () =>
@@ -67,5 +67,15 @@ export const POST = withGuard(async (req: Request) => {
 
 function done(req: Request, wantsJson: boolean, org: string, token: string): Response {
   if (wantsJson) return NextResponse.json({ ok: true });
-  return NextResponse.redirect(new URL(`/f/${encodeURIComponent(org)}?k=${token}&sent=1`, req.url), 303);
+  return NextResponse.redirect(formUrl(req, org, token, "sent=1"), 303);
+}
+
+/**
+ * Absolute redirect target for the hosted form. Prefer NEXT_PUBLIC_SITE_URL so
+ * the redirect is stable behind a proxy/CDN (req.url reflects the client Host
+ * header); fall back to the request origin only when it isn't configured.
+ */
+function formUrl(req: Request, org: string, token: string, query: string): string {
+  const base = (process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin).replace(/\/$/, "");
+  return `${base}/f/${encodeURIComponent(org)}?k=${encodeURIComponent(token)}&${query}`;
 }

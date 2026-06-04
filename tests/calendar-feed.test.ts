@@ -10,11 +10,28 @@ beforeEach(() => {
 describe("calendar feed token", () => {
   it("verifies its own token and rejects tampering / cross-org reuse", () => {
     const t = calendarFeedToken("org_1");
+    expect(t).toBeTruthy();
     expect(verifyCalendarFeedToken("org_1", t)).toBe(true);
     expect(verifyCalendarFeedToken("org_1", t + "x")).toBe(false);
     expect(verifyCalendarFeedToken("org_2", t)).toBe(false); // token is per-org
     expect(verifyCalendarFeedToken("org_1", null)).toBe(false);
     expect(verifyCalendarFeedToken("", t)).toBe(false);
+  });
+
+  it("fails closed in production when no secret is configured (no forgeable constant)", () => {
+    const prevEnv = process.env.NODE_ENV;
+    delete process.env.UNSUBSCRIBE_SECRET;
+    delete process.env.INBOUND_TOKEN;
+    delete process.env.CRON_SECRET;
+    process.env.NODE_ENV = "production";
+    try {
+      expect(calendarFeedToken("org_1")).toBeNull();
+      expect(verifyCalendarFeedToken("org_1", "anything")).toBe(false);
+      expect(calendarFeedUrl("org_1")).toBeNull();
+    } finally {
+      process.env.NODE_ENV = prevEnv;
+      process.env.UNSUBSCRIBE_SECRET = "test-secret";
+    }
   });
 
   it("builds an absolute feed URL only when a public base is set", () => {
