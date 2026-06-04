@@ -35,6 +35,15 @@ describe("recall: no-show detection", () => {
     expect(item?.reason).toBe("going_cold");
   });
 
+  it("flags a no-show deterministically when a meeting and a note share a timestamp (any order)", () => {
+    const ts = iso(3);
+    const m = { id: "m", kind: "meeting", summary: "Demo", occurredAt: ts } as Activity;
+    const n = { id: "n", kind: "note", summary: "confirmation sent", occurredAt: ts } as Activity;
+    // The meeting wins the tie regardless of array order → same classification.
+    expect(scoreOpportunity(opp(), stages, { activities: [m, n] })?.reason).toBe("no_show");
+    expect(scoreOpportunity(opp(), stages, { activities: [n, m] })?.reason).toBe("no_show");
+  });
+
   it("ranks a no-show above an equivalent going-cold deal", () => {
     const noShow = scoreOpportunity(opp(), stages, { activities: [meeting(3)] });
     const goingCold = scoreOpportunity(opp({ updatedAt: iso(20), lastActivityAt: iso(20) }), stages, { activities: [email(20)] });

@@ -57,9 +57,11 @@ export function planCallRetry(input: { outcome?: string; priorAttempts: number; 
   }
   const lastHour = input.lastHour ?? new Date(input.now ?? Date.now()).getHours();
   const lastWindow = windowForHour(lastHour);
-  // Shift to a different window, and keep shifting on later attempts, so repeated
-  // misses spread across the day instead of re-hitting the same dead slot.
-  const next = CALL_WINDOWS[(CALL_WINDOWS.indexOf(lastWindow) + 1 + made) % CALL_WINDOWS.length];
+  // Always land on a DIFFERENT window than the last dial: the step is 1..3, never
+  // a multiple of 4, so repeated misses spread across the day — including on the
+  // final retry (a plain `+ made` offset wraps back to the dead slot at made=3).
+  const step = 1 + (made % (CALL_WINDOWS.length - 1));
+  const next = CALL_WINDOWS[(CALL_WINDOWS.indexOf(lastWindow) + step) % CALL_WINDOWS.length];
   const waitHours = BACKOFF_HOURS[Math.min(made, BACKOFF_HOURS.length - 1)];
   return { retry: true, attempt, window: next, waitHours, note: `No pickup — retry #${attempt} in the ${next} (~${waitHours}h).` };
 }
