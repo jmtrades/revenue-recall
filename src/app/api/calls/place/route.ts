@@ -66,9 +66,21 @@ export const POST = withGuard(async (req: Request) => {
       })
       .filter(Boolean);
     if (recent.length) bits.push(`Recent history with them (remember this, don't repeat yourself): ${recent.join(" | ")}.`);
+    // Gap-aware open: if it's been a real while since the last touch, the agent
+    // acknowledges it warmly instead of a cold-open (much better on a recall call).
+    const lastTouch = activities.reduce<string | undefined>((latest, a) => (a.occurredAt && (!latest || a.occurredAt > latest) ? a.occurredAt : latest), undefined);
+    const gapDays = lastTouch ? Math.floor((Date.now() - new Date(lastTouch).getTime()) / 86_400_000) : 0;
+    if (gapDays >= 21) bits.push(`It's been about ${gapDays} days since the last touch — warmly own the gap ("it's been a while"), no guilt-trip.`);
     bits.push("Goal: land one real next step — a meeting or a clear yes.");
     context = bits.join(" ");
-    opener = rep ? `Hey ${first}, it's ${rep} — caught you at an okay time?` : `Hey ${first} — caught you at an okay time?`;
+    opener =
+      gapDays >= 21
+        ? rep
+          ? `Hey ${first}, it's ${rep} — been a while, I know. Caught you at an okay time?`
+          : `Hey ${first} — been a while! Got a quick sec?`
+        : rep
+          ? `Hey ${first}, it's ${rep} — caught you at an okay time?`
+          : `Hey ${first} — caught you at an okay time?`;
   } catch {
     /* context is a nicety; place the call regardless */
   }
