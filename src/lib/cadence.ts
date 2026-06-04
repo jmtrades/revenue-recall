@@ -289,7 +289,8 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
   // send the same step to a prospect. If another run holds the lock, this one
   // yields — it'll catch any still-due steps on the next tick.
   const lockKey = `cadence:${org.id ?? "default"}`;
-  if (!(await acquireCronLock(lockKey))) {
+  const lockFence = await acquireCronLock(lockKey);
+  if (!lockFence) {
     return { due: 0, processed: 0, sent: 0, queued: 0, completed: 0, stopped: 0, skipped: 0, batched: 0 };
   }
   try {
@@ -429,7 +430,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
 
     return result;
   } finally {
-    await releaseCronLock(lockKey);
+    await releaseCronLock(lockKey, lockFence);
   }
 }
 

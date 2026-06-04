@@ -18,3 +18,15 @@ export async function seenInboundEvent(provider: string, eventId: string): Promi
   if (!error) return false; // newly recorded → process it
   return (error as { code?: string }).code === "23505"; // unique violation → duplicate
 }
+
+/**
+ * Un-record an event so a retry can reprocess it. Call this when processing an
+ * inbound event THREW after seenInboundEvent already recorded it — otherwise the
+ * provider's retry would be deduped and the message silently lost (the opposite
+ * of the fail-open contract). Best-effort.
+ */
+export async function forgetInboundEvent(provider: string, eventId: string): Promise<void> {
+  const client = getSupabase();
+  if (!client || !eventId) return;
+  await client.from("inbound_events").delete().eq("provider", provider).eq("event_id", eventId);
+}

@@ -5,7 +5,7 @@ import { writeRateLimit } from "@/lib/ratelimit";
 import { withGuard } from "@/lib/api/guard";
 import { verifyHmacSignature } from "@/lib/webhook";
 import { logWarn } from "@/lib/log";
-import { seenInboundEvent } from "@/lib/inbound-dedup";
+import { seenInboundEvent, forgetInboundEvent } from "@/lib/inbound-dedup";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -37,6 +37,10 @@ export const POST = withGuard(async (req: Request) => {
     }
   } else if (token) {
     if (url.searchParams.get("token") !== token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } else if (process.env.NODE_ENV === "production") {
+    // Fail closed in prod: an unauthenticated inbound endpoint lets anyone inject
+    // a "reply" from a contact (and trigger an auto-reply). Configure a secret.
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   } else {
     logWarn("inbound.email.unauthenticated", { note: "set INBOUND_SIGNING_SECRET (preferred) or INBOUND_TOKEN" });
   }
@@ -55,6 +59,13 @@ export const POST = withGuard(async (req: Request) => {
     return NextResponse.json({ ok: true, duplicate: true });
   }
 
-  const result = await handleInbound("email", parsed.data.from, parsed.data.text, parsed.data.subject);
-  return NextResponse.json(result);
+  try {
+    const result = await handleInbound("email", parsed.data.from, parsed.data.text, parsed.data.subject);
+    return NextResponse.json(result);
+  } catch (e) {
+    // Processing failed — un-record the dedup key so the provider's retry can
+    // reprocess instead of being silently deduped (don't drop a real reply).
+    if (parsed.data.messageId) await forgetInboundEvent("email", parsed.data.messageId);
+    throw e;
+  }
 });

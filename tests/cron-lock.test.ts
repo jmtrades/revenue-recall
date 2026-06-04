@@ -2,8 +2,9 @@ import { describe, it, expect } from "vitest";
 import { acquireCronLock, releaseCronLock } from "@/lib/cron-lock";
 
 describe("cron lock", () => {
-  it("acquires as a no-op without a database (single-process demo must not block cadences)", async () => {
-    expect(await acquireCronLock("cadence:test")).toBe(true);
-    await releaseCronLock("cadence:test"); // must not throw without a DB
+  it("acquires (returns a fence) as a no-op without a database — must not block cadences", async () => {
+    const fence = await acquireCronLock("cadence:test");
+    expect(typeof fence).toBe("string"); // fence token, not null
+    await releaseCronLock("cadence:test", fence as string); // must not throw without a DB
   });
 });
