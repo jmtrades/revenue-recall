@@ -1,0 +1,57 @@
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { signWebhook, isValidWebhookUrl, postWebhook } from "@/lib/webhooks-out";
+
+afterEach(() => vi.restoreAllMocks());
+
+describe("webhook signing", () => {
+  it("signs deterministically and differs by body or secret", () => {
+    const a = signWebhook("s1", "body");
+    expect(a).toBe(signWebhook("s1", "body"));
+    expect(a).not.toBe(signWebhook("s1", "other"));
+    expect(a).not.toBe(signWebhook("s2", "body"));
+    expect(a).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe("isValidWebhookUrl", () => {
+  it("accepts public https and rejects http / internal hosts", () => {
+    expect(isValidWebhookUrl("https://hooks.example.com/x")).toBe(true);
+    expect(isValidWebhookUrl("http://hooks.example.com/x")).toBe(false); // https only
+    expect(isValidWebhookUrl("https://127.0.0.1/x")).toBe(false);
+    expect(isValidWebhookUrl("https://localhost/x")).toBe(false);
+    expect(isValidWebhookUrl("https://169.254.169.254/latest")).toBe(false);
+    expect(isValidWebhookUrl("not-a-url")).toBe(false);
+  });
+});
+
+describe("postWebhook", () => {
+  it("POSTs a signed payload to a public URL", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await postWebhook("https://hooks.example.com/x", "whsec_test", "lead.created", { id: "d_1" });
+    expect(res.ok).toBe(true);
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const [, init] = fetchMock.mock.calls[0];
+    const headers = init.headers as Record<string, string>;
+    expect(headers["x-rr-event"]).toBe("lead.created");
+    // The signature header must match HMAC over the exact body we sent.
+    expect(headers["x-rr-signature"]).toBe(`sha256=${signWebhook("whsec_test", init.body as string)}`);
+  });
+
+  it("refuses to deliver to a blocked (internal) host and never calls fetch", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const res = await postWebhook("http://127.0.0.1/x", "whsec_test", "lead.created", {});
+    expect(res.ok).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("returns ok:false (never throws) when delivery fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
+    const res = await postWebhook("https://hooks.example.com/x", "whsec_test", "lead.created", {});
+    expect(res.ok).toBe(false);
+  });
+});
