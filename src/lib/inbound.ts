@@ -9,7 +9,28 @@ import { unsubscribeUrl } from "@/lib/unsubscribe";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { createOutboxItem } from "@/lib/agent/store";
 import { fireSpeedToLead } from "@/lib/agent/speed-to-lead";
+import { emitWebhook } from "@/lib/webhooks-out";
 import type { Contact, CrmProvider, Opportunity } from "@/lib/crm/types";
+
+/** Notify the org's webhook that a lead replied (best-effort, never throws). */
+async function emitMessageReceived(
+  channel: "email" | "sms",
+  from: string,
+  body: string,
+  subject: string | undefined,
+  contactId: string,
+  dealId: string | undefined,
+  matched: boolean,
+): Promise<void> {
+  await emitWebhook("message.received", {
+    contactId,
+    dealId: dealId ?? null,
+    channel,
+    from,
+    body: subject ? `${subject}\n\n${body}` : body,
+    matched,
+  });
+}
 
 function digits(s: string): string {
   return s.replace(/\D/g, "");
@@ -58,6 +79,7 @@ async function captureUnmatched(
     const contact = await provider.createContact({ name, points: [{ channel: channel === "email" ? "email" : "phone", value: from }] });
     await provider.logActivity({ contactId: contact.id, kind: channel, summary: subject ? `${subject}\n\n${body}` : body, direction: "inbound", occurredAt: now });
     await provider.logActivity({ contactId: contact.id, kind: "task", summary: `New inbound from ${name} — follow up`, occurredAt: now });
+    await emitMessageReceived(channel, from, body, subject, contact.id, undefined, false);
     // Speed-to-lead: if the org runs new-lead autopilot, start working this fresh
     // lead immediately rather than waiting for the daily cron.
     await fireSpeedToLead(contact.id);
@@ -90,6 +112,7 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     direction: "inbound",
     occurredAt: new Date().toISOString(),
   });
+  await emitMessageReceived(channel, from, body, subject, contact.id, deal?.id, true);
 
   // If they're unavailable / it's a gatekeeper, take a message: capture a
   // callback task so the follow-up is never lost (and still reply below).
