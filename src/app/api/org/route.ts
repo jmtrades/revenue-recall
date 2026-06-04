@@ -4,6 +4,8 @@ import { getOrgSettings, updateOrgSettings } from "@/lib/org";
 import { isIndustryId } from "@/lib/industries";
 import { isLanguageCode } from "@/lib/languages";
 import { ACCENT_KEYS, THEME_MODES } from "@/lib/theme";
+import { requireRole } from "@/lib/authz";
+import { recordAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +24,15 @@ const Patch = z.object({
 });
 
 export async function PATCH(req: Request) {
+  // Org-wide settings (name, industry, compliance identity, quota) are an
+  // owner/admin concern — a rep shouldn't be able to change them.
+  const denied = await requireRole("owner", "admin");
+  if (denied) return denied;
   const parsed = Patch.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid settings" }, { status: 400 });
   try {
     const settings = await updateOrgSettings(parsed.data);
+    await recordAudit("org.settings_updated", Object.keys(parsed.data).join(", "));
     return NextResponse.json(settings);
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Update failed" }, { status: 409 });

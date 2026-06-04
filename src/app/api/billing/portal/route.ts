@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { billingConfigured, createPortalSession } from "@/lib/billing/stripe";
 import { getSubscription } from "@/lib/billing/store";
 import { requireRole } from "@/lib/authz";
+import { recordAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export async function POST(req: Request) {
   }
   try {
     const url = await createPortalSession(sub.stripeCustomerId, `${new URL(req.url).origin}/settings`);
+    await recordAudit("billing.portal_opened");
     return NextResponse.json({ url });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Portal failed" }, { status: 502 });

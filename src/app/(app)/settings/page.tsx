@@ -40,6 +40,7 @@ import { UsageMeter } from "@/components/UsageMeter";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { ImportCsv } from "@/components/ImportCsv";
 import { TeamInvites } from "@/components/TeamInvites";
+import { AuditLog } from "@/components/AuditLog";
 import { listInvites } from "@/lib/invites-server";
 
 export const dynamic = "force-dynamic";
@@ -283,6 +284,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       </ul>
       <div className="mt-5 border-t border-border pt-5">
         <TeamInvites initial={invites} persisted={org.persisted} />
+      </div>
+      <div className="mt-5 border-t border-border pt-5">
+        <AuditLog />
       </div>
     </Card>
   );
