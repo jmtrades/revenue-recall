@@ -50,11 +50,25 @@ const securityHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=()" },
 ];
 
+// The hosted lead form (/f/*) is meant to be embedded on customers' own sites,
+// so it must be framable cross-origin — the opposite of the app's SAMEORIGIN
+// default. Drop X-Frame-Options (no portable "allow any" value) and widen CSP
+// frame-ancestors to any site; the form still posts only to our own origin
+// (form-action 'self'), so an embedding page can't redirect the submission.
+const formHeaders = securityHeaders
+  .filter((h) => h.key !== "X-Frame-Options")
+  .map((h) => (h.key === "Content-Security-Policy" ? { key: h.key, value: csp.replace("frame-ancestors 'self'", "frame-ancestors *") } : h));
+
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      // The embeddable form is framable anywhere…
+      { source: "/f/:path*", headers: formHeaders },
+      // …every other route keeps the locked-down SAMEORIGIN defaults.
+      { source: "/((?!f/).*)", headers: securityHeaders },
+    ];
   },
 };
 
