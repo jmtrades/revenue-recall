@@ -413,7 +413,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
       const canSend = autoSend && !quietHoursNow(new Date(now));
       const res = canSend
         ? step.channel === "email"
-          ? await sendEmail(address, draft.subject ?? "", draft.body, { unsubscribeUrl: unsubscribeUrl(e.contactId), compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address } })
+          ? await sendEmail(address, draft.subject ?? "", draft.body, { unsubscribeUrl: await unsubscribeUrl(e.contactId), compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address } })
           : await sendSms(address, draft.body, { from: org.callerId })
         : null;
 
