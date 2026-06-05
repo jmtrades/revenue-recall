@@ -42,7 +42,7 @@ const normEmail = (s?: string) => (s ?? "").trim().toLowerCase();
 const digitsOf = (s?: string) => (s ?? "").replace(/\D/g, "");
 
 /** Find an existing contact by email or phone (format-insensitive), or undefined. */
-function matchExistingContact(contacts: Contact[], email?: string, phone?: string): Contact | undefined {
+export function matchExistingContact(contacts: Contact[], email?: string, phone?: string): Contact | undefined {
   const e = normEmail(email);
   const ph = digitsOf(phone);
   if (!e && ph.length < 7) return undefined;
