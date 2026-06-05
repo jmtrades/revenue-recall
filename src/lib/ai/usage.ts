@@ -1,7 +1,7 @@
 import { isSupabaseConfigured, getSupabase } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getActiveOrgId } from "@/lib/supabase/tenant";
-import { entitlements } from "@/lib/billing/entitlements";
+import { entitlements, effectivePlan } from "@/lib/billing/entitlements";
 import { getSubscription } from "@/lib/billing/store";
 
 /**
@@ -160,7 +160,10 @@ export interface UsageMeter {
 /** The current org's usage meter: actions used vs included + purchased credits. */
 export async function usageMeter(now: Date = new Date()): Promise<UsageMeter> {
   const [{ calls }, credits, sub] = await Promise.all([usageSummary(now), creditsThisPeriod(now), getSubscription()]);
-  const included = entitlements(sub.plan).actionsPerMonth;
+  // Use the EFFECTIVE plan (past_due/canceled → free), so the action allowance
+  // fails closed for a lapsed subscription — consistent with the feature gate in
+  // billing/enforce.ts. Otherwise a past_due "team" org keeps a 10k pool.
+  const included = entitlements(effectivePlan(sub.plan, sub.status)).actionsPerMonth;
   const unlimited = !Number.isFinite(included);
   const limit = unlimited ? Infinity : included + credits;
   const remaining = unlimited ? Infinity : Math.max(0, limit - calls);

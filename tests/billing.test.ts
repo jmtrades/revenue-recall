@@ -32,6 +32,17 @@ describe("stripe webhook signature", () => {
     expect(verifyStripeSignature(payload, sign(payload, secret, old), secret)).toBe(false);
   });
 
+  it("accepts when one of several v1 signatures matches (endpoint-secret rotation)", () => {
+    const t = Math.floor(Date.now() / 1000);
+    const good = crypto.createHmac("sha256", secret).update(`${t}.${payload}`, "utf8").digest("hex");
+    const bad = crypto.createHmac("sha256", "whsec_old").update(`${t}.${payload}`, "utf8").digest("hex");
+    // Stripe sends a v1 per active secret during rotation, in either order.
+    expect(verifyStripeSignature(payload, `t=${t},v1=${bad},v1=${good}`, secret)).toBe(true);
+    expect(verifyStripeSignature(payload, `t=${t},v1=${good},v1=${bad}`, secret)).toBe(true);
+    // ...but still rejects when NONE of the v1s match.
+    expect(verifyStripeSignature(payload, `t=${t},v1=${bad},v1=${bad}`, secret)).toBe(false);
+  });
+
   it("rejects a missing or malformed header", () => {
     expect(verifyStripeSignature(payload, null, secret)).toBe(false);
     expect(verifyStripeSignature(payload, "garbage", secret)).toBe(false);
