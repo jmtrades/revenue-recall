@@ -54,6 +54,21 @@ describe("rowsToImport / parseImportCsv", () => {
     ]);
   });
 
+  it("composes a First Name + Last Name pair into one full name", () => {
+    const csv = "First Name,Last Name,Email\nJane,Roe,jane@acme.com";
+    expect(parseImportCsv(csv).rows).toEqual([{ name: "Jane Roe", email: "jane@acme.com" }]);
+  });
+
+  it("prefers a full-name column and tolerates first-only / last-only", () => {
+    expect(parseImportCsv("name,first name\nJane Roe,Ignored").rows).toEqual([{ name: "Jane Roe" }]); // full wins
+    expect(parseImportCsv("first name\nMadonna").rows).toEqual([{ name: "Madonna" }]);
+    expect(parseImportCsv("surname\nRoe").rows).toEqual([{ name: "Roe" }]);
+  });
+
+  it("does not let a duplicate column clobber an earlier value", () => {
+    expect(parseImportCsv("name,phone,phone\nSam,555-1,555-2").rows).toEqual([{ name: "Sam", phone: "555-1" }]);
+  });
+
   it("skips rows that have no name", () => {
     const csv = "name,email\n,nobody@example.com\nReal Person,real@example.com";
     const { rows, skipped } = parseImportCsv(csv);
