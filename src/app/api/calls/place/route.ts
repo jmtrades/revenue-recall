@@ -7,6 +7,7 @@ import { getOrgSettings } from "@/lib/org";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { withGuard } from "@/lib/api/guard";
 import { hasOptedOut, recordingDisclosure } from "@/lib/agent/guardrails";
+import { voicemailScript } from "@/lib/voice/voicemail";
 import type { Activity } from "@/lib/crm/types";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +46,7 @@ export const POST = withGuard(async (req: Request) => {
   // never let context-building block the call.
   let context: string | undefined;
   let opener: string | undefined;
+  let voicemail: string | undefined;
   try {
     const voice = await getActiveVoice();
     const rep = voice.senderName?.trim();
@@ -81,6 +83,16 @@ export const POST = withGuard(async (req: Request) => {
         : rep
           ? `Hey ${first}, it's ${rep} — caught you at an okay time?`
           : `Hey ${first} — caught you at an okay time?`;
+    // A personalized voicemail to leave if the call hits a machine — gap-aware,
+    // so a long-dormant deal gets a warm "it's been a while" message. Most recall
+    // calls reach voicemail; a good one left here is often what restarts the deal.
+    voicemail = voicemailScript({
+      contactName: contact?.name,
+      repName: rep,
+      dealTitle: opp?.title,
+      daysSinceContact: gapDays,
+      seed: parsed.data.dealId || contactId || to,
+    });
   } catch {
     /* context is a nicety; place the call regardless */
   }
@@ -103,7 +115,7 @@ export const POST = withGuard(async (req: Request) => {
   if (parsed.data.dealId) meta.dealId = parsed.data.dealId;
   if (org?.id) meta.orgId = org.id;
 
-  const result = await placeCall(to, { from, voiceId: org?.voiceId, context, opener, meta: Object.keys(meta).length ? meta : undefined });
+  const result = await placeCall(to, { from, voiceId: org?.voiceId, context, opener, voicemail, meta: Object.keys(meta).length ? meta : undefined });
   if (result.status === "failed") {
     // Most "failed" calls in practice are an unreachable gateway (wrong/empty
     // VOICE_WEBHOOK_URL, or the gateway service down) — point the user at the

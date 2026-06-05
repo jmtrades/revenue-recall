@@ -50,6 +50,9 @@ export interface VoiceCall {
   voiceId?: string;
   /** Personalized opening line. */
   opener?: string;
+  /** A short spoken voicemail to leave if the call reaches an answering machine.
+   *  Carried in the gateway payload; spoken when machine-detection signals voicemail. */
+  voicemail?: string;
   /** Opaque per-call metadata (e.g. contactId/dealId) the gateway echoes back to
    *  /api/calls/log so the transcript attaches to the right record. */
   meta?: Record<string, string>;
@@ -199,11 +202,11 @@ const twilioSms: SmsTransport = {
 const webhookVoice: VoiceTransport = {
   id: "webhook",
   available: () => Boolean(env("VOICE_WEBHOOK_URL")),
-  async place({ to, from, context, voiceId, opener, meta }) {
+  async place({ to, from, context, voiceId, opener, voicemail, meta }) {
     try {
       // Undefined fields are dropped by JSON.stringify, so this stays compatible
-      // with any gateway; our in-house call-gateway uses context/voiceId/opener/meta.
-      const r = await postWebhook(env("VOICE_WEBHOOK_URL")!, { channel: "voice", to, from: from ?? env("OUTBOUND_FROM_NUMBER"), context, voiceId, opener, meta });
+      // with any gateway; our in-house call-gateway uses context/voiceId/opener/voicemail/meta.
+      const r = await postWebhook(env("VOICE_WEBHOOK_URL")!, { channel: "voice", to, from: from ?? env("OUTBOUND_FROM_NUMBER"), context, voiceId, opener, voicemail, meta });
       return { id: r.id ?? "webhook", status: "queued", provider: "webhook" };
     } catch (e) {
       return { id: "", status: "failed", provider: "webhook", detail: e instanceof Error ? e.message : "call failed" };
@@ -272,7 +275,7 @@ export async function sendSms(to: string, body: string, opts: { from?: string } 
  *  `opts` (context/voiceId/opener) is passed to the in-house agent gateway so
  *  the AI knows who it's calling and why; transports that don't run our agent
  *  simply ignore it. */
-export async function placeCall(to: string, opts: { from?: string; context?: string; voiceId?: string; opener?: string; meta?: Record<string, string> } = {}): Promise<SendResult> {
+export async function placeCall(to: string, opts: { from?: string; context?: string; voiceId?: string; opener?: string; voicemail?: string; meta?: Record<string, string> } = {}): Promise<SendResult> {
   const t = resolveVoice();
   return t ? t.place({ to, ...opts }) : logResult();
 }

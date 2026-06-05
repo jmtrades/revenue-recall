@@ -53,8 +53,13 @@ VOICE_WEBHOOK_URL = https://your-gateway/voice
 SMS_WEBHOOK_URL   = https://your-gateway/sms        # optional, same trunk
 COMMS_WEBHOOK_TOKEN = <shared secret>               # sent as Bearer; we verify it
 ```
-The app POSTs `{ channel, to, from }`; the gateway originates the call and runs
-the agent. Nothing in the app changes — flip the env var and calls go in-house.
+The app POSTs `{ channel, to, from }` plus optional briefing fields the agent
+uses: `context` (who/why), `opener` (personalized first line), `voiceId`,
+`voicemail` (a ready, personalized message to leave if the line goes to a
+machine — speak it from your answering-machine-detection hook, see
+`CallAgent.leave_voicemail`), and `meta` (echoed back to `/api/calls/log`). The
+gateway originates the call and runs the agent. Nothing in the app changes —
+flip the env var and calls go in-house.
 
 ## Run it
 ```bash

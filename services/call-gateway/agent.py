@@ -19,17 +19,30 @@ WRAP_FALLBACK = "I'll let you go for now — I'll send a quick note and try you 
 
 
 class CallAgent:
-    def __init__(self, context: str = "", voice_id=None, opener: str = DEFAULT_OPENER):
+    def __init__(self, context: str = "", voice_id=None, opener: str = DEFAULT_OPENER, voicemail=None):
         self.turns = []
         self.context = context
         self.voice_id = voice_id
         self.opener = opener
+        # Prepared voicemail to leave if the line goes to a machine (see leave_voicemail).
+        self.voicemail = voicemail
 
     async def _speak(self, text: str, transport):
         async for chunk in synthesize(text, voice_id=self.voice_id, sample_rate=TELEPHONY_SAMPLE_RATE):
             if transport.interrupted() or transport.closed():
                 break  # barge-in / hangup: stop talking immediately
             await transport.send_audio(chunk)
+
+    async def leave_voicemail(self, transport) -> bool:
+        """Speak the prepared voicemail, then let the call end. Invoked by the
+        telephony layer's answering-machine detection (Twilio `machine_detection`
+        / FreeSWITCH AMD) when the line goes to voicemail — wire that signal to
+        call this instead of run(). No-op (returns False) if none was prepared."""
+        if not self.voicemail:
+            return False
+        self.turns.append({"role": "rep", "text": self.voicemail})
+        await self._speak(self.voicemail, transport)
+        return True
 
     async def run(self, transport):
         """Drive the whole conversation until the caller hangs up."""
