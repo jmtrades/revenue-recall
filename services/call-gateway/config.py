@@ -38,6 +38,19 @@ TWILIO_FROM_NUMBER = env("TWILIO_FROM_NUMBER")
 # Public wss:// URL of THIS gateway, reachable by Twilio (e.g. wss://calls.acme.com).
 PUBLIC_WSS_BASE = env("PUBLIC_WSS_BASE")
 
+# ── Answering-machine detection (Twilio AMD) ────────────────────────────────
+# OFF by default — enabling it adds AMD to every outbound Twilio call and POSTs
+# the verdict to /twilio/amd, so a call that hits voicemail is logged as
+# 'voicemail' (driving the app's voicemail follow-up + retry) instead of being
+# mislabeled 'no-answer'. https://www.twilio.com/docs/voice/answering-machine-detection
+AMD_ENABLED = env("AMD_ENABLED", "").lower() in ("1", "true", "yes")
+AMD_TIMEOUT_SEC = int(env("AMD_TIMEOUT_SEC", "30"))
+# HTTPS base for Twilio status callbacks (Twilio POSTs AMD here). Defaults from
+# PUBLIC_WSS_BASE (wss→https) so it auto-wires when the gateway is reachable.
+PUBLIC_HTTPS_BASE = env("PUBLIC_HTTPS_BASE")
+if not PUBLIC_HTTPS_BASE and PUBLIC_WSS_BASE:
+    PUBLIC_HTTPS_BASE = PUBLIC_WSS_BASE.replace("wss://", "https://").replace("ws://", "http://")
+
 
 def twilio_ready() -> bool:
     return bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER and PUBLIC_WSS_BASE)

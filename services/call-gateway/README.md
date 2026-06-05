@@ -61,6 +61,24 @@ machine — speak it from your answering-machine-detection hook, see
 gateway originates the call and runs the agent. Nothing in the app changes —
 flip the env var and calls go in-house.
 
+## Answering-machine detection (voicemail) — opt-in
+Off by default. When enabled (Twilio path), the gateway runs Twilio AMD on each
+call and Twilio POSTs the human/machine verdict to `/twilio/amd` (signed with a
+per-call token). A call that hits voicemail is then logged with `outcome:
+"voicemail"` instead of being mislabeled `no-answer` — which is exactly what the
+app's voicemail follow-up + call-retry logic (`src/lib/calls/retry.ts`) keys on.
+```
+AMD_ENABLED = true
+PUBLIC_HTTPS_BASE = https://your-gateway      # optional; defaults from PUBLIC_WSS_BASE
+AMD_TIMEOUT_SEC = 30                           # optional
+```
+AMD runs async, so the live `<Connect><Stream>` (and the agent) start
+immediately. The prepared `voicemail` line is already threaded to
+`CallAgent.leave_voicemail`; wiring the verdict to *speak* it mid-call (vs. just
+labeling the outcome) is the one step to validate against your deployed gateway.
+Pure logic (`amd.py`, `twilio_out.call_params`) is covered by
+`python3 -m unittest discover -s tests`.
+
 ## Run it
 ```bash
 cd services/call-gateway
