@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { channelStatus, sendEmail, sendSms, placeCall, setEmailTransport, setSmsTransport, setVoiceTransport } from "@/lib/comms";
 
-const CLEAR = ["RESEND_API_KEY", "SENDGRID_API_KEY", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM_NUMBER", "EMAIL_WEBHOOK_URL", "SMS_WEBHOOK_URL", "VOICE_WEBHOOK_URL", "COMMS_WEBHOOK_TOKEN"];
+const CLEAR = ["RESEND_API_KEY", "SENDGRID_API_KEY", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM_NUMBER", "EMAIL_WEBHOOK_URL", "SMS_WEBHOOK_URL", "VOICE_WEBHOOK_URL", "COMMS_WEBHOOK_TOKEN", "EMAIL_FROM"];
 
 beforeEach(() => {
   for (const k of CLEAR) delete process.env[k];
@@ -55,6 +55,7 @@ describe("comms transport resolution", () => {
 
   it("built-in adapters are picked up by env when present", () => {
     process.env.SENDGRID_API_KEY = "sg_x";
+    process.env.EMAIL_FROM = "sales@acme.com"; // a real from is required for email to go live
     process.env.TWILIO_ACCOUNT_SID = "AC";
     process.env.TWILIO_AUTH_TOKEN = "tok";
     process.env.TWILIO_FROM_NUMBER = "+15550000000";
