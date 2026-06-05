@@ -64,6 +64,7 @@ Set these in **Vercel → Project → Settings → Environment Variables** (Prod
 - **Twilio (simplest):** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
 - **Or webhooks:** `SMS_WEBHOOK_URL`, `VOICE_WEBHOOK_URL` (+ `COMMS_WEBHOOK_TOKEN`)
 - Per-org caller ID is set in-app (Settings → Numbers); these are the platform fallback.
+- **In-app number buying [optional]:** `NUMBERS_WEBHOOK_URL` + `NUMBERS_WEBHOOK_TOKEN` to provision numbers from Settings → Numbers.
 
 ### Billing (Stripe) **[required to charge]** — see §3
 `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`,
@@ -81,6 +82,12 @@ optionally `STRIPE_TRIAL_DAYS`. Set `BILLING_ENFORCE=true` to enforce plan limit
 | `CALL_RECORDING_DISCLOSURE` | spoken first on calls (two-party-consent states) |
 
 > Recommended launch posture: leave the AUTOPILOT flags **off** first (everything queues to Approvals), watch the drafts, then flip them on.
+
+### Operational **[optional]**
+| Var | Effect |
+|---|---|
+| `ALERT_WEBHOOK_URL` | POST a JSON alert on cron failures / partial fan-out failures (wire to Slack/PagerDuty). Without it, failures still log to the server. |
+| `WRITE_RATE_LIMIT_PER_MIN` · `AI_RATE_LIMIT_PER_MIN` · `IMPORT_RATE_LIMIT_PER_MIN` | per-client throttle overrides (defaults 120 · 30 · 10/min) — leave unset unless tuning. |
 
 ## 3. Stripe setup **[required to charge]**
 1. Create **Products/Prices** matching the catalog in `src/lib/billing/plans.ts` (Growth, Team, Scale — monthly + annual — and the top-up packs). Put each price id in the matching `STRIPE_PRICE_*` env var.
@@ -102,6 +109,8 @@ Deploy the in-house call-gateway (`services/call-gateway/`, e.g. on Render) and 
 and on the gateway `CALL_STATUS_WEBHOOK_URL=https://<app>/api/calls/log` plus its
 STT/TTS/trunk config. Full steps: `services/call-gateway/README.md` and `GO-LIVE-CALLS.md`.
 Verify in-app at **Settings → Channels → Calling gateway** (it live-pings the gateway).
+
+> **Voicemail detection [optional]:** set `AMD_ENABLED=true` on the gateway so a call that hits voicemail is logged as `voicemail` (which fires the app's voicemail follow-up + call-retry) instead of `no-answer`. See `services/call-gateway/README.md`.
 
 ## 7. Inbound (replies, bounces, opt-outs)
 In **Settings → Channels → Inbound email & SMS**, copy each org's private inbound
