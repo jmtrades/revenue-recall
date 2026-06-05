@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 
-interface Note { id: string; kind: "recall" | "new_lead" | "stage_change"; title: string; detail: string; href: string }
+interface Note { id: string; kind: "reply" | "recall" | "new_lead" | "stage_change"; title: string; detail: string; href: string }
 
 const KIND_LABEL: Record<Note["kind"], string> = {
+  reply: "Replied",
   recall: "At risk",
   new_lead: "New deal",
   stage_change: "Moved",

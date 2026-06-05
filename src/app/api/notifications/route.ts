@@ -7,10 +7,12 @@ import { withGuard } from "@/lib/api/guard";
 export const dynamic = "force-dynamic";
 
 const DAY = 86_400_000;
+// Inbound activity kinds that count as a prospect "reply".
+const REPLY_KINDS = new Set(["email", "sms", "call", "note"]);
 
 interface NotificationItem {
   id: string;
-  kind: "recall" | "new_lead" | "stage_change";
+  kind: "reply" | "recall" | "new_lead" | "stage_change";
   title: string;
   detail: string;
   href: string;
@@ -26,15 +28,28 @@ interface NotificationItem {
  */
 export const GET = withGuard(async () => {
   const provider = getProvider();
-  const [{ notificationPrefs: prefs }, pipelines, opps, activities] = await Promise.all([
+  const [{ notificationPrefs: prefs }, pipelines, opps, activities, contacts] = await Promise.all([
     getOrgSettings(),
     provider.listPipelines(),
     provider.listOpportunities(),
     provider.listRecentActivities(40),
+    provider.listContacts(),
   ]);
 
   const oppById = new Map(opps.map((o) => [o.id, o]));
   const items: NotificationItem[] = [];
+
+  // A lead replying is the most actionable signal — surface it first.
+  if (prefs.reply) {
+    const nameById = new Map(contacts.map((c) => [c.id, c.name]));
+    const replies = activities.filter((a) => a.direction === "inbound" && REPLY_KINDS.has(a.kind)).slice(0, 6);
+    for (const a of replies) {
+      const who = (a.contactId && nameById.get(a.contactId)) || "A lead";
+      const opp = a.opportunityId ? oppById.get(a.opportunityId) : undefined;
+      const snippet = (a.summary ?? "").replace(/\s+/g, " ").trim().slice(0, 90);
+      items.push({ id: `reply_${a.id}`, kind: "reply", title: `${who} replied`, detail: snippet || "New inbound message", href: opp ? `/deals/${opp.id}` : "/inbox" });
+    }
+  }
 
   if (prefs.recall_flag) {
     for (const r of buildRecallQueue(opps, pipelines).slice(0, 8)) {
