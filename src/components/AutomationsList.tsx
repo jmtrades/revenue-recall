@@ -7,11 +7,38 @@ export function AutomationsList({ automations }: { automations: Automation[] }) 
   const [enabled, setEnabled] = useState<Record<string, boolean>>(
     Object.fromEntries(automations.map((a) => [a.id, a.enabled])),
   );
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const activeCount = Object.values(enabled).filter(Boolean).length;
+
+  // Persist the toggle so it survives a refresh (and is a real master switch the
+  // engine reads). Optimistic, with a revert + message if the save fails.
+  async function toggle(id: string) {
+    const next = !enabled[id];
+    setEnabled((e) => ({ ...e, [id]: next }));
+    setSavingId(id);
+    setError(null);
+    try {
+      const res = await fetch("/api/automations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, enabled: next }) });
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        setEnabled((e) => ({ ...e, [id]: !next }));
+        setError(b.error ?? "Couldn't save. Try again.");
+      }
+    } catch {
+      setEnabled((e) => ({ ...e, [id]: !next }));
+      setError("Couldn't save. Try again.");
+    } finally {
+      setSavingId(null);
+    }
+  }
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted">{activeCount} of {automations.length} automations active</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted">{activeCount} of {automations.length} automations active</p>
+        {error && <p className="text-sm text-danger">{error}</p>}
+      </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {automations.map((a) => (
           <section key={a.id} className="card">
@@ -21,8 +48,9 @@ export function AutomationsList({ automations }: { automations: Automation[] }) 
                 <p className="mt-1 text-sm text-muted">{a.description}</p>
               </div>
               <button
-                onClick={() => setEnabled((e) => ({ ...e, [a.id]: !e[a.id] }))}
-                className={`relative h-6 w-11 shrink-0 rounded-full border transition ${enabled[a.id] ? "border-success bg-success" : "border-border bg-surface-2"}`}
+                onClick={() => toggle(a.id)}
+                disabled={savingId === a.id}
+                className={`relative h-6 w-11 shrink-0 rounded-full border transition disabled:opacity-60 ${enabled[a.id] ? "border-success bg-success" : "border-border bg-surface-2"}`}
                 aria-label="Toggle automation"
               >
                 <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-all ${enabled[a.id] ? "left-[22px]" : "left-0.5"}`} />

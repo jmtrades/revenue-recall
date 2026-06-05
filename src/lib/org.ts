@@ -27,6 +27,9 @@ export interface OrgSettings {
   notificationPrefs: NotificationPrefs;
   theme: Theme;
   compliance: OrgCompliance;
+  /** Per-org automation enable overrides ({ automationId: boolean }); absent keys
+   *  fall back to the template default in lib/automations.ts. */
+  automations: Record<string, boolean>;
   /** This org's own caller-ID / "from" number (E.164) for calls + SMS. Each org
    *  brings/buys their own, so this is per-org, not a single platform number. */
   callerId?: string;
@@ -56,6 +59,7 @@ function envFallback(): OrgSettings {
     notificationPrefs: defaultNotificationPrefs(),
     theme: defaultTheme(),
     compliance: {},
+    automations: {},
     callerId: process.env.OUTBOUND_FROM_NUMBER || undefined,
     voiceId: process.env.OUTBOUND_VOICE_ID || undefined,
     persisted: false,
@@ -69,7 +73,7 @@ async function read(): Promise<OrgSettings> {
   if (!orgId) return envFallback();
   const { data } = await client
     .from("orgs")
-    .select("id,name,industry_id,language,currency,monthly_quota,notification_prefs,theme,compliance,caller_id,voice_id")
+    .select("id,name,industry_id,language,currency,monthly_quota,notification_prefs,theme,compliance,caller_id,voice_id,automations")
     .eq("id", orgId)
     .maybeSingle();
   if (!data) return envFallback();
@@ -83,6 +87,7 @@ async function read(): Promise<OrgSettings> {
     notificationPrefs: mergeNotificationPrefs(data.notification_prefs as Record<string, unknown> | null),
     theme: mergeTheme(data.theme as Record<string, unknown> | null),
     compliance: mergeCompliance(data.compliance as Record<string, unknown> | null),
+    automations: (data.automations && typeof data.automations === "object" ? (data.automations as Record<string, boolean>) : {}),
     callerId: (data.caller_id as string) || process.env.OUTBOUND_FROM_NUMBER || undefined,
     voiceId: (data.voice_id as string) || process.env.OUTBOUND_VOICE_ID || undefined,
     persisted: true,
@@ -104,6 +109,8 @@ export async function updateOrgSettings(patch: {
   callerId?: string;
   /** This org's outbound call voice id (house id or "clone:<id>"), or "" to clear. */
   voiceId?: string;
+  /** Per-org automation enable overrides ({ automationId: boolean }). */
+  automations?: Record<string, boolean>;
 }): Promise<OrgSettings> {
   const client = getSupabase();
   if (!client) throw new Error("Settings are read-only without a database.");
@@ -132,6 +139,7 @@ export async function updateOrgSettings(patch: {
   }
   if (patch.callerId !== undefined) update.caller_id = patch.callerId.trim() || null;
   if (patch.voiceId !== undefined) update.voice_id = patch.voiceId.trim() || null;
+  if (patch.automations !== undefined) update.automations = patch.automations;
   if (Object.keys(update).length === 0) return read();
   const { error } = await client.from("orgs").update(update).eq("id", orgId);
   if (error) throw new Error(error.message);

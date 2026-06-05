@@ -78,3 +78,17 @@ export const AUTOMATIONS: Automation[] = [
 export function automationsFor(industryId: string): Automation[] {
   return AUTOMATIONS.filter((a) => a.industries.includes("*") || a.industries.includes(industryId));
 }
+
+/** Automations for an industry with the org's saved enable overrides applied, so
+ *  the page reflects (and persists) what the org actually turned on/off. */
+export function effectiveAutomations(industryId: string, overrides: Record<string, boolean> | undefined): Automation[] {
+  return automationsFor(industryId).map((a) => ({ ...a, enabled: overrides?.[a.id] ?? a.enabled }));
+}
+
+/** Is an automation on for an org? Its saved override wins; otherwise the
+ *  template default. Used by the engine so a toggle is a real master switch. */
+export function isAutomationEnabled(id: string, overrides: Record<string, boolean> | undefined): boolean {
+  const o = overrides?.[id];
+  if (typeof o === "boolean") return o;
+  return AUTOMATIONS.find((a) => a.id === id)?.enabled ?? false;
+}
