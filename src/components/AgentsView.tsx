@@ -133,8 +133,10 @@ export function AgentsView({
   }
 
   async function remove(id: string) {
-    await fetch(`/api/agent/tasks/${id}`, { method: "DELETE" });
-    setTasks((t) => t.filter((x) => x.id !== id));
+    // Only drop it from the list once the delete actually succeeded, so a failed
+    // delete doesn't make the task vanish until the next refresh restores it.
+    const res = await fetch(`/api/agent/tasks/${id}`, { method: "DELETE" }).catch(() => null);
+    if (res && res.ok) setTasks((t) => t.filter((x) => x.id !== id));
     router.refresh();
   }
 

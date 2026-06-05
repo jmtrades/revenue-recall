@@ -145,6 +145,7 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card title="Recent activity" className="lg:col-span-2">
+          {feed.length === 0 && <p className="py-6 text-center text-sm text-muted">No activity yet — it shows up here as the agent works your deals.</p>}
           <ul className="space-y-1">
             {feed.map((f) => (
               <li key={f.activity.id} className="flex items-center gap-3 rounded-lg px-1 py-2 hover:bg-surface-2/50">

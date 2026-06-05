@@ -50,6 +50,7 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
   const [summary, setSummary] = useState<CallSummary | null>(null);
   const [summarizing, setSummarizing] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   const active = queue[idx];
   const remaining = queue.filter((q) => !done[q.dealId]).length;
@@ -61,6 +62,7 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
     setNotes("");
     setSummary(null);
     setSaved(false);
+    setSummaryError(null);
   }
 
   async function loadBrief() {
@@ -86,8 +88,16 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
   async function endCall() {
     if (!active) return;
     setSummarizing(true);
+    setSummaryError(null);
     try {
       const res = await fetch("/api/ai/call-summary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dealId: active.dealId, notes }) });
+      if (!res.ok) {
+        // Don't log a garbage "[undefined] undefined" activity or mark the call
+        // done on a failed summary — surface the error and let the rep retry.
+        const b = await res.json().catch(() => ({}));
+        setSummaryError(b.error ?? "Couldn't summarize the call. Try again.");
+        return;
+      }
       const s: CallSummary = await res.json();
       setSummary(s);
       // Persist to the deal timeline.
@@ -204,6 +214,7 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
               placeholder="Jot down what happened — AI will summarize, set the outcome, and log it."
               className="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
             />
+            {summaryError && <p className="mt-2 text-sm text-danger">{summaryError}</p>}
             <button onClick={endCall} disabled={summarizing} className="mt-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
               {summarizing ? "Summarizing…" : "End & summarize"}
             </button>

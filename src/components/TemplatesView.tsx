@@ -7,8 +7,18 @@ import { ChannelIcon } from "@/components/ui";
 export function TemplatesView({ templates }: { templates: MessageTemplate[] }) {
   const [activeId, setActiveId] = useState(templates[0]?.id ?? "");
   const [channel, setChannel] = useState<"all" | "email" | "sms">("all");
+  const [copied, setCopied] = useState(false);
   const shown = channel === "all" ? templates : templates.filter((t) => t.channel === channel);
   const active = templates.find((t) => t.id === activeId) ?? shown[0];
+
+  function useTemplate() {
+    if (!active) return;
+    const text = [active.subject, active.body].filter(Boolean).join("\n\n");
+    navigator.clipboard?.writeText(text).then(
+      () => { setCopied(true); setTimeout(() => setCopied(false), 2000); },
+      () => undefined,
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-[320px_1fr]">
@@ -47,7 +57,7 @@ export function TemplatesView({ templates }: { templates: MessageTemplate[] }) {
                 <h2 className="font-semibold text-fg">{active.name}</h2>
                 <p className="text-xs text-muted">{active.category} · {active.channel}</p>
               </div>
-              <button className="rounded-lg border border-border px-3 py-1.5 text-sm text-fg hover:bg-surface-2">Use template</button>
+              <button onClick={useTemplate} className="rounded-lg border border-border px-3 py-1.5 text-sm text-fg hover:bg-surface-2">{copied ? "Copied!" : "Use template"}</button>
             </div>
             {active.subject && (
               <div className="mb-3">
