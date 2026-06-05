@@ -45,20 +45,31 @@ export const POST = withGuard(async (req: Request) => {
   // the same gate the call route and the Approvals send enforce. This is a manual
   // send path, so it also closes the TOCTOU window where a contact replies "STOP"
   // after a list (e.g. the recall queue) was built but before the rep clicks send.
+  // Loaded once for the contact and reused for BOTH the opt-out gate and the
+  // duplicate-send guard below.
+  let recentActs: Activity[] = [];
   if (contactId) {
     const contact = await provider.getContact(contactId);
-    let acts: Activity[] = [];
     try {
-      acts = provider.listActivitiesByContact ? await provider.listActivitiesByContact(contactId) : dealId ? await provider.listActivities(dealId) : [];
+      recentActs = provider.listActivitiesByContact ? await provider.listActivitiesByContact(contactId) : dealId ? await provider.listActivities(dealId) : [];
     } catch {
       /* attribute/tag opt-out flags below still apply */
     }
-    if (hasOptedOut(contact ?? undefined, opp ?? undefined, acts)) {
+    if (hasOptedOut(contact ?? undefined, opp ?? undefined, recentActs)) {
       return NextResponse.json({ error: "This contact has opted out or is marked do-not-contact." }, { status: 403 });
     }
   }
 
   const now = new Date().toISOString();
+  const nowMs = Date.parse(now);
+  // Idempotency: a re-submitted send (an impatient re-click after the first
+  // succeeded, or any retried request) must never deliver the same message to a
+  // prospect twice — this path has no other dedup. If an identical outbound message
+  // to this contact on this channel was logged seconds ago, treat THIS call as that
+  // same send: succeed without sending again. (A retry after a FAILED send logs
+  // nothing, so it correctly still goes through.)
+  const isDuplicate = (kind: string, summary: string): boolean =>
+    recentActs.some((a) => a.direction === "outbound" && a.kind === kind && a.summary === summary && nowMs - Date.parse(a.occurredAt) < 60_000);
 
   // Social reply — route back out on the platform it arrived on. Logged as a
   // "[Platform]"-tagged note so it lands in the same inbox thread as the inbound.
@@ -66,6 +77,8 @@ export const POST = withGuard(async (req: Request) => {
     if (!contactId) return NextResponse.json({ error: "A contact is required to reply on social." }, { status: 400 });
     const contact = await provider.getContact(contactId);
     if (!contact) return NextResponse.json({ error: "Contact not found" }, { status: 404 });
+    const summary = `[${platformTag(channel as SocialPlatform)}] ${body}`;
+    if (isDuplicate("note", summary)) return NextResponse.json({ ok: true, deduped: true });
     const result = await sendReply({ contact, channel: channel as SocialPlatform, body });
     if (result.status === "failed") {
       return NextResponse.json({ error: result.detail ?? "Send failed", provider: result.provider }, { status: 502 });
@@ -73,7 +86,7 @@ export const POST = withGuard(async (req: Request) => {
     await provider.logActivity({
       contactId,
       kind: "note",
-      summary: `[${platformTag(channel as SocialPlatform)}] ${body}`,
+      summary,
       direction: "outbound",
       occurredAt: now,
     });
@@ -88,6 +101,9 @@ export const POST = withGuard(async (req: Request) => {
   }
   if (!to) return NextResponse.json({ error: "No destination address/number" }, { status: 400 });
 
+  const summary = subject ? `${subject}\n\n${body}` : body;
+  if (isDuplicate(channel, summary)) return NextResponse.json({ ok: true, deduped: true });
+
   const from = channel === "sms" ? (await getOrgSettings().catch(() => null))?.callerId : undefined;
   const result = channel === "email" ? await sendEmail(to, subject ?? "", body) : await sendSms(to, body, { from });
   if (result.status === "failed") {
@@ -98,7 +114,7 @@ export const POST = withGuard(async (req: Request) => {
     opportunityId: dealId,
     contactId,
     kind: channel,
-    summary: subject ? `${subject}\n\n${body}` : body,
+    summary,
     direction: "outbound",
     occurredAt: now,
   });
