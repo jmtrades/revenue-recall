@@ -205,7 +205,7 @@ export class BuiltinProvider implements CrmProvider {
 
   async logActivity(input: Omit<Activity, "id">): Promise<Activity> {
     const d = db();
-    const activity: Activity = { ...input, id: `a_${Date.now()}` };
+    const activity: Activity = { ...input, id: newId("a") };
     d.activities.push(activity);
     if (input.opportunityId) {
       const opp = d.opportunities.find((o) => o.id === input.opportunityId);

@@ -143,7 +143,7 @@ const webhookEmail: EmailTransport = {
   available: () => Boolean(env("EMAIL_WEBHOOK_URL")),
   async send({ to, subject, body, from }) {
     try {
-      const r = await postWebhook(env("EMAIL_WEBHOOK_URL")!, { channel: "email", to, subject, body, from: from ?? env("EMAIL_FROM") });
+      const r = await postWebhook(env("EMAIL_WEBHOOK_URL")!, { channel: "email", to, subject, body, from: from ?? configuredEmailFrom() });
       return { id: r.id ?? "webhook", status: "sent", provider: "webhook" };
     } catch (e) {
       return { id: "", status: "failed", provider: "webhook", detail: e instanceof Error ? e.message : "send failed" };
