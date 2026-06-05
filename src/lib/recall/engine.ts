@@ -298,11 +298,16 @@ export function computeRecallOutcomes(
     }
   };
 
-  for (const e of enrollments) {
+  // Earliest enrollment first, so a re-enrolled deal is credited from when recall
+  // first began for it — and counted ONCE. Re-enrolling a deal (after a prior
+  // recall sequence completed/stopped) must not double-count it in recalled /
+  // wonBack / recoveredValue, which is the product's headline won-back metric.
+  for (const e of [...enrollments].sort((a, b) => (a.enrolledAt < b.enrolledAt ? -1 : 1))) {
     if (!RECALL_SEQUENCE_IDS.has(e.sequenceId)) continue;
+    const deal = e.dealId ? oppById.get(e.dealId) : undefined;
+    if (deal && seenDeals.has(deal.id)) continue; // count each recalled deal once
     recalled += 1;
     if (e.stepIndex > 0 || e.lastStepAt) reEngaged += 1;
-    const deal = e.dealId ? oppById.get(e.dealId) : undefined;
     if (!deal) continue;
     seenDeals.add(deal.id);
     credit(deal, e.enrolledAt);
