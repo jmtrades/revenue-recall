@@ -359,6 +359,10 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
         seq.id === "recall"
           ? (deal ? scoreOpportunity(deal, stageById, { activities: optOutActs }, recallThresholds)?.reason : undefined) ?? "lost_winnable"
           : undefined;
+      // A no-show wants a reschedule, not a generic nudge: when this step hasn't
+      // declared its own scenario (e.g. the breakup last step), use the tuned
+      // "reschedule" copy/coaching for a ghosted-after-meeting deal.
+      const scenario = step.scenario ?? (recallReason === "no_show" ? "reschedule" : undefined);
       const draftInput = {
         channel: step.channel,
         contactName: name,
@@ -373,9 +377,9 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
         recallReason,
         daysSinceContact: daysSince(deal?.lastActivityAt),
         // A step can mark itself a special type — e.g. a gracious "breakup" as the
-        // final recall touch (the last note before archiving), which tends to get
-        // the reply and leaves the door open. Default steps stay normal follow-ups.
-        scenario: step.scenario,
+        // final recall touch — and a no-show defaults to "reschedule" (above).
+        // Default steps with no scenario stay normal follow-ups.
+        scenario,
         instruction: `This is step ${e.stepIndex + 1} of the "${seq.name}" cadence. Intent: ${step.body}`,
         language: contactPreferredLanguage(contact?.attributes, org.language),
         voice,
