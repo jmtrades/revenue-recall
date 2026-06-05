@@ -29,11 +29,6 @@ export interface ParseResult {
 type Field = keyof ImportRow;
 
 const HEADER_ALIASES: Record<string, Field> = {
-  name: "name",
-  "full name": "name",
-  "contact": "name",
-  "contact name": "name",
-  "first name": "name",
   email: "email",
   "email address": "email",
   "e-mail": "email",
@@ -63,6 +58,23 @@ const HEADER_ALIASES: Record<string, Field> = {
   "preferred language": "language",
   lang: "language",
   locale: "language",
+};
+
+// Name columns are handled separately so a "First Name" + "Last Name" pair
+// composes into one full name instead of the surname being silently dropped (no
+// "last name" alias used to exist) or one column overwriting the other.
+const NAME_PARTS: Record<string, "first" | "last" | "full"> = {
+  name: "full",
+  "full name": "full",
+  "contact": "full",
+  "contact name": "full",
+  "first name": "first",
+  firstname: "first",
+  "given name": "first",
+  "last name": "last",
+  lastname: "last",
+  surname: "last",
+  "family name": "last",
 };
 
 /** Tokenize raw CSV text into a grid of cells, honoring RFC-4180 quoting. */
@@ -118,6 +130,7 @@ export function rowsToImport(table: string[][]): ParseResult {
   if (table.length === 0) return { rows: [], headers: [], skipped: 0 };
   const headers = table[0].map((h) => h.trim().toLowerCase());
   const columns = headers.map((h) => HEADER_ALIASES[h]);
+  const nameParts = headers.map((h) => NAME_PARTS[h]);
 
   const rows: ImportRow[] = [];
   let skipped = 0;
@@ -125,11 +138,22 @@ export function rowsToImport(table: string[][]): ParseResult {
   for (let i = 1; i < table.length; i++) {
     const cells = table[i];
     const rec: ImportRow = { name: "" };
+    let first = "";
+    let last = "";
+    let full = "";
     for (let c = 0; c < columns.length; c++) {
-      const field = columns[c];
-      if (!field) continue;
       const raw = (cells[c] ?? "").trim();
       if (!raw) continue;
+      const part = nameParts[c];
+      if (part) {
+        // First non-empty wins per part, so a duplicate column can't clobber it.
+        if (part === "first") first ||= raw;
+        else if (part === "last") last ||= raw;
+        else full ||= raw;
+        continue;
+      }
+      const field = columns[c];
+      if (!field || rec[field] !== undefined) continue; // first non-empty value wins
       if (field === "value") {
         const num = toNumber(raw);
         if (num !== undefined) rec.value = num;
@@ -137,6 +161,8 @@ export function rowsToImport(table: string[][]): ParseResult {
         rec[field] = raw;
       }
     }
+    // A full-name column wins; otherwise compose first + last (in that order).
+    rec.name = (full || [first, last].filter(Boolean).join(" ")).trim();
     if (!rec.name) {
       skipped++;
       continue;
