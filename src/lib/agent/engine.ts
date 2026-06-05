@@ -92,7 +92,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
     const autonomy: AgentTask["autonomy"] = task.autonomy === "auto" && !(await isEntitled("autopilot")) ? "review" : task.autonomy;
 
     const actions: AgentAction[] = [];
-    const pending: { dealId: string; contactId: string; channel: "email" | "sms"; subject?: string; body: string; source: "ai" | "template" }[] = [];
+    const pending: { dealId: string; contactId: string; channel: "email" | "sms"; subject?: string; body: string; source: "ai" | "template"; recall: boolean }[] = [];
     let recoverable = 0;
     let sent = 0;
     let drafted = 0;
@@ -216,9 +216,11 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
       }
       if (result === "drafted" || result === "queued") drafted += 1;
 
-      // Review-mode email/SMS drafts become approval-inbox items.
+      // Review-mode email/SMS drafts become approval-inbox items. Tag the ones
+      // working an at-risk (recall-scored) deal so the approve route attributes a
+      // recall touch on send — mirroring the auto-send path's inline attribution.
       if (result === "drafted" && (channel === "email" || channel === "sms")) {
-        pending.push({ dealId: t.opp.id, contactId: t.opp.contactId, channel, subject: draft.subject, body: draft.body, source: draft.source });
+        pending.push({ dealId: t.opp.id, contactId: t.opp.contactId, channel, subject: draft.subject, body: draft.body, source: draft.source, recall: Boolean(t.reason) });
       }
 
       actions.push({

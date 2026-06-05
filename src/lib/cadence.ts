@@ -361,6 +361,9 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
         summary: `Cadence call — ${seq.name}: ${step.subject}. ${step.body}`,
         occurredAt: now,
       });
+      // The dropped task IS the cadence's outreach action for a call step (there's
+      // no auto-dial, and no later approve→send hook), so attribute it now.
+      if (seq.id === "recall") await recordRecallTouch({ dealId: deal?.id, contactId: e.contactId, channel: "call", source: "cadence", occurredAt: now });
     } else {
       // Pass the deal's ACTUAL recall reason (no_show / going_cold / stalled / …)
       // so the draft re-opens it the right way — a no-show gets "we missed each
@@ -400,10 +403,11 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
       if (batchMode) {
         // Defer the draft to the async batch; it'll be queued to Approvals when
         // the batch is collected on a later tick. Enrollment still advances.
-        batchRequests.push({ item: { customId: `${e.id}_${e.stepIndex}`, dealId: deal?.id, contactId: e.contactId, channel: step.channel }, input: draftInput });
+        // No recall touch is recorded here — the draft hasn't been sent. It's
+        // attributed only if/when the collected draft is approved & sent, via the
+        // `recall` tag carried on the batch item → outbox item → approve route.
+        batchRequests.push({ item: { customId: `${e.id}_${e.stepIndex}`, dealId: deal?.id, contactId: e.contactId, channel: step.channel, recall: seq.id === "recall" }, input: draftInput });
         result.batched += 1;
-        // Skip the synchronous draft/send below.
-        if (seq.id === "recall") await recordRecallTouch({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, source: "cadence", occurredAt: now });
         const ni = e.stepIndex + 1;
         if (ni >= seq.steps.length) { await updateEnrollment(e.id, { status: "completed", stepIndex: ni, lastStepAt: now }); result.completed += 1; }
         else await updateEnrollment(e.id, { stepIndex: ni, lastStepAt: now, nextDueAt: addDays(e.enrolledAt, seq.steps[ni].day) });
@@ -431,16 +435,15 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
           direction: "outbound",
           occurredAt: now,
         });
+        // Attribute the recall effort only on an ACTUAL send.
+        if (seq.id === "recall") await recordRecallTouch({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, source: "cadence", occurredAt: now });
         result.sent += 1;
       } else {
-        await createOutboxItem({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, subject: draft.subject, body: draft.body, source: draft.source });
+        // Queued for human approval — don't attribute a touch yet. Tag it so the
+        // approve route records the touch if/when it's actually sent.
+        await createOutboxItem({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, subject: draft.subject, body: draft.body, source: draft.source, recall: seq.id === "recall" });
         result.queued += 1;
       }
-    }
-
-    // Log a recall touch for attribution (any acted step of a recall sequence).
-    if (address && seq.id === "recall") {
-      await recordRecallTouch({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, source: "cadence", occurredAt: now });
     }
 
     // Advance to the next step (or complete the enrollment).
@@ -487,7 +490,7 @@ export async function collectDueBatches(): Promise<BatchCollectResult> {
     const drafts = await collectBatch(b.providerBatchId); // null while still processing
     if (!drafts) continue;
     for (const d of drafts) {
-      await createOutboxItem({ dealId: d.item.dealId, contactId: d.item.contactId, channel: d.item.channel, subject: d.subject, body: d.body, source: "ai" });
+      await createOutboxItem({ dealId: d.item.dealId, contactId: d.item.contactId, channel: d.item.channel, subject: d.subject, body: d.body, source: "ai", recall: d.item.recall });
       result.queued += 1;
     }
     await markBatchCollected(b.providerBatchId);
