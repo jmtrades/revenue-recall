@@ -30,6 +30,7 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<LeadStatus | "">("");
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // "High value" = the top quartile of THIS pipeline's deal values, so the
   // segment means something for any business (not a hard-coded number).
@@ -53,6 +54,7 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
 
   async function changeStatus(id: string, next: LeadStatus) {
     setSaving(id);
+    setError(null);
     try {
       const res = await fetch("/api/contacts", {
         method: "PATCH",
@@ -60,6 +62,9 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
         body: JSON.stringify({ id, status: next }),
       });
       if (res.ok) router.refresh();
+      else setError("Couldn't update the status — try again.");
+    } catch {
+      setError("Couldn't update the status — try again.");
     } finally {
       setSaving(null);
     }
@@ -92,7 +97,11 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
         setSelected(new Set());
         setBulkStatus("");
         router.refresh();
+      } else {
+        setError("Couldn't update the selected leads — try again.");
       }
+    } catch {
+      setError("Couldn't update the selected leads — try again.");
     } finally {
       setBulkBusy(false);
     }
@@ -118,6 +127,7 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
 
   return (
     <div>
+      {error && <p className="mb-3 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {SEGMENTS.map((s) => (
           <button

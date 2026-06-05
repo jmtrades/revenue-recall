@@ -35,12 +35,14 @@ export function QuickCreate() {
   useEffect(() => {
     if (!open || meta) return;
     fetch("/api/meta")
-      .then((r) => r.json())
-      .then((m: Meta) => {
+      .then((r) => (r.ok ? r.json() : null))
+      .then((m: Meta | null) => {
+        if (!m || !Array.isArray(m.contacts)) { setError("Couldn't load — close and try again."); return; }
         setMeta(m);
         setStageId(m.defaultStageId);
         setContactId(m.contacts[0]?.id ?? "");
-      });
+      })
+      .catch(() => setError("Couldn't load — close and try again."));
   }, [open, meta]);
 
   useEffect(() => {
@@ -116,7 +118,7 @@ export function QuickCreate() {
 
             <div className="space-y-3 p-4">
               {!meta ? (
-                <p className="py-6 text-center text-sm text-muted">Loading…</p>
+                <p className={`py-6 text-center text-sm ${error ? "text-danger" : "text-muted"}`}>{error ?? "Loading…"}</p>
               ) : tab === "deal" ? (
                 <>
                   <input className={inputCls} placeholder="Deal title" value={title} onChange={(e) => setTitle(e.target.value)} />

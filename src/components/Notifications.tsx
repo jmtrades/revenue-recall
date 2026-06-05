@@ -23,8 +23,8 @@ export function Notifications() {
 
   useEffect(() => {
     fetch("/api/notifications")
-      .then((r) => r.json())
-      .then((d) => { setItems(d.items); setLoaded(true); })
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((d) => { setItems(Array.isArray(d?.items) ? d.items : []); setLoaded(true); })
       .catch(() => setLoaded(true));
   }, []);
 

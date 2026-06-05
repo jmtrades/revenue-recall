@@ -25,11 +25,13 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
   const active = threads.find((t) => t.contactId === activeId) ?? shown[0];
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   async function send() {
     if (!active || !draft.trim()) return;
     setSending(true);
+    setError(null);
     try {
       const channel = replyChannel(active.channel);
       const res = await fetch("/api/messages/send", {
@@ -37,10 +39,16 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ channel, contactId: active.contactId, body: draft }),
       });
+      const b = await res.json().catch(() => ({}));
       if (res.ok) {
         setDraft("");
         router.refresh();
+      } else {
+        // Don't fail silently (e.g. a 403 for an opted-out contact) — tell the rep.
+        setError(b.error ?? "Couldn't send. Try again.");
       }
+    } catch {
+      setError("Couldn't send. Try again.");
     } finally {
       setSending(false);
     }
@@ -132,6 +140,7 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
                 />
                 <button onClick={send} disabled={sending || !draft.trim()} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{sending ? "Sending…" : "Send"}</button>
               </div>
+              {error && <p className="mt-1.5 text-[11px] text-danger">{error}</p>}
               <p className="mt-1.5 text-[11px] text-muted">Replies go back out on {channelLabel(replyChannel(active.channel))} when that channel is connected — otherwise logged to the timeline.</p>
             </div>
           </>

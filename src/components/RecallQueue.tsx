@@ -75,6 +75,7 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
 
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   function copy() {
     if (!draft) return;
@@ -85,6 +86,7 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
   async function send() {
     if (!draft) return;
     setSending(true);
+    setSendError(null);
     try {
       const channel = draft.row.channel === "call" ? "email" : draft.row.channel;
       const res = await fetch("/api/messages/send", {
@@ -95,7 +97,12 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
       if (res.ok) {
         setSent(true);
         setTimeout(() => { setDraft(null); setSent(false); router.refresh(); }, 800);
+      } else {
+        const b = await res.json().catch(() => ({}));
+        setSendError(b.error ?? "Couldn't send. Try again.");
       }
+    } catch {
+      setSendError("Couldn't send. Try again.");
     } finally {
       setSending(false);
     }
@@ -211,6 +218,7 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
                     )}
                   </div>
                 </div>
+                {sendError && <p className="mt-2 text-right text-xs text-danger">{sendError}</p>}
               </>
             )}
           </div>
