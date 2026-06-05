@@ -323,7 +323,14 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
 
     // Honor opt-outs: stop the cadence for anyone who unsubscribed or asked us to
     // stop. (A soft "not now" is left enrolled — re-engagement is the point.)
-    const optOutActs = deal ? actByOpp.get(deal.id) ?? [] : [];
+    // For a contact-scoped enrollment (no deal) the prefetched per-deal activities
+    // don't apply, so load the contact's own activities — otherwise an opt-out that
+    // lives only in activity history (e.g. on a provider that can't persist the
+    // do-not-contact attribute) would be missed and the cadence would keep sending.
+    let optOutActs = deal ? actByOpp.get(deal.id) ?? [] : [];
+    if (!deal && provider.listActivitiesByContact) {
+      optOutActs = await provider.listActivitiesByContact(e.contactId).catch(() => []);
+    }
     if (hasOptedOut(contact, deal, optOutActs)) {
       await updateEnrollment(e.id, { status: "stopped" });
       result.stopped += 1;
