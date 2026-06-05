@@ -19,6 +19,9 @@ import {
   EASY_OUT_SMS,
 } from "@/lib/copy";
 
+/** A special message type that overrides the default outreach/follow-up shape. */
+export type DraftScenario = "voicemail" | "breakup" | "referral" | "recap" | "renewal" | "reschedule";
+
 export interface DraftInput {
   channel: "email" | "sms" | "call";
   contactName: string;
@@ -42,7 +45,7 @@ export interface DraftInput {
   /** Variation index — produces a distinctly different take of the same message. */
   variant?: number;
   /** Special message type. Default is a normal outreach/follow-up. */
-  scenario?: "voicemail" | "breakup" | "referral" | "recap" | "renewal" | "reschedule";
+  scenario?: DraftScenario;
   /** Optional extra instruction from a user-defined Autopilot task. */
   instruction?: string;
   /** ISO 639-1 language to write in (default English). See lib/languages. */

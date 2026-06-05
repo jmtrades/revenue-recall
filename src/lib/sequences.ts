@@ -4,6 +4,8 @@
  * map onto a CRM's tasks/workflows when one is connected.
  */
 
+import type { DraftScenario } from "@/lib/ai/draft";
+
 export type SeqChannel = "call" | "email" | "sms";
 
 export interface SequenceStep {
@@ -11,6 +13,10 @@ export interface SequenceStep {
   channel: SeqChannel;
   subject: string;
   body: string;
+  /** Optional special message type for this step (e.g. a gracious "breakup" as
+   *  the final touch). When set, the cadence drafts it with that scenario's tuned
+   *  copy + coaching instead of a generic follow-up. */
+  scenario?: DraftScenario;
 }
 
 export interface Sequence {
@@ -32,7 +38,7 @@ export const SEQUENCES: Sequence[] = [
       { day: 0, channel: "email", subject: "worth picking back up?", body: "Ask straight whether it's still on their radar. Lead with a genuine reason, give an easy out." },
       { day: 3, channel: "call", subject: "Call attempt", body: "Reference the original goal; open with a fresh angle, not a guilt-trip about the gap." },
       { day: 7, channel: "sms", subject: "Soft nudge", body: "Short and low-pressure — happy to close the loop either way. Offer one concrete next step." },
-      { day: 14, channel: "email", subject: "closing the file", body: "Last note before you archive it. Make it painless to say 'keep it open' or 'not now'." },
+      { day: 14, channel: "email", subject: "closing the file", body: "Last note before you archive it. Make it painless to say 'keep it open' or 'not now'.", scenario: "breakup" },
     ],
   },
   {

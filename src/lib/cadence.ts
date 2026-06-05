@@ -362,6 +362,10 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
         industryId: industry.id,
         recallReason: seq.id === "recall" ? "lost_winnable" : undefined,
         daysSinceContact: daysSince(deal?.lastActivityAt),
+        // A step can mark itself a special type — e.g. a gracious "breakup" as the
+        // final recall touch (the last note before archiving), which tends to get
+        // the reply and leaves the door open. Default steps stay normal follow-ups.
+        scenario: step.scenario,
         instruction: `This is step ${e.stepIndex + 1} of the "${seq.name}" cadence. Intent: ${step.body}`,
         language: contactPreferredLanguage(contact?.attributes, org.language),
         voice,
