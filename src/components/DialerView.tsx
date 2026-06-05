@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import type { CallQueueItem } from "@/lib/queries";
 import { Icon } from "@/components/icons";
@@ -46,6 +46,11 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
   const [brief, setBrief] = useState<Brief | null>(null);
   const [briefBusy, setBriefBusy] = useState(false);
   const [callStatus, setCallStatus] = useState<string | null>(null);
+  const [placing, setPlacing] = useState(false);
+  // Synchronous re-entry guard: placing a real call costs money and rings the
+  // prospect, so a double-click must NEVER fire two calls. A ref blocks the second
+  // click even within the same tick (before React re-renders the disabled button).
+  const placingRef = useRef(false);
   const [notes, setNotes] = useState("");
   const [summary, setSummary] = useState<CallSummary | null>(null);
   const [summarizing, setSummarizing] = useState(false);
@@ -77,12 +82,19 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
   }
 
   async function call() {
-    if (!active) return;
+    if (!active || placingRef.current) return; // never place a call twice on a double-click
+    placingRef.current = true;
+    setPlacing(true);
     setCallStatus("Dialing…");
-    const res = await fetch("/api/calls/place", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dealId: active.dealId }) });
-    const b = await res.json();
-    if (!res.ok) setCallStatus(b.error ?? "Call failed");
-    else setCallStatus(b.provider === "log" ? "Call logged — connect a phone number to dial for real" : `Dialing ${b.to}`);
+    try {
+      const res = await fetch("/api/calls/place", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dealId: active.dealId }) });
+      const b = await res.json();
+      if (!res.ok) setCallStatus(b.error ?? "Call failed");
+      else setCallStatus(b.provider === "log" ? "Call logged — connect a phone number to dial for real" : `Dialing ${b.to}`);
+    } finally {
+      placingRef.current = false;
+      setPlacing(false);
+    }
   }
 
   async function endCall() {
@@ -166,7 +178,7 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
               <ReasonBadge reason={active.reason} />
             </div>
             <div className="mt-4 flex items-center gap-3">
-              <button onClick={call} className="inline-flex items-center gap-1.5 rounded-lg bg-success px-5 py-2.5 text-sm font-semibold text-white transition active:scale-[0.97] hover:bg-success/90"><Icon name="dialer" size={15} /> Call</button>
+              <button onClick={call} disabled={placing} className="inline-flex items-center gap-1.5 rounded-lg bg-success px-5 py-2.5 text-sm font-semibold text-white transition active:scale-[0.97] hover:bg-success/90 disabled:opacity-50 disabled:active:scale-100"><Icon name="dialer" size={15} /> {placing ? "Dialing…" : "Call"}</button>
               {callStatus && <span className="text-sm text-muted">{callStatus}</span>}
             </div>
           </div>
