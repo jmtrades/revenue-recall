@@ -48,7 +48,9 @@ import { AuditLog } from "@/components/AuditLog";
 import { ApiKeySettings } from "@/components/ApiKeySettings";
 import { LeadFormEmbed } from "@/components/LeadFormEmbed";
 import { WebhookSettings } from "@/components/WebhookSettings";
+import { InboundWebhooks, type InboundUrl } from "@/components/InboundWebhooks";
 import { hostedFormUrl, formEmbedSnippet } from "@/lib/forms";
+import { inboundWebhookUrl, type InboundKind } from "@/lib/inbound-routing";
 import { listInvites } from "@/lib/invites-server";
 
 export const dynamic = "force-dynamic";
@@ -300,6 +302,21 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
   );
 
   const channels = ch;
+  const inboundUrls: InboundUrl[] = org.id
+    ? (
+        [
+          ["email", "Inbound email", "Point your email provider's inbound-parse / forwarding webhook here"],
+          ["sms", "Inbound SMS", "Set this as the inbound webhook on this workspace's number"],
+          ["bounce", "Bounces & complaints", "Point your email provider's bounce / spam-complaint events here"],
+        ] as [InboundKind, string, string][]
+      )
+        .map(([kind, label, hint]) => {
+          const url = inboundWebhookUrl(kind, org.id as string);
+          return url ? { label, hint, url } : null;
+        })
+        .filter((u): u is InboundUrl => u !== null)
+    : [];
+
   const channelsTab = (
     <>
       <Card>
@@ -344,6 +361,18 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
         </p>
         <div className="mt-4">
           <ConnectionsManager initial={connections} encryptionAvailable={encAvailable} kind="social" oauthProviders={oauthProviders} />
+        </div>
+      </Card>
+
+      <Card className="mt-4">
+        <h2 className="font-semibold text-fg">Inbound email &amp; SMS</h2>
+        <p className="mt-1 text-sm text-muted">
+          Point your email/SMS provider&apos;s inbound webhooks at these per-workspace URLs so replies, bounces, and
+          opt-outs land on <span className="text-fg">this</span> workspace. Each carries a private, org-scoped token —
+          treat them like secrets.
+        </p>
+        <div className="mt-4">
+          <InboundWebhooks urls={inboundUrls} />
         </div>
       </Card>
     </>
