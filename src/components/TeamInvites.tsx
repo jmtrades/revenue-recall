@@ -43,6 +43,10 @@ export function TeamInvites({ initial, persisted }: { initial: Invitation[]; per
   }
 
   async function revoke(id: string) {
+    // Confirm before an irreversible, one-click action: revoking invalidates the
+    // teammate's invite link immediately.
+    const invite = invites.find((i) => i.id === id);
+    if (!window.confirm(`Revoke the invite for ${invite?.email ?? "this teammate"}? Their invite link will stop working.`)) return;
     setInvites((cur) => cur.filter((i) => i.id !== id));
     try {
       await fetch(`/api/invites?id=${encodeURIComponent(id)}`, { method: "DELETE" });
