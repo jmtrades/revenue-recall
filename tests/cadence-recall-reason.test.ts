@@ -35,7 +35,9 @@ describe("recall cadence drafts with the deal's actual reason", () => {
     await runDueSteps();
 
     expect(draftMessage).toHaveBeenCalled();
-    const input = draftMessage.mock.calls[0][0] as { recallReason?: string };
+    const input = draftMessage.mock.calls[0][0] as { recallReason?: string; scenario?: string };
     expect(input.recallReason).toBe("no_show");
+    // A no-show defaults to the tuned reschedule scenario (this step has no scenario of its own).
+    expect(input.scenario).toBe("reschedule");
   });
 });
