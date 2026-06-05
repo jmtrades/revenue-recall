@@ -7,6 +7,7 @@ export type NotificationPrefs = Record<string, boolean>;
 
 /** The notification toggles shown in Settings, with their default state. */
 export const NOTIFICATION_OPTIONS = [
+  { key: "reply", label: "A lead replied", default: true },
   { key: "lead_assigned", label: "New lead assigned to me", default: true },
   { key: "recall_flag", label: "Deal flagged by Revenue Recall", default: true },
   { key: "stage_change", label: "Deal stage changes", default: false },
