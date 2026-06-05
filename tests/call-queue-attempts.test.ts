@@ -22,4 +22,14 @@ describe("dialer call queue: attempt tracking", () => {
     const q1 = await getCallQueue();
     expect(q1.find((i) => i.contactId === target.contactId)).toBeUndefined();
   });
+
+  it("never queues a contact who has opted out", async () => {
+    const q0 = await getCallQueue();
+    if (q0.length === 0) return;
+    const target = q0[0];
+    // A hard opt-out on the timeline must remove them from the dialer entirely.
+    await getProvider().logActivity({ contactId: target.contactId, kind: "sms", direction: "inbound", summary: "stop calling me", occurredAt: new Date().toISOString() });
+    const q1 = await getCallQueue();
+    expect(q1.find((i) => i.contactId === target.contactId)).toBeUndefined();
+  });
 });

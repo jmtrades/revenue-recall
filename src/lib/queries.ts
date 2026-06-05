@@ -6,6 +6,7 @@ import { getIndustry, recallThresholdsFor } from "@/lib/industries";
 import { computeMetrics, type PipelineMetrics } from "@/lib/analytics";
 import { buildRecallQueue, summarizeRecall, computeRecallOutcomes, recallByOwner, type RecallItem, type RecallSummary, type RecallOutcomes } from "@/lib/recall/engine";
 import { MAX_CALL_ATTEMPTS } from "@/lib/calls/retry";
+import { hasOptedOut } from "@/lib/agent/guardrails";
 import { listEnrollments } from "@/lib/cadence";
 import { listRecallTouches, earliestTouchByDeal, touchesByWeek } from "@/lib/recall/events";
 import type { Activity, Contact, Opportunity, Pipeline, Stage, User } from "@/lib/crm/types";
@@ -167,12 +168,16 @@ export async function getCallQueue(): Promise<CallQueueItem[]> {
     provider.listRecentActivities(500).catch(() => [] as Activity[]),
   ]);
   const cById = new Map(contacts.map((c) => [c.id, c]));
-  // Count prior outbound calls per contact so the dialer can show the attempt
-  // number and skip numbers we've already exhausted (work those by another
-  // channel instead of burning more dials).
+  // Group recent activities by contact for both the attempt count AND the
+  // opt-out check below, so we never dial someone who told us to stop.
+  const actsByContact = new Map<string, Activity[]>();
   const callAttempts = new Map<string, number>();
   for (const a of recent) {
-    if (a.kind === "call" && a.direction === "outbound" && a.contactId) {
+    if (!a.contactId) continue;
+    const list = actsByContact.get(a.contactId);
+    if (list) list.push(a);
+    else actsByContact.set(a.contactId, [a]);
+    if (a.kind === "call" && a.direction === "outbound") {
       callAttempts.set(a.contactId, (callAttempts.get(a.contactId) ?? 0) + 1);
     }
   }
@@ -184,6 +189,8 @@ export async function getCallQueue(): Promise<CallQueueItem[]> {
     const contact = cById.get(opp.contactId);
     const phone = contact?.points.find((p) => p.channel === "phone")?.value;
     if (!contact || !phone) continue;
+    // Never queue a contact who's opted out / is marked do-not-contact.
+    if (hasOptedOut(contact, opp, actsByContact.get(contact.id) ?? [])) continue;
     const attempts = callAttempts.get(contact.id) ?? 0;
     if (attempts >= MAX_CALL_ATTEMPTS) continue; // exhausted by phone — pivot to another channel
     items.push({
