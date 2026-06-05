@@ -6,6 +6,8 @@ import { runDigests } from "@/lib/digest";
 import { getSupabase } from "@/lib/supabase/client";
 import { runWithOrg } from "@/lib/supabase/org-context";
 import { autopilotLockKey, digestLockKey } from "@/lib/agent/lock";
+import { sendAlert, isErrored } from "@/lib/alert";
+import { cleanupRateLimits } from "@/lib/ratelimit";
 import { acquireCronLock, releaseCronLock } from "@/lib/cron-lock";
 import { safeEqual } from "@/lib/safe-compare";
 
@@ -82,6 +84,11 @@ async function runForCurrentOrg() {
       await releaseCronLock(digestKey, digestFence);
     }
   }
+  // Surface engine errors to the operator — an autonomous tick that silently
+  // errors every run would otherwise go unnoticed.
+  for (const [stage, result] of Object.entries({ cadence, batches, digests })) {
+    if (isErrored(result)) await sendAlert(`cron.${stage}`, { error: result.error });
+  }
   return { ran: results.length, results, autopilotLocked: !fence, cadence, batches, digests };
 }
 
@@ -95,6 +102,10 @@ async function run(req: Request) {
     const result = await runWithOrg(targetOrg, runForCurrentOrg);
     return NextResponse.json({ ok: true, org: targetOrg, ...result });
   }
+
+  // Top-level tick only (not the per-org sub-requests): housekeep the shared
+  // rate-limit counters so the table doesn't grow unbounded. Best-effort.
+  await cleanupRateLimits();
 
   const secret = process.env.CRON_SECRET;
   const ids = await allOrgIds();
@@ -120,6 +131,9 @@ async function run(req: Request) {
   // after secret rotation, a 500), the aggregate is NOT ok so monitoring sees it
   // instead of a falsely-green cron hiding a per-tenant outage.
   const failed = results.filter((r) => r.status !== 200).length;
+  // Alert the operator when one or more tenants' ticks failed (e.g. a 401 after
+  // secret rotation, or a 500) so a partial outage is noticed, not buried.
+  if (failed > 0) await sendAlert("cron.fanout_partial_failure", { failed, orgs: ids.length, failures: results.filter((r) => r.status !== 200) });
   return NextResponse.json({ ok: failed === 0, orgs: ids.length, fanned: true, failed, results });
 }
 
