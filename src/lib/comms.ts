@@ -87,15 +87,29 @@ async function postWebhook(url: string, payload: Record<string, unknown>): Promi
 const logResult = (): SendResult => ({ id: `log_${Date.now()}`, status: "logged", provider: "log" });
 
 // ---- built-in email transports ----
+
+// The default placeholder from earlier scaffolding — sending from it (an
+// unverified domain) bounces or lands in spam, so it must never be used live.
+const PLACEHOLDER_FROM = "sales@example.com";
+
+/** A real, configured sender address — EMAIL_FROM that isn't the placeholder. */
+export function configuredEmailFrom(): string | undefined {
+  const v = env("EMAIL_FROM");
+  return v && v !== PLACEHOLDER_FROM ? v : undefined;
+}
+
 const resendEmail: EmailTransport = {
+  // Needs BOTH the API key AND a real from-address: sending from an unverified
+  // domain just bounces, so without a configured EMAIL_FROM email is NOT "live"
+  // (it falls through to logging) rather than silently failing every send.
   id: "resend",
-  available: () => Boolean(env("RESEND_API_KEY")),
+  available: () => Boolean(env("RESEND_API_KEY")) && Boolean(configuredEmailFrom()),
   async send({ to, subject, body, from }) {
     try {
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${env("RESEND_API_KEY")}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: from ?? env("EMAIL_FROM") ?? "sales@example.com", to, subject, text: body }),
+        body: JSON.stringify({ from: from ?? configuredEmailFrom(), to, subject, text: body }),
       });
       const json = (await res.json().catch(() => ({}))) as { id?: string; message?: string };
       if (!res.ok) throw new Error(json.message ?? `Resend ${res.status}`);
@@ -108,13 +122,13 @@ const resendEmail: EmailTransport = {
 
 const sendgridEmail: EmailTransport = {
   id: "sendgrid",
-  available: () => Boolean(env("SENDGRID_API_KEY")),
+  available: () => Boolean(env("SENDGRID_API_KEY")) && Boolean(configuredEmailFrom()),
   async send({ to, subject, body, from }) {
     try {
       const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
         method: "POST",
         headers: { Authorization: `Bearer ${env("SENDGRID_API_KEY")}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ personalizations: [{ to: [{ email: to }] }], from: { email: from ?? env("EMAIL_FROM") ?? "sales@example.com" }, subject, content: [{ type: "text/plain", value: body }] }),
+        body: JSON.stringify({ personalizations: [{ to: [{ email: to }] }], from: { email: from ?? configuredEmailFrom() }, subject, content: [{ type: "text/plain", value: body }] }),
       });
       if (!res.ok) throw new Error(`SendGrid ${res.status}`);
       return { id: res.headers.get("x-message-id") ?? "sendgrid", status: "sent", provider: "sendgrid" };
