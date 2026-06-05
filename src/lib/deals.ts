@@ -54,7 +54,10 @@ export async function createDealRecord(input: NewDealInput): Promise<CreateDealR
     pipelineId: pipeline.id,
     stageId: stage.id,
     value: input.value ?? 0,
-    currency: input.currency || org.currency,
+    // One currency per workspace: every deal uses the org's currency so reports
+    // (pipeline value, forecast, recovered revenue) never sum mixed currencies
+    // into a meaningless total. A client-supplied currency is ignored.
+    currency: org.currency,
     contactId: contact.id,
     source: input.source || "API",
   });
