@@ -5,6 +5,8 @@ import { getOrgSettings } from "@/lib/org";
 import { toLanguageCode } from "@/lib/languages";
 import { dedupeRows } from "@/lib/import/dedupe";
 import { mapWithConcurrency } from "@/lib/async";
+import { withGuard } from "@/lib/api/guard";
+import { importRateLimit } from "@/lib/ratelimit";
 import type { Contact, ContactPoint, Stage } from "@/lib/crm/types";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +27,11 @@ const Row = z.object({
 
 const Body = z.object({ rows: z.array(Row).min(1).max(2000) });
 
-export async function POST(req: Request) {
+export const POST = withGuard(async (req: Request) => {
+  // One call can create thousands of rows — throttle hard so a runaway loop or
+  // abusive client can't flood the DB.
+  if (!importRateLimit(req).ok) return NextResponse.json({ error: "Too many imports — please wait a minute and retry." }, { status: 429 });
+
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid import payload" }, { status: 400 });
 
@@ -115,4 +121,4 @@ export async function POST(req: Request) {
     errors: errors.slice(0, 20),
     errorCount: errors.length,
   });
-}
+});

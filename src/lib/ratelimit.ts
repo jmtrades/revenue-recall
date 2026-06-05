@@ -63,6 +63,19 @@ export function writeRateLimit(req: Request, scope = "write"): RateLimitResult {
   return rateLimit(clientKey(req, scope), limit, 60_000);
 }
 
+/**
+ * Throttle bulk import per client. Far tighter than the generic write limit
+ * because ONE call creates up to 2000 contacts (+ their opportunities): an
+ * unthrottled loop here is a DB write flood. A handful per minute is plenty for
+ * human-driven CSV uploads (select file → map → confirm). Tune with
+ * IMPORT_RATE_LIMIT_PER_MIN (default 10/min).
+ */
+export function importRateLimit(req: Request, scope = "import"): RateLimitResult {
+  const perMin = Number(process.env.IMPORT_RATE_LIMIT_PER_MIN);
+  const limit = Number.isFinite(perMin) && perMin > 0 ? perMin : 10;
+  return rateLimit(clientKey(req, scope), limit, 60_000);
+}
+
 /** Test-only: clear all buckets between cases. */
 export function _resetRateLimit(): void {
   buckets.clear();
