@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { searchNumbers, buyNumber, listOwnedNumbers, numbersConfigured, numbersProviderId, outboundFromNumber } from "@/lib/numbers";
 import { getOrgSettings, updateOrgSettings } from "@/lib/org";
+import { requireRole } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,13 @@ const Body = z.object({
 export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+
+  // Spending money (buy) or changing the org-wide caller ID is an owner/admin
+  // action; browsing available numbers (search) stays open to any member.
+  if (parsed.data.action !== "search") {
+    const denied = await requireRole("owner", "admin");
+    if (denied) return denied;
+  }
 
   // Choosing this org's caller-ID number just stores it on the org — no provider needed.
   if (parsed.data.action === "set_caller_id") {

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getOrgSettings, updateOrgSettings } from "@/lib/org";
 import { effectiveAutomations, AUTOMATIONS } from "@/lib/automations";
 import { withGuard } from "@/lib/api/guard";
+import { requireRole } from "@/lib/authz";
 import { writeRateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,9 @@ const Body = z.object({ id: z.string().min(1).max(64), enabled: z.boolean() });
  *  and acts as a master switch the engine respects). */
 export const POST = withGuard(async (req: Request) => {
   if (!writeRateLimit(req, "automations").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  // Changing org-wide automation behavior is an owner/admin action.
+  const denied = await requireRole("owner", "admin");
+  if (denied) return denied;
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   if (!AUTOMATIONS.some((a) => a.id === parsed.data.id)) return NextResponse.json({ error: "Unknown automation" }, { status: 404 });
