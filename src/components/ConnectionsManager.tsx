@@ -103,6 +103,9 @@ function ConnectionCard({
   }
 
   async function disconnect() {
+    // Confirm before tearing down a live integration — disconnecting stops sending
+    // (or receiving) through it until it's reconnected.
+    if (!window.confirm(`Disconnect ${spec.label}? Revenue Recall will stop using it until you reconnect.`)) return;
     setBusy(true);
     try {
       await fetch("/api/connections", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider: spec.provider }) });
