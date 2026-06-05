@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getSupabase } from "@/lib/supabase/client";
 import { channelStatus } from "@/lib/comms";
-import { rateLimit } from "@/lib/ratelimit";
+import { distributedRateLimit } from "@/lib/ratelimit";
 
 export interface AuthState {
   error?: string;
@@ -24,7 +24,7 @@ export async function signIn(_prev: AuthState, formData: FormData): Promise<Auth
   // Per-IP login throttle — defense-in-depth against password brute-force /
   // credential stuffing (don't rely solely on the upstream auth provider's caps).
   const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() || headers().get("x-real-ip") || "unknown";
-  if (!rateLimit(`login:${ip}`, 10, 60_000).ok) return { error: "Too many attempts. Please wait a minute and try again." };
+  if (!(await distributedRateLimit(`login:${ip}`, 10, 60_000)).ok) return { error: "Too many attempts. Please wait a minute and try again." };
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
   const { error } = await sb.auth.signInWithPassword({ email, password });
@@ -38,7 +38,7 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   // Per-IP signup throttle — bounds mass-signup abuse (important with the
   // confirm-on-create default below, which removes the email-send rate cap).
   const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() || headers().get("x-real-ip") || "unknown";
-  if (!rateLimit(`signup:${ip}`, 10, 60_000).ok) return { error: "Too many sign-up attempts. Please wait a minute and try again." };
+  if (!(await distributedRateLimit(`signup:${ip}`, 10, 60_000)).ok) return { error: "Too many sign-up attempts. Please wait a minute and try again." };
   const name = String(formData.get("name") ?? "");
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
@@ -123,7 +123,7 @@ export async function requestPasswordReset(_prev: AuthState, formData: FormData)
   if (!sb) return { error: "Authentication is not configured." };
   // Per-IP throttle — bounds reset-email spam to any address.
   const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() || headers().get("x-real-ip") || "unknown";
-  if (!rateLimit(`reset:${ip}`, 5, 60_000).ok) return { message: "If an account exists for that email, we've sent a reset link. Check your inbox." };
+  if (!(await distributedRateLimit(`reset:${ip}`, 5, 60_000)).ok) return { message: "If an account exists for that email, we've sent a reset link. Check your inbox." };
   const email = String(formData.get("email") ?? "").trim();
   if (!email) return { error: "Enter your email address." };
   const origin = headers().get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "";

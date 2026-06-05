@@ -6,6 +6,8 @@
  * a shared store (Redis/Upstash) implements the same `rateLimit` shape later.
  */
 
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
+
 interface Window {
   count: number;
   resetAt: number;
@@ -64,4 +66,38 @@ export function writeRateLimit(req: Request, scope = "write"): RateLimitResult {
 /** Test-only: clear all buckets between cases. */
 export function _resetRateLimit(): void {
   buckets.clear();
+}
+
+/**
+ * Cross-instance rate limit (Supabase-backed). Same decision as `rateLimit`, but
+ * the fixed-window counter is SHARED across serverless instances — so it's a real
+ * cap on brute-force/abuse of auth endpoints (login/signup/reset), where the
+ * per-instance in-memory limiter would otherwise allow N_instances × limit.
+ *
+ * Falls back to the in-memory limiter when Supabase isn't configured, and FAILS
+ * OPEN on any store error — never block a legitimate user because the limiter's
+ * own DB hiccuped. (Auth endpoints also have the upstream provider's caps.)
+ */
+export async function distributedRateLimit(key: string, limit: number, windowMs: number, now: number = Date.now()): Promise<RateLimitResult> {
+  if (!isSupabaseConfigured()) return rateLimit(key, limit, windowMs, now);
+  const windowStart = Math.floor(now / windowMs) * windowMs;
+  const resetAt = windowStart + windowMs;
+  try {
+    const { data, error } = await getSupabase()!.rpc("incr_rate_limit", { p_key: key, p_window: windowStart });
+    if (error || typeof data !== "number") return rateLimit(key, limit, windowMs, now);
+    return { ok: data <= limit, remaining: Math.max(0, limit - data), resetAt };
+  } catch {
+    return rateLimit(key, limit, windowMs, now);
+  }
+}
+
+/** Best-effort cleanup of expired rate-limit windows (call occasionally, e.g.
+ *  from the cron). No-op without Supabase; never throws. */
+export async function cleanupRateLimits(olderThanMs = 3_600_000, now: number = Date.now()): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  try {
+    await getSupabase()!.from("rate_limits").delete().lt("window_start", now - olderThanMs);
+  } catch {
+    /* best-effort */
+  }
 }
