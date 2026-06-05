@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { handleInbound } from "@/lib/inbound";
 import { verifyTwilioSignature } from "@/lib/webhook";
+import { verifyInboundOrgToken } from "@/lib/inbound-routing";
+import { runWithOrg } from "@/lib/supabase/org-context";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 import { seenInboundEvent, forgetInboundEvent } from "@/lib/inbound-dedup";
 
@@ -42,7 +44,14 @@ export async function POST(req: Request) {
   const params: Record<string, string> = {};
   if (form) for (const [k, v] of form.entries()) params[k] = String(v);
 
-  if (!authorized(req, url, params)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Multi-tenant: an org-tagged URL (?org=&t=) authenticates via the per-org token
+  // and routes to that tenant; otherwise fall back to the single-org auth.
+  const orgParam = url.searchParams.get("org");
+  if (orgParam) {
+    if (!verifyInboundOrgToken(orgParam, url.searchParams.get("t"))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } else if (!authorized(req, url, params)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const from = params.From ?? "";
   const body = params.Body ?? "";
@@ -55,7 +64,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    await handleInbound("sms", from, body);
+    const run = () => handleInbound("sms", from, body);
+    if (orgParam) await runWithOrg(orgParam, run);
+    else await run();
   } catch {
     // Roll back the dedup marker so Twilio's retry can re-process — otherwise a
     // transient failure here silently drops the customer's reply (matches the
