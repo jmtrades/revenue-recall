@@ -57,3 +57,23 @@ export function voicemailScript(input: VoicemailInput): string {
       ];
   return pick(pool, seed, reactivation ? "vm_reactivate" : "vm");
 }
+
+/**
+ * The short text to send right after leaving a voicemail — so the prospect has
+ * an easy async reply path (replying to a text beats calling back). Casual,
+ * lower-case SMS register, one light ask, no pressure. Deterministic by seed.
+ */
+export function voicemailFollowupText(input: VoicemailInput): string {
+  const first = input.contactName ? firstName(input.contactName) : "there";
+  const rep = (input.repName ?? "").trim();
+  const sign = rep ? ` – ${rep}` : "";
+  const about = (input.dealTitle ?? "").trim();
+  const aboutClause = about ? ` about ${about}` : "";
+  const seed = input.seed ?? `${input.contactName ?? ""}|${about}|${rep}`;
+  const pool = [
+    `hey ${first}, just left you a quick voicemail${aboutClause}. no rush — easier to reply here if you'd rather.${sign}`,
+    `hi ${first} — tried you just now and left a message${aboutClause}. whenever's easy, a quick text back works great too.${sign}`,
+    `${first}, just missed you — left a voicemail${aboutClause}. happy to keep it to text if that's simpler for you.${sign}`,
+  ];
+  return pick(pool, seed, "vm_followup");
+}
