@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getProvider } from "@/lib/crm/registry";
 import { verifyUnsubToken } from "@/lib/unsubscribe";
 import { markDoNotContact } from "@/lib/opt-out";
+import { runWithOrg } from "@/lib/supabase/org-context";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
@@ -22,25 +23,34 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const contactId = url.searchParams.get("c") ?? "";
   const token = url.searchParams.get("t");
-  if (!verifyUnsubToken(contactId, token)) {
+  // Org-bound links carry ?org=; the token is verified against it (legacy links
+  // omit org and verify the contact-only token). The org also scopes the writes
+  // so the opt-out lands on the right tenant instead of the first org.
+  const orgId = url.searchParams.get("org") || undefined;
+  if (!verifyUnsubToken(contactId, token, orgId)) {
     return page("Link expired", "This unsubscribe link is invalid or expired. Reply with “unsubscribe” to opt out.", 400);
   }
 
   try {
-    const provider = getProvider();
-    const contact = await provider.getContact(contactId);
-    if (!contact) return page("Already removed", "We couldn't find that contact — you may already be unsubscribed.", 404);
-    await provider.logActivity({
-      contactId,
-      kind: "note",
-      // The word "unsubscribe" here is what the opt-out guardrail keys on.
-      summary: "Opted out via the unsubscribe link.",
-      direction: "inbound",
-      occurredAt: new Date().toISOString(),
-    });
-    // Persist a durable do-not-contact flag too, so the opt-out outlives the
-    // recent-activity read window the guardrail scans.
-    await markDoNotContact(provider, contact);
+    const optOut = async () => {
+      const provider = getProvider();
+      const contact = await provider.getContact(contactId);
+      if (!contact) return "missing" as const;
+      await provider.logActivity({
+        contactId,
+        kind: "note",
+        // The word "unsubscribe" here is what the opt-out guardrail keys on.
+        summary: "Opted out via the unsubscribe link.",
+        direction: "inbound",
+        occurredAt: new Date().toISOString(),
+      });
+      // Persist a durable do-not-contact flag too, so the opt-out outlives the
+      // recent-activity read window the guardrail scans.
+      await markDoNotContact(provider, contact);
+      return "ok" as const;
+    };
+    const result = orgId ? await runWithOrg(orgId, optOut) : await optOut();
+    if (result === "missing") return page("Already removed", "We couldn't find that contact — you may already be unsubscribed.", 404);
     return page("You're unsubscribed", "Done — you won't hear from us again. Sorry to see you go.", 200);
   } catch {
     return page("Something went wrong", "We couldn't process that right now. Reply with “unsubscribe” and we'll handle it.", 500);
