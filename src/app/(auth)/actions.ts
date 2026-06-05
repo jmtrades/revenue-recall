@@ -21,6 +21,10 @@ function safeNext(next: FormDataEntryValue | null): string {
 export async function signIn(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const sb = getServerSupabase();
   if (!sb) return { error: "Authentication is not configured." };
+  // Per-IP login throttle — defense-in-depth against password brute-force /
+  // credential stuffing (don't rely solely on the upstream auth provider's caps).
+  const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() || headers().get("x-real-ip") || "unknown";
+  if (!rateLimit(`login:${ip}`, 10, 60_000).ok) return { error: "Too many attempts. Please wait a minute and try again." };
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
   const { error } = await sb.auth.signInWithPassword({ email, password });
@@ -117,6 +121,9 @@ export async function signOutEverywhere(): Promise<void> {
 export async function requestPasswordReset(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const sb = getServerSupabase();
   if (!sb) return { error: "Authentication is not configured." };
+  // Per-IP throttle — bounds reset-email spam to any address.
+  const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() || headers().get("x-real-ip") || "unknown";
+  if (!rateLimit(`reset:${ip}`, 5, 60_000).ok) return { message: "If an account exists for that email, we've sent a reset link. Check your inbox." };
   const email = String(formData.get("email") ?? "").trim();
   if (!email) return { error: "Enter your email address." };
   const origin = headers().get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "";

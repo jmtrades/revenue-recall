@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getProviderSpec, CONNECTION_SPECS } from "@/lib/connections/spec";
 import { saveConnection, deleteConnection, listConnections } from "@/lib/connections/store";
 import { encryptionAvailable } from "@/lib/crypto";
+import { requireRole } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,11 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  // These are ORG-WIDE credentials (CRM/database/social/comms secrets) — only an
+  // owner/admin may change them, not any member (a rep must not be able to
+  // repoint the org's data source or overwrite its integrations).
+  const denied = await requireRole("owner", "admin");
+  if (denied) return denied;
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid connection payload" }, { status: 400 });
 
@@ -66,6 +72,8 @@ export async function POST(req: Request) {
 const DeleteBody = z.object({ provider: z.string().min(1).max(40) });
 
 export async function DELETE(req: Request) {
+  const denied = await requireRole("owner", "admin");
+  if (denied) return denied;
   const parsed = DeleteBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "provider required" }, { status: 400 });
   if (!CONNECTION_SPECS.some((s) => s.provider === parsed.data.provider)) {

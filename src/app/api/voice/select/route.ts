@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getOrgSettings, updateOrgSettings } from "@/lib/org";
 import { isCallVoiceId } from "@/lib/voice/house";
 import { withGuard } from "@/lib/api/guard";
+import { requireRole } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,8 @@ const Body = z.object({ voiceId: z.string().max(80) });
 
 /** Set the org's outbound call voice (a house voice id, a "clone:<id>", or ""). */
 export const POST = withGuard(async (req: Request) => {
+  const denied = await requireRole("owner", "admin");
+  if (denied) return denied;
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   const voiceId = parsed.data.voiceId.trim();
