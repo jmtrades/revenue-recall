@@ -288,21 +288,28 @@ export async function createPortalSession(customerId: string, returnUrl: string)
  */
 export function verifyStripeSignature(rawBody: string, header: string | null, secret: string, toleranceSec = 300): boolean {
   if (!header) return false;
-  const parts = Object.fromEntries(
-    header.split(",").map((kv) => {
-      const [k, ...rest] = kv.split("=");
-      return [k.trim(), rest.join("=")];
-    }),
-  );
-  const t = parts.t;
-  const v1 = parts.v1;
-  if (!t || !v1) return false;
+  // Parse `t=…,v1=…[,v1=…]`. During endpoint-secret rotation Stripe includes a
+  // v1 signature for EACH active secret, so collect ALL v1s (a plain map would
+  // keep only the last and reject a payload whose matching signature came first).
+  let t: string | undefined;
+  const v1s: string[] = [];
+  for (const kv of header.split(",")) {
+    const i = kv.indexOf("=");
+    if (i < 0) continue;
+    const k = kv.slice(0, i).trim();
+    const v = kv.slice(i + 1);
+    if (k === "t") t = v;
+    else if (k === "v1") v1s.push(v);
+  }
+  if (!t || v1s.length === 0) return false;
 
   const age = Math.abs(Math.floor(Date.now() / 1000) - Number(t));
   if (!Number.isFinite(age) || age > toleranceSec) return false;
 
-  const expected = crypto.createHmac("sha256", secret).update(`${t}.${rawBody}`, "utf8").digest("hex");
-  const a = Buffer.from(expected);
-  const b = Buffer.from(v1);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  const expected = Buffer.from(crypto.createHmac("sha256", secret).update(`${t}.${rawBody}`, "utf8").digest("hex"));
+  // Accept if ANY provided v1 matches (constant-time, length-checked).
+  return v1s.some((v1) => {
+    const b = Buffer.from(v1);
+    return expected.length === b.length && crypto.timingSafeEqual(expected, b);
+  });
 }
