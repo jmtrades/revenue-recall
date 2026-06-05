@@ -109,14 +109,36 @@ export async function getRecallQueue(): Promise<{ items: RecallItem[]; summary: 
     activitiesByOpp.set(a.opportunityId, list);
   }
   const thresholds = recallThresholdsFor((await getOrgSettings()).industryId);
-  const items = buildRecallQueue(opportunities, pipelines, activitiesByOpp, thresholds);
+  const cById = new Map(contacts.map((c) => [c.id, c]));
+  const oppById = new Map(opportunities.map((o) => [o.id, o]));
+  // Per-contact activities for the opt-out check.
+  const actsByContact = new Map<string, Activity[]>();
+  for (const a of recent) {
+    if (!a.contactId) continue;
+    const list = actsByContact.get(a.contactId);
+    if (list) list.push(a);
+    else actsByContact.set(a.contactId, [a]);
+  }
+  // Never surface an opted-out contact in the recall worklist.
+  const items = dropOptedOutRecall(buildRecallQueue(opportunities, pipelines, activitiesByOpp, thresholds), oppById, cById, actsByContact);
   const currency = opportunities[0]?.currency ?? "USD";
-  return {
-    items,
-    summary: summarizeRecall(items, currency),
-    contacts: new Map(contacts.map((c) => [c.id, c])),
-    opps: new Map(opportunities.map((o) => [o.id, o])),
-  };
+  return { items, summary: summarizeRecall(items, currency), contacts: cById, opps: oppById };
+}
+
+/** Drop recall items whose contact has opted out / is do-not-contact. Pure. */
+export function dropOptedOutRecall(
+  items: RecallItem[],
+  oppById: Map<string, Opportunity>,
+  cById: Map<string, Contact>,
+  actsByContact: Map<string, Activity[]>,
+): RecallItem[] {
+  return items.filter((it) => {
+    const opp = oppById.get(it.opportunityId);
+    if (!opp) return true;
+    const contact = cById.get(opp.contactId);
+    if (!contact) return true;
+    return !hasOptedOut(contact, opp, actsByContact.get(opp.contactId) ?? []);
+  });
 }
 
 /** Recall ROI — did re-engaging cold/lost deals actually win them back? */
