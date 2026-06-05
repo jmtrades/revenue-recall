@@ -193,7 +193,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
           const res =
             channel === "email"
               ? await sendEmail(to, draft.subject ?? "", draft.body, {
-                  unsubscribeUrl: unsubscribeUrl(t.opp.contactId),
+                  unsubscribeUrl: await unsubscribeUrl(t.opp.contactId),
                   compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address },
                 })
               : await sendSms(to, draft.body, { from: org.callerId });
