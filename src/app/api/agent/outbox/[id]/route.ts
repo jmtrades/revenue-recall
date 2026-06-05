@@ -4,6 +4,7 @@ import { getOutboxItem, setOutboxStatus } from "@/lib/agent/store";
 import { getProvider } from "@/lib/crm/registry";
 import { sendReply, isSocialChannel } from "@/lib/outbound";
 import { hasOptedOut } from "@/lib/agent/guardrails";
+import { recordRecallTouch } from "@/lib/recall/events";
 import { platformTag } from "@/lib/social/ingest";
 import type { SocialPlatform } from "@/lib/social/types";
 import type { Activity } from "@/lib/crm/types";
@@ -66,6 +67,12 @@ export const POST = withGuard(async (req: Request, { params }: { params: { id: s
     direction: "outbound",
     occurredAt: new Date().toISOString(),
   });
+  // A draft that came from a recall effort is attributed only here — on the actual
+  // send — so a queued-but-never-approved recall draft never inflates recovered
+  // revenue. (Recall outreach is email/sms; social drafts aren't recall touches.)
+  if (item.recall && (item.channel === "email" || item.channel === "sms")) {
+    await recordRecallTouch({ dealId: item.dealId, contactId: item.contactId, channel: item.channel, source: "manual" });
+  }
   await setOutboxStatus(item.id, "sent");
   return NextResponse.json({ ok: true, status: "sent", provider: res.provider });
 });

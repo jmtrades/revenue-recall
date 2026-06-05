@@ -31,6 +31,7 @@ function mapOutbox(r: Record<string, unknown>): OutboxItem {
     body: r.body as string,
     status: r.status as OutboxItem["status"],
     source: r.source as OutboxItem["source"],
+    recall: Boolean(r.recall),
     createdAt: r.created_at as string,
     sentAt: (r.sent_at as string) ?? undefined,
   };
@@ -180,6 +181,7 @@ export async function createOutboxItem(item: Omit<OutboxItem, "id" | "status" | 
       subject: item.subject ?? null,
       body: item.body,
       source: item.source,
+      recall: item.recall ?? false,
     })
     .select("*")
     .single();

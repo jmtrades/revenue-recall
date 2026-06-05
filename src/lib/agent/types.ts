@@ -50,6 +50,8 @@ export interface OutboxItem {
   body: string;
   status: "pending" | "sent" | "dismissed";
   source: "ai" | "template";
+  /** This draft came from a recall effort — record a recall touch when it's sent. */
+  recall?: boolean;
   createdAt: string;
   sentAt?: string;
 }
