@@ -11,6 +11,7 @@ import { createOutboxItem } from "@/lib/agent/store";
 import { fireSpeedToLead } from "@/lib/agent/speed-to-lead";
 import { emitWebhook } from "@/lib/webhooks-out";
 import { hasOptedOut, isHardOptOut } from "@/lib/agent/guardrails";
+import { markDoNotContact } from "@/lib/opt-out";
 import type { Activity, Contact, CrmProvider, Opportunity } from "@/lib/crm/types";
 
 /** Notify the org's webhook that a lead replied (best-effort, never throws). */
@@ -82,8 +83,10 @@ async function captureUnmatched(
     await provider.logActivity({ contactId: contact.id, kind: channel, summary: subject ? `${subject}\n\n${body}` : body, direction: "inbound", occurredAt: now });
     await emitMessageReceived(channel, from, body, subject, contact.id, undefined, false);
     // If the very first message is an opt-out, record it but never start working
-    // the lead (no follow-up task, no speed-to-lead outreach).
+    // the lead (no follow-up task, no speed-to-lead outreach). Flag the contact
+    // durably so the opt-out is honored even after this activity ages out.
     if (optedOut) {
+      await markDoNotContact(provider, contact);
       return { matched: false, contactId: contact.id, action: "logged", messageTaken: false, intent: "optout" };
     }
     await provider.logActivity({ contactId: contact.id, kind: "task", summary: `New inbound from ${name} — follow up`, occurredAt: now });
@@ -133,7 +136,11 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
   } catch {
     /* best-effort — fall back to the current message's own opt-out check */
   }
-  if (isHardOptOut(incoming) || hasOptedOut(contact, deal, priorActs)) {
+  const optedOutNow = isHardOptOut(incoming);
+  if (optedOutNow || hasOptedOut(contact, deal, priorActs)) {
+    // On a FRESH opt-out, persist the flag so it's honored permanently — the
+    // logged activity alone could later fall outside the recent-activity window.
+    if (optedOutNow) await markDoNotContact(provider, contact);
     return { matched: true, contactId: contact.id, dealId: deal?.id, action: "logged", messageTaken: false, intent: "optout" };
   }
 
