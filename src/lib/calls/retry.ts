@@ -31,6 +31,13 @@ export function isRetryableOutcome(outcome: string | undefined): boolean {
   return /(no[\s_-]?answer|voicemail|\bvm\b|busy|missed|machine|no[\s_-]?pickup|unavailable|disconnected)/i.test(outcome);
 }
 
+/** Specifically a voicemail/answering-machine outcome (a subset of retryable) —
+ *  the moment to drop a short follow-up text so they have an easy async reply. */
+export function isVoicemailOutcome(outcome: string | undefined): boolean {
+  if (!outcome) return false;
+  return /(voicemail|\bvm\b|machine|left a message)/i.test(outcome);
+}
+
 export interface RetryPlan {
   retry: boolean;
   /** 1-based number of the attempt being scheduled. */

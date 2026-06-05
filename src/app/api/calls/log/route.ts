@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { logCallOutcome, scheduleCallRetry } from "@/lib/calls";
+import { logCallOutcome, scheduleCallRetry, scheduleVoicemailFollowup } from "@/lib/calls";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 import { safeEqual } from "@/lib/safe-compare";
 import { runWithOrg } from "@/lib/supabase/org-context";
@@ -71,6 +71,9 @@ export const POST = withGuard(async (req: Request) => {
     });
     // If the call didn't reach a human, schedule the next dial (best-effort).
     if (activity) await scheduleCallRetry({ contactId, dealId, outcome: b.outcome });
+    // If it hit voicemail, queue a short follow-up text to Approvals (best-effort,
+    // non-throwing, opt-out-aware) so they have an easy async reply path.
+    if (activity) await scheduleVoicemailFollowup({ contactId, dealId, outcome: b.outcome });
     return activity;
   };
   // Scope the write to the org that placed the call (the webhook has no session,
