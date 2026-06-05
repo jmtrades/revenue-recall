@@ -5,6 +5,7 @@ import { getPlaybook } from "@/lib/industries";
 import { languageDirective } from "@/lib/languages";
 import { getTone, type ToneId } from "@/lib/tones";
 import { reactToText } from "@/lib/voice/reactive";
+import { UNTRUSTED_DATA_RULE, fenceUntrusted, oneLineUntrusted } from "@/lib/ai/untrusted";
 import {
   AI_TELLS,
   capitalize as cap,
@@ -460,9 +461,9 @@ export function buildDraftUserPrompt(input: DraftInput): string {
   const user = `Channel: ${input.channel}
 Industry: ${input.industryLabel}
 Tone for this message: ${tone.label} — ${tone.directive}${scenarioCoaching}${callCoaching}
-Prospect: ${input.contactName}${input.company ? ` at ${input.company}` : ""}
+Prospect: ${oneLineUntrusted(input.contactName)}${input.company ? ` at ${oneLineUntrusted(input.company)}` : ""}
 Deal: "${input.dealTitle}" — ${input.valueLabel} ${input.value} ${input.currency}, currently at stage "${input.stageLabel}"
-${input.recallReason ? `Recall reason: ${input.recallReason} — ${reEngagementHint(input.recallReason)}\n` : ""}${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.voice?.senderName || input.repName ? `You are: ${input.voice?.senderName ?? input.repName}\n` : ""}${input.voice?.signature ? `Sign off as: ${input.voice.signature}\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).join("\n- ")}` : "No prior activity logged."}${input.lastInbound ? `\n\nThe last thing THEY said to you (anchor your message to this — acknowledge or build on it, never ignore it):\n"""${input.lastInbound}"""` : ""}
+${input.recallReason ? `Recall reason: ${input.recallReason} — ${reEngagementHint(input.recallReason)}\n` : ""}${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.voice?.senderName || input.repName ? `You are: ${input.voice?.senderName ?? input.repName}\n` : ""}${input.voice?.signature ? `Sign off as: ${input.voice.signature}\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).map((h) => fenceUntrusted(h, 500)).join("\n- ")}` : "No prior activity logged."}${input.lastInbound ? `\n\nThe last thing THEY said to you (anchor your message to this — acknowledge or build on it, never ignore it):\n"""${fenceUntrusted(input.lastInbound)}"""` : ""}
 
 ${input.voice?.business ? `THE BUSINESS YOU WRITE FOR — what they actually sell and who they serve. Ground every line in this (it matters most when the industry is generic):\n"""${input.voice.business}"""\n` : ""}
 ${playbookBlock(input)}
@@ -488,10 +489,13 @@ export async function draftMessage(input: DraftInput): Promise<DraftResult> {
   if (!isAiConfigured() || !(await isEntitled("aiLive"))) return fallback(input);
 
   const user = buildDraftUserPrompt(input);
+  // The prospect's fenced message/history is untrusted; tell the model so (this
+  // copy can be auto-sent back to them on the autopilot path).
+  const guardedSystem = `${SYSTEM}\n\n${UNTRUSTED_DATA_RULE}`;
 
   try {
     const raw = await completeJson<{ subject?: string; body: string }>({
-      system: SYSTEM,
+      system: guardedSystem,
       user,
       schema: SCHEMA,
       maxTokens: 1024,
@@ -503,7 +507,7 @@ export async function draftMessage(input: DraftInput): Promise<DraftResult> {
       feature: "draft",
     });
     // Score locally and let the model fix its own tells once if needed.
-    const out = await refineForHumanness({ system: SYSTEM, schema: SCHEMA, draft: raw, maxTokens: 1024, feature: "draft" });
+    const out = await refineForHumanness({ system: guardedSystem, schema: SCHEMA, draft: raw, maxTokens: 1024, feature: "draft" });
     return {
       subject: input.channel === "email" ? out.subject : undefined,
       body: out.body,

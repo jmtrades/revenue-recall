@@ -5,6 +5,7 @@ import { getPlaybook } from "@/lib/industries";
 import { getLanguage, DEFAULT_LANGUAGE } from "@/lib/languages";
 import { getTone, type ToneId } from "@/lib/tones";
 import { reactToText } from "@/lib/voice/reactive";
+import { UNTRUSTED_DATA_RULE, fenceUntrusted, oneLineUntrusted } from "@/lib/ai/untrusted";
 import { capitalize, firstName, pickVariant, pick, seeded, sentence, GREETINGS_EMAIL } from "@/lib/copy";
 
 export interface ReplyInput {
@@ -206,11 +207,11 @@ export async function draftReply(input: ReplyInput): Promise<ReplyResult> {
   const tone = getTone(input.tone ?? reaction.tone);
   const user = `Channel: ${input.channel}
 ${input.industryLabel ? `Industry: ${input.industryLabel}\n` : ""}Tone: ${tone.label} — ${tone.directive}
-Prospect: ${input.contactName}${input.company ? ` at ${input.company}` : ""}
+Prospect: ${oneLineUntrusted(input.contactName)}${input.company ? ` at ${oneLineUntrusted(input.company)}` : ""}
 Deal: "${input.dealTitle}"
-${input.voice?.senderName ? `You are: ${input.voice.senderName}\n` : ""}${input.voice?.signature ? `Sign off as: ${input.voice.signature}\n` : ""}${input.voice?.business ? `The business you represent (what they sell / who they serve — ground your answer in this):\n"""${input.voice.business}"""\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).join("\n- ")}\n` : ""}
+${input.voice?.senderName ? `You are: ${input.voice.senderName}\n` : ""}${input.voice?.signature ? `Sign off as: ${input.voice.signature}\n` : ""}${input.voice?.business ? `The business you represent (what they sell / who they serve — ground your answer in this):\n"""${input.voice.business}"""\n` : ""}${input.history && input.history.length ? `Recent history (newest first):\n- ${input.history.slice(0, 5).map((h) => fenceUntrusted(h, 500)).join("\n- ")}\n` : ""}
 THEIR INCOMING MESSAGE:
-"""${input.incoming}"""
+"""${fenceUntrusted(input.incoming)}"""
 
 How a real ${input.industryLabel ?? "sales"} rep talks (match the spirit, don't copy):
 - Natural next steps: ${pb.nextSteps[input.channel].join(" / ")}
@@ -225,9 +226,13 @@ ${input.voice?.customNextSteps?.length ? `\nThis rep's own go-to next steps (pre
 Read the room — ${reaction.note}${input.history && input.history.length ? "\nYou've already sent the earlier touches shown above — do NOT repeat the same angle or opening; bring a genuinely new reason or hook." : ""}
 ${replyLanguageDirective(input.language)}
 Write the reply now, as this human. Answer what they actually said.`;
+  // Bake the untrusted-data rule into the system prompt: the prospect's message
+  // is fenced above, but the model must also be told to treat it as data, never
+  // instructions (it's auto-sent back to them when REPLY_AUTOPILOT is on).
+  const guardedSystem = `${SYSTEM}\n\n${UNTRUSTED_DATA_RULE}`;
   try {
-    const raw = await completeJson<{ subject?: string; body: string }>({ system: SYSTEM, user, schema: SCHEMA, maxTokens: 900, think: true, effort: "xhigh", feature: "reply" });
-    const out = await refineForHumanness({ system: SYSTEM, schema: SCHEMA, draft: raw, maxTokens: 900, feature: "reply" });
+    const raw = await completeJson<{ subject?: string; body: string }>({ system: guardedSystem, user, schema: SCHEMA, maxTokens: 900, think: true, effort: "xhigh", feature: "reply" });
+    const out = await refineForHumanness({ system: guardedSystem, schema: SCHEMA, draft: raw, maxTokens: 900, feature: "reply" });
     return { subject: input.channel === "email" ? out.subject : undefined, body: out.body, source: "ai" };
   } catch {
     return fallback(input);

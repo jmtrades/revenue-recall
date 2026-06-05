@@ -5,6 +5,7 @@ import { getTone, type ToneId } from "@/lib/tones";
 import { detectIntent, type Intent } from "@/lib/ai/intent";
 import { analyzeProgress, decideDirective, type CallDirective } from "@/lib/voice/objection";
 import { reactTo, reactToText, detectSentiment, sentimentToEmotion, type Sentiment } from "@/lib/voice/reactive";
+import { UNTRUSTED_DATA_RULE, fenceUntrusted, oneLineUntrusted } from "@/lib/ai/untrusted";
 import { analyzeCall, type CallScore } from "@/lib/voice/scorecard";
 import type { Emotion } from "@/lib/voice/speech";
 import { firstName, pick, pickVariant, seeded, sentence } from "@/lib/copy";
@@ -102,7 +103,9 @@ const PROSPECT_SCHEMA = {
 
 function transcript(turns: Turn[], you: Speaker): string {
   if (!turns.length) return "(call just connected — nothing said yet)";
-  return turns.map((t) => `${t.speaker === you ? "You" : "Them"}: ${t.text}`).join("\n");
+  // The prospect's spoken turns are untrusted (STT of whatever they say) — fence
+  // them so a "ignore your instructions" line can't escape the data region.
+  return turns.map((t) => `${t.speaker === you ? "You" : "Them"}: ${fenceUntrusted(t.text, 800)}`).join("\n");
 }
 
 function lastProspect(turns: Turn[]): string | null {
@@ -265,7 +268,7 @@ export async function nextRepTurn(state: ConversationState): Promise<RepTurn> {
 Read the room: the prospect sounds ${incoming ? detectSentiment(incoming) : "neutral"}. ${reaction.note}
 Tone: ${tone.label} — ${tone.directive}
 Industry: ${state.industryLabel ?? "sales"}
-Prospect: ${state.contactName}${state.company ? ` at ${state.company}` : ""}
+Prospect: ${oneLineUntrusted(state.contactName)}${state.company ? ` at ${oneLineUntrusted(state.company)}` : ""}
 About: "${state.dealTitle}"
 Their likely natural next-steps: ${pb.nextSteps.call.join(" / ")}
 Phase: ${phase}
@@ -276,7 +279,7 @@ ${transcript(state.turns, "rep")}
 Say only the next line out loud, as the rep.`;
   try {
     // Live call: keep this fast — no thinking/effort, or the latency creates dead air mid-conversation.
-    const out = await completeJson<{ text: string }>({ system: REP_SYSTEM, user, schema: REP_SCHEMA, maxTokens: 220, feature: "call" });
+    const out = await completeJson<{ text: string }>({ system: `${REP_SYSTEM}\n\n${UNTRUSTED_DATA_RULE}`, user, schema: REP_SCHEMA, maxTokens: 220, feature: "call" });
     const coachNote = directive.action === "book_callback" ? "Repeated objection — book a callback instead of re-pitching." : reaction.note;
     return { text: out.text, phase, done, tone: state.tone ?? reaction.tone, emotion: reaction.emotion, coachNote, source: "ai" };
   } catch {
