@@ -42,9 +42,21 @@ export async function createContactRecord(input: ContactInput): Promise<{ contac
   const provider = getProvider();
   const existing = matchExistingContact(await provider.listContacts(), input.email, input.phone);
   if (existing) {
-    // Merge any newly-provided fields into the existing contact, don't duplicate.
-    const updated = await updateContactRecord(existing.id, input).catch(() => null);
-    return { contact: updated ?? existing, deduped: true };
+    // BACKFILL only — never overwrite an existing name/company/title/email/phone
+    // from a repeat submission (a typo'd email on a phone-matched contact must not
+    // clobber the correct one). Destructive edits go through PATCH /contacts/:id.
+    const hasEmail = existing.points.some((p) => p.channel === "email" && p.value);
+    const hasPhone = existing.points.some((p) => (p.channel === "phone" || p.channel === "sms") && p.value);
+    const patch: ContactInput = {};
+    if (input.company && !existing.company) patch.company = input.company;
+    if (input.title && !existing.title) patch.title = input.title;
+    if (input.email && !hasEmail) patch.email = input.email;
+    if (input.phone && !hasPhone) patch.phone = input.phone;
+    if (Object.keys(patch).length && provider.updateContact) {
+      const updated = await updateContactRecord(existing.id, patch).catch(() => null);
+      return { contact: updated ?? existing, deduped: true };
+    }
+    return { contact: existing, deduped: true };
   }
   const points: ContactPoint[] = [];
   if (input.email) points.push({ channel: "email", value: input.email });

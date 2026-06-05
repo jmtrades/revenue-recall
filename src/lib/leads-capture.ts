@@ -41,15 +41,22 @@ export interface CaptureResult {
 const normEmail = (s?: string) => (s ?? "").trim().toLowerCase();
 const digitsOf = (s?: string) => (s ?? "").replace(/\D/g, "");
 
-/** Find an existing contact by email or phone (format-insensitive), or undefined. */
+/** Find an existing contact by email or phone, or undefined.
+ *  Email match is exact (normalized). Phone match requires BOTH numbers to have
+ *  ≥10 digits with an equal last-10 — short/partial numbers are NOT matched, so
+ *  two different people can't be merged on a shared 7–9 digit suffix. */
 export function matchExistingContact(contacts: Contact[], email?: string, phone?: string): Contact | undefined {
   const e = normEmail(email);
   const ph = digitsOf(phone);
-  if (!e && ph.length < 7) return undefined;
+  const phoneMatchable = ph.length >= 10;
+  if (!e && !phoneMatchable) return undefined;
   return contacts.find((c) =>
     c.points.some((p) => {
       if (e && p.channel === "email" && normEmail(p.value) === e) return true;
-      if (ph.length >= 7 && (p.channel === "phone" || p.channel === "sms") && digitsOf(p.value).endsWith(ph.slice(-10))) return true;
+      if (phoneMatchable && (p.channel === "phone" || p.channel === "sms")) {
+        const s = digitsOf(p.value);
+        return s.length >= 10 && s.slice(-10) === ph.slice(-10);
+      }
       return false;
     }),
   );
