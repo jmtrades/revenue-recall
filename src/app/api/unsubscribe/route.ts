@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getProvider } from "@/lib/crm/registry";
 import { verifyUnsubToken } from "@/lib/unsubscribe";
+import { markDoNotContact } from "@/lib/opt-out";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +38,9 @@ export async function GET(req: Request) {
       direction: "inbound",
       occurredAt: new Date().toISOString(),
     });
+    // Persist a durable do-not-contact flag too, so the opt-out outlives the
+    // recent-activity read window the guardrail scans.
+    await markDoNotContact(provider, contact);
     return page("You're unsubscribed", "Done — you won't hear from us again. Sorry to see you go.", 200);
   } catch {
     return page("Something went wrong", "We couldn't process that right now. Reply with “unsubscribe” and we'll handle it.", 500);
