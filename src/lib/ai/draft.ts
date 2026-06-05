@@ -508,6 +508,9 @@ export async function draftMessage(input: DraftInput): Promise<DraftResult> {
     });
     // Score locally and let the model fix its own tells once if needed.
     const out = await refineForHumanness({ system: guardedSystem, schema: SCHEMA, draft: raw, maxTokens: 1024, feature: "draft" });
+    // Never let a schema-valid but empty body through to a send/queue — fall back
+    // to the deterministic template, which always produces real copy.
+    if (!out.body || !out.body.trim()) return fallback(input);
     return {
       subject: input.channel === "email" ? out.subject : undefined,
       body: out.body,
