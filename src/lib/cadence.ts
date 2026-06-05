@@ -8,7 +8,7 @@ import { acquireCronLock, releaseCronLock } from "@/lib/cron-lock";
 import { getActiveVoice } from "@/lib/voice";
 import { getIndustry, recallThresholdsFor } from "@/lib/industries";
 import { contactPreferredLanguage } from "@/lib/languages";
-import { buildRecallQueue, type RecallThresholds } from "@/lib/recall/engine";
+import { buildRecallQueue, scoreOpportunity, type RecallThresholds } from "@/lib/recall/engine";
 import { draftMessage } from "@/lib/ai/draft";
 import { isAiConfigured } from "@/lib/ai/client";
 import { sendEmail, sendSms } from "@/lib/comms";
@@ -274,6 +274,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
     getActiveVoice(),
   ]);
   const industry = getIndustry(org.industryId);
+  const recallThresholds = recallThresholdsFor(org.industryId);
   const stageById = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
   const contactById = new Map<string, Contact>(contacts.map((c) => [c.id, c]));
   const oppById = new Map<string, Opportunity>(opps.map((o) => [o.id, o]));
@@ -349,6 +350,15 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
         occurredAt: now,
       });
     } else {
+      // Pass the deal's ACTUAL recall reason (no_show / going_cold / stalled / …)
+      // so the draft re-opens it the right way — a no-show gets "we missed each
+      // other, grab another time", not the same nudge as a long-dormant cold deal.
+      // Falls back to a generic re-engagement reason when the deal doesn't
+      // currently score as slipping (e.g. it was recently re-touched).
+      const recallReason =
+        seq.id === "recall"
+          ? (deal ? scoreOpportunity(deal, stageById, { activities: optOutActs }, recallThresholds)?.reason : undefined) ?? "lost_winnable"
+          : undefined;
       const draftInput = {
         channel: step.channel,
         contactName: name,
@@ -360,7 +370,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
         stageLabel,
         industryLabel: industry.label,
         industryId: industry.id,
-        recallReason: seq.id === "recall" ? "lost_winnable" : undefined,
+        recallReason,
         daysSinceContact: daysSince(deal?.lastActivityAt),
         // A step can mark itself a special type — e.g. a gracious "breakup" as the
         // final recall touch (the last note before archiving), which tends to get
