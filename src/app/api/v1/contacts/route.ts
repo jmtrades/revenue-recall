@@ -28,8 +28,9 @@ export const POST = withGuard(
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid payload" }, { status: 400 });
     }
-    const contact = await createContactRecord(parsed.data);
-    return NextResponse.json({ ok: true, contact: serializeContact(contact) }, { status: 201 });
+    const { contact, deduped } = await createContactRecord(parsed.data);
+    // 200 when we matched an existing contact, 201 when we created a new one.
+    return NextResponse.json({ ok: true, contact: serializeContact(contact), deduped }, { status: deduped ? 200 : 201 });
   }),
 );
 

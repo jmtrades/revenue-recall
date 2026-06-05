@@ -50,6 +50,19 @@ describe("contacts API", () => {
     expect(list.data.some((c: { email: string | null }) => c.email === email)).toBe(true);
   });
 
+  it("de-dupes a repeat email — 200 + same contact, not a duplicate", async () => {
+    resolveOrgByApiKey.mockResolvedValue("org_test");
+    const email = `cdup-${Date.now()}@acme.com`;
+    const r1 = await createContact(jpost({ name: "Dup", email }));
+    expect(r1.status).toBe(201);
+    const id1 = (await r1.json()).contact.id;
+    const r2 = await createContact(jpost({ name: "Dup 2", email, company: "Acme" }));
+    expect(r2.status).toBe(200); // matched the existing contact
+    const j2 = await r2.json();
+    expect(j2.deduped).toBe(true);
+    expect(j2.contact.id).toBe(id1);
+  });
+
   it("PATCH updates a contact and GET/PATCH 404 on unknown", async () => {
     resolveOrgByApiKey.mockResolvedValue("org_test");
     const created = await getProvider().createContact({ name: "Before", points: [{ channel: "email", value: `u-${Date.now()}@a.com` }] });

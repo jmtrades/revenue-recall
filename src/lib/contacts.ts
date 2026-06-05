@@ -1,5 +1,6 @@
 import { getProvider } from "@/lib/crm/registry";
 import { emitWebhook } from "@/lib/webhooks-out";
+import { matchExistingContact } from "@/lib/leads-capture";
 import type { Contact, ContactPoint } from "@/lib/crm/types";
 
 /**
@@ -35,14 +36,22 @@ function withPoint(points: ContactPoint[], channel: "email" | "phone", value: st
   return next;
 }
 
-export async function createContactRecord(input: ContactInput): Promise<Contact> {
+/** Upsert a contact: reuse an existing one (matched by email/phone) instead of
+ *  creating a duplicate. `deduped` is true when an existing contact was matched. */
+export async function createContactRecord(input: ContactInput): Promise<{ contact: Contact; deduped: boolean }> {
   const provider = getProvider();
+  const existing = matchExistingContact(await provider.listContacts(), input.email, input.phone);
+  if (existing) {
+    // Merge any newly-provided fields into the existing contact, don't duplicate.
+    const updated = await updateContactRecord(existing.id, input).catch(() => null);
+    return { contact: updated ?? existing, deduped: true };
+  }
   const points: ContactPoint[] = [];
   if (input.email) points.push({ channel: "email", value: input.email });
   if (input.phone) points.push({ channel: "phone", value: input.phone });
   const contact = await provider.createContact({ name: input.name ?? "Unnamed", company: input.company, title: input.title, points });
   await emitWebhook("contact.created", serializeContact(contact));
-  return contact;
+  return { contact, deduped: false };
 }
 
 /** Update a contact. Returns null when not found OR the provider can't update. */
