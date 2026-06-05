@@ -14,6 +14,8 @@ interface Brief {
   talkingPoints: string[];
   risk: string;
   source: string;
+  /** A ready voicemail to leave if they don't pick up. */
+  voicemail?: string;
 }
 
 interface CallSummary {
@@ -178,6 +180,15 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
                   ))}
                 </ul>
                 <p className="text-xs text-muted">Goal: {brief.nextStep}</p>
+                {brief.voicemail && (
+                  <div className="mt-2 rounded-lg border border-border bg-surface-2 p-2.5">
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs font-medium text-fg"><Icon name="dialer" size={12} className="text-brand" /> If it goes to voicemail</span>
+                      <SpeakButton text={brief.voicemail} label="Play" />
+                    </div>
+                    <p className="text-sm italic text-muted">“{brief.voicemail}”</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
