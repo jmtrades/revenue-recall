@@ -12,3 +12,11 @@ export async function autopilotLockKey(): Promise<string> {
   const orgId = await resolveActiveOrgId();
   return `autopilot:${orgId ?? "default"}`;
 }
+
+/** Per-org lock for the daily/weekly digest. The per-day "already sent" dedup is
+ *  check-then-send, not atomic across two overlapping ticks, so without this a
+ *  duplicate cron tick could email the same digest to every user twice. */
+export async function digestLockKey(): Promise<string> {
+  const orgId = await resolveActiveOrgId();
+  return `digest:${orgId ?? "default"}`;
+}

@@ -25,9 +25,15 @@ export async function POST(req: Request) {
 
   // Choosing this org's caller-ID number just stores it on the org — no provider needed.
   if (parsed.data.action === "set_caller_id") {
-    if (!parsed.data.number) return NextResponse.json({ error: "number required" }, { status: 400 });
+    const number = (parsed.data.number ?? "").trim();
+    if (!number) return NextResponse.json({ error: "number required" }, { status: 400 });
+    // This value becomes the outbound "From" on every call/text — reject anything
+    // that isn't a real phone number so a typo can't silently break all sending.
+    if (!/^[+]?[0-9][0-9\s().\-]{5,20}$/.test(number) || number.replace(/\D/g, "").length < 7) {
+      return NextResponse.json({ error: "Enter a valid phone number in international format, e.g. +15551234567." }, { status: 400 });
+    }
     try {
-      const org = await updateOrgSettings({ callerId: parsed.data.number });
+      const org = await updateOrgSettings({ callerId: number });
       return NextResponse.json({ callerId: org.callerId ?? null });
     } catch (e) {
       return NextResponse.json({ error: e instanceof Error ? e.message : "Failed" }, { status: 502 });

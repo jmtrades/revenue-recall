@@ -5,7 +5,7 @@ import { runDueSteps, collectDueBatches } from "@/lib/cadence";
 import { runDigests } from "@/lib/digest";
 import { getSupabase } from "@/lib/supabase/client";
 import { runWithOrg } from "@/lib/supabase/org-context";
-import { autopilotLockKey } from "@/lib/agent/lock";
+import { autopilotLockKey, digestLockKey } from "@/lib/agent/lock";
 import { acquireCronLock, releaseCronLock } from "@/lib/cron-lock";
 import { safeEqual } from "@/lib/safe-compare";
 
@@ -69,7 +69,19 @@ async function runForCurrentOrg() {
   }
   const cadence = await runDueSteps().catch((e) => ({ error: e instanceof Error ? e.message : "cadence failed" }));
   const batches = await collectDueBatches().catch((e) => ({ error: e instanceof Error ? e.message : "batch collect failed" }));
-  const digests = await runDigests().catch((e) => ({ error: e instanceof Error ? e.message : "digests failed" }));
+  // Guard digests with a per-org lock: the per-day "already sent" check isn't
+  // atomic, so two overlapping ticks could each pass it and email twice. The lock
+  // closes the concurrent race; the existing dedup handles the sequential case.
+  const digestKey = await digestLockKey();
+  const digestFence = await acquireCronLock(digestKey);
+  let digests: unknown = { skipped: "locked" };
+  if (digestFence) {
+    try {
+      digests = await runDigests().catch((e) => ({ error: e instanceof Error ? e.message : "digests failed" }));
+    } finally {
+      await releaseCronLock(digestKey, digestFence);
+    }
+  }
   return { ran: results.length, results, autopilotLocked: !fence, cadence, batches, digests };
 }
 
@@ -104,7 +116,11 @@ async function run(req: Request) {
       results.push({ org: id, error: e instanceof Error ? e.message : "sub-request failed" });
     }
   }
-  return NextResponse.json({ ok: true, orgs: ids.length, fanned: true, results });
+  // ok reflects the whole fan-out: if any tenant's sub-request errored (a 401
+  // after secret rotation, a 500), the aggregate is NOT ok so monitoring sees it
+  // instead of a falsely-green cron hiding a per-tenant outage.
+  const failed = results.filter((r) => r.status !== 200).length;
+  return NextResponse.json({ ok: failed === 0, orgs: ids.length, fanned: true, failed, results });
 }
 
 export async function POST(req: Request) {

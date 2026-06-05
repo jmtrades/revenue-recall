@@ -40,6 +40,20 @@ describe("computeRecallOutcomes", () => {
     expect(o.inProgress).toBe(1);
   });
 
+  it("counts a re-enrolled deal once (no double-counted recovered revenue)", () => {
+    const opps = new Map<string, Opportunity>([["won1", deal({ id: "won1", stageId: "won", value: 8000, closedAt: "2026-03-10T00:00:00Z" })]]);
+    // The same deal enrolled twice — a prior recall sequence completed, then it
+    // was re-enrolled later. It must count ONCE, credited from the earliest start.
+    const enrollments = [
+      enr({ dealId: "won1", enrolledAt: "2026-02-20T00:00:00Z", stepIndex: 1 }),
+      enr({ dealId: "won1", enrolledAt: "2026-02-01T00:00:00Z", status: "completed", stepIndex: 4 }),
+    ];
+    const o = computeRecallOutcomes(enrollments, opps, stageMap, "USD");
+    expect(o.recalled).toBe(1); // one deal, not two
+    expect(o.wonBack).toBe(1);
+    expect(o.recoveredValue).toBe(8000); // NOT 16000
+  });
+
   it("ignores non-recall sequences", () => {
     const opps = new Map<string, Opportunity>([["d", deal({ stageId: "won" })]]);
     const o = computeRecallOutcomes([enr({ sequenceId: "new_lead", dealId: "d" })], opps, stageMap, "USD");

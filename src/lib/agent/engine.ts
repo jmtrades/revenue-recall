@@ -167,8 +167,9 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
       let result: AgentAction["result"] = "drafted";
       if (channel === "call") {
         if (autonomy === "auto" && to) {
-          // Place the call autonomously (real dial when Twilio is set; logged otherwise).
-          const res = await placeCall(to);
+          // Place the call autonomously (real dial when Twilio is set; logged
+          // otherwise) — from THIS org's caller ID, like the SMS branch below.
+          const res = await placeCall(to, { from: org.callerId });
           result = res.status === "failed" ? "skipped" : res.status === "sent" ? "sent" : "logged";
           if (result !== "skipped") {
             sent += 1;

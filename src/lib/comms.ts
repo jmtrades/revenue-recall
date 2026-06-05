@@ -217,9 +217,12 @@ const webhookVoice: VoiceTransport = {
 const twilioVoice: VoiceTransport = {
   id: "twilio",
   available: twilioReady,
-  async place({ to }) {
+  async place({ to, from }) {
     try {
-      const r = await twilioRequest("Calls.json", { To: to, From: env("TWILIO_FROM_NUMBER")!, Url: env("CALL_TWIML_URL") ?? "http://demo.twilio.com/docs/voice.xml" });
+      // Per-org caller ID wins; TWILIO_FROM_NUMBER is the platform fallback — so
+      // every org dials from THEIR own number, matching the SMS path (and the
+      // documented promise), not one shared line.
+      const r = await twilioRequest("Calls.json", { To: to, From: from || env("TWILIO_FROM_NUMBER")!, Url: env("CALL_TWIML_URL") ?? "http://demo.twilio.com/docs/voice.xml" });
       return { id: r.sid ?? "twilio", status: "queued", provider: "twilio" };
     } catch (e) {
       return { id: "", status: "failed", provider: "twilio", detail: e instanceof Error ? e.message : "call failed" };

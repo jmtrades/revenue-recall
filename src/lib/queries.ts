@@ -205,16 +205,22 @@ export async function getCallQueue(): Promise<CallQueueItem[]> {
   }
   const recall = buildRecallQueue(opps, pipelines);
   const items: CallQueueItem[] = [];
+  const queuedContacts = new Set<string>();
   for (const r of recall) {
     const opp = opps.find((o) => o.id === r.opportunityId);
     if (!opp) continue;
     const contact = cById.get(opp.contactId);
     const phone = contact?.points.find((p) => p.channel === "phone")?.value;
     if (!contact || !phone) continue;
+    // One card per PERSON: a contact with several slipping deals shouldn't appear
+    // multiple times (and shouldn't multiply their per-contact attempt budget).
+    // buildRecallQueue is score-sorted, so the first hit is their best deal.
+    if (queuedContacts.has(contact.id)) continue;
     // Never queue a contact who's opted out / is marked do-not-contact.
     if (hasOptedOut(contact, opp, actsByContact.get(contact.id) ?? [])) continue;
     const attempts = callAttempts.get(contact.id) ?? 0;
     if (attempts >= MAX_CALL_ATTEMPTS) continue; // exhausted by phone — pivot to another channel
+    queuedContacts.add(contact.id);
     items.push({
       dealId: r.opportunityId,
       contactId: contact.id,
