@@ -1,5 +1,7 @@
 import { listTasks } from "@/lib/agent/store";
 import { enroll, listEnrollments } from "@/lib/cadence";
+import { getOrgSettings } from "@/lib/org";
+import { isAutomationEnabled } from "@/lib/automations";
 
 /**
  * Speed-to-lead: the moment a brand-new lead arrives, start working it — don't
@@ -19,6 +21,11 @@ import { enroll, listEnrollments } from "@/lib/cadence";
 export async function fireSpeedToLead(contactId: string): Promise<{ enrolled: boolean; reason?: string }> {
   if (!contactId) return { enrolled: false, reason: "no contact" };
   try {
+    // Honor the org's Speed-to-Lead automation toggle as a master switch (default
+    // on, so behavior is unchanged unless the org turns it off on the Automations
+    // page). The on_new_lead autopilot task below still gates it too.
+    const org = await getOrgSettings().catch(() => null);
+    if (org && !isAutomationEnabled("speed_to_lead", org.automations)) return { enrolled: false, reason: "automation off" };
     const tasks = await listTasks();
     const wants = tasks.some((t) => t.enabled && t.trigger === "on_new_lead");
     if (!wants) return { enrolled: false, reason: "no on_new_lead task" };
