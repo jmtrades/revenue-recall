@@ -34,6 +34,8 @@ export interface BatchDraftItem {
   dealId?: string;
   contactId: string;
   channel: "email" | "sms";
+  /** From a recall sequence — record a recall touch when the queued draft is sent. */
+  recall?: boolean;
 }
 
 export interface BatchDraftRequest {
