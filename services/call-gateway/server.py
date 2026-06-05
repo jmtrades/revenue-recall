@@ -18,6 +18,7 @@ import uuid
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
+import amd
 import config
 from agent import CallAgent, DEFAULT_OPENER
 from transport import WebSocketMediaTransport
@@ -31,6 +32,10 @@ app = FastAPI(title="Revenue Recall — in-house call gateway")
 # call_id -> context passed from /voice to the media agent.
 _pending: dict[str, dict] = {}
 
+# call_id -> (Twilio AnsweredBy, monotonic ts). Populated by the async-AMD
+# callback; consumed by _finish_call to log an accurate human/voicemail outcome.
+_amd_results: dict[str, tuple[str, float]] = {}
+
 # Calls that never open a media WS (no-answer, busy, voicemail-then-hangup,
 # carrier reject, or Twilio failing to reach our wss) would otherwise leave their
 # context in _pending forever. Reap entries older than this on each new call so a
@@ -42,6 +47,10 @@ def _reap_pending() -> None:
     now = time.monotonic()
     for cid in [c for c, ctx in _pending.items() if now - ctx.get("_ts", now) > _PENDING_TTL_SEC]:
         _pending.pop(cid, None)
+    # An AMD verdict that arrives after its call already finished (or for a call
+    # that never connected media) would otherwise linger forever — reap by TTL too.
+    for cid in [c for c, (_, ts) in _amd_results.items() if now - ts > _PENDING_TTL_SEC]:
+        _amd_results.pop(cid, None)
 
 
 def _transcript_text(turns: list[dict]) -> str:
@@ -109,6 +118,7 @@ async def health():
         "twilio": config.twilio_ready(),
         "transport": "twilio" if config.twilio_ready() else "freeswitch",
         "logsBack": bool(config.CALL_STATUS_WEBHOOK_URL),
+        "amd": config.AMD_ENABLED,
     }
 
 
@@ -157,6 +167,33 @@ async def voice(request: Request):
     return {"id": call_id, "status": "queued", "provider": provider, "detail": str(reply).strip()}
 
 
+@app.post("/twilio/amd")
+async def twilio_amd(request: Request):
+    """Twilio async-AMD status callback: record the human/voicemail verdict for a
+    call so _finish_call logs an accurate outcome (and the app fires its voicemail
+    follow-up). Authenticated by a per-call token in the URL — Twilio can't send
+    our bearer secret, and an unauthenticated mutation here could mislabel calls.
+    Best-effort: a forged/garbled callback is simply ignored."""
+    call_id = request.query_params.get("callId", "")
+    secret = config.COMMS_WEBHOOK_TOKEN
+    if secret:
+        expected = amd.amd_token(call_id, secret)
+        if not (expected and hmac.compare_digest(request.query_params.get("t", ""), expected)):
+            return JSONResponse({"error": "unauthorized"}, status_code=401)
+    elif os.environ.get("GATEWAY_ALLOW_INSECURE", "").lower() not in ("1", "true", "yes"):
+        log.error("refusing /twilio/amd: COMMS_WEBHOOK_TOKEN is not set")
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    try:
+        form = await request.form()
+    except Exception:
+        form = {}
+    answered_by = str(form.get("AnsweredBy", "")).strip()
+    if call_id and answered_by:
+        _amd_results[call_id] = (answered_by, time.monotonic())
+        log.info("amd %s → %s (%s)", call_id, amd.classify(answered_by), answered_by)
+    return JSONResponse({"ok": True})
+
+
 @app.post("/sms")
 async def sms(request: Request):
     if not _authorized(request):
@@ -171,11 +208,14 @@ async def _finish_call(call_id: str, ctx: dict, agent: CallAgent, started: float
     """Close the loop after any call (FreeSWITCH or Twilio): POST the transcript +
     heuristic outcome back to the app so it lands on the CRM timeline."""
     heard_prospect = any(t.get("role") == "prospect" for t in agent.turns)
+    # Prefer Twilio's AMD verdict (accurate human/voicemail) over the heard-a-prospect
+    # heuristic; 'voicemail' is what drives the app's voicemail follow-up + retry.
+    answered_by = (_amd_results.pop(call_id, ("", 0.0))[0]) if call_id else ""
     payload = {
         "callId": call_id,  # stable id so the app dedupes a retried post-back
         "to": ctx.get("to"),
         "meta": ctx.get("meta") or {},
-        "outcome": "completed" if heard_prospect else "no-answer",
+        "outcome": amd.call_outcome(answered_by, heard_prospect),
         "transcript": _transcript_text(agent.turns),
         "durationSec": round(time.monotonic() - started, 1),
     }
