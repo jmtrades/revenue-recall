@@ -233,6 +233,9 @@ Write the reply now, as this human. Answer what they actually said.`;
   try {
     const raw = await completeJson<{ subject?: string; body: string }>({ system: guardedSystem, user, schema: SCHEMA, maxTokens: 900, think: true, effort: "xhigh", feature: "reply" });
     const out = await refineForHumanness({ system: guardedSystem, schema: SCHEMA, draft: raw, maxTokens: 900, feature: "reply" });
+    // A schema-valid but empty body (e.g. a refusal/truncation) must never be the
+    // reply we auto-send — fall back to the deterministic template instead.
+    if (!out.body || !out.body.trim()) return fallback(input);
     return { subject: input.channel === "email" ? out.subject : undefined, body: out.body, source: "ai" };
   } catch {
     return fallback(input);

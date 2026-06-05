@@ -144,9 +144,17 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     return { matched: true, contactId: contact.id, dealId: deal?.id, action: "logged", messageTaken: false, intent: "optout" };
   }
 
+  // Nothing meaningful to reply to (an empty/whitespace inbound — possible since
+  // the SMS webhook only checks truthiness). It's logged above; never fabricate
+  // or auto-send a reply to a blank message.
+  if (!incoming.trim()) {
+    return { matched: true, contactId: contact.id, dealId: deal?.id, action: "logged", messageTaken: false, intent: "empty" };
+  }
+
   // If they're unavailable / it's a gatekeeper, take a message: capture a
-  // callback task so the follow-up is never lost (and still reply below).
-  const intent = detectIntent(body);
+  // callback task so the follow-up is never lost (and still reply below). Use the
+  // full incoming (subject + body) so a question in the subject isn't missed.
+  const intent = detectIntent(incoming);
   let messageTaken = false;
   if (intent === "busy" || intent === "gatekeeper") {
     await provider.logActivity({
@@ -169,7 +177,7 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     dealTitle: deal?.title ?? `${contact.name}`,
     industryLabel: industry.label,
     industryId: industry.id,
-    incoming: body,
+    incoming,
     history,
     voice,
     language: contactPreferredLanguage(contact.attributes, org.language),
@@ -178,7 +186,9 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
   // Auto-send or queue for approval.
   if (process.env.REPLY_AUTOPILOT === "true") {
     const to = channel === "email" ? contact.points.find((p) => p.channel === "email")?.value : contact.points.find((p) => p.channel === "phone")?.value;
-    if (to) {
+    // Only auto-send a real, non-empty body (the drafter already falls back to a
+    // template, so this is a final belt-and-suspenders guard before a live send).
+    if (to && reply.body.trim()) {
       const res = channel === "email" ? await sendEmail(to, reply.subject ?? "", reply.body, { unsubscribeUrl: await unsubscribeUrl(contact.id), compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address } }) : await sendSms(to, reply.body, { from: org.callerId });
       if (res.status !== "failed") {
         await provider.logActivity({

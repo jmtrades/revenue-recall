@@ -128,7 +128,7 @@ export async function ingestSocialMessages(messages: InboundSocialMessage[]): Pr
       // Draft a human-voiced reply and send it back on the SAME platform (auto
       // when REPLY_AUTOPILOT=true), or queue it to Approvals — so social is
       // two-way like email/SMS, not a one-way log. Suppressed entirely on opt-out.
-      replied = optedOut ? false : await autoReply(contact, platform, m.text);
+      replied = optedOut || !m.text.trim() ? false : await autoReply(contact, platform, m.text);
     } catch {
       logged = false;
     }
@@ -165,7 +165,7 @@ async function autoReply(contact: Contact, platform: SocialPlatform, incoming: s
       language: contactPreferredLanguage(contact.attributes, org.language),
     });
 
-    if (process.env.REPLY_AUTOPILOT === "true") {
+    if (process.env.REPLY_AUTOPILOT === "true" && reply.body.trim()) {
       const res = await sendReply({ contact, channel: platform, body: reply.body });
       if (res.status !== "failed") {
         const provider = getProvider();
