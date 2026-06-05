@@ -8,7 +8,9 @@ import { platformTag } from "@/lib/social/ingest";
 import type { SocialPlatform } from "@/lib/social/types";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { recordRecallTouch } from "@/lib/recall/events";
+import { hasOptedOut } from "@/lib/agent/guardrails";
 import { withGuard } from "@/lib/api/guard";
+import type { Activity, Opportunity } from "@/lib/crm/types";
 
 export const dynamic = "force-dynamic";
 
@@ -32,10 +34,28 @@ export const POST = withGuard(async (req: Request) => {
   const provider = getProvider();
   let contactId = parsed.data.contactId;
 
+  let opp: Opportunity | null = null;
   if (dealId) {
-    const opp = await provider.getOpportunity(dealId);
+    opp = await provider.getOpportunity(dealId);
     if (!opp) return NextResponse.json({ error: "Deal not found" }, { status: 404 });
     contactId = contactId ?? opp.contactId;
+  }
+
+  // Compliance: never send to a contact who opted out / is marked do-not-contact —
+  // the same gate the call route and the Approvals send enforce. This is a manual
+  // send path, so it also closes the TOCTOU window where a contact replies "STOP"
+  // after a list (e.g. the recall queue) was built but before the rep clicks send.
+  if (contactId) {
+    const contact = await provider.getContact(contactId);
+    let acts: Activity[] = [];
+    try {
+      acts = provider.listActivitiesByContact ? await provider.listActivitiesByContact(contactId) : dealId ? await provider.listActivities(dealId) : [];
+    } catch {
+      /* attribute/tag opt-out flags below still apply */
+    }
+    if (hasOptedOut(contact ?? undefined, opp ?? undefined, acts)) {
+      return NextResponse.json({ error: "This contact has opted out or is marked do-not-contact." }, { status: 403 });
+    }
   }
 
   const now = new Date().toISOString();

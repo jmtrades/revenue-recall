@@ -8,7 +8,9 @@ import { contactPreferredLanguage } from "@/lib/languages";
 import { sendReply } from "@/lib/outbound";
 import { createOutboxItem } from "@/lib/agent/store";
 import { fireSpeedToLead } from "@/lib/agent/speed-to-lead";
-import type { Contact } from "@/lib/crm/types";
+import { hasOptedOut, isHardOptOut } from "@/lib/agent/guardrails";
+import { markDoNotContact } from "@/lib/opt-out";
+import type { Activity, Contact } from "@/lib/crm/types";
 import type { InboundSocialMessage, SocialPlatform } from "@/lib/social/types";
 
 /**
@@ -101,9 +103,19 @@ export async function ingestSocialMessages(messages: InboundSocialMessage[]): Pr
       });
       logged = true;
 
+      // Honor opt-out before ANY automated reply or outreach (TCPA/CTIA/CAN-SPAM),
+      // exactly like the email/SMS inbound path: if this DM is a hard opt-out
+      // ("STOP", "unsubscribe", …) persist a durable do-not-contact flag; if the
+      // contact already opted out, suppress. Either way: no auto-reply, no queued
+      // reply, no new-lead follow-up task, no speed-to-lead.
+      const priorActs: Activity[] = provider.listActivitiesByContact ? await provider.listActivitiesByContact(contact.id).catch(() => []) : [];
+      const optedOut = isHardOptOut(m.text) || hasOptedOut(contact, undefined, priorActs);
+      if (isHardOptOut(m.text)) await markDoNotContact(provider, contact);
+
       // New sender → raise a follow-up task so it's never lost, and kick off
-      // speed-to-lead (opt-in) just like a fresh inbound email/SMS lead.
-      if (created) {
+      // speed-to-lead (opt-in) just like a fresh inbound email/SMS lead — but never
+      // for someone who just opted out.
+      if (created && !optedOut) {
         await provider.logActivity({
           contactId: contact.id,
           kind: "task",
@@ -115,8 +127,8 @@ export async function ingestSocialMessages(messages: InboundSocialMessage[]): Pr
 
       // Draft a human-voiced reply and send it back on the SAME platform (auto
       // when REPLY_AUTOPILOT=true), or queue it to Approvals — so social is
-      // two-way like email/SMS, not a one-way log.
-      replied = await autoReply(contact, platform, m.text);
+      // two-way like email/SMS, not a one-way log. Suppressed entirely on opt-out.
+      replied = optedOut ? false : await autoReply(contact, platform, m.text);
     } catch {
       logged = false;
     }
