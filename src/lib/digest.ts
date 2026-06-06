@@ -110,8 +110,16 @@ async function buildTaskReminders(orgName: string): Promise<{ subject: string; b
 /** Send any digest/reminder emails the org has opted into and hasn't had today. */
 export async function runDigests(now: Date = new Date()): Promise<DigestResult> {
   const day = now.toISOString().slice(0, 10);
-  const { name: orgName, notificationPrefs: prefs } = await getOrgSettings();
   const result: DigestResult = { sent: [], recipients: 0 };
+
+  // With an hourly cron, only fire in/after a configured morning hour (UTC) so a
+  // "Good morning" digest never lands at midnight. Default 13:00 UTC (the prior
+  // daily-cron time). Robust to a missed tick — it sends on the next tick past the
+  // hour, still just once a day via the per-day dedup below.
+  const sendHour = Number(process.env.DIGEST_SEND_HOUR_UTC ?? 13);
+  if (Number.isFinite(sendHour) && now.getUTCHours() < sendHour) return result;
+
+  const { name: orgName, notificationPrefs: prefs } = await getOrgSettings();
 
   const to = await recipientEmails();
   if (!to.length) return result;
