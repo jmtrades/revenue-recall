@@ -89,6 +89,8 @@ optionally `STRIPE_TRIAL_DAYS`. Set `BILLING_ENFORCE=true` to enforce plan limit
 | `ALERT_WEBHOOK_URL` | POST a JSON alert on cron failures / partial fan-out failures (wire to Slack/PagerDuty). Without it, failures still log to the server. |
 | `WRITE_RATE_LIMIT_PER_MIN` · `AI_RATE_LIMIT_PER_MIN` · `IMPORT_RATE_LIMIT_PER_MIN` | per-client throttle overrides (defaults 120 · 30 · 10/min) — leave unset unless tuning. |
 | `DIGEST_SEND_HOUR_UTC` | hour (UTC) the daily digest/reminders go out; default `13`. The cron runs hourly but the digest only fires in/after this hour, so it never lands at midnight. |
+| `NEXT_PUBLIC_SUPPORT_EMAIL` · `NEXT_PUBLIC_LEGAL_EMAIL` · `NEXT_PUBLIC_SECURITY_EMAIL` | public contact addresses shown in the footer / legal / security pages. Default to `…@recall-touch.com`; point them at real, monitored mailboxes. |
+| `CRON_FANOUT_CONCURRENCY` | how many tenants the hourly cron processes in parallel; default `6`. Raise it if you have many orgs and ticks need to finish faster. |
 
 ## 3. Stripe setup **[required to charge]**
 1. Create **Products/Prices** matching the catalog in `src/lib/billing/plans.ts` (Growth, Team, Scale — monthly + annual — and the top-up packs). Put each price id in the matching `STRIPE_PRICE_*` env var.
