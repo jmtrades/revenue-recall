@@ -6,6 +6,7 @@ import { getIndustry } from "@/lib/industries";
 import { DEFAULT_LANGUAGE } from "@/lib/languages";
 import { defaultNotificationPrefs, mergeNotificationPrefs, type NotificationPrefs } from "@/lib/notifications";
 import { defaultTheme, mergeTheme, type Theme } from "@/lib/theme";
+import { isValidTimeZone } from "@/lib/tz";
 
 export { NOTIFICATION_OPTIONS, defaultNotificationPrefs, mergeNotificationPrefs, type NotificationPrefs } from "@/lib/notifications";
 
@@ -36,6 +37,9 @@ export interface OrgSettings {
   /** This org's outbound CALL voice — an in-house Kokoro voice id (e.g.
    *  "af_heart") or a "clone:<id>" signature voice. Undefined = gateway default. */
   voiceId?: string;
+  /** IANA timezone (e.g. "America/New_York") the workspace operates in — drives
+   *  the daily digest's local send time. Empty = fall back to a fixed UTC hour. */
+  timezone: string;
   /** true when backed by a database row (editable), false when env-derived. */
   persisted: boolean;
 }
@@ -62,6 +66,7 @@ function envFallback(): OrgSettings {
     automations: {},
     callerId: process.env.OUTBOUND_FROM_NUMBER || undefined,
     voiceId: process.env.OUTBOUND_VOICE_ID || undefined,
+    timezone: process.env.AGENT_TIMEZONE || "",
     persisted: false,
   };
 }
@@ -73,7 +78,7 @@ async function read(): Promise<OrgSettings> {
   if (!orgId) return envFallback();
   const { data } = await client
     .from("orgs")
-    .select("id,name,industry_id,language,currency,monthly_quota,notification_prefs,theme,compliance,caller_id,voice_id,automations")
+    .select("id,name,industry_id,language,currency,monthly_quota,notification_prefs,theme,compliance,caller_id,voice_id,automations,timezone")
     .eq("id", orgId)
     .maybeSingle();
   if (!data) return envFallback();
@@ -90,6 +95,7 @@ async function read(): Promise<OrgSettings> {
     automations: (data.automations && typeof data.automations === "object" ? (data.automations as Record<string, boolean>) : {}),
     callerId: (data.caller_id as string) || process.env.OUTBOUND_FROM_NUMBER || undefined,
     voiceId: (data.voice_id as string) || process.env.OUTBOUND_VOICE_ID || undefined,
+    timezone: (data.timezone as string) || process.env.AGENT_TIMEZONE || "",
     persisted: true,
   };
 }
@@ -111,6 +117,8 @@ export async function updateOrgSettings(patch: {
   voiceId?: string;
   /** Per-org automation enable overrides ({ automationId: boolean }). */
   automations?: Record<string, boolean>;
+  /** IANA timezone, or "" to clear (fall back to the fixed UTC digest hour). */
+  timezone?: string;
 }): Promise<OrgSettings> {
   const client = getSupabase();
   if (!client) throw new Error("Settings are read-only without a database.");
@@ -140,6 +148,11 @@ export async function updateOrgSettings(patch: {
   if (patch.callerId !== undefined) update.caller_id = patch.callerId.trim() || null;
   if (patch.voiceId !== undefined) update.voice_id = patch.voiceId.trim() || null;
   if (patch.automations !== undefined) update.automations = patch.automations;
+  // Only store a valid IANA zone; anything else clears it (→ UTC digest fallback).
+  if (patch.timezone !== undefined) {
+    const tz = patch.timezone.trim();
+    update.timezone = tz && isValidTimeZone(tz) ? tz : null;
+  }
   if (Object.keys(update).length === 0) return read();
   const { error } = await client.from("orgs").update(update).eq("id", orgId);
   if (error) throw new Error(error.message);
