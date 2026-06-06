@@ -9,7 +9,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      updated="May 2026"
+      updated="June 2026"
       intro="This policy explains what information Revenue Recall collects, how we use it, and the choices you have. We collect the minimum needed to run the product and never sell your data."
       sections={[
         {
@@ -38,6 +38,20 @@ export default function PrivacyPage() {
           heading: "Sharing",
           body: [
             "We share data only with sub-processors that help us run the service (hosting, database, email/SMS delivery, AI drafting), each under contract. We do not sell personal information.",
+          ],
+        },
+        {
+          heading: "Sub-processors",
+          body: [
+            "We use a small set of vetted providers to operate the service, each under a data-processing agreement. The current list:",
+            "Supabase — managed Postgres database and authentication; stores your account, CRM, and usage data.",
+            "Vercel — application hosting and delivery; processes requests in transit.",
+            "Anthropic — AI drafting; receives only the deal context needed to generate a draft, which is not retained to train its models.",
+            "Resend or SendGrid — outbound and transactional email delivery; processes recipient addresses and message content.",
+            "Stripe — subscription billing and payments; we never see or store full card numbers.",
+            "Twilio — SMS and voice calling, only when you enable them; processes phone numbers and message/call content.",
+            "Meta (WhatsApp, Messenger, Instagram), Telegram, X, and LinkedIn — social messaging, only for the channels you choose to connect.",
+            "We keep this list current as providers change; email us to request notice of changes.",
           ],
         },
         {
