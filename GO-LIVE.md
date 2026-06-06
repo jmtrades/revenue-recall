@@ -21,7 +21,7 @@ it. Companion docs: `SETUP.md` (local/dev), `GO-LIVE-CALLS.md` and
 
 ## 1. Database (Supabase)
 1. Create the project; copy the **Project URL**, **anon key**, and **service-role key**.
-2. Apply migrations in `supabase/migrations/` in order (Supabase CLI `db push`, or paste each `.sql`). The schema is currently at **0035**.
+2. Apply **all** migrations in `supabase/migrations/` in order (Supabase CLI `db push`, or paste each `.sql`) — they're numbered sequentially; apply through the latest (**0038** at time of writing).
 3. Confirm Row Level Security is on (the migrations enable it). The app's
    service-role calls are explicitly org-scoped, but RLS is the backstop.
 
