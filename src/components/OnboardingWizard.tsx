@@ -95,10 +95,13 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
     if (finishing) return;
     setFinishing(true);
     try {
+      // Auto-detect the workspace timezone from the browser so the daily digest
+      // lands in their morning with zero setup (editable later in Settings).
+      const timezone = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined; } catch { return undefined; } })();
       await fetch("/api/org", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ industryId: industry, language, name: org || undefined, monthlyQuota: Number(quota) || undefined }),
+        body: JSON.stringify({ industryId: industry, language, name: org || undefined, monthlyQuota: Number(quota) || undefined, timezone }),
       });
       if (yourName.trim() || samples.trim() || describe.trim()) {
         await fetch("/api/voice/learn", {
