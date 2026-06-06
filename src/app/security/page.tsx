@@ -5,6 +5,9 @@ export const metadata = {
   description: "How Revenue Recall protects your data.",
 };
 
+// Real, monitored disclosure mailbox on the product domain; override per deploy.
+const SECURITY_EMAIL = process.env.NEXT_PUBLIC_SECURITY_EMAIL || "security@recall-touch.com";
+
 export default function SecurityPage() {
   return (
     <LegalPage
@@ -45,7 +48,7 @@ export default function SecurityPage() {
         {
           heading: "Reporting a vulnerability",
           body: [
-            "Found an issue? We appreciate responsible disclosure. Email security@revenuerecall.com with details and we'll respond promptly.",
+            `Found an issue? We appreciate responsible disclosure. Email ${SECURITY_EMAIL} with details and we'll respond promptly.`,
           ],
         },
       ]}

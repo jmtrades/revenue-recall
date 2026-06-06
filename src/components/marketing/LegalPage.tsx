@@ -1,6 +1,10 @@
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { Footer } from "@/components/marketing/Footer";
 
+// Configurable so the legal contact matches your real, monitored mailbox; the
+// default is on the product domain (not a placeholder one). Inlined at build time.
+const LEGAL_EMAIL = process.env.NEXT_PUBLIC_LEGAL_EMAIL || "legal@recall-touch.com";
+
 export interface LegalSection {
   heading: string;
   body: string[];
@@ -28,8 +32,8 @@ export function LegalPage({ title, updated, intro, sections }: { title: string; 
         </div>
         <p className="mt-12 text-sm text-muted">
           Questions about this page? Email{" "}
-          <a href="mailto:legal@revenuerecall.com" className="text-brand transition hover:text-fg">
-            legal@revenuerecall.com
+          <a href={`mailto:${LEGAL_EMAIL}`} className="text-brand transition hover:text-fg">
+            {LEGAL_EMAIL}
           </a>
           .
         </p>
