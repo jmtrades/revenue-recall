@@ -185,6 +185,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
         initialName={org.name}
         initialQuota={org.monthlyQuota}
         initialLanguage={org.language}
+        initialTimezone={org.timezone}
         initialSenderName={org.compliance.senderName ?? ""}
         initialAddress={org.compliance.address ?? ""}
         persisted={org.persisted}
