@@ -9,6 +9,7 @@ import { autopilotLockKey, digestLockKey } from "@/lib/agent/lock";
 import { sendAlert, isErrored } from "@/lib/alert";
 import { cleanupRateLimits } from "@/lib/ratelimit";
 import { acquireCronLock, releaseCronLock } from "@/lib/cron-lock";
+import { mapWithConcurrency } from "@/lib/async";
 import { safeEqual } from "@/lib/safe-compare";
 
 export const dynamic = "force-dynamic";
@@ -115,18 +116,22 @@ async function run(req: Request) {
   }
 
   const origin = url.origin;
-  const results: Array<Record<string, unknown>> = [];
-  for (const id of ids) {
-    try {
-      const r = await fetch(`${origin}/api/agent/cron?org=${encodeURIComponent(id)}`, {
-        method: "POST",
-        headers: { authorization: `Bearer ${secret}` },
-      });
-      results.push({ org: id, status: r.status, result: await r.json().catch(() => null) });
-    } catch (e) {
-      results.push({ org: id, error: e instanceof Error ? e.message : "sub-request failed" });
-    }
-  }
+  // Fan out with BOUNDED CONCURRENCY so the tick scales to many tenants within the
+  // function budget, instead of N sequential round-trips that would time out at
+  // scale. Every org is still processed exactly once per tick (no starvation), and
+  // different orgs use different lock keys, so concurrency can't make a tenant
+  // double-send. Tune with CRON_FANOUT_CONCURRENCY (default 6).
+  const concurrency = Number(process.env.CRON_FANOUT_CONCURRENCY) || 6;
+  const settled = await mapWithConcurrency(ids, concurrency, async (id) => {
+    const r = await fetch(`${origin}/api/agent/cron?org=${encodeURIComponent(id)}`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${secret}` },
+    });
+    return { org: id, status: r.status, result: await r.json().catch(() => null) };
+  });
+  const results: Array<Record<string, unknown>> = settled.map((s, i) =>
+    s.ok ? s.value : { org: ids[i], status: 0, error: s.error instanceof Error ? s.error.message : "sub-request failed" },
+  );
   // ok reflects the whole fan-out: if any tenant's sub-request errored (a 401
   // after secret rotation, a 500), the aggregate is NOT ok so monitoring sees it
   // instead of a falsely-green cron hiding a per-tenant outage.
