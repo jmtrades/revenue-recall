@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { logError, errMessage } from "@/lib/log";
+import { sendAlert } from "@/lib/alert";
+import { rateLimit } from "@/lib/ratelimit";
 
 /**
  * Wrap an API route handler so any unhandled throw becomes a clean JSON 500
@@ -19,8 +21,16 @@ export function withGuard<C = unknown>(handler: RouteHandler<C>): RouteHandler<C
     try {
       return await handler(req, ctx);
     } catch (err) {
+      const path = new URL(req.url).pathname;
+      const error = errMessage(err);
       // One place to observe unexpected failures; never leak internals to clients.
-      logError("api.unhandled", { method: req.method, path: new URL(req.url).pathname, error: errMessage(err) });
+      logError("api.unhandled", { method: req.method, path, error });
+      // Alert the operator on unhandled 500s so a bug customers are hitting isn't
+      // invisible at scale. Best-effort (never blocks the response) and rate-limited
+      // per path so a systemic failure can't storm the alert webhook.
+      if (rateLimit(`alert:api.unhandled:${path}`, 1, 300_000).ok) {
+        void sendAlert("api.unhandled", { method: req.method, path, error });
+      }
       return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
     }
   };
