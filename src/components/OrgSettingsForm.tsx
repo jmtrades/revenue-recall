@@ -5,10 +5,23 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { LANGUAGES } from "@/lib/languages";
 
+// Full IANA zone list where the runtime supports it; a common-business fallback
+// otherwise. Computed once.
+const TIMEZONES: string[] = (() => {
+  try {
+    const v = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.("timeZone");
+    if (v && v.length) return v;
+  } catch {
+    /* fall through */
+  }
+  return ["UTC", "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles", "America/Sao_Paulo", "Europe/London", "Europe/Paris", "Europe/Berlin", "Africa/Johannesburg", "Asia/Dubai", "Asia/Kolkata", "Asia/Singapore", "Asia/Tokyo", "Australia/Sydney"];
+})();
+
 export function OrgSettingsForm({
   initialName,
   initialQuota,
   initialLanguage,
+  initialTimezone,
   initialSenderName,
   initialAddress,
   persisted,
@@ -16,6 +29,7 @@ export function OrgSettingsForm({
   initialName: string;
   initialQuota: number;
   initialLanguage: string;
+  initialTimezone: string;
   initialSenderName: string;
   initialAddress: string;
   persisted: boolean;
@@ -24,13 +38,14 @@ export function OrgSettingsForm({
   const [name, setName] = useState(initialName);
   const [quota, setQuota] = useState(String(initialQuota));
   const [language, setLanguage] = useState(initialLanguage);
+  const [timezone, setTimezone] = useState(initialTimezone);
   const [senderName, setSenderName] = useState(initialSenderName);
   const [address, setAddress] = useState(initialAddress);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
   const dirty =
-    name !== initialName || Number(quota) !== initialQuota || language !== initialLanguage || senderName !== initialSenderName || address !== initialAddress;
+    name !== initialName || Number(quota) !== initialQuota || language !== initialLanguage || timezone !== initialTimezone || senderName !== initialSenderName || address !== initialAddress;
   const input = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand disabled:opacity-60";
   const touched = () => setStatus("idle");
 
@@ -41,7 +56,7 @@ export function OrgSettingsForm({
       const res = await fetch("/api/org", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, language, monthlyQuota: Number(quota) || 0, compliance: { senderName, address } }),
+        body: JSON.stringify({ name, language, timezone, monthlyQuota: Number(quota) || 0, compliance: { senderName, address } }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Save failed");
       setStatus("saved");
@@ -70,6 +85,16 @@ export function OrgSettingsForm({
           ))}
         </select>
         <p className="mt-1 text-xs text-muted">AI writes every email, text, and call script in this language.</p>
+      </div>
+      <div>
+        <label className="stat-label">Timezone</label>
+        <select className={`${input} mt-1`} value={timezone} disabled={!persisted} onChange={(e) => { setTimezone(e.target.value); touched(); }}>
+          <option value="">UTC (default)</option>
+          {TIMEZONES.map((tz) => (
+            <option key={tz} value={tz}>{tz.replace(/_/g, " ")}</option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-muted">Your daily digest goes out in this timezone&apos;s morning.</p>
       </div>
 
       <div className="border-t border-border pt-4">

@@ -1,4 +1,5 @@
 import { detectIntent } from "@/lib/ai/intent";
+import { hourInZone } from "@/lib/tz";
 import type { Activity, Contact, Opportunity } from "@/lib/crm/types";
 
 /**
@@ -63,17 +64,6 @@ export function inCooldown(activities: Activity[], days: number, now: number = D
   if (days <= 0) return false;
   const cutoff = now - days * 86_400_000;
   return activities.some((act) => act.direction === "outbound" && OUTBOUND_KINDS.has(act.kind) && new Date(act.occurredAt).getTime() >= cutoff);
-}
-
-/** Hour-of-day (0–23) in a given IANA timezone, falling back to UTC. */
-function hourInZone(now: Date, tz?: string): number {
-  if (!tz) return now.getUTCHours();
-  try {
-    const h = parseInt(new Intl.DateTimeFormat("en-US", { hour: "numeric", hour12: false, timeZone: tz }).format(now), 10);
-    return Number.isFinite(h) ? h % 24 : now.getUTCHours();
-  } catch {
-    return now.getUTCHours(); // bad/unknown tz → safe UTC fallback
-  }
 }
 
 /** True when we're inside the configured quiet-hours window and should hold sends.

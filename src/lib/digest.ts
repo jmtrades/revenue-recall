@@ -8,6 +8,7 @@ import { money } from "@/lib/format";
 import { isSupabaseConfigured, getSupabase } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getActiveOrgId } from "@/lib/supabase/tenant";
+import { hourInZone, dayInZone } from "@/lib/tz";
 
 /**
  * Scheduled email notifications. Driven by the cron tick, gated by the org's
@@ -109,17 +110,19 @@ async function buildTaskReminders(orgName: string): Promise<{ subject: string; b
 
 /** Send any digest/reminder emails the org has opted into and hasn't had today. */
 export async function runDigests(now: Date = new Date()): Promise<DigestResult> {
-  const day = now.toISOString().slice(0, 10);
   const result: DigestResult = { sent: [], recipients: 0 };
+  const { name: orgName, notificationPrefs: prefs, timezone } = await getOrgSettings();
 
-  // With an hourly cron, only fire in/after a configured morning hour (UTC) so a
-  // "Good morning" digest never lands at midnight. Default 13:00 UTC (the prior
-  // daily-cron time). Robust to a missed tick — it sends on the next tick past the
-  // hour, still just once a day via the per-day dedup below.
-  const sendHour = Number(process.env.DIGEST_SEND_HOUR_UTC ?? 13);
-  if (Number.isFinite(sendHour) && now.getUTCHours() < sendHour) return result;
-
-  const { name: orgName, notificationPrefs: prefs } = await getOrgSettings();
+  // Fire in/after the morning send-hour, deduped per LOCAL day. With the org's
+  // timezone set we use its local morning (DIGEST_SEND_HOUR_LOCAL, default 8) and
+  // local calendar day — so a global customer base gets "Good morning" in the
+  // morning, and an org ahead of UTC never gets two digests across UTC midnight.
+  // No timezone → the fixed UTC hour (DIGEST_SEND_HOUR_UTC, default 13). Robust to
+  // a missed tick; the per-day dedup keeps it to once a day.
+  const tz = timezone || undefined;
+  const sendHour = Number(tz ? (process.env.DIGEST_SEND_HOUR_LOCAL ?? 8) : (process.env.DIGEST_SEND_HOUR_UTC ?? 13));
+  if (Number.isFinite(sendHour) && hourInZone(now, tz) < sendHour) return result;
+  const day = dayInZone(now, tz);
 
   const to = await recipientEmails();
   if (!to.length) return result;
