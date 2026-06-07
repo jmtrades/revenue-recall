@@ -67,15 +67,15 @@ export function inCooldown(activities: Activity[], days: number, now: number = D
 }
 
 /** True when we're inside the configured quiet-hours window and should hold sends.
- *  The window (AGENT_QUIET_START_UTC..END) is interpreted in AGENT_TIMEZONE when
- *  set — so "no sends 8pm–8am" actually means the recipient's local evening, not
- *  UTC. Matters most when autopilot ticks more than once a day (e.g. the hourly
- *  GitHub Actions schedule), keeping it off at night. */
-export function quietHoursNow(now: Date = new Date()): boolean {
+ *  The window (AGENT_QUIET_START_UTC..END) is interpreted in the ORG's timezone
+ *  when provided, else the global AGENT_TIMEZONE, else UTC — so "no sends 8pm–8am"
+ *  means the prospect's local evening. Matters most when autopilot ticks more than
+ *  once a day (e.g. the hourly cron), keeping it off at the prospect's night. */
+export function quietHoursNow(now: Date = new Date(), tz?: string): boolean {
   const start = Number(process.env.AGENT_QUIET_START_UTC);
   const end = Number(process.env.AGENT_QUIET_END_UTC);
   if (!Number.isInteger(start) || !Number.isInteger(end) || start === end) return false;
-  const h = hourInZone(now, process.env.AGENT_TIMEZONE);
+  const h = hourInZone(now, tz || process.env.AGENT_TIMEZONE);
   return start < end ? h >= start && h < end : h >= start || h < end; // supports windows that wrap midnight
 }
 
@@ -132,6 +132,8 @@ export function sendGate(opts: {
   autonomy: "auto" | "review";
   sentSoFar: number;
   now?: Date;
+  /** The org's IANA timezone, so quiet hours are evaluated in the prospect's local time. */
+  timezone?: string;
 }): SkipReason {
   if (hasOptedOut(opts.contact, opts.opp, opts.activities)) return "opted_out";
   if (opts.autonomy !== "auto") return null; // review mode is human-gated; only opt-out blocks drafting
@@ -141,7 +143,7 @@ export function sendGate(opts: {
   const declineDays = declineCooldownDays();
   if (softDecline !== null && declineDays > 0 && nowMs - softDecline < declineDays * 86_400_000) return "recently_declined";
   if (inCooldown(opts.activities, cooldownDays(), nowMs)) return "recently_contacted";
-  if (quietHoursNow(opts.now)) return "quiet_hours";
+  if (quietHoursNow(opts.now, opts.timezone)) return "quiet_hours";
   if (opts.sentSoFar >= dailySendCap()) return "daily_cap";
   return null;
 }
