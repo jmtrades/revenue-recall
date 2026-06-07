@@ -418,8 +418,9 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
       const draft = await draftMessage(draftInput);
 
       // Hold auto-sends during quiet hours — queue for review instead of firing
-      // a message at 2am. (Outside autopilot we always queue to Approvals.)
-      const canSend = autoSend && !quietHoursNow(new Date(now));
+      // a message at 2am in the prospect's timezone (this org's). (Outside
+      // autopilot we always queue to Approvals.)
+      const canSend = autoSend && !quietHoursNow(new Date(now), org.timezone);
       const res = canSend
         ? step.channel === "email"
           ? await sendEmail(address, draft.subject ?? "", draft.body, { unsubscribeUrl: await unsubscribeUrl(e.contactId), compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address } })
