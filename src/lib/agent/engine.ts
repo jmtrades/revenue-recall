@@ -118,7 +118,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
       // Guardrails: never message someone who opted out; in auto mode also respect
       // cooldown, quiet hours, and the daily cap. Checked before drafting to save cost.
       const activities = actByOpp.get(t.opp.id) ?? [];
-      const gate = sendGate({ contact, opp: t.opp, activities, autonomy, sentSoFar: sent });
+      const gate = sendGate({ contact, opp: t.opp, activities, autonomy, sentSoFar: sent, timezone: org.timezone });
       if (gate) {
         actions.push({ type: task.channel, dealId: t.opp.id, title: name, detail: SKIP_LABEL[gate], result: "skipped", source: "template", value: t.recoverable });
         continue;

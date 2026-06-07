@@ -33,6 +33,17 @@ describe("timezone-aware quiet hours", () => {
     expect(quietHoursNow(new Date("2026-06-01T22:00:00Z"))).toBe(true);
   });
 
+  it("the org's timezone overrides the global AGENT_TIMEZONE", () => {
+    process.env.AGENT_QUIET_START_UTC = "20";
+    process.env.AGENT_QUIET_END_UTC = "23";
+    process.env.AGENT_TIMEZONE = "UTC"; // global default says UTC …
+    // … but this org is in New York (UTC-4 in June), so the window shifts to ET.
+    // 22:00 UTC = 18:00 ET → outside the 8–11pm local window (UTC alone would say inside).
+    expect(quietHoursNow(new Date("2026-06-01T22:00:00Z"), "America/New_York")).toBe(false);
+    // 01:00 UTC = 21:00 ET (prev day) → inside (UTC alone would say outside).
+    expect(quietHoursNow(new Date("2026-06-02T01:00:00Z"), "America/New_York")).toBe(true);
+  });
+
   it("reports the timezone in guardrailConfig", () => {
     process.env.AGENT_QUIET_START_UTC = "20";
     process.env.AGENT_QUIET_END_UTC = "8";
