@@ -62,12 +62,14 @@ export const POST = withGuard(async (req: Request) => {
 
   const now = new Date().toISOString();
   const nowMs = Date.parse(now);
-  // Idempotency: a re-submitted send (an impatient re-click after the first
-  // succeeded, or any retried request) must never deliver the same message to a
-  // prospect twice — this path has no other dedup. If an identical outbound message
-  // to this contact on this channel was logged seconds ago, treat THIS call as that
-  // same send: succeed without sending again. (A retry after a FAILED send logs
-  // nothing, so it correctly still goes through.)
+  // Best-effort idempotency: catch a re-submitted send (the common case — an
+  // impatient re-click after the first already succeeded, or a retried request) so
+  // it doesn't deliver the same message to a prospect twice. If an identical
+  // outbound message to this contact on this channel was logged seconds ago, treat
+  // THIS call as that same send: succeed without sending again. (A retry after a
+  // FAILED send logs nothing, so it correctly still goes through.) Note: two
+  // *truly concurrent* POSTs can still both send — there's no DB uniqueness here;
+  // the client's disabled-while-sending button covers that window.
   const isDuplicate = (kind: string, summary: string): boolean =>
     recentActs.some((a) => a.direction === "outbound" && a.kind === kind && a.summary === summary && nowMs - Date.parse(a.occurredAt) < 60_000);
 

@@ -3,7 +3,6 @@ import { z } from "zod";
 import { getOrgSettings, updateOrgSettings } from "@/lib/org";
 import { isIndustryId } from "@/lib/industries";
 import { isLanguageCode } from "@/lib/languages";
-import { isValidTimeZone } from "@/lib/tz";
 import { ACCENT_KEYS, THEME_MODES } from "@/lib/theme";
 import { requireRole } from "@/lib/authz";
 import { recordAudit } from "@/lib/audit";
@@ -22,7 +21,10 @@ const Patch = z.object({
   notificationPrefs: z.record(z.boolean()).optional(),
   theme: z.object({ accent: z.enum(ACCENT_KEYS).optional(), mode: z.enum(THEME_MODES).optional() }).optional(),
   compliance: z.object({ senderName: z.string().max(160).optional(), address: z.string().max(300).optional() }).optional(),
-  timezone: z.string().max(64).refine((tz) => tz === "" || isValidTimeZone(tz), "Unknown timezone").optional(),
+  // Accept any short string; updateOrgSettings stores it only if it's a real IANA
+  // zone (else null). Not a strict refine, so an unrecognized browser-detected zone
+  // from onboarding can't 400 the whole settings PATCH (dropping name/industry/etc.).
+  timezone: z.string().max(64).optional(),
 });
 
 export async function PATCH(req: Request) {
