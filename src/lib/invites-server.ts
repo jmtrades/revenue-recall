@@ -23,9 +23,17 @@ interface InviteRow {
   role: string;
   status: string;
   created_at: string;
+  token?: string;
 }
 function rowToInvite(r: InviteRow): Invitation {
-  return { id: r.id, email: r.email, role: normalizeRole(r.role), status: r.status as Invitation["status"], createdAt: r.created_at };
+  return {
+    id: r.id,
+    email: r.email,
+    role: normalizeRole(r.role),
+    status: r.status as Invitation["status"],
+    createdAt: r.created_at,
+    link: r.token ? signupUrl(r.token) : undefined,
+  };
 }
 
 /** Pending invites for the current org (newest first). Empty without a DB. */
@@ -36,7 +44,7 @@ export async function listInvites(): Promise<Invitation[]> {
   if (!orgId) return [];
   const { data } = await client
     .from("invitations")
-    .select("id,email,role,status,created_at")
+    .select("id,email,role,status,created_at,token")
     .eq("org_id", orgId)
     .eq("status", "pending")
     .order("created_at", { ascending: false });
