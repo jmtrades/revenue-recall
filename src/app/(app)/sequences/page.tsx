@@ -39,6 +39,14 @@ export default function SequencesPage() {
                 </li>
               ))}
             </ol>
+            <div className="mt-4 border-t border-border pt-3">
+              <Link
+                href={`/sequences/${seq.id}`}
+                className="inline-flex items-center gap-1 text-sm font-medium text-brand transition hover:text-brand/80"
+              >
+                Start this cadence <span aria-hidden>→</span>
+              </Link>
+            </div>
           </section>
         ))}
       </div>
