@@ -13,6 +13,8 @@ export interface Invitation {
   role: InviteRole;
   status: "pending" | "accepted" | "revoked";
   createdAt: string;
+  /** Shareable signup link — so an admin can send it by hand when email isn't live. */
+  link?: string;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

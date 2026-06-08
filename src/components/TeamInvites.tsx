@@ -11,6 +11,29 @@ export function TeamInvites({ initial, persisted }: { initial: Invitation[]; per
   const [role, setRole] = useState<InviteRole>("rep");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  async function copyLink(i: Invitation) {
+    if (!i.link) return;
+    // Absolute URL so a hand-shared link works from anywhere, even though the
+    // API may hand back a relative one when NEXT_PUBLIC_SITE_URL isn't set.
+    const url = i.link.startsWith("http") ? i.link : `${window.location.origin}${i.link}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Older browsers / insecure contexts have no clipboard API — fall back.
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); } catch { /* nothing more we can do */ }
+      document.body.removeChild(ta);
+    }
+    setCopiedId(i.id);
+    setTimeout(() => setCopiedId((cur) => (cur === i.id ? null : cur)), 1800);
+  }
 
   async function send() {
     if (!emails.trim()) return;
@@ -63,7 +86,7 @@ export function TeamInvites({ initial, persisted }: { initial: Invitation[]; per
       <div className="rounded-xl border border-border bg-surface-2/40 p-4">
         <p className="text-sm font-medium text-fg">Invite teammates</p>
         <p className="mt-0.5 text-xs text-muted">
-          Add emails (comma, space, or newline separated). They&apos;ll get a link, and joining puts them straight into this workspace.
+          Add emails (comma, space, or newline separated). They&apos;ll get a link, and joining puts them straight into this workspace. No email set up yet? Copy each invite link below and send it yourself.
         </p>
         <textarea
           className={`${input} mt-3 w-full`}
@@ -96,14 +119,25 @@ export function TeamInvites({ initial, persisted }: { initial: Invitation[]; per
           <p className="stat-label">Pending invites</p>
           <ul className="mt-2 divide-y divide-border">
             {invites.map((i) => (
-              <li key={i.id} className="flex items-center justify-between py-2.5">
-                <div>
+              <li key={i.id} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="min-w-0">
                   <span className="text-sm text-fg">{i.email}</span>
                   <span className="ml-2 pill bg-surface-2 capitalize text-muted">{i.role}</span>
                 </div>
-                <button onClick={() => revoke(i.id)} className="text-xs text-muted transition hover:text-danger">
-                  Revoke
-                </button>
+                <div className="flex shrink-0 items-center gap-3">
+                  {i.link && (
+                    <button
+                      onClick={() => copyLink(i)}
+                      title="Copy this teammate's invite link to share by hand"
+                      className={`text-xs transition ${copiedId === i.id ? "text-success" : "text-brand hover:text-brand/80"}`}
+                    >
+                      {copiedId === i.id ? "Copied" : "Copy link"}
+                    </button>
+                  )}
+                  <button onClick={() => revoke(i.id)} className="text-xs text-muted transition hover:text-danger">
+                    Revoke
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
