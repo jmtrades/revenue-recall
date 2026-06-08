@@ -1,11 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar, EmptyState, Button } from "@/components/ui";
 import { money } from "@/lib/format";
 import { LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_STATUS_TONE, type LeadStatus } from "@/lib/crm/lead-status";
 import { SEGMENTS, getSegment, highValueThreshold } from "@/lib/crm/segments";
+
+/** A saved filter combination — stored per-browser so a rep can one-click back
+ *  to "my high-value going cold" without rebuilding it each time. */
+type SavedView = { name: string; q: string; owner: string; status: string; segment: string };
+const VIEWS_KEY = "rr.leadViews";
 
 export interface LeadRow {
   id: string;
@@ -34,6 +39,38 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
   const [enrollBusy, setEnrollBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [views, setViews] = useState<SavedView[]>([]);
+
+  // Saved views live in the browser (no server round-trip, works for everyone).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(VIEWS_KEY);
+      if (raw) setViews(JSON.parse(raw) as SavedView[]);
+    } catch {
+      /* corrupt/unavailable storage — just start empty */
+    }
+  }, []);
+  function persistViews(next: SavedView[]) {
+    setViews(next);
+    try {
+      localStorage.setItem(VIEWS_KEY, JSON.stringify(next));
+    } catch {
+      /* storage full/blocked — keep it in memory for this session */
+    }
+  }
+  function saveView() {
+    const name = window.prompt("Name this view (e.g. \"My high-value going cold\")")?.trim();
+    if (!name) return;
+    persistViews([...views.filter((v) => v.name !== name), { name, q, owner, status, segment }]);
+  }
+  function applyView(v: SavedView) {
+    setQ(v.q);
+    setOwner(v.owner);
+    setStatus(v.status);
+    setSegment(v.segment);
+  }
+  const filtersActive = Boolean(q || owner || status) || segment !== "all";
+  const activeView = views.find((v) => v.q === q && v.owner === owner && v.status === status && v.segment === segment);
 
   // "High value" = the top quartile of THIS pipeline's deal values, so the
   // segment means something for any business (not a hard-coded number).
@@ -173,6 +210,25 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
           </button>
         ))}
       </div>
+      {(views.length > 0 || filtersActive) && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {views.length > 0 && <span className="text-xs text-muted">Views:</span>}
+          {views.map((v) => (
+            <span
+              key={v.name}
+              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition ${activeView?.name === v.name ? "border-brand bg-brand-soft/30 text-brand" : "border-border bg-surface-2 text-muted hover:text-fg"}`}
+            >
+              <button onClick={() => applyView(v)} className="max-w-[160px] truncate" title={`Apply "${v.name}"`}>{v.name}</button>
+              <button onClick={() => persistViews(views.filter((x) => x.name !== v.name))} aria-label={`Delete view ${v.name}`} className="text-sm leading-none text-muted/70 hover:text-danger">×</button>
+            </span>
+          ))}
+          {filtersActive && !activeView && (
+            <button onClick={saveView} className="rounded-full border border-dashed border-border px-2.5 py-1 text-xs text-muted transition hover:text-fg">
+              + Save view
+            </button>
+          )}
+        </div>
+      )}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input
           value={q}
