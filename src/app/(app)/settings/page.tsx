@@ -540,7 +540,14 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
     </div>
   );
 
-  const billingReturn = searchParams.billing === "success" ? "success" : searchParams.billing === "cancelled" ? "cancelled" : null;
+  const billingReturn =
+    searchParams.billing === "success"
+      ? "success"
+      : searchParams.billing === "topup"
+        ? "topup"
+        : searchParams.billing === "cancelled"
+          ? "cancelled"
+          : null;
   const oauthReturn = searchParams.connected; // success | denied | error, from the OAuth callback
 
   return (
