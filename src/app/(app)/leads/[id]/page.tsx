@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getContactDetail } from "@/lib/queries";
+import { getProvider } from "@/lib/crm/registry";
+import { getConfig } from "@/lib/config";
+import { sequencesFor } from "@/lib/sequences";
 import { money, relativeDays } from "@/lib/format";
 import { Card, Avatar, InfoRow, ActivityIcon, EmptyState } from "@/components/ui";
+import { ContactReachOut } from "@/components/ContactReachOut";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +19,14 @@ export default async function ContactPage({ params }: { params: { id: string } }
   if (!detail) notFound();
   const { contact, deals, activities } = detail;
   const totalValue = deals.reduce((s, d) => s + d.value, 0);
+
+  // Reach-out: which channels this contact is actually reachable on, the
+  // sequences available to enroll them in, and whether this workspace can write.
+  const canWrite = getProvider().info().capabilities.write;
+  const canEmail = contact.points.some((p) => p.channel === "email" && !!p.value);
+  const canText = contact.points.some((p) => (p.channel === "phone" || p.channel === "sms") && !!p.value);
+  const sequences = sequencesFor(getConfig().industryId).map((s) => ({ id: s.id, name: s.name }));
+  const showReachOut = canWrite && (canEmail || canText || sequences.length > 0);
 
   return (
     <div className="space-y-6">
@@ -38,6 +50,11 @@ export default async function ContactPage({ params }: { params: { id: string } }
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6">
+          {showReachOut && (
+            <Card title="Reach out">
+              <ContactReachOut contactId={contact.id} canEmail={canEmail} canText={canText} sequences={sequences} />
+            </Card>
+          )}
           <Card title="Contact info">
             {contact.points.map((p, i) => (
               <InfoRow key={i} label={p.channel}>{p.value}</InfoRow>
