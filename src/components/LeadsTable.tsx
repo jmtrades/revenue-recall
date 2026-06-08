@@ -6,6 +6,7 @@ import { Avatar, EmptyState, Button } from "@/components/ui";
 import { money } from "@/lib/format";
 import { LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_STATUS_TONE, type LeadStatus } from "@/lib/crm/lead-status";
 import { SEGMENTS, getSegment, highValueThreshold } from "@/lib/crm/segments";
+import { toCsv } from "@/lib/csv";
 
 /** A saved filter combination — stored per-browser so a rep can one-click back
  *  to "my high-value going cold" without rebuilding it each time. */
@@ -71,6 +72,24 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
   }
   const filtersActive = Boolean(q || owner || status) || segment !== "all";
   const activeView = views.find((v) => v.q === q && v.owner === owner && v.status === status && v.segment === segment);
+
+  // Export exactly what the user is looking at — the current selection if any,
+  // otherwise the filtered list — client-side, so no extra endpoint or full dump.
+  function exportCsv() {
+    const source = selected.size > 0 ? filtered.filter((r) => selected.has(r.id)) : filtered;
+    if (source.length === 0) return;
+    const header = ["Name", "Company", "Email", "Phone", "Owner", "Stage", "Status", "Value", "Currency"];
+    const body = source.map((r) => [r.name, r.company, r.email, r.phone, r.owner, r.stage, r.status ?? "", r.value ?? "", r.currency]);
+    const blob = new Blob([toCsv([header, ...body])], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `leads-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 
   // "High value" = the top quartile of THIS pipeline's deal values, so the
   // segment means something for any business (not a hard-coded number).
@@ -248,7 +267,17 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
             <option key={s} value={s}>{LEAD_STATUS_LABELS[s]}</option>
           ))}
         </select>
-        <span className="ml-auto text-sm text-muted">{filtered.length} of {rows.length}</span>
+        <div className="ml-auto flex items-center gap-3">
+          <span className="text-sm text-muted">{filtered.length} of {rows.length}</span>
+          <button
+            onClick={exportCsv}
+            disabled={filtered.length === 0}
+            title={selected.size > 0 ? `Export ${selected.size} selected as CSV` : "Export the filtered list as CSV"}
+            className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted transition hover:text-fg disabled:opacity-50"
+          >
+            Export{selected.size > 0 ? ` (${selected.size})` : ""}
+          </button>
+        </div>
       </div>
 
       {selected.size > 0 && (
