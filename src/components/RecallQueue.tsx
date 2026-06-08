@@ -63,7 +63,9 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
       const res = await fetch(`/api/ai/draft`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dealId: row.opportunityId, channel: row.channel === "call" ? "email" : row.channel }),
+        // Draft for the channel we're actually recommending — a call gets a
+        // call script, not a silently-substituted email.
+        body: JSON.stringify({ dealId: row.opportunityId, channel: row.channel }),
       });
       const b = await res.json();
       if (!res.ok) throw new Error(b.error ?? "Draft failed");
@@ -88,11 +90,10 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
     setSending(true);
     setSendError(null);
     try {
-      const channel = draft.row.channel === "call" ? "email" : draft.row.channel;
       const res = await fetch("/api/messages/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channel, dealId: draft.row.opportunityId, subject: draft.subject, body: draft.body, recall: true }),
+        body: JSON.stringify({ channel: draft.row.channel, dealId: draft.row.opportunityId, subject: draft.subject, body: draft.body, recall: true }),
       });
       if (res.ok) {
         setSent(true);
@@ -103,6 +104,33 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
       }
     } catch {
       setSendError("Couldn't send. Try again.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  // A call can't be "sent" — log that the call happened (with the script as the
+  // note) so the deal advances and drops out of the queue, instead of silently
+  // firing off an email behind the user's back.
+  async function logCall() {
+    if (!draft) return;
+    setSending(true);
+    setSendError(null);
+    try {
+      const res = await fetch(`/api/opportunities/${draft.row.opportunityId}/activity`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "call", summary: draft.body }),
+      });
+      if (res.ok) {
+        setSent(true);
+        setTimeout(() => { setDraft(null); setSent(false); router.refresh(); }, 800);
+      } else {
+        const b = await res.json().catch(() => ({}));
+        setSendError(b.error ?? "Couldn't log the call. Try again.");
+      }
+    } catch {
+      setSendError("Couldn't log the call. Try again.");
     } finally {
       setSending(false);
     }
@@ -191,7 +219,7 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setDraft(null)}>
           <div role="dialog" aria-modal="true" aria-label="AI draft" className="w-full max-w-lg rounded-xl border border-border bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="flex items-center gap-2 font-semibold text-fg"><Icon name="autopilot" size={15} className="text-brand" /> Drafted outreach</h3>
+              <h3 className="flex items-center gap-2 font-semibold text-fg"><Icon name="autopilot" size={15} className="text-brand" /> {draft.row.channel === "call" ? "Call script" : "Drafted outreach"}</h3>
               <button onClick={() => setDraft(null)} aria-label="Close" className="text-muted transition-colors hover:text-fg"><Icon name="close" size={16} /></button>
             </div>
             <p className="mb-3 text-xs text-muted">{draft.row.title} · {draft.row.contactLabel}</p>
@@ -212,9 +240,15 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
                     <button onClick={() => openDraft(draft.row)} className="rounded-lg border border-border px-3 py-1.5 text-sm text-fg hover:bg-surface-2">Regenerate</button>
                     <button onClick={copy} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-fg hover:bg-surface-2">{copied ? <><Icon name="check" size={13} strokeWidth={3} className="text-success" /> Copied</> : "Copy"}</button>
                     {draft.source !== "error" && (
-                      <button onClick={send} disabled={sending || sent} className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand/90 disabled:opacity-60">
-                        {sent ? <><Icon name="check" size={13} strokeWidth={3} /> Sent</> : sending ? "Sending…" : draft.row.channel === "sms" ? "Send SMS" : "Send"}
-                      </button>
+                      draft.row.channel === "call" ? (
+                        <button onClick={logCall} disabled={sending || sent} className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand/90 disabled:opacity-60">
+                          {sent ? <><Icon name="check" size={13} strokeWidth={3} /> Logged</> : sending ? "Logging…" : "Log call"}
+                        </button>
+                      ) : (
+                        <button onClick={send} disabled={sending || sent} className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand/90 disabled:opacity-60">
+                          {sent ? <><Icon name="check" size={13} strokeWidth={3} /> Sent</> : sending ? "Sending…" : draft.row.channel === "sms" ? "Send SMS" : "Send email"}
+                        </button>
+                      )
                     )}
                   </div>
                 </div>
