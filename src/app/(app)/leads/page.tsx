@@ -1,6 +1,7 @@
 import { getLeadRows } from "@/lib/queries";
 import { getOrgSettings } from "@/lib/org";
 import { getIndustry } from "@/lib/industries";
+import { sequencesFor } from "@/lib/sequences";
 import { PageHeader } from "@/components/ui";
 import { LeadsTable } from "@/components/LeadsTable";
 
@@ -8,7 +9,9 @@ export const dynamic = "force-dynamic";
 
 export default async function LeadsPage() {
   const { rows, owners, valueLabel } = await getLeadRows();
-  const industry = getIndustry((await getOrgSettings()).industryId);
+  const org = await getOrgSettings();
+  const industry = getIndustry(org.industryId);
+  const sequences = sequencesFor(org.industryId).map((s) => ({ id: s.id, name: s.name }));
   return (
     <div>
       <PageHeader
@@ -24,7 +27,7 @@ export default async function LeadsPage() {
           </a>
         }
       />
-      <LeadsTable rows={rows} owners={owners} valueLabel={valueLabel} />
+      <LeadsTable rows={rows} owners={owners} valueLabel={valueLabel} sequences={sequences} />
     </div>
   );
 }

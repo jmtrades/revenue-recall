@@ -205,6 +205,12 @@ function resolveTargets(scope: string, pipelines: Pipeline[], opps: Opportunity[
     const opp = opps.find((o) => o.id === scope.slice(5));
     return opp ? [{ opp, contactId: opp.contactId }] : [];
   }
+  if (scope.startsWith("contacts:")) {
+    // Bulk: a comma-separated list of contact ids (e.g. the Leads table's
+    // selection). Capped at MAX like every other scope.
+    const ids = scope.slice(9).split(",").map((s) => s.trim()).filter(Boolean).slice(0, MAX);
+    return ids.map((contactId) => ({ contactId }));
+  }
   if (scope.startsWith("contact:")) {
     return [{ contactId: scope.slice(8) }];
   }
@@ -213,8 +219,8 @@ function resolveTargets(scope: string, pipelines: Pipeline[], opps: Opportunity[
 
 /**
  * Enroll one or many deals/contacts into a sequence. `scope` accepts the same
- * vocabulary as Autopilot (recall_queue | all_open | deal:<id> | contact:<id>).
- * Skips anyone already actively enrolled in this sequence.
+ * vocabulary as Autopilot (recall_queue | all_open | deal:<id> | contact:<id> |
+ * contacts:<id,id,…>). Skips anyone already actively enrolled in this sequence.
  */
 export async function enroll(sequenceId: string, scope: string): Promise<EnrollResult> {
   const seq = getSequence(sequenceId);
