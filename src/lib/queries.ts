@@ -9,6 +9,7 @@ import { MAX_CALL_ATTEMPTS } from "@/lib/calls/retry";
 import { hasOptedOut } from "@/lib/agent/guardrails";
 import { listEnrollments } from "@/lib/cadence";
 import { listRecallTouches, earliestTouchByDeal, touchesByWeek } from "@/lib/recall/events";
+import { listSnoozedOppIds } from "@/lib/recall/snooze";
 import type { Activity, Contact, Opportunity, Pipeline, Stage, User } from "@/lib/crm/types";
 import { normalizeLeadStatus, type LeadStatus } from "@/lib/crm/lead-status";
 
@@ -120,7 +121,10 @@ export async function getRecallQueue(): Promise<{ items: RecallItem[]; summary: 
     else actsByContact.set(a.contactId, [a]);
   }
   // Never surface an opted-out contact in the recall worklist.
-  const items = dropOptedOutRecall(buildRecallQueue(opportunities, pipelines, activitiesByOpp, thresholds), oppById, cById, actsByContact);
+  const live = dropOptedOutRecall(buildRecallQueue(opportunities, pipelines, activitiesByOpp, thresholds), oppById, cById, actsByContact);
+  // Drop deals the user has snoozed (graceful: empty set without a DB / table).
+  const snoozed = await listSnoozedOppIds();
+  const items = snoozed.size ? live.filter((it) => !snoozed.has(it.opportunityId)) : live;
   const currency = opportunities[0]?.currency ?? "USD";
   return { items, summary: summarizeRecall(items, currency), contacts: cById, opps: oppById };
 }
