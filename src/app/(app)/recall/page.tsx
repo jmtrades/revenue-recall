@@ -1,6 +1,6 @@
 import { getRecallQueue, getRecallOutcomes } from "@/lib/queries";
 import { money } from "@/lib/format";
-import { PageHeader, Stat } from "@/components/ui";
+import { PageHeader, Stat, EmptyState, Button } from "@/components/ui";
 import { MiniLegendBar } from "@/components/charts";
 import { RecallQueue, type RecallRow } from "@/components/RecallQueue";
 import type { Contact } from "@/lib/crm/types";
@@ -42,6 +42,27 @@ export default async function RecallPage() {
     { label: "Winnable losses", value: summary.byReason.lost_winnable.count, color: "rgb(var(--brand-rgb))" },
     { label: "Untouched", value: summary.byReason.no_activity.count, color: "#8a93a6" },
   ].filter((s) => s.value > 0);
+
+  // Fresh workspace (no at-risk deals AND nothing recalled yet): explain the
+  // flagship value instead of showing "$0 recoverable" + "Nothing here right now".
+  if (rows.length === 0 && outcomes.recalled === 0) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Revenue Recall" subtitle="Deals slipping away, ranked by recoverable revenue and urgency." />
+        <EmptyState
+          iconName="recall"
+          title="Nothing slipping — yet"
+          hint="Revenue Recall watches your pipeline for deals going cold, stalling, or no-showing, then ranks them by recoverable revenue with a next-best action for each. Import your leads (or connect your CRM) and we'll surface what's at risk."
+          action={
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button href="/settings?tab=import">Import leads</Button>
+              <Button href="/settings?tab=integrations" variant="outline">Connect your CRM</Button>
+            </div>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

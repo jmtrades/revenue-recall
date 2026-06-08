@@ -1,6 +1,6 @@
 import { getForecast } from "@/lib/queries";
 import { compactMoney, money } from "@/lib/format";
-import { PageHeader, Stat, Card } from "@/components/ui";
+import { PageHeader, Stat, Card, EmptyState, Button } from "@/components/ui";
 import { MiniLegendBar, ProgressRing } from "@/components/charts";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +9,26 @@ export default async function ForecastPage() {
   const f = await getForecast();
   const attainment = f.quota > 0 ? f.weighted / f.quota : 0;
   const maxStage = Math.max(1, ...f.byStage.map((s) => s.value));
+
+  // No open deals yet → a wall of $0 reads as "broken", not "empty". Guide instead.
+  if (f.byStage.every((s) => s.count === 0)) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Forecast" subtitle="Where revenue will land — commit, best case, and full pipeline." />
+        <EmptyState
+          iconName="forecast"
+          title="No forecast yet"
+          hint="Your weighted forecast appears here once you have open deals — we project where revenue lands across commit, best case, and full pipeline. Import your leads or add a deal to get started."
+          action={
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button href="/settings?tab=import">Import leads</Button>
+              <Button href="/leads" variant="outline">View leads</Button>
+            </div>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
