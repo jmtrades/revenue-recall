@@ -52,6 +52,9 @@ import { InboundWebhooks, type InboundUrl } from "@/components/InboundWebhooks";
 import { hostedFormUrl, formEmbedSnippet } from "@/lib/forms";
 import { inboundWebhookUrl, type InboundKind } from "@/lib/inbound-routing";
 import { listInvites } from "@/lib/invites-server";
+import { listMembers } from "@/lib/members-server";
+import { getSessionRole } from "@/lib/authz";
+import { MembersList } from "@/components/MembersList";
 
 export const dynamic = "force-dynamic";
 
@@ -278,21 +281,29 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
     </Card>
   );
 
-  const invites = await listInvites();
+  const [invites, members, viewerRole] = await Promise.all([listInvites(), listMembers(), getSessionRole()]);
   const teamTab = (
     <Card>
-      <p className="stat-label">Members</p>
-      <ul className="mt-2 divide-y divide-border">
-        {users.map((u) => (
-          <li key={u.id} className="flex items-center gap-3 py-3">
-            <Avatar name={u.name} size={36} />
-            <div>
-              <div className="text-sm font-medium text-fg">{u.name}</div>
-              <div className="text-xs text-muted">{u.email ?? "—"}</div>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {org.persisted && members.length > 0 ? (
+        // Live workspace: roster you can manage (change role / remove), scoped by permission.
+        <MembersList initial={members} viewerRole={viewerRole} />
+      ) : (
+        // Demo / no database yet: read-only roster from the connected provider.
+        <>
+          <p className="stat-label">Members</p>
+          <ul className="mt-2 divide-y divide-border">
+            {users.map((u) => (
+              <li key={u.id} className="flex items-center gap-3 py-3">
+                <Avatar name={u.name} size={36} />
+                <div>
+                  <div className="text-sm font-medium text-fg">{u.name}</div>
+                  <div className="text-xs text-muted">{u.email ?? "—"}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       <div className="mt-5 border-t border-border pt-5">
         <TeamInvites initial={invites} persisted={org.persisted} />
       </div>
