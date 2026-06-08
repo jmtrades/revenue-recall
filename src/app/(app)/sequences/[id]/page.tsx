@@ -2,14 +2,34 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSequence } from "@/lib/sequences";
 import { INDUSTRIES } from "@/lib/industries";
+import { listEnrollments } from "@/lib/cadence";
+import { getProvider } from "@/lib/crm/registry";
 import { PageHeader, Card, ChannelBadge, Stat } from "@/components/ui";
 import { EnrollSequence } from "@/components/EnrollSequence";
+import { EnrollmentList, type EnrollmentRow } from "@/components/EnrollmentList";
 
 export const dynamic = "force-dynamic";
 
-export default function SequenceDetailPage({ params }: { params: { id: string } }) {
+export default async function SequenceDetailPage({ params }: { params: { id: string } }) {
   const seq = getSequence(params.id);
   if (!seq) notFound();
+
+  // Who's actively working through THIS cadence right now — so enrolling isn't
+  // fire-and-forget with no way to see progress or pull someone out.
+  const active = (await listEnrollments("active").catch(() => [])).filter((e) => e.sequenceId === seq.id);
+  let enrollmentRows: EnrollmentRow[] = [];
+  if (active.length > 0) {
+    const contacts = await getProvider().listContacts().catch(() => []);
+    const nameById = new Map(contacts.map((c) => [c.id, c.name]));
+    enrollmentRows = active.map((e) => ({
+      id: e.id,
+      contactName: nameById.get(e.contactId) ?? "Contact",
+      stepIndex: e.stepIndex,
+      totalSteps: seq.steps.length,
+      nextDueAt: e.nextDueAt,
+      dealId: e.dealId,
+    }));
+  }
 
   const channels = [...new Set(seq.steps.map((s) => s.channel))];
   const span = Math.max(...seq.steps.map((s) => s.day));
@@ -39,6 +59,10 @@ export default function SequenceDetailPage({ params }: { params: { id: string } 
           drop out automatically.
         </p>
         <EnrollSequence sequenceId={seq.id} />
+      </Card>
+
+      <Card title={`In this cadence${enrollmentRows.length ? ` · ${enrollmentRows.length}` : ""}`}>
+        <EnrollmentList initial={enrollmentRows} />
       </Card>
 
       <Card title="Cadence">
