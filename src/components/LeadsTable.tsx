@@ -20,7 +20,7 @@ export interface LeadRow {
   status?: LeadStatus;
 }
 
-export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owners: string[]; valueLabel: string }) {
+export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows: LeadRow[]; owners: string[]; valueLabel: string; sequences?: { id: string; name: string }[] }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [owner, setOwner] = useState("");
@@ -30,6 +30,9 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<LeadStatus | "">("");
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkSeq, setBulkSeq] = useState("");
+  const [enrollBusy, setEnrollBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // "High value" = the top quartile of THIS pipeline's deal values, so the
@@ -87,6 +90,8 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
   async function applyBulkStatus() {
     if (!bulkStatus || selected.size === 0) return;
     setBulkBusy(true);
+    setError(null);
+    setNote(null);
     try {
       const res = await fetch("/api/contacts/bulk", {
         method: "POST",
@@ -104,6 +109,34 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
       setError("Couldn't update the selected leads — try again.");
     } finally {
       setBulkBusy(false);
+    }
+  }
+
+  async function enrollSelected() {
+    if (!bulkSeq || selected.size === 0) return;
+    setEnrollBusy(true);
+    setError(null);
+    setNote(null);
+    try {
+      // One request — the API caps a bulk scope at 50, the same as the selection
+      // would realistically be worked.
+      const res = await fetch("/api/sequences/enroll", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sequenceId: bulkSeq, scope: `contacts:${[...selected].join(",")}` }),
+      });
+      const b = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(b.error ?? "Couldn't enroll the selected leads.");
+      const enrolled = typeof b.enrolled === "number" ? b.enrolled : selected.size;
+      const skipped = typeof b.skipped === "number" && b.skipped > 0 ? ` · ${b.skipped} already in it` : "";
+      setNote(`Enrolled ${enrolled} ${enrolled === 1 ? "lead" : "leads"}${skipped}. Follow-ups will send automatically.`);
+      setSelected(new Set());
+      setBulkSeq("");
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't enroll the selected leads.");
+    } finally {
+      setEnrollBusy(false);
     }
   }
 
@@ -183,9 +216,33 @@ export function LeadsTable({ rows, owners, valueLabel }: { rows: LeadRow[]; owne
           >
             {bulkBusy ? "Applying…" : `Apply to ${selected.size}`}
           </button>
+          {sequences.length > 0 && (
+            <>
+              <span className="h-4 w-px bg-border" aria-hidden />
+              <select
+                value={bulkSeq}
+                onChange={(e) => setBulkSeq(e.target.value)}
+                className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-fg outline-none focus:border-brand"
+                aria-label="Bulk enroll in sequence"
+              >
+                <option value="">Add to sequence…</option>
+                {sequences.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={enrollSelected}
+                disabled={!bulkSeq || enrollBusy}
+                className="rounded-md border border-border px-3 py-1 text-xs font-medium text-fg transition hover:border-brand disabled:opacity-50"
+              >
+                {enrollBusy ? "Enrolling…" : "Enroll"}
+              </button>
+            </>
+          )}
           <button onClick={() => setSelected(new Set())} className="text-xs text-muted hover:text-fg">Clear</button>
         </div>
       )}
+      {note && <p className="mb-3 rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm text-success">{note}</p>}
 
       <div className="card p-0">
         <table className="w-full text-sm">
