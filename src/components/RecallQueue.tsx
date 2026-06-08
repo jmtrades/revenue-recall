@@ -46,7 +46,10 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
   const [filter, setFilter] = useState("all");
   const [draft, setDraft] = useState<DraftState | null>(null);
   const [copied, setCopied] = useState(false);
-  const filtered = filter === "all" ? rows : rows.filter((r) => r.reason === filter);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [snoozingId, setSnoozingId] = useState<string | null>(null);
+  const visible = rows.filter((r) => !hidden.has(r.opportunityId));
+  const filtered = filter === "all" ? visible : visible.filter((r) => r.reason === filter);
 
   // Close the draft modal on Escape.
   useEffect(() => {
@@ -72,6 +75,27 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
       setDraft({ row, subject: b.subject, body: b.body, source: b.source, busy: false });
     } catch (e) {
       setDraft({ row, body: e instanceof Error ? e.message : "Draft failed", source: "error", busy: false });
+    }
+  }
+
+  // Mute a deal in the queue for a while so it stops nagging (it returns when
+  // the snooze lapses). Optimistically hide the row; the refresh reconciles.
+  async function snooze(row: RecallRow, days: number) {
+    setSnoozingId(row.opportunityId);
+    try {
+      const res = await fetch("/api/recall/snooze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ opportunityId: row.opportunityId, days }),
+      });
+      if (res.ok) {
+        setHidden((h) => new Set(h).add(row.opportunityId));
+        router.refresh();
+      }
+    } catch {
+      /* leave it visible; a refresh will reconcile */
+    } finally {
+      setSnoozingId(null);
     }
   }
 
@@ -204,6 +228,14 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
                         className="inline-flex items-center gap-1 rounded-lg border border-brand/40 bg-brand-soft/30 px-2 py-0.5 text-xs font-medium text-brand transition hover:bg-brand-soft/50"
                       >
                         <Icon name="autopilot" size={12} /> Draft
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); snooze(r, 7); }}
+                        disabled={snoozingId === r.opportunityId}
+                        title="Mute this deal in the queue for a week"
+                        className="rounded-lg border border-border px-2 py-0.5 text-xs text-muted transition hover:text-fg disabled:opacity-50"
+                      >
+                        {snoozingId === r.opportunityId ? "Snoozing…" : "Snooze 7d"}
                       </button>
                     </div>
                     <p className="max-w-md text-xs leading-relaxed text-muted">{r.recommendation}</p>
