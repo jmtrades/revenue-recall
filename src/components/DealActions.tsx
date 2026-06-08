@@ -29,6 +29,9 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
   const [variations, setVariations] = useState<{ subject?: string; body: string }[]>([]);
 
   const canDraft = kind === "email" || kind === "sms" || kind === "call";
+  // Email/SMS can actually be DELIVERED (not just logged) — the deal page used to
+  // only "Log activity", which wrote a "sent" timeline entry without sending.
+  const canSend = kind === "email" || kind === "sms";
 
   async function draft(opts: { count?: number; scenario?: "voicemail" | "breakup" | "referral" | "recap" | "renewal" | "reschedule" } = {}) {
     const count = opts.count ?? 1;
@@ -81,6 +84,30 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
     });
     if (!res.ok) setError((await res.json().catch(() => ({}))).error ?? "Move failed");
     else startTransition(() => router.refresh());
+  }
+
+  async function send() {
+    if (!summary.trim() || !canSend) return;
+    setBusy(true);
+    setError(null);
+    try {
+      // The same delivery path the recall queue uses — it sends AND logs the
+      // activity on success, honoring opt-outs and dedup.
+      const res = await fetch(`/api/messages/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: kind, dealId, subject: kind === "email" ? subject || undefined : undefined, body: summary }),
+      });
+      const b = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(b.error ?? "Send failed");
+      setSummary("");
+      setSubject("");
+      startTransition(() => router.refresh());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Send failed");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function log() {
@@ -218,13 +245,33 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
             <SpeakButton text={summary} label="Hear it" />
           </div>
         )}
-        <button
-          onClick={log}
-          disabled={busy || !summary.trim()}
-          className="mt-2 w-full rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
-        >
-          {busy ? "Saving…" : "Log activity"}
-        </button>
+        {canSend ? (
+          <div className="mt-2 flex gap-2">
+            <button
+              onClick={send}
+              disabled={busy || !summary.trim()}
+              className="flex-1 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
+            >
+              {busy ? "Sending…" : `Send ${kind === "email" ? "email" : "text"}`}
+            </button>
+            <button
+              onClick={log}
+              disabled={busy || !summary.trim()}
+              title="Record it on the timeline without sending"
+              className="rounded-lg border border-border px-3 py-2 text-sm text-muted transition hover:text-fg disabled:opacity-50"
+            >
+              Log only
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={log}
+            disabled={busy || !summary.trim()}
+            className="mt-2 w-full rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
+          >
+            {busy ? "Saving…" : "Log activity"}
+          </button>
+        )}
       </div>
 
       {error && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">{error}</p>}
