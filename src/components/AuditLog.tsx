@@ -13,6 +13,8 @@ interface Event {
 const LABELS: Record<string, string> = {
   "invite.created": "Invited teammate(s)",
   "invite.revoked": "Revoked an invite",
+  "member.role_changed": "Changed a member's role",
+  "member.removed": "Removed a member",
   "billing.checkout_started": "Started checkout",
   "billing.portal_opened": "Opened billing portal",
   "org.settings_updated": "Updated workspace settings",
