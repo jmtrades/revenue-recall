@@ -2,9 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDealDetail } from "@/lib/queries";
 import { getProvider } from "@/lib/crm/registry";
+import { getOrgSettings } from "@/lib/org";
+import { sequencesFor } from "@/lib/sequences";
 import { money, relativeDays } from "@/lib/format";
 import { Card, Avatar, InfoRow, ActivityIcon, EmptyState } from "@/components/ui";
 import { DealActions } from "@/components/DealActions";
+import { EnrollPicker } from "@/components/EnrollPicker";
 import { AiBrief } from "@/components/AiBrief";
 import { contactInsights } from "@/lib/insights";
 import { getLanguage, toLanguageCode } from "@/lib/languages";
@@ -20,6 +23,7 @@ export default async function DealPage({ params }: { params: { id: string } }) {
   if (!detail) notFound();
   const { opp, contact, owner, pipeline, stage, activities, fields } = detail;
   const canWrite = getProvider().info().capabilities.write;
+  const sequences = sequencesFor((await getOrgSettings()).industryId).map((s) => ({ id: s.id, name: s.name }));
   const openStages = pipeline.stages.filter((s) => s.type === "open");
   const currentIdx = openStages.findIndex((s) => s.id === stage?.id);
   const insights = contactInsights(activities);
@@ -91,6 +95,13 @@ export default async function DealPage({ params }: { params: { id: string } }) {
           <Card>
             <DealActions dealId={opp.id} stages={pipeline.stages} currentStageId={opp.stageId} canWrite={canWrite} />
           </Card>
+
+          {canWrite && sequences.length > 0 && (
+            <Card title="Add to a sequence">
+              <p className="mb-3 text-sm text-muted">Hand this deal to a cadence — each step sends on its day until they reply or close.</p>
+              <EnrollPicker scope={`deal:${opp.id}`} sequences={sequences} />
+            </Card>
+          )}
 
           {contact && (
             <Card title="Contact">
