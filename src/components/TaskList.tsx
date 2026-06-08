@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { TaskItem } from "@/lib/queries";
-import { ChannelBadge, EmptyState } from "@/components/ui";
+import { ChannelBadge, EmptyState, Button } from "@/components/ui";
 import { Icon } from "@/components/icons";
 
 const PRIORITY: Record<string, string> = {
@@ -64,7 +64,12 @@ export function TaskList({ tasks }: { tasks: TaskItem[] }) {
           ),
       )}
       {tasks.length === 0 && (
-        <EmptyState iconName="tasks" title="All caught up" hint="No tasks need your attention right now. New follow-ups appear here as deals progress and Autopilot works your pipeline." />
+        <EmptyState
+          iconName="tasks"
+          title="No tasks right now"
+          hint="Tasks are generated automatically from deals that need a follow-up. As you add deals — and Autopilot works your pipeline — your prioritized next actions show up here."
+          action={<Button href="/settings?tab=import">Import leads</Button>}
+        />
       )}
     </div>
   );

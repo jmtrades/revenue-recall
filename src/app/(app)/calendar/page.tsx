@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getCalendar } from "@/lib/queries";
 import { getOrgSettings } from "@/lib/org";
 import { calendarFeedUrl } from "@/lib/calendar-feed";
-import { PageHeader, Card } from "@/components/ui";
+import { PageHeader, Card, EmptyState, Button } from "@/components/ui";
 import { CalendarSubscribe } from "@/components/CalendarSubscribe";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +36,24 @@ export default async function CalendarPage() {
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   const agenda = events.slice(0, 20);
+
+  if (events.length === 0) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Calendar"
+          subtitle={now.toLocaleString("en-US", { month: "long", year: "numeric" })}
+          action={feedUrl ? <CalendarSubscribe feedUrl={feedUrl} /> : undefined}
+        />
+        <EmptyState
+          iconName="calendar"
+          title="Your calendar fills itself"
+          hint="Target close dates and AI-scheduled follow-ups appear here automatically as you add deals and work your recall queue — and you can subscribe to it from your own calendar app. Import your leads to get started."
+          action={<Button href="/settings?tab=import">Import leads</Button>}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
