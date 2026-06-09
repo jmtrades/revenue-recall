@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { recordAudit } from "@/lib/audit";
 import { getSessionUser } from "@/lib/auth";
 import { resolveProvider } from "@/lib/crm/registry";
 import { getActiveVoice } from "@/lib/voice";
@@ -22,6 +23,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
+  await recordAudit("data.exported");
   const provider = (await resolveProvider());
   try {
     const [org, voice, subscription, contacts, opportunities, activities, pipelines] = await Promise.all([

@@ -33,6 +33,23 @@ export const maxDuration = 300;
  * it's spoofable on non-Vercel hosts (e.g. Render), so it must never be the only
  * gate once a secret exists.
  */
+/**
+ * Dead-man's switch: ping a heartbeat URL (healthchecks.io / Better Uptime
+ * style) after each successful platform tick. The monitor alerts when pings
+ * STOP — catching the failure mode in-run alerting can't see: the cron not
+ * firing at all (schedule disabled, broken deploy, CRON_SECRET mismatch).
+ * Best-effort; never affects the tick.
+ */
+async function heartbeat(ok: boolean): Promise<void> {
+  const url = process.env.CRON_HEARTBEAT_URL;
+  if (!url || !ok) return;
+  try {
+    await fetch(url, { method: "POST", signal: AbortSignal.timeout(3000) });
+  } catch {
+    /* the monitor alerting on a missed ping IS the signal */
+  }
+}
+
 function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (secret) {
@@ -112,7 +129,9 @@ async function run(req: Request) {
   const ids = await allOrgIds();
   if (!secret || ids.length <= 1) {
     // Single-tenant / demo / no-secret: run the active org inline.
-    return NextResponse.json({ ok: true, orgs: ids.length, ...(await runForCurrentOrg()) });
+    const single = await runForCurrentOrg();
+    await heartbeat(true);
+    return NextResponse.json({ ok: true, orgs: ids.length, ...single });
   }
 
   const origin = url.origin;
@@ -139,6 +158,7 @@ async function run(req: Request) {
   // Alert the operator when one or more tenants' ticks failed (e.g. a 401 after
   // secret rotation, or a 500) so a partial outage is noticed, not buried.
   if (failed > 0) await sendAlert("cron.fanout_partial_failure", { failed, orgs: ids.length, failures: results.filter((r) => r.status !== 200) });
+  await heartbeat(failed === 0);
   return NextResponse.json({ ok: failed === 0, orgs: ids.length, fanned: true, failed, results });
 }
 

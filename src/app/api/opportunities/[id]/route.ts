@@ -3,6 +3,7 @@ import { z } from "zod";
 import { deleteDeal, updateDealRecord, type DealPatch } from "@/lib/deals";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { logError, errMessage } from "@/lib/log";
+import { recordAudit } from "@/lib/audit";
 
 const PatchBody = z
   .object({
@@ -55,6 +56,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       if (result.reason === "not_found") return NextResponse.json({ error: "Deal not found" }, { status: 404 });
       return NextResponse.json({ error: "This CRM doesn't support deleting deals here." }, { status: 409 });
     }
+    await recordAudit("deal.deleted", params.id);
     return NextResponse.json({ ok: true });
   } catch (err) {
     logError("deals.delete.failed", { error: errMessage(err) });

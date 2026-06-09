@@ -2,6 +2,7 @@ import { cache } from "@/lib/cache";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
+import { isEntitled } from "@/lib/billing/enforce";
 
 export interface Voice {
   senderName?: string;
@@ -57,7 +58,8 @@ Write 5-9 short bullet points. Be specific and imitable. Do NOT repeat the sampl
 const SCHEMA = { type: "object", additionalProperties: false, properties: { profile: { type: "string" } }, required: ["profile"] };
 
 async function distill(input: { senderName?: string; role?: string; samples: string }): Promise<string> {
-  if (!isAiConfigured() || !input.samples.trim()) return input.samples.trim();
+  // Live AI is a paid entitlement — without it the raw samples ARE the profile.
+  if (!isAiConfigured() || !input.samples.trim() || !(await isEntitled("aiLive"))) return input.samples.trim();
   try {
     const out = await completeJson<{ profile: string }>({
       system: DISTILL_SYSTEM,

@@ -11,7 +11,7 @@ import { contactPreferredLanguage } from "@/lib/languages";
 import { buildRecallQueue, scoreOpportunity, type RecallThresholds } from "@/lib/recall/engine";
 import { draftMessage } from "@/lib/ai/draft";
 import { isAiConfigured } from "@/lib/ai/client";
-import { enforcementOn } from "@/lib/billing/enforce";
+import { enforcementOn, isEntitled } from "@/lib/billing/enforce";
 import { isWithinActionAllowance } from "@/lib/ai/usage";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { createOutboxItem } from "@/lib/agent/store";
@@ -313,7 +313,10 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
   // Batch is a CHEAPER way to spend the same monthly action pool, not a way
   // around it — so when the pool is exhausted, fall back to the synchronous draft
   // path (which template-falls-back under enforcement), exactly like a sync draft.
-  const batchMode = process.env.SEQUENCE_BATCH === "true" && isAiConfigured() && (!enforcementOn() || (await isWithinActionAllowance()));
+  // Batch is gated like every live-AI path: plans without the aiLive
+  // entitlement fall through to the synchronous draft (which template-falls-back
+  // under enforcement) instead of getting live batch drafting for free.
+  const batchMode = process.env.SEQUENCE_BATCH === "true" && isAiConfigured() && (await isEntitled("aiLive")) && (!enforcementOn() || (await isWithinActionAllowance()));
   const batchRequests: BatchDraftRequest[] = [];
 
   // Serialize cadence sending per org: two overlapping cron runs (a scheduled
