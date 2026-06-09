@@ -232,6 +232,23 @@ export class SupabaseProvider implements CrmProvider {
     return opp;
   }
 
+  async updateOpportunity(id: Id, patch: Partial<Pick<Opportunity, "title" | "value" | "expectedCloseAt">>): Promise<Opportunity> {
+    const orgId = await this.orgId();
+    const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.title !== undefined) row.title = patch.title;
+    if (patch.value !== undefined) row.value = patch.value;
+    if (patch.expectedCloseAt !== undefined) row.expected_close_at = patch.expectedCloseAt;
+    const { data, error } = await this.client
+      .from("opportunities")
+      .update(row)
+      .eq("org_id", orgId)
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return mapOpportunity(data as OpportunityRow);
+  }
+
   async deleteOpportunity(id: Id): Promise<void> {
     const orgId = await this.orgId();
     // activities.opportunity_id and agent_outbox.deal_id both ON DELETE CASCADE;
