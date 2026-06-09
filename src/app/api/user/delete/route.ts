@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase/client";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
+import { planAccountDeletion } from "@/lib/account-deletion";
 import { logInfo, logError, errMessage } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
@@ -35,8 +36,13 @@ export async function POST(req: Request) {
     const { data: members } = await admin.from("members").select("org_id, role").eq("auth_user_id", user.id).limit(1);
     const member = members?.[0] as { org_id?: string; role?: string } | undefined;
     if (member?.org_id) {
-      if (member.role === "owner") {
-        await admin.from("orgs").delete().eq("id", member.org_id); // cascades all org data + members
+      // Never cascade-delete a shared workspace out from under its other members.
+      const { data: orgMembers } = await admin.from("members").select("auth_user_id, role").eq("org_id", member.org_id);
+      const others = ((orgMembers ?? []) as { auth_user_id: string; role: string }[]).filter((m) => m.auth_user_id !== user.id);
+      const plan = planAccountDeletion(member.role, others);
+      if (plan.action === "block") return NextResponse.json({ error: plan.reason }, { status: 409 });
+      if (plan.action === "delete_org") {
+        await admin.from("orgs").delete().eq("id", member.org_id); // sole member → cascades their data only
       } else {
         await admin.from("members").delete().eq("auth_user_id", user.id).eq("org_id", member.org_id);
       }

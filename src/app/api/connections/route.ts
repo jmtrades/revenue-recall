@@ -20,6 +20,11 @@ const Body = z.object({
 });
 
 export async function GET() {
+  // Integration topology (which CRM/database/social providers are connected and
+  // their account refs) is owner/admin-only — a rep has no need to enumerate it,
+  // matching the POST/DELETE gating below.
+  const denied = await requireRole("owner", "admin");
+  if (denied) return denied;
   const conns = await listConnections();
   // Sanitized: report which fields are set, not their values.
   const out = conns.map((c) => ({

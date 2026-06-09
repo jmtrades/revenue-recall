@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Avatar, EmptyState, Button } from "@/components/ui";
 import { money } from "@/lib/format";
 import { LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_STATUS_TONE, type LeadStatus } from "@/lib/crm/lead-status";
@@ -351,13 +352,15 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
                   <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} aria-label={`Select ${r.name}`} className="accent-brand" />
                 </td>
                 <td className="px-4 py-3">
-                  <span className="flex items-center gap-2">
+                  {/* Real link so the row is reachable + openable by keyboard and
+                      announced to screen readers (the <tr> onClick is mouse-only). */}
+                  <Link href={`/leads/${r.id}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-2 rounded outline-none focus-visible:ring-2 focus-visible:ring-brand">
                     <Avatar name={r.name} size={28} />
                     <span>
                       <span className="block font-medium text-fg">{r.name}</span>
                       <span className="block text-xs text-muted">{r.email}</span>
                     </span>
-                  </span>
+                  </Link>
                 </td>
                 <td className="px-4 py-3 text-muted">{r.company || "—"}</td>
                 <td className="px-4 py-3"><span className="pill bg-surface-2 text-muted">{r.stage}</span></td>
