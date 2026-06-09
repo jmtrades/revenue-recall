@@ -66,8 +66,8 @@ export function TaskList({ tasks }: { tasks: TaskItem[] }) {
       {tasks.length === 0 && (
         <EmptyState
           iconName="tasks"
-          title="No tasks right now"
-          hint="Tasks are generated automatically from deals that need a follow-up. As you add deals — and Autopilot works your pipeline — your prioritized next actions show up here."
+          title="No auto-generated tasks yet"
+          hint="These are generated automatically from deals that need a follow-up — as you add deals and Autopilot works your pipeline, your prioritized next actions show up here. Need a one-off? Add it under “Your tasks” above."
           action={<Button href="/settings?tab=import">Import leads</Button>}
         />
       )}
