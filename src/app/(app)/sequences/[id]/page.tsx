@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getSequence } from "@/lib/sequences";
+import { resolveSequence } from "@/lib/sequences-store";
 import { INDUSTRIES } from "@/lib/industries";
 import { listEnrollments } from "@/lib/cadence";
 import { resolveProvider } from "@/lib/crm/registry";
@@ -11,7 +11,7 @@ import { EnrollmentList, type EnrollmentRow } from "@/components/EnrollmentList"
 export const dynamic = "force-dynamic";
 
 export default async function SequenceDetailPage({ params }: { params: { id: string } }) {
-  const seq = getSequence(params.id);
+  const seq = await resolveSequence(params.id);
   if (!seq) notFound();
 
   // Who's actively working through THIS cadence right now — so enrolling isn't

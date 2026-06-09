@@ -1,7 +1,7 @@
 import { getLeadRows } from "@/lib/queries";
 import { getOrgSettings } from "@/lib/org";
 import { getIndustry } from "@/lib/industries";
-import { sequencesFor } from "@/lib/sequences";
+import { allSequencesFor } from "@/lib/sequences-store";
 import { PageHeader } from "@/components/ui";
 import { LeadsTable } from "@/components/LeadsTable";
 
@@ -11,7 +11,7 @@ export default async function LeadsPage() {
   const { rows, owners, valueLabel } = await getLeadRows();
   const org = await getOrgSettings();
   const industry = getIndustry(org.industryId);
-  const sequences = sequencesFor(org.industryId).map((s) => ({ id: s.id, name: s.name }));
+  const sequences = (await allSequencesFor(org.industryId)).map((s) => ({ id: s.id, name: s.name }));
   return (
     <div>
       <PageHeader

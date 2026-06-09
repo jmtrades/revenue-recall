@@ -18,7 +18,8 @@ import { createOutboxItem } from "@/lib/agent/store";
 import { hasOptedOut, quietHoursNow } from "@/lib/agent/guardrails";
 import { batchActivities } from "@/lib/crm/activities";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
-import { getSequence } from "@/lib/sequences";
+import {  } from "@/lib/sequences";
+import { resolveSequence } from "@/lib/sequences-store";
 import { recordRecallTouch } from "@/lib/recall/events";
 import { submitDraftBatch, collectBatch, listPendingBatches, markBatchCollected, type BatchDraftRequest } from "@/lib/ai/batch";
 import type { Contact, Opportunity, Pipeline } from "@/lib/crm/types";
@@ -243,7 +244,7 @@ function resolveTargets(scope: string, pipelines: Pipeline[], opps: Opportunity[
  * contacts:<id,id,…>). Skips anyone already actively enrolled in this sequence.
  */
 export async function enroll(sequenceId: string, scope: string): Promise<EnrollResult> {
-  const seq = getSequence(sequenceId);
+  const seq = await resolveSequence(sequenceId);
   if (!seq) throw new Error(`Unknown sequence: ${sequenceId}`);
   if (seq.steps.length === 0) throw new Error("Sequence has no steps");
 
@@ -337,7 +338,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
   const result: CadenceTickResult = { due: due.length, processed: 0, sent: 0, queued: 0, completed: 0, stopped: 0, skipped: 0, batched: 0 };
 
   for (const e of due) {
-    const seq = getSequence(e.sequenceId);
+    const seq = await resolveSequence(e.sequenceId);
     if (!seq || e.stepIndex >= seq.steps.length) {
       await updateEnrollment(e.id, { status: "completed" });
       result.completed += 1;

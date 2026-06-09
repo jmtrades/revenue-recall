@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getDealDetail } from "@/lib/queries";
 import { resolveProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
-import { sequencesFor } from "@/lib/sequences";
+import { allSequencesFor } from "@/lib/sequences-store";
 import { money, relativeDays } from "@/lib/format";
 import { Card, Avatar, InfoRow, ActivityIcon, EmptyState } from "@/components/ui";
 import { DealActions } from "@/components/DealActions";
@@ -30,7 +30,7 @@ export default async function DealPage({ params }: { params: { id: string } }) {
   const canWrite = provider.info().capabilities.write;
   const canEdit = canWrite && typeof provider.updateOpportunity === "function";
   const canDelete = canWrite && typeof provider.deleteOpportunity === "function";
-  const sequences = sequencesFor((await getOrgSettings()).industryId).map((s) => ({ id: s.id, name: s.name }));
+  const sequences = (await allSequencesFor((await getOrgSettings()).industryId)).map((s) => ({ id: s.id, name: s.name }));
   const openStages = pipeline.stages.filter((s) => s.type === "open");
   const currentIdx = openStages.findIndex((s) => s.id === stage?.id);
   const insights = contactInsights(activities);
