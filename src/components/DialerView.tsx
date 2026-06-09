@@ -57,6 +57,9 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
   const [saved, setSaved] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [briefError, setBriefError] = useState<string | null>(null);
+  // The rep's outcome pick ("" = let AI infer from the notes). Overrides the AI
+  // guess so a voicemail never gets logged as "Connected".
+  const [outcome, setOutcome] = useState("");
 
   const active = queue[idx];
   const remaining = queue.filter((q) => !done[q.dealId]).length;
@@ -75,6 +78,7 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
     setSummary(null);
     setSaved(false);
     setSummaryError(null);
+    setOutcome("");
   }
 
   async function loadBrief() {
@@ -114,10 +118,20 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
 
   async function endCall() {
     if (!active) return;
+    // Require a note OR an explicit outcome — otherwise an empty call would log a
+    // guessed outcome onto the timeline and skew the retry signal.
+    if (!notes.trim() && !outcome) {
+      setSummaryError("Add a note or pick an outcome before logging the call.");
+      return;
+    }
     setSummarizing(true);
     setSummaryError(null);
     try {
-      const res = await fetch("/api/ai/call-summary", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dealId: active.dealId, notes }) });
+      const res = await fetch("/api/ai/call-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealId: active.dealId, notes, outcome: outcome || undefined }),
+      });
       if (!res.ok) {
         // Don't log a garbage "[undefined] undefined" activity or mark the call
         // done on a failed summary — surface the error and let the rep retry.
@@ -126,15 +140,24 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
         return;
       }
       const s: CallSummary = await res.json();
-      setSummary(s);
-      // Persist to the deal timeline.
-      await fetch(`/api/opportunities/${active.dealId}/activity`, {
+      // The rep's explicit pick always wins over whatever the summary inferred.
+      const finalOutcome = outcome || s.outcome;
+      // Persist to the deal timeline — and surface a failure instead of falsely
+      // showing "logged to timeline" when the write didn't land.
+      const logRes = await fetch(`/api/opportunities/${active.dealId}/activity`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "call", summary: `[${OUTCOME_LABEL[s.outcome] ?? s.outcome}] ${s.summary} — Next: ${s.nextStep}`, direction: "outbound" }),
+        body: JSON.stringify({ kind: "call", summary: `[${OUTCOME_LABEL[finalOutcome] ?? finalOutcome}] ${s.summary} — Next: ${s.nextStep}`, direction: "outbound" }),
       });
+      if (!logRes.ok) {
+        setSummaryError("Summarized, but couldn't log it to the timeline — try again.");
+        return;
+      }
+      setSummary({ ...s, outcome: finalOutcome });
       setSaved(true);
       setDone((d) => ({ ...d, [active.dealId]: true }));
+    } catch {
+      setSummaryError("Couldn't save the call. Check your connection and try again.");
     } finally {
       setSummarizing(false);
     }
@@ -241,6 +264,20 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
               placeholder="Jot down what happened — AI will summarize, set the outcome, and log it."
               className="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
             />
+            <div className="mt-2 flex items-center gap-2">
+              <label htmlFor="call-outcome" className="text-xs text-muted">Outcome</label>
+              <select
+                id="call-outcome"
+                value={outcome}
+                onChange={(e) => setOutcome(e.target.value)}
+                className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-fg outline-none focus:border-brand"
+              >
+                <option value="">Auto-detect from notes</option>
+                {Object.entries(OUTCOME_LABEL).map(([id, label]) => (
+                  <option key={id} value={id}>{label}</option>
+                ))}
+              </select>
+            </div>
             {summaryError && <p className="mt-2 text-sm text-danger">{summaryError}</p>}
             <button onClick={endCall} disabled={summarizing} className="mt-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
               {summarizing ? "Summarizing…" : "End & summarize"}
