@@ -3,6 +3,7 @@ import { getSocialChannel } from "@/lib/social/registry";
 import { ingestSocialMessages } from "@/lib/social/ingest";
 import { findOrgIdByAccount } from "@/lib/connections/store";
 import { runWithOrg } from "@/lib/supabase/org-context";
+import { rateLimit, clientKey } from "@/lib/ratelimit";
 import type { InboundSocialMessage, SocialPlatform } from "@/lib/social/types";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +48,11 @@ export async function POST(req: Request, { params }: { params: { platform: strin
   const platform = params.platform;
   const channel = getSocialChannel(platform);
   if (!channel) return NextResponse.json({ error: "unknown platform" }, { status: 404 });
+  // Cap unauthenticated HMAC-verify + account-lookup work per source (the other
+  // inbound webhooks all rate-limit; this was the one that didn't).
+  if (!rateLimit(clientKey(req, `social:${platform}`), 120, 60_000).ok) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
 
   const rawBody = await req.text();
   const headers: Record<string, string> = {};
