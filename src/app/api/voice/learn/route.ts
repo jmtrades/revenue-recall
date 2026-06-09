@@ -20,7 +20,7 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
-  if (!aiRateLimit(req, "voice-learn").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  if (!(await aiRateLimit(req, "voice-learn")).ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Add a description or a writing sample first." }, { status: 400 });
   const { senderName, role, signature, samples, business, customNextSteps, customReengage, bookingUrl } = parsed.data;

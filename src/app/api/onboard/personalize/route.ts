@@ -16,7 +16,7 @@ const Body = z.object({ description: z.string().min(1).max(2000) });
  * deterministic keyword fallback otherwise — so it always personalizes.
  */
 export const POST = withGuard(async (req: Request) => {
-  if (!aiRateLimit(req, "onboard").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  if (!(await aiRateLimit(req, "onboard")).ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "A short description is required" }, { status: 400 });
 
