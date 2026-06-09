@@ -9,6 +9,7 @@ import { unsubscribeUrl } from "@/lib/unsubscribe";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { createOutboxItem } from "@/lib/agent/store";
 import { fireSpeedToLead } from "@/lib/agent/speed-to-lead";
+import { stopEnrollmentsForContact } from "@/lib/cadence";
 import { emitWebhook } from "@/lib/webhooks-out";
 import { hasOptedOut, isHardOptOut } from "@/lib/agent/guardrails";
 import { markDoNotContact } from "@/lib/opt-out";
@@ -123,6 +124,11 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     occurredAt: new Date().toISOString(),
   });
   await emitMessageReceived(channel, from, body, subject, contact.id, deal?.id, true);
+
+  // They replied — stop any active cadence immediately. Whatever the reply
+  // says (interested, busy, or STOP), the drip must not keep firing at someone
+  // who's now mid-conversation; opt-outs additionally suppress future outreach.
+  await stopEnrollmentsForContact(contact.id);
 
   // Honor opt-out before ANY automated reply (TCPA / CTIA / CAN-SPAM): if this
   // message is a hard opt-out ("STOP", "unsubscribe", …) or the contact already

@@ -8,6 +8,7 @@ import { contactPreferredLanguage } from "@/lib/languages";
 import { sendReply } from "@/lib/outbound";
 import { createOutboxItem } from "@/lib/agent/store";
 import { fireSpeedToLead } from "@/lib/agent/speed-to-lead";
+import { stopEnrollmentsForContact } from "@/lib/cadence";
 import { hasOptedOut, isHardOptOut } from "@/lib/agent/guardrails";
 import { markDoNotContact } from "@/lib/opt-out";
 import type { Activity, Contact } from "@/lib/crm/types";
@@ -102,6 +103,10 @@ export async function ingestSocialMessages(messages: InboundSocialMessage[]): Pr
         occurredAt: m.at,
       });
       logged = true;
+
+      // A reply ends any active cadence — same rule as the email/SMS inbound
+      // path; a DM mid-sequence must stop the drip immediately.
+      await stopEnrollmentsForContact(contact.id);
 
       // Honor opt-out before ANY automated reply or outreach (TCPA/CTIA/CAN-SPAM),
       // exactly like the email/SMS inbound path: if this DM is a hard opt-out

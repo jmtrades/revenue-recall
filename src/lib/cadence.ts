@@ -181,6 +181,26 @@ export async function stopEnrollment(id: string): Promise<void> {
   await updateEnrollment(id, { status: "stopped" });
 }
 
+/**
+ * A real reply ends the cadence — the deal page promises "each step sends on
+ * its day until they reply or close", and continuing to drip day-3/day-7 steps
+ * at someone mid-conversation is how outbound tools get marked as spam. Called
+ * from every inbound path (email/SMS webhook + social DM ingest) when the
+ * sender matched a contact. Best-effort and never throws: logging the inbound
+ * must succeed even if the enrollment store hiccups.
+ */
+export async function stopEnrollmentsForContact(contactId: string): Promise<number> {
+  if (!contactId) return 0;
+  try {
+    const active = await listEnrollments("active");
+    const mine = active.filter((e) => e.contactId === contactId);
+    for (const e of mine) await stopEnrollment(e.id);
+    return mine.length;
+  } catch {
+    return 0;
+  }
+}
+
 // ---- enrollment ----
 
 interface Target {
