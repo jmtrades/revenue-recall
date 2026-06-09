@@ -123,7 +123,7 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
             <div className="flex-1 space-y-3 overflow-y-auto p-4">
               {active.messages.map((m) => (
                 <div key={m.id} className={`flex ${m.direction === "outbound" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm ${m.direction === "outbound" ? "bg-brand text-white" : "bg-surface-2 text-white"}`}>
+                  <div className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm ${m.direction === "outbound" ? "bg-brand text-white" : "bg-surface-2 text-fg"}`}>
                     <p>{m.body}</p>
                     <p className={`mt-1 flex items-center gap-1 text-[10px] ${m.direction === "outbound" ? "text-fg/70" : "text-muted"}`}><ChannelIcon channel={m.channel} size={11} /> · {timeAgo(m.at)} ago</p>
                   </div>

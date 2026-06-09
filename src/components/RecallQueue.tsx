@@ -169,7 +169,7 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
-              className={`rounded-lg px-3 py-1.5 text-sm transition ${filter === f.id ? "bg-brand text-white" : "bg-surface-2 text-muted hover:text-white"}`}
+              className={`rounded-lg px-3 py-1.5 text-sm transition ${filter === f.id ? "bg-brand text-white" : "bg-surface-2 text-muted hover:text-fg"}`}
             >
               {f.label} <span className="ml-1 text-xs opacity-70">{count}</span>
             </button>
@@ -177,7 +177,7 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
         })}
       </div>
 
-      <div className="card p-0">
+      <div className="card overflow-x-auto p-0">
         {filtered.length === 0 ? (
           <p className="p-6 text-sm text-muted">Nothing here right now.</p>
         ) : (

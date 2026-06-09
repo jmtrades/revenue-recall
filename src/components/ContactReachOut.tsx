@@ -85,7 +85,7 @@ export function ContactReachOut({
   }
 
   const input = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand";
-  const tab = (active: boolean) => `rounded-lg px-2.5 py-1 text-xs ${active ? "bg-brand text-white" : "bg-surface-2 text-muted hover:text-white"}`;
+  const tab = (active: boolean) => `rounded-lg px-2.5 py-1 text-xs ${active ? "bg-brand text-white" : "bg-surface-2 text-muted hover:text-fg"}`;
 
   return (
     <div className="space-y-5">
