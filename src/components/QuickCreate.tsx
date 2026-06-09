@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icons";
+import { useEscapeKey } from "@/lib/useEscapeKey";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 interface Meta {
   defaultStageId: string;
@@ -45,13 +47,8 @@ export function QuickCreate() {
       .catch(() => setError("Couldn't load — close and try again."));
   }, [open, meta]);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  useEscapeKey(open, () => setOpen(false));
+  const dialogRef = useFocusTrap<HTMLDivElement>(open);
 
   function reset() {
     setTitle(""); setValue(""); setName(""); setCompany(""); setEmail(""); setPhone(""); setError(null);
@@ -107,7 +104,7 @@ export function QuickCreate() {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-24" onClick={() => setOpen(false)}>
-          <div role="dialog" aria-modal="true" aria-label="Quick create" className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Quick create" className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-surface shadow-2xl outline-none" onClick={(e) => e.stopPropagation()}>
             <div className="flex border-b border-border">
               {(["deal", "contact"] as const).map((t) => (
                 <button key={t} onClick={() => setTab(t)} className={`flex-1 px-4 py-3 text-sm font-medium capitalize ${tab === t ? "border-b-2 border-brand text-fg" : "text-muted hover:text-fg"}`}>
