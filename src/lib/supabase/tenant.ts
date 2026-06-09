@@ -18,10 +18,17 @@ export async function getActiveOrgId(client: SupabaseClient, authUserId?: string
     if (data?.org_id) return data.org_id as string;
   }
 
-  // Single-org fallback — deliberately NOT cached across requests. A module-level
-  // cache could pin one tenant's org onto an unrelated request on a warm
-  // serverless instance (a multi-tenant data-leak hazard). Per-request dedupe
-  // already happens one layer up in active-org.ts via React cache().
-  const { data } = await client.from("orgs").select("id").order("created_at", { ascending: true }).limit(1).maybeSingle();
-  return (data?.id as string) ?? null;
+  // Single-org fallback — ONLY when there's genuinely one tenant. With multiple
+  // orgs this is a multi-tenant deployment, and returning "the first org" to a
+  // request that resolved no session would hand back an arbitrary tenant's data,
+  // so we fail closed (null) instead. Single-tenant deployments pin DEFAULT_ORG_ID
+  // (handled above) or simply have exactly one org. Deliberately NOT cached across
+  // requests; per-request dedupe happens one layer up in active-org.ts.
+  const { data, count } = await client
+    .from("orgs")
+    .select("id", { count: "exact" })
+    .order("created_at", { ascending: true })
+    .limit(1);
+  if (count !== null && count > 1) return null; // multiple tenants → never guess
+  return (data?.[0]?.id as string) ?? null;
 }
