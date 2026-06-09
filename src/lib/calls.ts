@@ -1,6 +1,10 @@
 import { resolveProvider } from "@/lib/crm/registry";
 import { planCallRetry, isVoicemailOutcome, MAX_CALL_ATTEMPTS, type RetryPlan } from "@/lib/calls/retry";
-import { hasOptedOut } from "@/lib/agent/guardrails";
+import { hasOptedOut, quietHoursNow } from "@/lib/agent/guardrails";
+import { listTasks } from "@/lib/agent/store";
+import { isEntitled } from "@/lib/billing/enforce";
+import { getOrgSettings } from "@/lib/org";
+import { placeCall } from "@/lib/comms";
 import { voicemailFollowupText } from "@/lib/voice/voicemail";
 import { createOutboxItem, listOutbox } from "@/lib/agent/store";
 import type { Activity, Contact, Opportunity } from "@/lib/crm/types";
@@ -92,7 +96,9 @@ export async function scheduleCallRetry(input: { contactId?: string; dealId?: st
       contactId,
       opportunityId: dealId,
       kind: "task",
-      summary: `Retry call — attempt ${plan.attempt} of ${MAX_CALL_ATTEMPTS}: no pickup last time, best window is the ${plan.window} (~${plan.waitHours}h).`,
+      // The "(due …)" tail is a machine marker runCallRetries() parses to
+      // actually execute this retry — keep it in sync with parseRetryTask.
+      summary: `Retry call — attempt ${plan.attempt} of ${MAX_CALL_ATTEMPTS}: no pickup last time, best window is the ${plan.window} (~${plan.waitHours}h). (due ${new Date((input.now ?? new Date()).getTime() + plan.waitHours * 3_600_000).toISOString()})`,
       occurredAt: (input.now ?? new Date()).toISOString(),
     });
   } catch {
@@ -152,4 +158,108 @@ export async function scheduleVoicemailFollowup(input: { contactId?: string; dea
   } catch {
     return { queued: false, reason: "error" }; // must never break the call log
   }
+}
+
+// ---- autonomous retry execution ----
+
+/** Parse the machine tail scheduleCallRetry writes. Pure (unit-tested). */
+export function parseRetryTask(summary: string): { attempt: number; dueAt: string } | null {
+  const m = /^Retry call — attempt (\d+) of \d+.*\(due ([0-9TZ:.\-]+)\)\s*$/.exec(summary ?? "");
+  if (!m) return null;
+  const dueAt = new Date(m[2]);
+  if (Number.isNaN(dueAt.getTime())) return null;
+  return { attempt: Number(m[1]), dueAt: dueAt.toISOString() };
+}
+
+export interface RetryRunResult {
+  due: number;
+  placed: number;
+  skipped: number;
+}
+
+/** Per-run safety cap on autonomous redials — backstop on top of the per-contact
+ *  attempt budget, so one tick can never burst-dial a whole list. */
+const MAX_RETRIES_PER_RUN = 10;
+
+/**
+ * Execute due call retries — the half that was missing: scheduleCallRetry
+ * planned the redial (window + backoff) but only wrote a timeline note, so the
+ * autonomous loop ended after attempt 1. The hourly cron now places due retries
+ * through the same comms gateway, but ONLY when the org has opted into
+ * autonomous calling: an enabled autopilot task on the call channel running in
+ * "auto" mode, plus the autopilot entitlement — mirroring the agent engine's
+ * rule. Quiet hours, opt-outs, and the per-contact attempt budget all apply;
+ * a retry consumed by ANY later outbound call (autonomous or a rep dialing) is
+ * skipped. Best-effort: never throws into the cron.
+ */
+export async function runCallRetries(now: Date = new Date()): Promise<RetryRunResult> {
+  const result: RetryRunResult = { due: 0, placed: 0, skipped: 0 };
+  try {
+    const tasks = await listTasks();
+    const wantsAuto = tasks.some((t) => t.enabled && t.channel === "call" && t.autonomy === "auto");
+    if (!wantsAuto || !(await isEntitled("autopilot"))) return result;
+    const org = await getOrgSettings();
+    if (quietHoursNow(now, org.timezone)) return result;
+
+    const provider = await resolveProvider();
+    if (!provider.info().capabilities.write) return result;
+    const [recent, contacts] = await Promise.all([provider.listRecentActivities(500), provider.listContacts()]);
+    const cById = new Map(contacts.map((c) => [c.id, c]));
+    const actsByContact = new Map<string, Activity[]>();
+    for (const a of recent) {
+      if (!a.contactId) continue;
+      const list = actsByContact.get(a.contactId);
+      if (list) list.push(a);
+      else actsByContact.set(a.contactId, [a]);
+    }
+
+    const handled = new Set<string>(); // newest retry task per contact wins
+    for (const a of recent) {
+      if (a.kind !== "task" || !a.contactId || handled.has(a.contactId)) continue;
+      const plan = parseRetryTask(a.summary);
+      if (!plan) continue;
+      handled.add(a.contactId);
+      if (new Date(plan.dueAt).getTime() > now.getTime()) continue; // not due yet
+      result.due += 1;
+
+      const acts = actsByContact.get(a.contactId) ?? [];
+      // Already consumed: any outbound call AFTER the retry was scheduled —
+      // whether this runner placed it or a rep dialed from the power dialer.
+      if (acts.some((x) => x.kind === "call" && x.direction === "outbound" && x.occurredAt > a.occurredAt)) {
+        result.skipped += 1;
+        continue;
+      }
+      const contact = cById.get(a.contactId);
+      const phone = contact?.points.find((p) => p.channel === "phone")?.value;
+      const attempts = acts.filter((x) => x.kind === "call" && x.direction === "outbound").length;
+      if (!contact || !phone || attempts >= MAX_CALL_ATTEMPTS || hasOptedOut(contact, undefined, acts)) {
+        result.skipped += 1;
+        continue;
+      }
+      if (result.placed >= MAX_RETRIES_PER_RUN) break;
+
+      const res = await placeCall(phone, {
+        from: org.callerId,
+        meta: { contactId: contact.id, ...(a.opportunityId ? { dealId: a.opportunityId } : {}) },
+      }).catch(() => ({ status: "failed" as const }));
+      if (res.status === "failed") {
+        result.skipped += 1;
+        continue;
+      }
+      result.placed += 1;
+      await provider
+        .logActivity({
+          contactId: contact.id,
+          opportunityId: a.opportunityId,
+          kind: "call",
+          summary: `Autopilot retry call placed (attempt ${attempts + 1} of ${MAX_CALL_ATTEMPTS}).`,
+          direction: "outbound",
+          occurredAt: now.toISOString(),
+        })
+        .catch(() => {});
+    }
+  } catch {
+    /* best-effort — the cron tick must never fail on retries */
+  }
+  return result;
 }

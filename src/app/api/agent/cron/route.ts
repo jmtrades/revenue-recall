@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { listTasks } from "@/lib/agent/store";
 import { runTask } from "@/lib/agent/engine";
 import { runDueSteps, collectDueBatches } from "@/lib/cadence";
+import { runCallRetries } from "@/lib/calls";
 import { runDigests } from "@/lib/digest";
 import { getSupabase } from "@/lib/supabase/client";
 import { runWithOrg } from "@/lib/supabase/org-context";
@@ -88,6 +89,9 @@ async function runForCurrentOrg() {
     }
   }
   const cadence = await runDueSteps().catch((e) => ({ error: e instanceof Error ? e.message : "cadence failed" }));
+  // Execute due call retries (self-gated: only orgs with an enabled auto call
+  // task; quiet hours / opt-outs / attempt budget enforced inside).
+  const callRetries = await runCallRetries().catch((e) => ({ error: e instanceof Error ? e.message : "retries failed" }));
   const batches = await collectDueBatches().catch((e) => ({ error: e instanceof Error ? e.message : "batch collect failed" }));
   // Guard digests with a per-org lock: the per-day "already sent" check isn't
   // atomic, so two overlapping ticks could each pass it and email twice. The lock
@@ -104,10 +108,10 @@ async function runForCurrentOrg() {
   }
   // Surface engine errors to the operator — an autonomous tick that silently
   // errors every run would otherwise go unnoticed.
-  for (const [stage, result] of Object.entries({ cadence, batches, digests })) {
+  for (const [stage, result] of Object.entries({ cadence, batches, digests, callRetries })) {
     if (isErrored(result)) await sendAlert(`cron.${stage}`, { error: result.error });
   }
-  return { ran: results.length, results, autopilotLocked: !fence, cadence, batches, digests };
+  return { ran: results.length, results, autopilotLocked: !fence, cadence, batches, digests, callRetries };
 }
 
 /** Fan out: process every org in its own authenticated sub-request so each gets
