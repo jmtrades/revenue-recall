@@ -7,6 +7,7 @@ import { sequencesFor } from "@/lib/sequences";
 import { money, relativeDays } from "@/lib/format";
 import { Card, Avatar, InfoRow, ActivityIcon, EmptyState } from "@/components/ui";
 import { ContactReachOut } from "@/components/ContactReachOut";
+import { ContactInfoEdit } from "@/components/ContactInfoEdit";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,8 @@ export default async function ContactPage({ params }: { params: { id: string } }
   const canWrite = getProvider().info().capabilities.write;
   const canEmail = contact.points.some((p) => p.channel === "email" && !!p.value);
   const canText = contact.points.some((p) => (p.channel === "phone" || p.channel === "sms") && !!p.value);
+  const email = contact.points.find((p) => p.channel === "email")?.value ?? "";
+  const phone = contact.points.find((p) => p.channel === "phone" || p.channel === "sms")?.value ?? "";
   const sequences = sequencesFor(getConfig().industryId).map((s) => ({ id: s.id, name: s.name }));
   const showReachOut = canWrite && (canEmail || canText || sequences.length > 0);
 
@@ -56,9 +59,12 @@ export default async function ContactPage({ params }: { params: { id: string } }
             </Card>
           )}
           <Card title="Contact info">
-            {contact.points.map((p, i) => (
-              <InfoRow key={i} label={p.channel}>{p.value}</InfoRow>
-            ))}
+            <ContactInfoEdit
+              contactId={contact.id}
+              points={contact.points}
+              initial={{ name: contact.name, company: contact.company ?? "", title: contact.title ?? "", email, phone }}
+              canWrite={canWrite}
+            />
           </Card>
           {contact.attributes && Object.keys(contact.attributes).length > 0 && (
             <Card title="Attributes">
