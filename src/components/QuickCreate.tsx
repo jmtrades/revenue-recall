@@ -116,6 +116,16 @@ export function QuickCreate() {
             <div className="space-y-3 p-4">
               {!meta ? (
                 <p className={`py-6 text-center text-sm ${error ? "text-danger" : "text-muted"}`}>{error ?? "Loading…"}</p>
+              ) : tab === "deal" && meta.contacts.length === 0 ? (
+                // A deal needs a contact, and a brand-new workspace has none — so
+                // the old form left Create permanently disabled with no way out.
+                // Guide the user to make their first contact instead of dead-ending.
+                <div className="py-4 text-center">
+                  <p className="text-sm text-muted">Every {meta.terminology.opportunity.toLowerCase()} belongs to a {meta.terminology.contact.toLowerCase()}. Add your first one to get started.</p>
+                  <button onClick={() => setTab("contact")} className="mt-3 w-full rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90">
+                    Create a {meta.terminology.contact.toLowerCase()} first
+                  </button>
+                </div>
               ) : tab === "deal" ? (
                 <>
                   <input className={inputCls} placeholder="Deal title" value={title} onChange={(e) => setTitle(e.target.value)} />
