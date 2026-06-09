@@ -2,9 +2,15 @@
 
 import { useState } from "react";
 import type { MessageTemplate } from "@/lib/templates";
+import { fillTokens } from "@/lib/templates-fill";
 import { ChannelIcon } from "@/components/ui";
 
-export function TemplatesView({ templates }: { templates: MessageTemplate[] }) {
+export interface TemplateSender {
+  name?: string;
+  bookingUrl?: string;
+}
+
+export function TemplatesView({ templates, sender }: { templates: MessageTemplate[]; sender?: TemplateSender }) {
   const [activeId, setActiveId] = useState(templates[0]?.id ?? "");
   const [channel, setChannel] = useState<"all" | "email" | "sms">("all");
   const [copied, setCopied] = useState(false);
@@ -13,7 +19,12 @@ export function TemplatesView({ templates }: { templates: MessageTemplate[] }) {
 
   function useTemplate() {
     if (!active) return;
-    const text = [active.subject, active.body].filter(Boolean).join("\n\n");
+    // Fill what this page knows (the sender's name + booking link); contact
+    // tokens stay visible here and resolve when inserting from a conversation.
+    const text = fillTokens([active.subject, active.body].filter(Boolean).join("\n\n"), {
+      senderName: sender?.name,
+      bookingUrl: sender?.bookingUrl,
+    });
     navigator.clipboard?.writeText(text).then(
       () => { setCopied(true); setTimeout(() => setCopied(false), 2000); },
       () => undefined,
@@ -69,7 +80,7 @@ export function TemplatesView({ templates }: { templates: MessageTemplate[] }) {
               <p className="stat-label">Body</p>
               <pre className="mt-1 whitespace-pre-wrap rounded-lg border border-border bg-surface-2 px-3 py-3 font-sans text-sm leading-relaxed text-fg">{active.body}</pre>
             </div>
-            <p className="mt-3 text-[11px] text-muted">Tokens like <code className="text-brand">{"{{first_name}}"}</code> are filled from contact data at send time.</p>
+            <p className="mt-3 text-[11px] text-muted">Copying fills your name and booking link. Contact tokens like <code className="text-brand">{"{{first_name}}"}</code> fill automatically when you insert a template from the Inbox — or stay visible for manual editing.</p>
           </>
         )}
       </div>
