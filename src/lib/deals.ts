@@ -1,4 +1,4 @@
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { safePipeline } from "@/lib/queries";
 import { getOrgSettings } from "@/lib/org";
 import { emitWebhook } from "@/lib/webhooks-out";
@@ -39,7 +39,7 @@ export type CreateDealResult =
  * 404 / 400 responses.
  */
 export async function createDealRecord(input: NewDealInput): Promise<CreateDealResult> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const contact = await provider.getContact(input.contactId);
   if (!contact) return { ok: false, reason: "contact_not_found" };
 
@@ -82,7 +82,7 @@ export type UpdateDealResult = { ok: true; opp: Opportunity } | { ok: false; rea
  * fix it in-app. Returns a discriminated result; emits deal.updated.
  */
 export async function updateDealRecord(id: string, patch: DealPatch): Promise<UpdateDealResult> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   if (!provider.updateOpportunity) return { ok: false, reason: "unsupported" };
   const existing = await provider.getOpportunity(id);
   if (!existing) return { ok: false, reason: "not_found" };
@@ -107,7 +107,7 @@ export type DeleteDealResult = { ok: true } | { ok: false; reason: "unsupported"
  * 409. Emits deal.deleted (best-effort) for integrators keeping a mirror.
  */
 export async function deleteDeal(id: string): Promise<DeleteDealResult> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   if (!provider.deleteOpportunity) return { ok: false, reason: "unsupported" };
   const opp = await provider.getOpportunity(id);
   if (!opp) return { ok: false, reason: "not_found" };
@@ -123,7 +123,7 @@ export async function deleteDeal(id: string): Promise<DeleteDealResult> {
 }
 
 export async function moveDeal(id: string, stageId: string): Promise<Opportunity> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const opp = await provider.moveOpportunity(id, stageId);
   const pipelines = await provider.listPipelines();
   const stage = pipelines.flatMap((p) => p.stages).find((s) => s.id === stageId);

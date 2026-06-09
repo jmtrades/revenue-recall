@@ -1,5 +1,5 @@
 import { getBoard } from "@/lib/queries";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { money } from "@/lib/format";
 import { PageHeader, EmptyState, Button } from "@/components/ui";
 import { Board } from "@/components/Board";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function PipelinePage() {
   const { pipeline, opportunities, contacts, owners } = await getBoard();
-  const canWrite = getProvider().info().capabilities.write;
+  const canWrite = (await resolveProvider()).info().capabilities.write;
 
   const contactMap: Record<string, { name: string; company?: string }> = {};
   for (const [id, c] of contacts) contactMap[id] = { name: c.name, company: c.company };

@@ -8,7 +8,7 @@ import { SalesforceProvider } from "@/lib/crm/providers/salesforce";
 import { HttpCrmProvider } from "@/lib/crm/providers/http";
 import { DatabaseProvider, databaseConfigured } from "@/lib/crm/providers/database";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
-import { getConfig } from "@/lib/config";
+import { getConfig, isAuthRequired } from "@/lib/config";
 
 const httpCrmConfigured = (): boolean => Boolean(process.env.CRM_HTTP_BASE_URL);
 
@@ -40,10 +40,17 @@ function build(id: string): CrmProvider {
       // Auto-select a connected source when one's configured, before the built-in.
       if (httpCrmConfigured()) return new HttpCrmProvider();
       if (databaseConfigured()) return new DatabaseProvider();
-      if (process.env.HUBSPOT_ACCESS_TOKEN) return new HubspotProvider();
-      if (process.env.PIPEDRIVE_API_TOKEN) return new PipedriveProvider();
-      if ((process.env.SALESFORCE_ACCESS_TOKEN && process.env.SALESFORCE_INSTANCE_URL) || (process.env.SALESFORCE_REFRESH_TOKEN && process.env.SALESFORCE_CLIENT_ID)) return new SalesforceProvider();
-      if (process.env.CLOSE_API_KEY) return new CloseProvider();
+      // Env-configured named CRMs are a single-tenant convenience: on a
+      // multi-tenant deployment (auth required) one stray env var would point
+      // EVERY org at the same CRM account, so the auto-pick is skipped there.
+      // Per-org CRMs come through resolveProvider()'s connection lookup; an
+      // explicit CRM_PROVIDER (operator intent) still selects directly above.
+      if (!isAuthRequired()) {
+        if (process.env.HUBSPOT_ACCESS_TOKEN) return new HubspotProvider();
+        if (process.env.PIPEDRIVE_API_TOKEN) return new PipedriveProvider();
+        if ((process.env.SALESFORCE_ACCESS_TOKEN && process.env.SALESFORCE_INSTANCE_URL) || (process.env.SALESFORCE_REFRESH_TOKEN && process.env.SALESFORCE_CLIENT_ID)) return new SalesforceProvider();
+        if (process.env.CLOSE_API_KEY) return new CloseProvider();
+      }
       return isSupabaseConfigured() ? new SupabaseProvider() : new BuiltinProvider();
   }
 }
@@ -64,21 +71,41 @@ export function getProvider(): CrmProvider {
 }
 
 /**
- * Async provider resolution that also honors a database an org connected through
- * the UI (stored in the connections table, which the sync getProvider() can't
- * read). When the org has a connected database and no explicit CRM_PROVIDER
- * override is in force, the DatabaseProvider becomes active so their own leads
- * show up. Otherwise it defers to the sync selection. Read paths that can await
- * (the request-cached list accessors) use this; everything else keeps getProvider().
+ * Async provider resolution that also honors a data source the org connected
+ * through the UI (the encrypted per-org connections table, which the sync
+ * getProvider() can't read): a bring-your-own database, or one of the named
+ * CRMs (Close / HubSpot / Pipedrive / Salesforce) with the org's own
+ * credentials. When no explicit CRM_PROVIDER override is in force and the org
+ * has a connection, that provider becomes active for the tenant. Otherwise it
+ * defers to the sync selection — identical behavior when nothing is connected.
  */
 export async function resolveProvider(): Promise<CrmProvider> {
   const { providerId } = getConfig();
   // An explicit env/config provider choice always wins.
   if (providerId && providerId !== "auto" && providerId !== "database") return getProvider();
   try {
-    const { getConnection } = await import("@/lib/connections/store");
-    const conn = await getConnection("database");
-    if (conn && (conn.secrets.url || conn.config.url)) return new DatabaseProvider();
+    // One org-scoped query for every connection (decrypted), then pick. The
+    // database keeps its long-standing precedence; CRMs follow in a fixed order.
+    const { listConnections } = await import("@/lib/connections/store");
+    const conns = await listConnections();
+    const by = (provider: string) => conns.find((c) => c.provider === provider);
+
+    const db = by("database");
+    if (db && (db.secrets.url || db.config.url)) return new DatabaseProvider();
+
+    const close = by("close");
+    if (close?.secrets.apiKey) return new CloseProvider(close.secrets.apiKey);
+
+    const hubspot = by("hubspot");
+    if (hubspot?.secrets.accessToken) return new HubspotProvider(hubspot.secrets.accessToken);
+
+    const pipedrive = by("pipedrive");
+    if (pipedrive?.secrets.apiToken) return new PipedriveProvider({ token: pipedrive.secrets.apiToken, base: pipedrive.config.apiBase });
+
+    const salesforce = by("salesforce");
+    if (salesforce?.secrets.accessToken && salesforce.config.instanceUrl) {
+      return new SalesforceProvider({ token: salesforce.secrets.accessToken, instanceUrl: salesforce.config.instanceUrl });
+    }
   } catch {
     // no connection / no org context → fall through
   }

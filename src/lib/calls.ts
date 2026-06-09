@@ -1,4 +1,4 @@
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { planCallRetry, isVoicemailOutcome, MAX_CALL_ATTEMPTS, type RetryPlan } from "@/lib/calls/retry";
 import { hasOptedOut } from "@/lib/agent/guardrails";
 import { voicemailFollowupText } from "@/lib/voice/voicemail";
@@ -41,7 +41,7 @@ export function callSummaryText(input: CallLogInput): string {
  * returns the created activity, or null if it couldn't be logged.
  */
 export async function logCallOutcome(input: CallLogInput): Promise<Activity | null> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   if (!provider.info().capabilities.write) return null;
   if (!input.contactId && !input.dealId) return null;
   try {
@@ -66,7 +66,7 @@ export async function logCallOutcome(input: CallLogInput): Promise<Activity | nu
  * Returns the plan (or null when there's nothing to attach to / no provider).
  */
 export async function scheduleCallRetry(input: { contactId?: string; dealId?: string; outcome?: string; now?: Date }): Promise<RetryPlan | null> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   if (!provider.info().capabilities.write) return null;
   const { contactId, dealId, outcome } = input;
   if (!contactId && !dealId) return null;
@@ -116,7 +116,7 @@ export type FollowupSkip = "not_voicemail" | "read_only" | "no_target" | "no_con
 export async function scheduleVoicemailFollowup(input: { contactId?: string; dealId?: string; outcome?: string; now?: Date }): Promise<{ queued: boolean; reason?: FollowupSkip }> {
   try {
     if (!isVoicemailOutcome(input.outcome)) return { queued: false, reason: "not_voicemail" };
-    const provider = getProvider();
+    const provider = (await resolveProvider());
     if (!provider.info().capabilities.write) return { queued: false, reason: "read_only" };
     const { contactId, dealId } = input;
     if (!contactId && !dealId) return { queued: false, reason: "no_target" };

@@ -83,6 +83,15 @@ export class SalesforceProvider implements CrmProvider {
   private tokenUrl = process.env.SALESFORCE_TOKEN_URL ?? DEFAULT_TOKEN_URL;
   private refreshing: Promise<boolean> | null = null;
 
+  /** Per-org credentials (the org's encrypted connection) override the env.
+   *  Per-org connections supply an access token + instance URL; the
+   *  refresh-token flow needs connected-app client secrets and stays env-based
+   *  (self-hosted / single-tenant). */
+  constructor(opts?: { token?: string; instanceUrl?: string }) {
+    if (opts?.token) this.token = opts.token;
+    if (opts?.instanceUrl) this.instance = opts.instanceUrl.replace(/\/$/, "");
+  }
+
   private get base(): string {
     return `${this.instance}/services/data/v${this.version}`;
   }

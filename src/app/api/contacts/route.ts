@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { z } from "zod";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { setContactStatus } from "@/lib/leads";
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   ];
 
   try {
-    const contact = await getProvider().createContact({ name, company, title, points, attributes: {} });
+    const contact = await (await resolveProvider()).createContact({ name, company, title, points, attributes: {} });
     return NextResponse.json({ contact }, { status: 201 });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Failed" }, { status: 409 });

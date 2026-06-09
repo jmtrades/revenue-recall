@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getSequence } from "@/lib/sequences";
 import { INDUSTRIES } from "@/lib/industries";
 import { listEnrollments } from "@/lib/cadence";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { PageHeader, Card, ChannelBadge, Stat } from "@/components/ui";
 import { EnrollSequence } from "@/components/EnrollSequence";
 import { EnrollmentList, type EnrollmentRow } from "@/components/EnrollmentList";
@@ -19,7 +19,7 @@ export default async function SequenceDetailPage({ params }: { params: { id: str
   const active = (await listEnrollments("active").catch(() => [])).filter((e) => e.sequenceId === seq.id);
   let enrollmentRows: EnrollmentRow[] = [];
   if (active.length > 0) {
-    const contacts = await getProvider().listContacts().catch(() => []);
+    const contacts = await (await resolveProvider()).listContacts().catch(() => []);
     const nameById = new Map(contacts.map((c) => [c.id, c.name]));
     enrollmentRows = active.map((e) => ({
       id: e.id,

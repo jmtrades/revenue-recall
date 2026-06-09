@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { placeCall } from "@/lib/comms";
 import { getActiveVoice } from "@/lib/voice";
 import { getOrgSettings } from "@/lib/org";
@@ -19,7 +19,7 @@ export const POST = withGuard(async (req: Request) => {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   let to = parsed.data.to;
   let contactId = parsed.data.contactId;
 

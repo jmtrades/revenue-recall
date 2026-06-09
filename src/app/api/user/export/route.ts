@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { getActiveVoice } from "@/lib/voice";
 import { getSubscription } from "@/lib/billing/store";
 import { getOrgSettings } from "@/lib/org";
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   try {
     const [org, voice, subscription, contacts, opportunities, activities, pipelines] = await Promise.all([
       getOrgSettings(),

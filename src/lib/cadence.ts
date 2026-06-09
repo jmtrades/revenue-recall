@@ -1,7 +1,7 @@
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getActiveOrgId } from "@/lib/supabase/tenant";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { isEmailBounced } from "@/lib/bounce";
 import { getOrgSettings } from "@/lib/org";
 import { acquireCronLock, releaseCronLock } from "@/lib/cron-lock";
@@ -227,7 +227,7 @@ export async function enroll(sequenceId: string, scope: string): Promise<EnrollR
   if (!seq) throw new Error(`Unknown sequence: ${sequenceId}`);
   if (seq.steps.length === 0) throw new Error("Sequence has no steps");
 
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [pipelines, opps] = await Promise.all([provider.listPipelines(), provider.listOpportunities()]);
   const thresholds = recallThresholdsFor((await getOrgSettings()).industryId);
   const targets = resolveTargets(scope, pipelines, opps, thresholds);
@@ -273,7 +273,7 @@ function daysSince(iso?: string): number | undefined {
  * window): each call moves a given enrollment forward at most one step.
  */
 export async function runDueSteps(now: string = new Date().toISOString()): Promise<CadenceTickResult> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [pipelines, opps, contacts, org, voice] = await Promise.all([
     provider.listPipelines(),
     provider.listOpportunities(),

@@ -1,4 +1,4 @@
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { detectIntent } from "@/lib/ai/intent";
 import { draftReply } from "@/lib/ai/reply";
 import { getActiveVoice } from "@/lib/voice";
@@ -55,7 +55,7 @@ export interface SocialIngestResult {
 }
 
 export async function ingestSocialMessages(messages: InboundSocialMessage[]): Promise<SocialIngestResult[]> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const writable = provider.info().capabilities.write;
   const contacts = await provider.listContacts().catch(() => [] as Contact[]);
   const results: SocialIngestResult[] = [];
@@ -168,7 +168,7 @@ async function autoReply(contact: Contact, platform: SocialPlatform, incoming: s
     if (process.env.REPLY_AUTOPILOT === "true" && reply.body.trim()) {
       const res = await sendReply({ contact, channel: platform, body: reply.body });
       if (res.status !== "failed") {
-        const provider = getProvider();
+        const provider = (await resolveProvider());
         await provider.logActivity({
           contactId: contact.id,
           kind: "note",

@@ -1,4 +1,4 @@
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
 import { sendEmail } from "@/lib/comms";
 import { computeMetrics } from "@/lib/analytics";
@@ -56,7 +56,7 @@ async function markSent(kind: DigestKind, day: string): Promise<void> {
 }
 
 async function recipientEmails(): Promise<string[]> {
-  const users = await getProvider().listUsers();
+  const users = await (await resolveProvider()).listUsers();
   return users.map((u) => u.email).filter((e): e is string => Boolean(e));
 }
 
@@ -70,7 +70,7 @@ async function broadcast(to: string[], subject: string, body: string): Promise<n
 }
 
 async function buildDailyDigest(orgName: string): Promise<{ subject: string; body: string }> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [pipelines, opps] = await Promise.all([provider.listPipelines(), provider.listOpportunities()]);
   const metrics = computeMetrics(opps, safePipeline(pipelines));
   const recall = buildRecallQueue(opps, pipelines);

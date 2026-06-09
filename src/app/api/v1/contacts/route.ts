@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withGuard } from "@/lib/api/guard";
 import { withApiKey, readLimit } from "@/lib/api/auth";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { createContactRecord, serializeContact } from "@/lib/contacts";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ export const POST = withGuard(
 
 export const GET = withGuard(
   withApiKey(async (req: Request) => {
-    const contacts = await getProvider().listContacts();
+    const contacts = await (await resolveProvider()).listContacts();
     const limit = readLimit(req);
     return NextResponse.json({ data: contacts.slice(0, limit).map(serializeContact), count: Math.min(contacts.length, limit), total: contacts.length });
   }),

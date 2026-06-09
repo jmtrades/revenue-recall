@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
 import { buildRecallQueue } from "@/lib/recall/engine";
 import { withGuard } from "@/lib/api/guard";
@@ -27,7 +27,7 @@ interface NotificationItem {
  * (daily_digest / task_reminders are email-delivery prefs, not in-app feed items.)
  */
 export const GET = withGuard(async () => {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [{ notificationPrefs: prefs }, pipelines, opps, activities, contacts] = await Promise.all([
     getOrgSettings(),
     provider.listPipelines(),

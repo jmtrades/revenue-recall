@@ -54,6 +54,11 @@ interface CloseContact {
 export class CloseProvider implements CrmProvider {
   private key = process.env.CLOSE_API_KEY ?? "";
 
+  /** Per-org credentials (the org's encrypted connection) override the env. */
+  constructor(key?: string) {
+    if (key) this.key = key;
+  }
+
   private async req<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
     const auth = Buffer.from(`${this.key}:`).toString("base64");
     const res = await fetchWithRetry(`${API}${path}`, {

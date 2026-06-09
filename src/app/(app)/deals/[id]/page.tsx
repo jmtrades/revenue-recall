@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDealDetail } from "@/lib/queries";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
 import { sequencesFor } from "@/lib/sequences";
 import { money, relativeDays } from "@/lib/format";
@@ -24,7 +24,7 @@ export default async function DealPage({ params }: { params: { id: string } }) {
   const detail = await getDealDetail(params.id);
   if (!detail) notFound();
   const { opp, contact, owner, pipeline, stage, activities, fields } = detail;
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const canWrite = provider.info().capabilities.write;
   const canEdit = canWrite && typeof provider.updateOpportunity === "function";
   const canDelete = canWrite && typeof provider.deleteOpportunity === "function";

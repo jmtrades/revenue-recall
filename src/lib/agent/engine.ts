@@ -1,4 +1,4 @@
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
 import { getActiveVoice } from "@/lib/voice";
 import { getIndustry } from "@/lib/industries";
@@ -71,7 +71,7 @@ async function resolveTargets(task: AgentTask, pipelines: Pipeline[], opps: Oppo
  *  drafting (review) or sending (auto), and the whole run is logged to the ledger. */
 export async function runTask(task: AgentTask): Promise<AgentRun> {
   const startedAt = new Date().toISOString();
-  const provider = getProvider();
+  const provider = (await resolveProvider());
 
   try {
     const [pipelines, opps, contacts, org, voice] = await Promise.all([

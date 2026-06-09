@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { getOrgSettings } from "@/lib/org";
 import { sendReply, isSocialChannel } from "@/lib/outbound";
@@ -31,7 +31,7 @@ export const POST = withGuard(async (req: Request) => {
   if (!parsed.success) return NextResponse.json({ error: "Invalid message" }, { status: 400 });
   const { channel, dealId, body, subject } = parsed.data;
 
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   let contactId = parsed.data.contactId;
 
   let opp: Opportunity | null = null;

@@ -18,7 +18,7 @@ export interface FieldSpec {
 
 export interface ProviderSpec {
   provider: string;
-  kind: "social" | "database";
+  kind: "social" | "database" | "crm";
   label: string;
   /** Short note on what to paste / where it comes from. */
   blurb: string;
@@ -110,6 +110,42 @@ export const CONNECTION_SPECS: ProviderSpec[] = [
       { key: "url", label: "Data source URL", secret: true, required: true, placeholder: "https://…/leads" },
       { key: "token", label: "Bearer token (optional)", secret: true, required: false },
       { key: "mapping", label: "Column mapping (optional JSON)", secret: false, required: false, placeholder: '{"name":"full_name","email":"email_address"}', help: "Map your columns → name/email/phone/company/value/stage. Auto-detected if omitted." },
+    ],
+  },
+  // ——— CRMs: connect the org's own CRM as the workspace data source. Stored
+  // per-org (secrets encrypted); resolveProvider() activates it for the tenant.
+  {
+    provider: "close",
+    kind: "crm",
+    label: "Close",
+    blurb: "Your Close API key (Settings → API Keys in Close). Leads, deals, and activity sync both ways.",
+    fields: [{ key: "apiKey", label: "API key", secret: true, required: true, placeholder: "api_…" }],
+  },
+  {
+    provider: "hubspot",
+    kind: "crm",
+    label: "HubSpot",
+    blurb: "A private-app access token (HubSpot → Settings → Integrations → Private apps) with CRM read/write scopes.",
+    fields: [{ key: "accessToken", label: "Private app token", secret: true, required: true, placeholder: "pat-…" }],
+  },
+  {
+    provider: "pipedrive",
+    kind: "crm",
+    label: "Pipedrive",
+    blurb: "Your personal API token (Pipedrive → Personal preferences → API).",
+    fields: [
+      { key: "apiToken", label: "API token", secret: true, required: true },
+      { key: "apiBase", label: "API base URL (optional)", secret: false, required: false, placeholder: "https://yourco.pipedrive.com/api/v1", help: "Only needed for a company-domain API base." },
+    ],
+  },
+  {
+    provider: "salesforce",
+    kind: "crm",
+    label: "Salesforce",
+    blurb: "An access token + your instance URL. Tokens are short-lived — for long-lived self-hosted setups use the env refresh-token flow instead.",
+    fields: [
+      { key: "accessToken", label: "Access token", secret: true, required: true },
+      { key: "instanceUrl", label: "Instance URL", secret: false, required: true, placeholder: "https://yourco.my.salesforce.com" },
     ],
   },
 ];

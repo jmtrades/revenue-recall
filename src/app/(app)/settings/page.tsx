@@ -1,7 +1,7 @@
 import { getConfig } from "@/lib/config";
 import { INDUSTRIES, getIndustry } from "@/lib/industries";
 import { getLanguage } from "@/lib/languages";
-import { listIntegrations, getProvider } from "@/lib/crm/registry";
+import { listIntegrations, resolveProvider } from "@/lib/crm/registry";
 import { isAiConfigured } from "@/lib/ai/client";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { channelStatus } from "@/lib/comms";
@@ -197,7 +197,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
         <InfoRow label="Industry">{active.label}</InfoRow>
         <InfoRow label="Language">{getLanguage(org.language).label}</InfoRow>
         <InfoRow label="Currency">{org.currency}</InfoRow>
-        <InfoRow label="Active CRM">{getProvider().info().label}</InfoRow>
+        <InfoRow label="Active CRM">{(await resolveProvider()).info().label}</InfoRow>
         <InfoRow label="AI assistant">
           <span className={`pill ${isAiConfigured() ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>
             {isAiConfigured() ? "Connected" : "Template fallback"}
@@ -267,6 +267,17 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
           </li>
         ))}
       </ul>
+
+      <div className="mt-6 border-t border-border pt-5">
+        <h2 className="font-semibold text-fg">Connect your CRM</h2>
+        <p className="mt-1 text-sm text-muted">
+          Already live on Close, HubSpot, Pipedrive, or Salesforce? Connect it with your own credentials
+          (encrypted at rest) and this workspace reads and writes your CRM directly — no migration.
+        </p>
+        <div className="mt-4">
+          <ConnectionsManager initial={connections} encryptionAvailable={encAvailable} kind="crm" />
+        </div>
+      </div>
 
       <div className="mt-6 border-t border-border pt-5">
         <h2 className="font-semibold text-fg">Connect your database</h2>
@@ -470,7 +481,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
 
   const importTab = (
     <Card>
-      <ImportCsv writable={getProvider().info().capabilities.write} />
+      <ImportCsv writable={(await resolveProvider()).info().capabilities.write} />
     </Card>
   );
 

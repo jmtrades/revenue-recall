@@ -1,4 +1,4 @@
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import type { Contact } from "@/lib/crm/types";
 
 /**
@@ -26,7 +26,7 @@ function emailMatches(contact: Contact, email: string): boolean {
  * of contacts now suppressed.
  */
 export async function markEmailBounced(email: string): Promise<number> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   if (!provider.info().capabilities.write || !provider.updateContact) return 0;
   const at = new Date().toISOString();
   const matches = (await provider.listContacts()).filter((c) => emailMatches(c, email));

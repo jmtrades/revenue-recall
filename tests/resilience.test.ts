@@ -14,8 +14,10 @@ const empty: { pipelines: Pipeline[]; opps: Opportunity[]; contacts: Contact[]; 
   users: [],
 };
 
-vi.mock("@/lib/crm/registry", () => ({
-  getProvider: () => ({
+vi.mock("@/lib/crm/registry", () => {
+  // One full fake for both entry points — the data paths now resolve the
+  // provider asynchronously, so the async mock must expose every method too.
+  const fake = () => ({
     info: () => ({ id: "test", label: "Test", capabilities: { read: true, write: true, activities: true, customFields: true }, ready: true }),
     listPipelines: async () => empty.pipelines,
     listOpportunities: async () => empty.opps,
@@ -23,14 +25,9 @@ vi.mock("@/lib/crm/registry", () => ({
     listUsers: async () => empty.users,
     listActivities: async () => [],
     listRecentActivities: async () => [],
-  }),
-  resolveProvider: async () => ({
-    listPipelines: async () => empty.pipelines,
-    listOpportunities: async () => empty.opps,
-    listContacts: async () => empty.contacts,
-    listUsers: async () => empty.users,
-  }),
-}));
+  });
+  return { getProvider: fake, resolveProvider: async () => fake() };
+});
 
 import { getOverview, getBoard, getTeamAndPipeline, safePipeline } from "@/lib/queries";
 

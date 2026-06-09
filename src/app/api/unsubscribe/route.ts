@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { verifyUnsubToken } from "@/lib/unsubscribe";
 import { markDoNotContact } from "@/lib/opt-out";
 import { runWithOrg } from "@/lib/supabase/org-context";
@@ -33,7 +33,7 @@ export async function GET(req: Request) {
 
   try {
     const optOut = async () => {
-      const provider = getProvider();
+      const provider = (await resolveProvider());
       const contact = await provider.getContact(contactId);
       if (!contact) return "missing" as const;
       await provider.logActivity({
