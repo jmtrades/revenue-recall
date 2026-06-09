@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
+import { writeRateLimit } from "@/lib/ratelimit";
+import { withGuard } from "@/lib/api/guard";
 import { z } from "zod";
 
 const Body = z.object({
@@ -12,7 +14,8 @@ const Body = z.object({
   source: z.string().max(100).optional(),
 });
 
-export async function POST(req: Request) {
+export const POST = withGuard(async (req: Request) => {
+  if (!writeRateLimit(req, "deal-create").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid deal" }, { status: 400 });
 
@@ -34,4 +37,4 @@ export async function POST(req: Request) {
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Failed" }, { status: 409 });
   }
-}
+});
