@@ -5,6 +5,7 @@ import { getSupabase } from "@/lib/supabase/client";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 import { planAccountDeletion } from "@/lib/account-deletion";
+import { recordAudit } from "@/lib/audit";
 import { logInfo, logError, errMessage } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
@@ -60,6 +61,7 @@ export async function POST(req: Request) {
     } catch {
       /* session already invalid */
     }
+    await recordAudit("account.deleted").catch(() => {});
     logInfo("user.deleted", { ownerDeletedOrg: member?.role === "owner" });
     return NextResponse.json({ ok: true });
   } catch (e) {

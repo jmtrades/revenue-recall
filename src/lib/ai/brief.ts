@@ -1,4 +1,5 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
+import { isEntitled } from "@/lib/billing/enforce";
 import { languageDirective } from "@/lib/languages";
 
 export interface BriefInput {
@@ -62,7 +63,9 @@ function fallback(input: BriefInput): BriefResult {
 }
 
 export async function summarizeDeal(input: BriefInput): Promise<BriefResult> {
-  if (!isAiConfigured()) return fallback(input);
+  // Live AI is a paid entitlement (and the brief is the priciest call in the
+  // product — max effort). Free plans get the template brief, same as drafts.
+  if (!isAiConfigured() || !(await isEntitled("aiLive"))) return fallback(input);
 
   const user = `Industry: ${input.industryLabel}
 Prospect: ${input.contactName}${input.company ? ` at ${input.company}` : ""}

@@ -1,4 +1,5 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
+import { isEntitled } from "@/lib/billing/enforce";
 import { languageDirective } from "@/lib/languages";
 
 export type CallOutcome = "connected" | "voicemail" | "no_answer" | "callback_scheduled" | "not_interested" | "meeting_booked";
@@ -79,7 +80,8 @@ function fallback(input: CallSummaryInput): CallSummaryResult {
 }
 
 export async function summarizeCall(input: CallSummaryInput): Promise<CallSummaryResult> {
-  if (!isAiConfigured() || !input.notes.trim()) return fallback(input);
+  // Live AI is a paid entitlement — free plans get the heuristic summary.
+  if (!isAiConfigured() || !input.notes.trim() || !(await isEntitled("aiLive"))) return fallback(input);
   const user = `Contact: ${input.contactName}
 Deal: "${input.dealTitle}"
 Raw call notes:

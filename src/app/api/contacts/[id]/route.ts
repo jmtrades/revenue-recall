@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { deleteContactRecord } from "@/lib/contacts";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { logError, errMessage } from "@/lib/log";
+import { recordAudit } from "@/lib/audit";
 
 /** Permanently delete a contact. Session-gated by middleware; rate-limited.
  *  Refuses a contact that still has deals (would orphan pipeline records). */
@@ -15,6 +16,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
         return NextResponse.json({ error: "Delete or reassign this contact's deals first." }, { status: 409 });
       return NextResponse.json({ error: "This CRM doesn't support deleting contacts here." }, { status: 409 });
     }
+    await recordAudit("contact.deleted", params.id);
     return NextResponse.json({ ok: true });
   } catch (err) {
     logError("contacts.delete.failed", { error: errMessage(err) });
