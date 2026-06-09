@@ -1,4 +1,4 @@
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { emitWebhook } from "@/lib/webhooks-out";
 import { matchExistingContact } from "@/lib/leads-capture";
 import type { Contact, ContactPoint } from "@/lib/crm/types";
@@ -39,7 +39,7 @@ function withPoint(points: ContactPoint[], channel: "email" | "phone", value: st
 /** Upsert a contact: reuse an existing one (matched by email/phone) instead of
  *  creating a duplicate. `deduped` is true when an existing contact was matched. */
 export async function createContactRecord(input: ContactInput): Promise<{ contact: Contact; deduped: boolean }> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const existing = matchExistingContact(await provider.listContacts(), input.email, input.phone);
   if (existing) {
     // BACKFILL only — never overwrite an existing name/company/title/email/phone
@@ -68,7 +68,7 @@ export async function createContactRecord(input: ContactInput): Promise<{ contac
 
 /** Update a contact. Returns null when not found OR the provider can't update. */
 export async function updateContactRecord(id: string, patch: ContactInput): Promise<Contact | null> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   if (!provider.updateContact) return null;
   const existing = await provider.getContact(id);
   if (!existing) return null;
@@ -97,7 +97,7 @@ export type DeleteContactResult = { ok: true } | { ok: false; reason: "unsupport
  * CRMs. Emits contact.deleted (best-effort).
  */
 export async function deleteContactRecord(id: string): Promise<DeleteContactResult> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   if (!provider.deleteContact) return { ok: false, reason: "unsupported" };
   const existing = await provider.getContact(id);
   if (!existing) return { ok: false, reason: "not_found" };

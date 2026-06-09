@@ -24,7 +24,7 @@ export function ConnectionsManager({
 }: {
   initial: ConnView[];
   encryptionAvailable: boolean;
-  kind: "social" | "database";
+  kind: "social" | "database" | "crm";
   /** Providers whose OAuth app is configured → show a "Connect with…" button. */
   oauthProviders?: string[];
 }) {

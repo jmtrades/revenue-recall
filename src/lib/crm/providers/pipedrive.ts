@@ -114,6 +114,12 @@ export class PipedriveProvider implements CrmProvider {
   private token = process.env.PIPEDRIVE_API_TOKEN ?? "";
   private base = (process.env.PIPEDRIVE_API_BASE ?? DEFAULT_BASE).replace(/\/$/, "");
 
+  /** Per-org credentials (the org's encrypted connection) override the env. */
+  constructor(opts?: { token?: string; base?: string }) {
+    if (opts?.token) this.token = opts.token;
+    if (opts?.base) this.base = opts.base.replace(/\/$/, "");
+  }
+
   private async req<T>(path: string, init?: { method?: string; body?: unknown; query?: Record<string, string> }): Promise<PdEnvelope<T>> {
     const url = new URL(`${this.base}${path}`);
     url.searchParams.set("api_token", this.token);

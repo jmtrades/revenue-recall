@@ -1,4 +1,4 @@
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { getActiveVoice } from "@/lib/voice";
 import { getOrgSettings } from "@/lib/org";
 import { getIndustry } from "@/lib/industries";
@@ -105,7 +105,7 @@ async function captureUnmatched(
  * REPLY_AUTOPILOT=true.
  */
 export async function handleInbound(channel: "email" | "sms", from: string, body: string, subject?: string): Promise<InboundResult> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [contacts, opps] = await Promise.all([provider.listContacts(), provider.listOpportunities()]);
   const contact = matchContact(contacts, channel, from);
   if (!contact) return captureUnmatched(provider, channel, from, body, subject);

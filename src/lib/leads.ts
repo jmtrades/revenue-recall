@@ -1,4 +1,4 @@
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { normalizeLeadStatus, type LeadStatus } from "@/lib/crm/lead-status";
 import type { Contact } from "@/lib/crm/types";
 
@@ -10,7 +10,7 @@ import type { Contact } from "@/lib/crm/types";
  * unit-testable against the built-in CRM.
  */
 export async function setContactStatus(id: string, status: LeadStatus): Promise<LeadStatus | null> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   if (!provider.updateContact || !provider.getContact) return null;
   const contact = await provider.getContact(id);
   if (!contact) return null;

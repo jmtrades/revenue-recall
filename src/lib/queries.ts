@@ -1,4 +1,4 @@
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { cachedOpportunities, cachedPipelines, cachedContacts, cachedUsers } from "@/lib/crm/cached";
 import { getConfig } from "@/lib/config";
 import { getOrgSettings } from "@/lib/org";
@@ -43,7 +43,7 @@ export interface Overview {
 }
 
 export async function getOverview(): Promise<Overview> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const cfg = getConfig();
   const industry = getIndustry(cfg.industryId);
 
@@ -74,7 +74,7 @@ export interface BoardData {
 }
 
 export async function getBoard(): Promise<BoardData> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [pipelines, opportunities, contacts, users] = await Promise.all([
     provider.listPipelines(),
     provider.listOpportunities(),
@@ -90,7 +90,7 @@ export async function getBoard(): Promise<BoardData> {
 }
 
 export async function getRecallQueue(): Promise<{ items: RecallItem[]; summary: RecallSummary; contacts: Map<string, Contact>; opps: Map<string, Opportunity> }> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   // Route the no-arg list reads through the request-cache so a dashboard render
   // (overview + recall + feed) shares one fetch each instead of re-reading all
   // contacts/opps per helper. listRecentActivities is parameterized, so direct.
@@ -147,7 +147,7 @@ export function dropOptedOutRecall(
 
 /** Recall ROI — did re-engaging cold/lost deals actually win them back? */
 export async function getRecallOutcomes(): Promise<RecallOutcomes> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [pipelines, opportunities, enrollments, touches] = await Promise.all([
     provider.listPipelines(),
     provider.listOpportunities(),
@@ -160,7 +160,7 @@ export async function getRecallOutcomes(): Promise<RecallOutcomes> {
 }
 
 export async function getLeads(): Promise<{ contacts: Contact[]; opps: Map<string, Opportunity>; owners: Map<string, User> }> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [contacts, opportunities, users] = await Promise.all([
     provider.listContacts(),
     provider.listOpportunities(),
@@ -186,7 +186,7 @@ export interface CallQueueItem {
 }
 
 export async function getCallQueue(): Promise<CallQueueItem[]> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [pipelines, opps, contacts, recent] = await Promise.all([
     provider.listPipelines(),
     provider.listOpportunities(),
@@ -242,7 +242,7 @@ export async function getCallQueue(): Promise<CallQueueItem[]> {
 }
 
 export async function getTeamAndPipeline(): Promise<{ users: User[]; pipeline: Pipeline }> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [users, pipelines] = await Promise.all([provider.listUsers(), provider.listPipelines()]);
   return { users, pipeline: safePipeline(pipelines) };
 }
@@ -262,7 +262,7 @@ export interface LeadRow {
 }
 
 export async function getLeadRows(): Promise<{ rows: LeadRow[]; owners: string[]; valueLabel: string }> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [contacts, opps, users, pipelines] = await Promise.all([
     provider.listContacts(),
     provider.listOpportunities(),
@@ -310,7 +310,7 @@ export interface CaptureRow {
 /** Recent deals created through the Lead Capture API or the embeddable form —
  *  a "proof it's working" feed for the Developer settings tab. */
 export async function getRecentCaptures(limit = 8): Promise<CaptureRow[]> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [opps, contacts] = await Promise.all([provider.listOpportunities(), provider.listContacts()]);
   const nameById = new Map(contacts.map((c) => [c.id, c.name]));
   const SOURCES = new Set(["API", "Web form"]);
@@ -336,7 +336,7 @@ export interface FeedEntry {
 }
 
 export async function getActivityFeed(limit = 12): Promise<FeedEntry[]> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [activities, contacts, opps] = await Promise.all([
     provider.listRecentActivities(limit),
     cachedContacts(),
@@ -363,7 +363,7 @@ export interface TaskItem {
 }
 
 export async function getTasks(): Promise<TaskItem[]> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [pipelines, opps, contacts] = await Promise.all([
     provider.listPipelines(),
     provider.listOpportunities(),
@@ -397,7 +397,7 @@ export interface DealDetail {
 }
 
 export async function getDealDetail(id: string): Promise<DealDetail | null> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const opp = await provider.getOpportunity(id);
   if (!opp) return null;
   const [pipelines, users, activities, contact] = await Promise.all([
@@ -427,7 +427,7 @@ export interface ContactDetail {
 }
 
 export async function getContactDetail(id: string): Promise<ContactDetail | null> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const contact = await provider.getContact(id);
   if (!contact) return null;
   const opps = await provider.listOpportunities();
@@ -512,7 +512,7 @@ function buildInboxThread(contact: Contact, acts: Activity[]): InboxThread | nul
  * contact-only messages land in the same thread.
  */
 export async function getInbox(): Promise<InboxThread[]> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [contacts, acts] = await Promise.all([provider.listContacts(), provider.listRecentActivities(500)]);
   const cById = new Map(contacts.map((c) => [c.id, c]));
 
@@ -542,7 +542,7 @@ export interface CalendarEvent {
 }
 
 export async function getCalendar(): Promise<{ events: CalendarEvent[] }> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [pipelines, opps] = await Promise.all([provider.listPipelines(), provider.listOpportunities()]);
   const stageById = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
   const events: CalendarEvent[] = [];
@@ -580,7 +580,7 @@ export interface Forecast {
 }
 
 export async function getForecast(): Promise<Forecast> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [pipelines, opps, org] = await Promise.all([provider.listPipelines(), provider.listOpportunities(), getOrgSettings()]);
   const pipeline = safePipeline(pipelines);
   const stageById = new Map(pipeline.stages.map((s) => [s.id, s]));
@@ -642,7 +642,7 @@ const PALETTE = ["#5b8cff", "#34d399", "#fbbf24", "#f87171", "#a78bfa", "#22d3ee
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export async function getReports(): Promise<Reports> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [pipelines, opps, users] = await Promise.all([
     cachedPipelines(),
     cachedOpportunities(),

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { withGuard } from "@/lib/api/guard";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { toCsv } from "@/lib/csv";
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
  */
 export const GET = withGuard(async (req: Request) => {
   if (!writeRateLimit(req, "export").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-  const contacts = await getProvider().listContacts();
+  const contacts = await (await resolveProvider()).listContacts();
   const header = ["Name", "Company", "Title", "Email", "Phone"] as const;
   const rows = contacts.map((c) => [
     c.name,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
 import { toLanguageCode } from "@/lib/languages";
 import { dedupeRows } from "@/lib/import/dedupe";
@@ -35,7 +35,7 @@ export const POST = withGuard(async (req: Request) => {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid import payload" }, { status: 400 });
 
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   if (!provider.info().capabilities.write) {
     return NextResponse.json({ error: "The active CRM is read-only; import is unavailable." }, { status: 409 });
   }

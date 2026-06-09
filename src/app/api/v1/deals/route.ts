@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withGuard } from "@/lib/api/guard";
 import { withApiKey, readLimit } from "@/lib/api/auth";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { createDealRecord } from "@/lib/deals";
 
 export const dynamic = "force-dynamic";
@@ -44,7 +44,7 @@ export const POST = withGuard(
  */
 export const GET = withGuard(
   withApiKey(async (req: Request) => {
-    const provider = getProvider();
+    const provider = (await resolveProvider());
     const [opps, pipelines] = await Promise.all([provider.listOpportunities(), provider.listPipelines()]);
     const stageById = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s.label]));
     const limit = readLimit(req);

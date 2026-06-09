@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
 import { getIndustry } from "@/lib/industries";
 import { withGuard } from "@/lib/api/guard";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 /** Lightweight metadata for create forms: stages, contacts, owners, currency. */
 export const GET = withGuard(async () => {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [pipelines, contacts, users] = await Promise.all([
     provider.listPipelines(),
     provider.listContacts(),

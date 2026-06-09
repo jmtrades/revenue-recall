@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { withGuard } from "@/lib/api/guard";
 import { z } from "zod";
@@ -15,7 +15,7 @@ export const POST = withGuard<{ params: { id: string } }>(async (req, { params }
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid activity" }, { status: 400 });
 
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const opp = await provider.getOpportunity(params.id);
   if (!opp) return NextResponse.json({ error: "Deal not found" }, { status: 404 });
 

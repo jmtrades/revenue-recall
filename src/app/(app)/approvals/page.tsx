@@ -1,14 +1,14 @@
 import { PageHeader } from "@/components/ui";
 import { ApprovalsView, type ApprovalRow } from "@/components/ApprovalsView";
 import { listOutbox } from "@/lib/agent/store";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 
 export const dynamic = "force-dynamic";
 
 export default async function ApprovalsPage() {
   const [items, contacts] = await Promise.all([
     listOutbox("pending").catch(() => []),
-    getProvider().listContacts().catch(() => []),
+    (await resolveProvider()).listContacts().catch(() => []),
   ]);
   const nameById = new Map(contacts.map((c) => [c.id, c.name]));
   const rows: ApprovalRow[] = items.map((i) => ({

@@ -5,13 +5,14 @@ import type { Activity, Contact } from "@/lib/crm/types";
 // and grouping without a real CRM.
 const state: { contacts: Contact[]; activities: Activity[] } = { contacts: [], activities: [] };
 
-vi.mock("@/lib/crm/registry", () => ({
-  getProvider: () => ({
+vi.mock("@/lib/crm/registry", () => {
+  const fake = () => ({
     listContacts: async () => state.contacts,
     listRecentActivities: async (limit: number) =>
       state.activities.slice().sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1)).slice(0, limit),
-  }),
-}));
+  });
+  return { getProvider: fake, resolveProvider: async () => fake() };
+});
 
 import { getInbox } from "@/lib/queries";
 

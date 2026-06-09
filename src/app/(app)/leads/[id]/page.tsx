@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getContactDetail } from "@/lib/queries";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { getConfig } from "@/lib/config";
 import { sequencesFor } from "@/lib/sequences";
 import { money, relativeDays } from "@/lib/format";
@@ -24,7 +24,7 @@ export default async function ContactPage({ params }: { params: { id: string } }
 
   // Reach-out: which channels this contact is actually reachable on, the
   // sequences available to enroll them in, and whether this workspace can write.
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const canWrite = provider.info().capabilities.write;
   // Only offer delete once the contact has no deals — removing one would
   // otherwise orphan live pipeline records (the deal's contact link is nulled).

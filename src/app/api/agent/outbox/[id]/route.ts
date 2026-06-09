@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getOutboxItem, setOutboxStatus } from "@/lib/agent/store";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { sendReply, isSocialChannel } from "@/lib/outbound";
 import { hasOptedOut } from "@/lib/agent/guardrails";
 import { recordRecallTouch } from "@/lib/recall/events";
@@ -30,7 +30,7 @@ export const POST = withGuard(async (req: Request, { params }: { params: { id: s
   // approve → send + log. The unified outbound seam resolves the right transport
   // and address (email/phone/social id) for the contact, so email, SMS, and all
   // six social platforms send through one path.
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   if (!item.contactId) return NextResponse.json({ error: "No contact on file" }, { status: 400 });
   const contact = await provider.getContact(item.contactId);
   if (!contact) return NextResponse.json({ error: "Contact not found" }, { status: 404 });

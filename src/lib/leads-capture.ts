@@ -1,4 +1,4 @@
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { safePipeline } from "@/lib/queries";
 import { getOrgSettings } from "@/lib/org";
 import { enroll } from "@/lib/cadence";
@@ -63,7 +63,7 @@ export function matchExistingContact(contacts: Contact[], email?: string, phone?
 }
 
 export async function captureLead(lead: LeadInput): Promise<CaptureResult> {
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [pipelines, org, contacts] = await Promise.all([provider.listPipelines(), getOrgSettings(), provider.listContacts()]);
   const pipeline = safePipeline(pipelines);
   const stage = pipeline.stages.find((s) => s.type === "open") ?? pipeline.stages[0];

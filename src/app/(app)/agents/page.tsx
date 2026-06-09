@@ -1,6 +1,6 @@
 import { AgentsView } from "@/components/AgentsView";
 import { listTasks, listRuns } from "@/lib/agent/store";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { guardrailConfig } from "@/lib/agent/guardrails";
 import { getOrgSettings } from "@/lib/org";
 
@@ -10,7 +10,7 @@ export default async function AgentsPage() {
   const [tasks, runs, pipelines, org] = await Promise.all([
     listTasks().catch(() => []),
     listRuns(undefined, 25).catch(() => []),
-    getProvider().listPipelines().catch(() => []),
+    (await resolveProvider()).listPipelines().catch(() => []),
     getOrgSettings().catch(() => null),
   ]);
   const stages = pipelines[0]?.stages.filter((s) => s.type === "open").map((s) => ({ id: s.id, label: s.label })) ?? [];

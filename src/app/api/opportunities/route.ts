@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { withGuard } from "@/lib/api/guard";
@@ -19,7 +19,7 @@ export const POST = withGuard(async (req: Request) => {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid deal" }, { status: 400 });
 
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const pipelines = await provider.listPipelines();
   const pipeline = pipelines[0];
   if (!pipeline) return NextResponse.json({ error: "No pipeline" }, { status: 409 });

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 import { withGuard } from "@/lib/api/guard";
 
@@ -14,7 +14,7 @@ export const GET = withGuard(async (req: Request) => {
   const q = raw.trim().slice(0, 100).toLowerCase(); // bound the query
   if (!q) return NextResponse.json({ contacts: [], deals: [] });
 
-  const provider = getProvider();
+  const provider = (await resolveProvider());
   const [contacts, opps] = await Promise.all([provider.listContacts(), provider.listOpportunities()]);
 
   const matchedContacts = contacts

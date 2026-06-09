@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withGuard } from "@/lib/api/guard";
 import { withApiKey } from "@/lib/api/auth";
-import { getProvider } from "@/lib/crm/registry";
+import { resolveProvider } from "@/lib/crm/registry";
 import { updateContactRecord, serializeContact } from "@/lib/contacts";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ const Patch = z
 
 export const GET = withGuard(
   withApiKey<{ params: { id: string } }>(async (_req, _orgId, { params }) => {
-    const contact = await getProvider().getContact(params.id);
+    const contact = await (await resolveProvider()).getContact(params.id);
     if (!contact) return NextResponse.json({ error: "Contact not found" }, { status: 404 });
     return NextResponse.json({ contact: serializeContact(contact) });
   }),

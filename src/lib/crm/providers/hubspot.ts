@@ -78,6 +78,11 @@ function stripHtml(s: string): string {
 export class HubspotProvider implements CrmProvider {
   private token = process.env.HUBSPOT_ACCESS_TOKEN ?? "";
 
+  /** Per-org credentials (the org's encrypted connection) override the env. */
+  constructor(token?: string) {
+    if (token) this.token = token;
+  }
+
   private async req<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
     const res = await fetchWithRetry(`${API}${path}`, {
       method: init?.method ?? "GET",
