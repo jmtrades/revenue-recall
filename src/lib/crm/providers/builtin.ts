@@ -128,6 +128,17 @@ export class BuiltinProvider implements CrmProvider {
     return contact;
   }
 
+  async deleteContact(id: Id): Promise<void> {
+    const d = db();
+    const i = d.contacts.findIndex((c) => c.id === id);
+    if (i < 0) return;
+    d.contacts.splice(i, 1);
+    // Mirror the DB: contact activities cascade away; deals keep but lose the link.
+    d.activities = d.activities.filter((a) => a.contactId !== id);
+    for (const o of d.opportunities) if (o.contactId === id) o.contactId = "";
+    persist();
+  }
+
   async listOpportunities(filter?: OpportunityFilter): Promise<Opportunity[]> {
     const d = db();
     return d.opportunities.filter((o) => matches(o, filter, d.pipelines));
@@ -171,6 +182,16 @@ export class BuiltinProvider implements CrmProvider {
     });
     persist();
     return opp;
+  }
+
+  async deleteOpportunity(id: Id): Promise<void> {
+    const d = db();
+    const i = d.opportunities.findIndex((o) => o.id === id);
+    if (i < 0) return;
+    d.opportunities.splice(i, 1);
+    // Mirror the DB cascade: a deal's activities go with it.
+    d.activities = d.activities.filter((a) => a.opportunityId !== id);
+    persist();
   }
 
   async listActivities(opportunityId: Id): Promise<Activity[]> {

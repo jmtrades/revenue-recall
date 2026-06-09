@@ -150,11 +150,15 @@ export interface CrmProvider {
    * gracefully (bounce suppression simply no-ops on read-only / external CRMs).
    */
   updateContact?(id: Id, patch: Partial<Omit<Contact, "id">>): Promise<Contact>;
+  /** Optional: permanently delete a contact (junk/duplicate removal). */
+  deleteContact?(id: Id): Promise<void>;
 
   listOpportunities(filter?: OpportunityFilter): Promise<Opportunity[]>;
   getOpportunity(id: Id): Promise<Opportunity | null>;
   createOpportunity(input: NewOpportunity): Promise<Opportunity>;
   moveOpportunity(id: Id, stageId: Id): Promise<Opportunity>;
+  /** Optional: permanently delete a deal (junk/duplicate removal). */
+  deleteOpportunity?(id: Id): Promise<void>;
 
   listActivities(opportunityId: Id): Promise<Activity[]>;
   /** Most recent activities across the whole org, newest first. */

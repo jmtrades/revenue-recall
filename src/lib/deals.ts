@@ -72,6 +72,30 @@ export async function createDealRecord(input: NewDealInput): Promise<CreateDealR
   return { ok: true, opp, stageLabel: stage.label };
 }
 
+export type DeleteDealResult = { ok: true } | { ok: false; reason: "unsupported" | "not_found" };
+
+/**
+ * Permanently delete a deal (junk/duplicate cleanup so the pipeline + forecast
+ * aren't skewed). Returns a discriminated result: providers that can't delete
+ * here (read-only / external CRMs) report "unsupported" so the route can answer
+ * 409. Emits deal.deleted (best-effort) for integrators keeping a mirror.
+ */
+export async function deleteDeal(id: string): Promise<DeleteDealResult> {
+  const provider = getProvider();
+  if (!provider.deleteOpportunity) return { ok: false, reason: "unsupported" };
+  const opp = await provider.getOpportunity(id);
+  if (!opp) return { ok: false, reason: "not_found" };
+  await provider.deleteOpportunity(id);
+  await emitWebhook("deal.deleted", {
+    dealId: opp.id,
+    title: opp.title,
+    value: opp.value,
+    currency: opp.currency,
+    contactId: opp.contactId,
+  });
+  return { ok: true };
+}
+
 export async function moveDeal(id: string, stageId: string): Promise<Opportunity> {
   const provider = getProvider();
   const opp = await provider.moveOpportunity(id, stageId);

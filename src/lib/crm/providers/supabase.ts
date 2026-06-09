@@ -150,6 +150,15 @@ export class SupabaseProvider implements CrmProvider {
     return mapContact(data as ContactRow);
   }
 
+  async deleteContact(id: Id): Promise<void> {
+    const orgId = await this.orgId();
+    // activities.contact_id cascades; opportunities.contact_id is ON DELETE SET
+    // NULL, so callers should only delete contacts with no deals to avoid
+    // orphaning a pipeline record.
+    const { error } = await this.client.from("contacts").delete().eq("org_id", orgId).eq("id", id);
+    if (error) throw new Error(error.message);
+  }
+
   async listOpportunities(filter?: OpportunityFilter): Promise<Opportunity[]> {
     const orgId = await this.orgId();
     let query = this.client.from("opportunities").select("*").eq("org_id", orgId);
@@ -221,6 +230,14 @@ export class SupabaseProvider implements CrmProvider {
       occurred_at: now,
     });
     return opp;
+  }
+
+  async deleteOpportunity(id: Id): Promise<void> {
+    const orgId = await this.orgId();
+    // activities.opportunity_id and agent_outbox.deal_id both ON DELETE CASCADE;
+    // the text-keyed recall_events / snoozes / tasks become harmless orphans.
+    const { error } = await this.client.from("opportunities").delete().eq("org_id", orgId).eq("id", id);
+    if (error) throw new Error(error.message);
   }
 
   async listActivities(opportunityId: Id): Promise<Activity[]> {

@@ -7,6 +7,7 @@ import { sequencesFor } from "@/lib/sequences";
 import { money, relativeDays } from "@/lib/format";
 import { Card, Avatar, InfoRow, ActivityIcon, EmptyState } from "@/components/ui";
 import { DealActions } from "@/components/DealActions";
+import { DeleteButton } from "@/components/DeleteButton";
 import { EnrollPicker } from "@/components/EnrollPicker";
 import { AiBrief } from "@/components/AiBrief";
 import { contactInsights } from "@/lib/insights";
@@ -22,7 +23,9 @@ export default async function DealPage({ params }: { params: { id: string } }) {
   const detail = await getDealDetail(params.id);
   if (!detail) notFound();
   const { opp, contact, owner, pipeline, stage, activities, fields } = detail;
-  const canWrite = getProvider().info().capabilities.write;
+  const provider = getProvider();
+  const canWrite = provider.info().capabilities.write;
+  const canDelete = canWrite && typeof provider.deleteOpportunity === "function";
   const sequences = sequencesFor((await getOrgSettings()).industryId).map((s) => ({ id: s.id, name: s.name }));
   const openStages = pipeline.stages.filter((s) => s.type === "open");
   const currentIdx = openStages.findIndex((s) => s.id === stage?.id);
@@ -154,6 +157,18 @@ export default async function DealPage({ params }: { params: { id: string } }) {
               <InfoRow key={f.key} label={f.label}>{String(contact?.attributes?.[f.key] ?? "—")}</InfoRow>
             ))}
           </Card>
+
+          {canDelete && (
+            <Card title="Danger zone">
+              <p className="mb-3 text-sm text-muted">Permanently remove this deal and its activity. This can&apos;t be undone — use it for junk or duplicate records that skew your pipeline.</p>
+              <DeleteButton
+                endpoint={`/api/opportunities/${opp.id}`}
+                label="Delete deal"
+                confirmText={`Permanently delete “${opp.title}”? Its activity history goes with it. This can't be undone.`}
+                redirectTo="/pipeline"
+              />
+            </Card>
+          )}
         </div>
       </div>
     </div>
