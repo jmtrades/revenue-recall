@@ -432,8 +432,15 @@ export async function getContactDetail(id: string): Promise<ContactDetail | null
   if (!contact) return null;
   const opps = await provider.listOpportunities();
   const deals = opps.filter((o) => o.contactId === id);
-  const activityLists = await Promise.all(deals.map((d) => provider.listActivities(d.id)));
-  const activities = activityLists.flat().sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1));
+  // Prefer a single contact-scoped activity query (Supabase + built-in implement
+  // it) over one listActivities call per deal — avoids N+1 on contacts with many
+  // deals, and also surfaces contact-direct activity (e.g. inbound DMs) that has
+  // no deal. Falls back to the per-deal fan-out for providers without it.
+  const activities = (
+    provider.listActivitiesByContact
+      ? await provider.listActivitiesByContact(id)
+      : (await Promise.all(deals.map((d) => provider.listActivities(d.id)))).flat()
+  ).sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1));
   return { contact, deals, activities };
 }
 

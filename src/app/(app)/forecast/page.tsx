@@ -58,12 +58,12 @@ export default async function ForecastPage() {
           </div>
         </Card>
 
-        <Card title="Quota attainment">
+        <Card title="Quota coverage">
           <div className="flex flex-col items-center gap-3 py-2">
             <ProgressRing value={attainment} size={120} thickness={11} color={attainment >= 1 ? "#34d399" : "rgb(var(--brand-rgb))"} />
             <div className="text-center">
               <div className="text-sm text-fg">{money(f.weighted, f.currency)} <span className="text-muted">/ {compactMoney(f.quota, f.currency)}</span></div>
-              <div className="text-xs text-muted">weighted vs. quota</div>
+              <div className="text-xs text-muted">weighted pipeline vs. quota (not closed-won — see the dashboard goal for that)</div>
             </div>
           </div>
         </Card>

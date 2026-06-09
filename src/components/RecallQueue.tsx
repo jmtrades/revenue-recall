@@ -162,7 +162,7 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
     <div>
       <div className="mb-4 flex flex-wrap gap-1">
         {FILTERS.map((f) => {
-          const count = f.id === "all" ? rows.length : rows.filter((r) => r.reason === f.id).length;
+          const count = f.id === "all" ? visible.length : visible.filter((r) => r.reason === f.id).length;
           return (
             <button
               key={f.id}
