@@ -73,20 +73,31 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
   const [state, formAction] = useFormState<AuthState, FormData>(mode === "signup" ? signUp : signIn, {});
   const [showPw, setShowPw] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
 
   async function google() {
     setGoogleBusy(true);
+    setGoogleError(null);
     try {
       const sb = getBrowserSupabase();
       // New users (Sign up) land in onboarding just like the email path; an
       // explicit `next` always wins. Returning users (Sign in) → dashboard.
       const dest = next ?? (mode === "signup" ? "/onboarding" : "/dashboard");
-      await sb.auth.signInWithOAuth({
+      const { data, error } = await sb.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(dest)}` },
       });
+      // On success the browser is already navigating to Google. If we're still
+      // here with an error or no redirect URL, the provider isn't available
+      // (e.g. Google sign-in isn't enabled yet) — say so instead of silently
+      // snapping the button back, which looked like nothing happened.
+      if (error || !data?.url) {
+        setGoogleBusy(false);
+        setGoogleError("Google sign-in isn't available right now — use email below, or try again shortly.");
+      }
     } catch {
       setGoogleBusy(false);
+      setGoogleError("Google sign-in isn't available right now — use email below, or try again shortly.");
     }
   }
 
@@ -161,6 +172,10 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
         <GoogleG />
         {googleBusy ? "Connecting…" : "Continue with Google"}
       </button>
+
+      {googleError && (
+        <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs leading-relaxed text-danger">{googleError}</p>
+      )}
 
       <p className="pt-1 text-center text-[11px] leading-relaxed text-muted">
         By continuing you agree to our{" "}

@@ -6,6 +6,8 @@ export const metadata = { title: "Sign in — Revenue Recall" };
 const CALLBACK_ERRORS: Record<string, string> = {
   link: "That sign-in link has expired or was already used. Please sign in again.",
   config: "Authentication isn't fully configured yet. Please contact your admin.",
+  provider: "Google sign-in didn't complete — it may not be enabled yet. Use email below, or try again shortly.",
+  cancelled: "Google sign-in was cancelled. You can try again, or sign in with email.",
 };
 
 export default function LoginPage({ searchParams }: { searchParams: { next?: string; error?: string } }) {

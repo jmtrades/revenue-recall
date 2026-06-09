@@ -22,6 +22,15 @@ export async function GET(req: Request) {
   const type = url.searchParams.get("type") as EmailOtpType | null;
   const next = safeNext(url.searchParams.get("next"));
 
+  // The provider can bounce back here with an error instead of a code — e.g. the
+  // Google provider isn't enabled in Supabase, or the user cancelled. Surface
+  // that distinctly rather than mislabeling it as an expired link.
+  const providerError = url.searchParams.get("error_description") || url.searchParams.get("error");
+  if (providerError && !code && !tokenHash) {
+    const cancelled = /access_denied|cancel/i.test(providerError);
+    return NextResponse.redirect(new URL(`/login?error=${cancelled ? "cancelled" : "provider"}`, url.origin));
+  }
+
   const sb = getServerSupabase();
   if (!sb) return NextResponse.redirect(new URL("/login?error=config", url.origin));
 

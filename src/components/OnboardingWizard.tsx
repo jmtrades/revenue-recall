@@ -44,6 +44,7 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
   const [role, setRole] = useState("");
   const [samples, setSamples] = useState("");
   const [finishing, setFinishing] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Conversational first step: describe the business, AI personalizes the rest.
   const [describe, setDescribe] = useState("");
@@ -94,15 +95,21 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
   async function finish() {
     if (finishing) return;
     setFinishing(true);
+    setSaveError(null);
     try {
       // Auto-detect the workspace timezone from the browser so the daily digest
       // lands in their morning with zero setup (editable later in Settings).
       const timezone = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined; } catch { return undefined; } })();
-      await fetch("/api/org", {
+      const res = await fetch("/api/org", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ industryId: industry, language, name: org || undefined, monthlyQuota: Number(quota) || undefined, timezone }),
       });
+      // The core save MUST land — otherwise the user enters a workspace that
+      // silently lost their industry/quota/language. Surface it and let them
+      // retry instead of pretending it worked.
+      if (!res.ok) throw new Error("save failed");
+      // Personalization + invites are genuinely best-effort — never block entry.
       if (yourName.trim() || samples.trim() || describe.trim()) {
         await fetch("/api/voice/learn", {
           method: "POST",
@@ -116,17 +123,19 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
             // message in what they actually sell, so it tailors to any vertical.
             business: describe.trim() || undefined,
           }),
-        });
+        }).catch(() => {});
       }
       if (invites.trim()) {
         await fetch("/api/invites", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ emails: invites }),
-        });
+        }).catch(() => {});
       }
     } catch {
-      /* non-blocking */
+      setFinishing(false);
+      setSaveError("We couldn't save your workspace — check your connection and try again.");
+      return;
     }
     // Brief "building your workspace" beat so finishing feels like the system coming alive.
     setTimeout(() => router.push("/dashboard"), 1150);
@@ -331,6 +340,10 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
           </div>
       </div>
 
+      {saveError && (
+        <p className="relative mt-6 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs leading-relaxed text-danger">{saveError}</p>
+      )}
+
       <div className="relative mt-8 flex items-center justify-between">
         <button onClick={() => go(Math.max(0, step - 1))} disabled={step === 0 || finishing} className="cta inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:text-fg disabled:opacity-0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5" /><path d="m11 18-6-6 6-6" /></svg>
@@ -356,7 +369,7 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
           </button>
         )}
       </div>
-      <p className="relative mt-3 text-center text-[11px] text-muted">Your selections persist once a database is connected.</p>
+      <p className="relative mt-3 text-center text-[11px] text-muted">You can change any of this later in Settings.</p>
     </div>
   );
 }
