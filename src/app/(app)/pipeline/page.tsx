@@ -23,13 +23,13 @@ export default async function PipelinePage() {
     <div>
       <PageHeader
         title={pipeline.label}
-        subtitle={canWrite ? `${money(openValue, opportunities[0]?.currency ?? "USD")} open · drag cards between stages` : "Read-only — your CRM controls stage changes."}
+        subtitle={canWrite ? `${money(openValue, opportunities[0]?.currency ?? "USD")} open · drag a card, or use its stage menu, to move it` : "Read-only — your CRM controls stage changes."}
       />
       {opportunities.length === 0 ? (
         <EmptyState
           iconName="pipeline"
           title="Your board is empty"
-          hint="Import your leads or connect a source and deals will populate these stages automatically. Then drag cards between stages to move them forward."
+          hint="Import your leads or connect a source and deals will populate these stages automatically. Then move them forward by dragging a card — or using its stage menu on any device."
           action={
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Button href="/settings?tab=import" variant="primary" size="sm">Import leads</Button>
