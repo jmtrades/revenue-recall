@@ -1,55 +1,22 @@
-import Link from "next/link";
-import { getConfig } from "@/lib/config";
-import { sequencesFor } from "@/lib/sequences";
-import { PageHeader, ChannelBadge } from "@/components/ui";
+import { getConfig, isAuthRequired } from "@/lib/config";
+import { allSequencesFor, listCustomSequences } from "@/lib/sequences-store";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { getSessionRole } from "@/lib/authz";
+import { PageHeader } from "@/components/ui";
+import { SequencesView } from "@/components/SequencesView";
 
 export const dynamic = "force-dynamic";
 
-export default function SequencesPage() {
+export default async function SequencesPage() {
   const cfg = getConfig();
-  const sequences = sequencesFor(cfg.industryId);
-
+  const [sequences, custom] = await Promise.all([allSequencesFor(cfg.industryId), listCustomSequences()]);
+  // Authoring: needs the database and an owner/admin once auth is live — the
+  // same gate shape as the pipeline-stage and template editors.
+  const canAuthor = isSupabaseConfigured() && (!isAuthRequired() || ["owner", "admin"].includes((await getSessionRole()) ?? ""));
   return (
     <div>
-      <PageHeader title="Sequences" subtitle="Multi-step, multi-channel cadences tuned to your industry." />
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {sequences.map((seq) => (
-          <section key={seq.id} className="card">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <Link href={`/sequences/${seq.id}`} className="font-semibold text-fg hover:underline">{seq.name}</Link>
-                <p className="mt-1 text-sm text-muted">{seq.goal}</p>
-              </div>
-              <span className="pill bg-surface-2 text-muted">{seq.steps.length} steps</span>
-            </div>
-            <ol className="mt-4 space-y-3">
-              {seq.steps.map((step, i) => (
-                <li key={i} className="flex gap-3">
-                  <div className="flex w-12 shrink-0 flex-col items-center">
-                    <span className="grid h-7 w-7 place-items-center rounded-full border border-border text-xs text-muted">{i + 1}</span>
-                    <span className="mt-1 text-[10px] uppercase tracking-wide text-muted">Day {step.day}</span>
-                  </div>
-                  <div className="min-w-0 flex-1 rounded-lg border border-border bg-surface-2 p-3">
-                    <div className="mb-1 flex items-center gap-2">
-                      <ChannelBadge channel={step.channel} />
-                      <span className="truncate text-sm font-medium text-fg">{step.subject}</span>
-                    </div>
-                    <p className="text-xs leading-relaxed text-muted">{step.body}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-            <div className="mt-4 border-t border-border pt-3">
-              <Link
-                href={`/sequences/${seq.id}`}
-                className="inline-flex items-center gap-1 text-sm font-medium text-brand transition hover:text-brand/80"
-              >
-                Start this cadence <span aria-hidden>→</span>
-              </Link>
-            </div>
-          </section>
-        ))}
-      </div>
+      <PageHeader title="Sequences" subtitle="Multi-step, multi-channel cadences — yours plus the industry presets." />
+      <SequencesView sequences={sequences} customIds={custom.map((s) => s.id)} canAuthor={canAuthor} />
     </div>
   );
 }

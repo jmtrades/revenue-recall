@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getContactDetail } from "@/lib/queries";
 import { resolveProvider } from "@/lib/crm/registry";
 import { getConfig } from "@/lib/config";
-import { sequencesFor } from "@/lib/sequences";
+import { allSequencesFor } from "@/lib/sequences-store";
 import { money, relativeDays } from "@/lib/format";
 import { Card, Avatar, InfoRow, ActivityIcon, EmptyState } from "@/components/ui";
 import { ContactReachOut } from "@/components/ContactReachOut";
@@ -33,7 +33,7 @@ export default async function ContactPage({ params }: { params: { id: string } }
   const canText = contact.points.some((p) => (p.channel === "phone" || p.channel === "sms") && !!p.value);
   const email = contact.points.find((p) => p.channel === "email")?.value ?? "";
   const phone = contact.points.find((p) => p.channel === "phone" || p.channel === "sms")?.value ?? "";
-  const sequences = sequencesFor(getConfig().industryId).map((s) => ({ id: s.id, name: s.name }));
+  const sequences = (await allSequencesFor(getConfig().industryId)).map((s) => ({ id: s.id, name: s.name }));
   const showReachOut = canWrite && (canEmail || canText || sequences.length > 0);
 
   return (
