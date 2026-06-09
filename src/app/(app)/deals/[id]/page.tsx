@@ -7,6 +7,7 @@ import { sequencesFor } from "@/lib/sequences";
 import { money, relativeDays } from "@/lib/format";
 import { Card, Avatar, InfoRow, ActivityIcon, EmptyState } from "@/components/ui";
 import { DealActions } from "@/components/DealActions";
+import { DealInfoEdit } from "@/components/DealInfoEdit";
 import { DeleteButton } from "@/components/DeleteButton";
 import { EnrollPicker } from "@/components/EnrollPicker";
 import { AiBrief } from "@/components/AiBrief";
@@ -25,6 +26,7 @@ export default async function DealPage({ params }: { params: { id: string } }) {
   const { opp, contact, owner, pipeline, stage, activities, fields } = detail;
   const provider = getProvider();
   const canWrite = provider.info().capabilities.write;
+  const canEdit = canWrite && typeof provider.updateOpportunity === "function";
   const canDelete = canWrite && typeof provider.deleteOpportunity === "function";
   const sequences = sequencesFor((await getOrgSettings()).industryId).map((s) => ({ id: s.id, name: s.name }));
   const openStages = pipeline.stages.filter((s) => s.type === "open");
@@ -156,6 +158,17 @@ export default async function DealPage({ params }: { params: { id: string } }) {
             {fields.map((f) => (
               <InfoRow key={f.key} label={f.label}>{String(contact?.attributes?.[f.key] ?? "—")}</InfoRow>
             ))}
+            {canEdit && (
+              <DealInfoEdit
+                dealId={opp.id}
+                currency={opp.currency}
+                initial={{
+                  title: opp.title,
+                  value: opp.value,
+                  expectedCloseAt: opp.expectedCloseAt ? new Date(opp.expectedCloseAt).toISOString().slice(0, 10) : "",
+                }}
+              />
+            )}
           </Card>
 
           {canDelete && (

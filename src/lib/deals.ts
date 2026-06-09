@@ -72,6 +72,31 @@ export async function createDealRecord(input: NewDealInput): Promise<CreateDealR
   return { ok: true, opp, stageLabel: stage.label };
 }
 
+export type DealPatch = Partial<Pick<Opportunity, "title" | "value" | "expectedCloseAt">>;
+export type UpdateDealResult = { ok: true; opp: Opportunity } | { ok: false; reason: "unsupported" | "not_found" };
+
+/**
+ * Edit a deal's core fields (title / value / expected close). A wrong value
+ * silently skews pipeline + forecast totals, and until now there was no way to
+ * fix it in-app. Returns a discriminated result; emits deal.updated.
+ */
+export async function updateDealRecord(id: string, patch: DealPatch): Promise<UpdateDealResult> {
+  const provider = getProvider();
+  if (!provider.updateOpportunity) return { ok: false, reason: "unsupported" };
+  const existing = await provider.getOpportunity(id);
+  if (!existing) return { ok: false, reason: "not_found" };
+  const opp = await provider.updateOpportunity(id, patch);
+  await emitWebhook("deal.updated", {
+    dealId: opp.id,
+    title: opp.title,
+    value: opp.value,
+    currency: opp.currency,
+    contactId: opp.contactId,
+    expectedCloseAt: opp.expectedCloseAt ?? null,
+  });
+  return { ok: true, opp };
+}
+
 export type DeleteDealResult = { ok: true } | { ok: false; reason: "unsupported" | "not_found" };
 
 /**
