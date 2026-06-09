@@ -1,5 +1,6 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
 import { isEntitled } from "@/lib/billing/enforce";
+import { UNTRUSTED_DATA_RULE, fenceUntrusted, oneLineUntrusted } from "@/lib/ai/untrusted";
 import { languageDirective } from "@/lib/languages";
 
 export interface BriefInput {
@@ -67,17 +68,19 @@ export async function summarizeDeal(input: BriefInput): Promise<BriefResult> {
   // product — max effort). Free plans get the template brief, same as drafts.
   if (!isAiConfigured() || !(await isEntitled("aiLive"))) return fallback(input);
 
+  // The prospect's name/company/deal title and the activity history contain
+  // prospect-authored text (their replies are logged verbatim) — fence it all.
   const user = `Industry: ${input.industryLabel}
-Prospect: ${input.contactName}${input.company ? ` at ${input.company}` : ""}
-Deal: "${input.dealTitle}" — ${input.valueLabel} ${input.value} ${input.currency}
+Prospect: ${oneLineUntrusted(input.contactName)}${input.company ? ` at ${oneLineUntrusted(input.company)}` : ""}
+Deal: "${oneLineUntrusted(input.dealTitle, 200)}" — ${input.valueLabel} ${input.value} ${input.currency}
 Stage: ${input.stageLabel} (${input.stageType})
-${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.history && input.history.length ? `History (newest first):\n- ${input.history.slice(0, 8).join("\n- ")}` : "No activity logged."}
+${input.daysSinceContact !== undefined ? `Days since last contact: ${input.daysSinceContact}\n` : ""}${input.history && input.history.length ? `History (newest first):\n- ${input.history.slice(0, 8).map((h) => fenceUntrusted(h, 500)).join("\n- ")}` : "No activity logged."}
 ${languageDirective(input.language) ? `\n${languageDirective(input.language)}\n` : ""}
 Brief the rep now.`;
 
   try {
     const out = await completeJson<Omit<BriefResult, "source">>({
-      system: SYSTEM,
+      system: `${SYSTEM}\n\n${UNTRUSTED_DATA_RULE}`,
       user,
       schema: SCHEMA,
       maxTokens: 1200,
