@@ -49,6 +49,9 @@ export default async function DashboardPage() {
   const wonPrevMonth = wonSeries[wonSeries.length - 2]?.value ?? 0;
   // Honest month-over-month delta from real history (only shown when there's a prior month to compare).
   const wonDelta = wonPrevMonth > 0 ? Math.round(((wonThisMonth - wonPrevMonth) / wonPrevMonth) * 100) : undefined;
+  // First revenue after a zero month (common early on): a "% vs last" is
+  // undefined, so show a positive "new" cue instead of a blank where the trend is.
+  const firstRevenue = wonPrevMonth === 0 && wonThisMonth > 0;
   const attainment = org.monthlyQuota > 0 ? wonThisMonth / org.monthlyQuota : 0;
   const greeting = user?.name ? `${partOfDay(new Date().getHours())}, ${firstName(user.name)}` : partOfDay(new Date().getHours());
 
@@ -87,8 +90,11 @@ export default async function DashboardPage() {
                     {Math.abs(wonDelta)}%
                   </span>
                 )}
+                {wonDelta === undefined && firstRevenue && (
+                  <span className="inline-flex items-center rounded-full bg-success/15 px-1.5 py-0.5 text-xs font-semibold text-success">new</span>
+                )}
               </div>
-              <div className="text-xs text-muted">won this month{wonDelta !== undefined ? " · vs last" : ""}</div>
+              <div className="text-xs text-muted">won this month{wonDelta !== undefined ? " · vs last" : firstRevenue ? " · first revenue" : ""}</div>
             </div>
             <div className="mb-1 ml-auto">
               <Sparkline data={reports.monthlyWon.map((x) => x.value)} width={200} height={44} />
