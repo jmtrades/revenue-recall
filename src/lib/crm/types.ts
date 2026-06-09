@@ -158,11 +158,12 @@ export interface CrmProvider {
   createOpportunity(input: NewOpportunity): Promise<Opportunity>;
   moveOpportunity(id: Id, stageId: Id): Promise<Opportunity>;
   /**
-   * Optional: edit a deal's core fields (title / value / expected close). Stage
-   * changes go through moveOpportunity; currency is workspace-fixed and never
-   * edited here. Read-only / external CRMs omit it.
+   * Optional: edit a deal's core fields (title / value / expected close /
+   * owner — an empty-string ownerId unassigns). Stage changes go through
+   * moveOpportunity; currency is workspace-fixed and never edited here.
+   * Read-only / external CRMs omit it.
    */
-  updateOpportunity?(id: Id, patch: Partial<Pick<Opportunity, "title" | "value" | "expectedCloseAt">>): Promise<Opportunity>;
+  updateOpportunity?(id: Id, patch: Partial<Pick<Opportunity, "title" | "value" | "expectedCloseAt" | "ownerId">>): Promise<Opportunity>;
   /** Optional: permanently delete a deal (junk/duplicate removal). */
   deleteOpportunity?(id: Id): Promise<void>;
 

@@ -41,6 +41,19 @@ describe("PATCH /api/opportunities/:id (edit deal)", () => {
     expect(opp?.expectedCloseAt).toMatch(/^2026-09-01T/);
   });
 
+  it("reassigns the deal's owner, and an empty string unassigns it", async () => {
+    const id = await makeDeal();
+    const users = await getProvider().listUsers();
+    const ownerId = users[0]?.id;
+    expect(ownerId).toBeTruthy();
+
+    expect((await patch(id, { ownerId })).status).toBe(200);
+    expect((await getProvider().getOpportunity(id))?.ownerId).toBe(ownerId);
+
+    expect((await patch(id, { ownerId: "" })).status).toBe(200);
+    expect((await getProvider().getOpportunity(id))?.ownerId).toBeUndefined();
+  });
+
   it("400s when no field is provided", async () => {
     const id = await makeDeal();
     expect((await patch(id, {})).status).toBe(400);

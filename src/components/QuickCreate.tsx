@@ -28,6 +28,7 @@ export function QuickCreate() {
   const [contactId, setContactId] = useState("");
   const [value, setValue] = useState("");
   const [stageId, setStageId] = useState("");
+  const [ownerId, setOwnerId] = useState("");
   // contact fields
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
@@ -60,7 +61,7 @@ export function QuickCreate() {
       const res = await fetch("/api/opportunities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, contactId, value: Number(value) || 0, stageId }),
+        body: JSON.stringify({ title, contactId, value: Number(value) || 0, stageId, ...(ownerId ? { ownerId } : {}) }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Failed");
@@ -138,6 +139,12 @@ export function QuickCreate() {
                       {meta.stages.filter((s) => s.type !== "lost").map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
                     </select>
                   </div>
+                  {meta.owners.length > 0 && (
+                    <select className={inputCls} value={ownerId} onChange={(e) => setOwnerId(e.target.value)} aria-label="Deal owner">
+                      <option value="">Assign to… (optional)</option>
+                      {meta.owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                    </select>
+                  )}
                   <button onClick={submitDeal} disabled={busy || !title.trim() || !contactId} className="w-full rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
                     {busy ? "Creating…" : `Create ${meta.terminology.opportunity}`}
                   </button>

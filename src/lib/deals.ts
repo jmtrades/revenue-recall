@@ -73,7 +73,7 @@ export async function createDealRecord(input: NewDealInput): Promise<CreateDealR
   return { ok: true, opp, stageLabel: stage.label };
 }
 
-export type DealPatch = Partial<Pick<Opportunity, "title" | "value" | "expectedCloseAt">>;
+export type DealPatch = Partial<Pick<Opportunity, "title" | "value" | "expectedCloseAt" | "ownerId">>;
 export type UpdateDealResult = { ok: true; opp: Opportunity } | { ok: false; reason: "unsupported" | "not_found" };
 
 /**
