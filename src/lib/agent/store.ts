@@ -124,6 +124,18 @@ export async function touchTask(id: string): Promise<void> {
   await getSupabase()!.from("agent_tasks").update({ last_run_at: now }).eq("org_id", await orgId()).eq("id", id);
 }
 
+/** Patch a task (today: pause/resume). Lets an operator stop an autonomous agent
+ *  without permanently deleting its config. Org-scoped. */
+export async function updateTask(id: string, patch: { enabled?: boolean }): Promise<void> {
+  if (patch.enabled === undefined) return;
+  if (!isSupabaseConfigured()) {
+    const t = memTasks.find((x) => x.id === id);
+    if (t) t.enabled = patch.enabled;
+    return;
+  }
+  await getSupabase()!.from("agent_tasks").update({ enabled: patch.enabled }).eq("org_id", await orgId()).eq("id", id);
+}
+
 export async function createRun(run: Omit<AgentRun, "id">): Promise<AgentRun> {
   if (!isSupabaseConfigured()) {
     const r: AgentRun = { ...run, id: `ar_${Date.now()}` };
