@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icons";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 interface Results {
   contacts: { id: string; name: string; company: string }[];
@@ -13,8 +14,10 @@ export function CommandSearch() {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Results>({ contacts: [], deals: [] });
+  const [failed, setFailed] = useState(false);
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useFocusTrap<HTMLDivElement>(open);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -39,13 +42,33 @@ export function CommandSearch() {
   useEffect(() => {
     if (!q.trim()) {
       setResults({ contacts: [], deals: [] });
+      setFailed(false);
       return;
     }
+    // `ignore` drops a stale response: a slow earlier request must not overwrite
+    // the results for a newer query. The try/catch also stops a network error
+    // from surfacing as an unhandled promise rejection — it shows a notice.
+    let ignore = false;
     const id = setTimeout(async () => {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-      if (res.ok) setResults(await res.json());
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+        if (!res.ok) throw new Error(String(res.status));
+        const data = (await res.json()) as Results;
+        if (!ignore) {
+          setResults({ contacts: data.contacts ?? [], deals: data.deals ?? [] });
+          setFailed(false);
+        }
+      } catch {
+        if (!ignore) {
+          setResults({ contacts: [], deals: [] });
+          setFailed(true);
+        }
+      }
     }, 150);
-    return () => clearTimeout(id);
+    return () => {
+      ignore = true;
+      clearTimeout(id);
+    };
   }, [q]);
 
   function go(href: string) {
@@ -66,7 +89,7 @@ export function CommandSearch() {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-28" onClick={() => setOpen(false)}>
-          <div role="dialog" aria-modal="true" aria-label="Search contacts and deals" className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Search contacts and deals" className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-surface shadow-2xl outline-none" onClick={(e) => e.stopPropagation()}>
             <input
               ref={inputRef}
               value={q}
@@ -76,7 +99,9 @@ export function CommandSearch() {
             />
             <div className="max-h-80 overflow-y-auto p-2">
               {results.contacts.length === 0 && results.deals.length === 0 && (
-                <p className="px-3 py-6 text-center text-sm text-muted">{q ? "No matches" : "Type to search"}</p>
+                <p className={`px-3 py-6 text-center text-sm ${failed ? "text-danger" : "text-muted"}`}>
+                  {failed ? "Search is unavailable right now — try again." : q ? "No matches" : "Type to search"}
+                </p>
               )}
               {results.contacts.length > 0 && (
                 <div className="mb-1">

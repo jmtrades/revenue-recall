@@ -60,6 +60,12 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
 
   const active = queue[idx];
   const remaining = queue.filter((q) => !done[q.dealId]).length;
+  // The next not-yet-completed call after the current one (−1 when none remain),
+  // so "Next call" skips deals already wrapped up instead of landing back on them.
+  const nextIdx = (() => {
+    for (let i = idx + 1; i < queue.length; i++) if (!done[queue[i].dealId]) return i;
+    return -1;
+  })();
 
   function selectIndex(i: number) {
     setIdx(i);
@@ -254,7 +260,7 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
           </div>
 
           <div className="flex justify-end">
-            <button onClick={() => selectIndex(Math.min(queue.length - 1, idx + 1))} className="rounded-lg border border-border px-4 py-2 text-sm text-fg hover:bg-surface-2">Next call →</button>
+            <button onClick={() => nextIdx >= 0 && selectIndex(nextIdx)} disabled={nextIdx < 0} className="rounded-lg border border-border px-4 py-2 text-sm text-fg transition hover:bg-surface-2 disabled:opacity-50">Next call →</button>
           </div>
         </div>
       )}
