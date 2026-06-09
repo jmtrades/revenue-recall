@@ -30,6 +30,7 @@ export const PUBLIC_API = [
   "/api/calendar/feed", // subscribable .ics — self-authed by an HMAC feed token
   "/api/v1/", // public Lead Capture API — each route self-auths by API key
   "/api/forms/", // hosted/embeddable lead form submit — self-authed by an HMAC form token
+  "/api/t", // tracked-link redirect — self-authed by an HMAC click token
   "/api/health",
 ];
 

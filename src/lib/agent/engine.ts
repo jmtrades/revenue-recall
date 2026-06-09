@@ -6,6 +6,7 @@ import { buildRecallQueue } from "@/lib/recall/engine";
 import { draftMessage } from "@/lib/ai/draft";
 import { isAiConfigured } from "@/lib/ai/client";
 import { sendEmail, sendSms, placeCall } from "@/lib/comms";
+import { trackLinks } from "@/lib/tracking";
 import { sendGate, dailySendCap, type SkipReason } from "@/lib/agent/guardrails";
 import { compactMoney } from "@/lib/format";
 import { createRun, createOutboxItem, touchTask } from "@/lib/agent/store";
@@ -200,13 +201,14 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
         if (!to) {
           result = "skipped";
         } else {
+          const tracked = trackLinks(draft.body, { orgId: org.id, contactId: t.opp.contactId, dealId: t.opp.id, channel: channel === "email" ? "email" : "sms" });
           const res =
             channel === "email"
-              ? await sendEmail(to, draft.subject ?? "", draft.body, {
+              ? await sendEmail(to, draft.subject ?? "", tracked, {
                   unsubscribeUrl: await unsubscribeUrl(t.opp.contactId),
                   compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address },
                 })
-              : await sendSms(to, draft.body, { from: org.callerId });
+              : await sendSms(to, tracked, { from: org.callerId });
           result = res.status === "failed" ? "skipped" : res.status === "sent" ? "sent" : "logged";
           if (result !== "skipped") {
             sent += 1;

@@ -14,6 +14,7 @@ import { isAiConfigured } from "@/lib/ai/client";
 import { enforcementOn, isEntitled } from "@/lib/billing/enforce";
 import { isWithinActionAllowance } from "@/lib/ai/usage";
 import { sendEmail, sendSms } from "@/lib/comms";
+import { trackLinks } from "@/lib/tracking";
 import { createOutboxItem } from "@/lib/agent/store";
 import { hasOptedOut, quietHoursNow } from "@/lib/agent/guardrails";
 import { batchActivities } from "@/lib/crm/activities";
@@ -453,8 +454,8 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
       const canSend = autoSend && !quietHoursNow(new Date(now), org.timezone);
       const res = canSend
         ? step.channel === "email"
-          ? await sendEmail(address, draft.subject ?? "", draft.body, { unsubscribeUrl: await unsubscribeUrl(e.contactId), compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address } })
-          : await sendSms(address, draft.body, { from: org.callerId })
+          ? await sendEmail(address, draft.subject ?? "", trackLinks(draft.body, { orgId: org.id, contactId: e.contactId, dealId: e.dealId, channel: "email" }), { unsubscribeUrl: await unsubscribeUrl(e.contactId), compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address } })
+          : await sendSms(address, trackLinks(draft.body, { orgId: org.id, contactId: e.contactId, dealId: e.dealId, channel: "sms" }), { from: org.callerId })
         : null;
 
       if (res && res.status !== "failed") {
