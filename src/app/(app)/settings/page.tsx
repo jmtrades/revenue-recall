@@ -12,6 +12,7 @@ import { OAUTH_PROVIDERS, oauthConfigured, type OAuthPlatform } from "@/lib/conn
 import { complianceConfig } from "@/lib/compliance";
 import { listOwnedNumbers, numbersConfigured, numbersProviderId, outboundFromNumber } from "@/lib/numbers";
 import { SetupChecklist, type SetupItem } from "@/components/SetupChecklist";
+import { PipelineStagesEditor } from "@/components/PipelineStagesEditor";
 import { getTeamAndPipeline, getRecentCaptures } from "@/lib/queries";
 import { money } from "@/lib/format";
 import { getOrgSettings } from "@/lib/org";
@@ -229,20 +230,30 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
     </Card>
   );
 
+  // Stage editing: only on the Supabase-backed store (an external CRM owns its
+  // own pipeline) and only for owner/admin once auth is live. The API enforces
+  // the same rules; this just decides which UI to render.
+  const stagesEditable =
+    (await resolveProvider()).info().id === "supabase" &&
+    (!isAuthRequired() || ["owner", "admin"].includes((await getSessionRole()) ?? ""));
   const pipelineTab = (
     <Card title={pipeline.label}>
-      <ul className="space-y-2">
-        {pipeline.stages.map((s) => (
-          <li key={s.id} className="flex items-center justify-between rounded-lg border border-border bg-surface-2 px-3 py-2">
-            <span className="flex items-center gap-2">
-              <span className={`h-2.5 w-2.5 rounded-full ${s.type === "won" ? "bg-success" : s.type === "lost" ? "bg-danger" : "bg-brand"}`} />
-              <span className="text-sm text-fg">{s.label}</span>
-              <span className="pill bg-surface text-muted">{s.type}</span>
-            </span>
-            <span className="text-xs tabular-nums text-muted">{pct(s.probability)} win</span>
-          </li>
-        ))}
-      </ul>
+      {stagesEditable ? (
+        <PipelineStagesEditor stages={pipeline.stages.map((s) => ({ id: s.id, label: s.label, probability: s.probability, type: s.type }))} />
+      ) : (
+        <ul className="space-y-2">
+          {pipeline.stages.map((s) => (
+            <li key={s.id} className="flex items-center justify-between rounded-lg border border-border bg-surface-2 px-3 py-2">
+              <span className="flex items-center gap-2">
+                <span className={`h-2.5 w-2.5 rounded-full ${s.type === "won" ? "bg-success" : s.type === "lost" ? "bg-danger" : "bg-brand"}`} />
+                <span className="text-sm text-fg">{s.label}</span>
+                <span className="pill bg-surface text-muted">{s.type}</span>
+              </span>
+              <span className="text-xs tabular-nums text-muted">{pct(s.probability)} win</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   );
 
