@@ -86,3 +86,24 @@ export async function updateContactRecord(id: string, patch: ContactInput): Prom
   await emitWebhook("contact.updated", serializeContact(updated));
   return updated;
 }
+
+export type DeleteContactResult = { ok: true } | { ok: false; reason: "unsupported" | "not_found" | "has_deals" };
+
+/**
+ * Permanently delete a contact (junk/duplicate cleanup). Refuses when the
+ * contact still has deals: Postgres nulls a deleted contact's deal links
+ * (ON DELETE SET NULL), which would orphan live pipeline records — so we make
+ * the caller clear the deals first. "unsupported" covers read-only/external
+ * CRMs. Emits contact.deleted (best-effort).
+ */
+export async function deleteContactRecord(id: string): Promise<DeleteContactResult> {
+  const provider = getProvider();
+  if (!provider.deleteContact) return { ok: false, reason: "unsupported" };
+  const existing = await provider.getContact(id);
+  if (!existing) return { ok: false, reason: "not_found" };
+  const deals = (await provider.listOpportunities()).filter((o) => o.contactId === id);
+  if (deals.length > 0) return { ok: false, reason: "has_deals" };
+  await provider.deleteContact(id);
+  await emitWebhook("contact.deleted", { id: existing.id, name: existing.name });
+  return { ok: true };
+}

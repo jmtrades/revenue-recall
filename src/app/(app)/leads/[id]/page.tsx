@@ -8,6 +8,7 @@ import { money, relativeDays } from "@/lib/format";
 import { Card, Avatar, InfoRow, ActivityIcon, EmptyState } from "@/components/ui";
 import { ContactReachOut } from "@/components/ContactReachOut";
 import { ContactInfoEdit } from "@/components/ContactInfoEdit";
+import { DeleteButton } from "@/components/DeleteButton";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,11 @@ export default async function ContactPage({ params }: { params: { id: string } }
 
   // Reach-out: which channels this contact is actually reachable on, the
   // sequences available to enroll them in, and whether this workspace can write.
-  const canWrite = getProvider().info().capabilities.write;
+  const provider = getProvider();
+  const canWrite = provider.info().capabilities.write;
+  // Only offer delete once the contact has no deals — removing one would
+  // otherwise orphan live pipeline records (the deal's contact link is nulled).
+  const canDelete = canWrite && typeof provider.deleteContact === "function" && deals.length === 0;
   const canEmail = contact.points.some((p) => p.channel === "email" && !!p.value);
   const canText = contact.points.some((p) => (p.channel === "phone" || p.channel === "sms") && !!p.value);
   const email = contact.points.find((p) => p.channel === "email")?.value ?? "";
@@ -71,6 +76,17 @@ export default async function ContactPage({ params }: { params: { id: string } }
               {Object.entries(contact.attributes).map(([k, v]) => (
                 <InfoRow key={k} label={k}>{String(v ?? "—")}</InfoRow>
               ))}
+            </Card>
+          )}
+          {canDelete && (
+            <Card title="Danger zone">
+              <p className="mb-3 text-sm text-muted">Permanently remove this contact and their activity. This can&apos;t be undone — use it for junk or duplicate records.</p>
+              <DeleteButton
+                endpoint={`/api/contacts/${contact.id}`}
+                label="Delete contact"
+                confirmText={`Permanently delete ${contact.name}? Their activity history goes with them. This can't be undone.`}
+                redirectTo="/leads"
+              />
             </Card>
           )}
         </div>
