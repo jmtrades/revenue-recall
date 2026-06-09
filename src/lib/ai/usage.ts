@@ -25,8 +25,21 @@ export interface UsageSummary {
   inputTokens: number;
   outputTokens: number;
   calls: number;
+  /**
+   * Customer-visible AI actions — what the plan's "AI messages" allowance
+   * sells. Excludes internal passes (the humanness refine that can double a
+   * draft's calls, and the diagnostics probe): one draft = one action no matter
+   * how many model calls it takes internally. `calls`/cost keep the full
+   * picture for the operator breakdown.
+   */
+  actions: number;
   /** Cost (USD) attributed per feature label, for ROI/breakdown. */
   byFeature: Record<string, number>;
+}
+
+/** Internal model calls that must not burn the customer's action allowance. */
+function isInternalFeature(feature?: string): boolean {
+  return !!feature && (feature === "refine" || feature.endsWith(".refine") || feature === "health");
 }
 
 const mem: (UsageEntry & { orgId?: string })[] = [];
@@ -68,16 +81,18 @@ export async function recordUsage(entry: Omit<UsageEntry, "at">): Promise<void> 
 
 /** Spend + token summary for the current calendar month. */
 function blank(): UsageSummary {
-  return { costUsd: 0, inputTokens: 0, outputTokens: 0, calls: 0, byFeature: {} };
+  return { costUsd: 0, inputTokens: 0, outputTokens: 0, calls: 0, actions: 0, byFeature: {} };
 }
 
 function add(s: UsageSummary, cost: number, inTok: number, outTok: number, feature?: string): UsageSummary {
   const key = feature || "other";
+  const actions = s.actions + (isInternalFeature(feature) ? 0 : 1);
   return {
     costUsd: s.costUsd + cost,
     inputTokens: s.inputTokens + inTok,
     outputTokens: s.outputTokens + outTok,
     calls: s.calls + 1,
+    actions,
     byFeature: { ...s.byFeature, [key]: (s.byFeature[key] ?? 0) + cost },
   };
 }
@@ -159,16 +174,16 @@ export interface UsageMeter {
 
 /** The current org's usage meter: actions used vs included + purchased credits. */
 export async function usageMeter(now: Date = new Date()): Promise<UsageMeter> {
-  const [{ calls }, credits, sub] = await Promise.all([usageSummary(now), creditsThisPeriod(now), getSubscription()]);
+  const [{ actions }, credits, sub] = await Promise.all([usageSummary(now), creditsThisPeriod(now), getSubscription()]);
   // Use the EFFECTIVE plan (past_due/canceled → free), so the action allowance
   // fails closed for a lapsed subscription — consistent with the feature gate in
   // billing/enforce.ts. Otherwise a past_due "team" org keeps a 10k pool.
   const included = entitlements(effectivePlan(sub.plan, sub.status)).actionsPerMonth;
   const unlimited = !Number.isFinite(included);
   const limit = unlimited ? Infinity : included + credits;
-  const remaining = unlimited ? Infinity : Math.max(0, limit - calls);
-  const fraction = unlimited || limit <= 0 ? 0 : Math.min(1, calls / limit);
-  return { used: calls, included, credits, limit, remaining, fraction, unlimited };
+  const remaining = unlimited ? Infinity : Math.max(0, limit - actions);
+  const fraction = unlimited || limit <= 0 ? 0 : Math.min(1, actions / limit);
+  return { used: actions, included, credits, limit, remaining, fraction, unlimited };
 }
 
 /** True when the org still has live AI actions left this month (or is unmetered). */

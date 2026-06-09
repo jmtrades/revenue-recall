@@ -259,12 +259,15 @@ export async function sendEmail(
   to: string,
   subject: string,
   body: string,
-  opts?: { unsubscribeUrl?: string | null; compliance?: { orgName?: string; address?: string } },
+  opts?: { unsubscribeUrl?: string | null; compliance?: { orgName?: string; address?: string }; internal?: boolean },
 ): Promise<SendResult> {
   const t = resolveEmail();
   // Compliance footer (unsubscribe + per-org address) applied at the single send
   // boundary, so every outbound path is covered regardless of who composed it.
-  const compliant = appendEmailCompliance(body, opts?.unsubscribeUrl, complianceConfig(opts?.compliance));
+  // Internal product mail (digests, reminders) isn't commercial outreach: no
+  // CAN-SPAM footer, and definitely not the prospect-facing 'Reply "unsubscribe"'
+  // line, which on an internal digest is a reply that does nothing.
+  const compliant = opts?.internal ? body : appendEmailCompliance(body, opts?.unsubscribeUrl, complianceConfig(opts?.compliance));
   return t ? t.send({ to, subject, body: compliant }) : logResult();
 }
 
