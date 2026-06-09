@@ -2,6 +2,7 @@ import { getProvider } from "@/lib/crm/registry";
 import { safePipeline } from "@/lib/queries";
 import { getOrgSettings } from "@/lib/org";
 import { emitWebhook } from "@/lib/webhooks-out";
+import { fireDealStageAutomations } from "@/lib/agent/deal-automations";
 import type { Opportunity, Stage } from "@/lib/crm/types";
 
 /**
@@ -135,5 +136,8 @@ export async function moveDeal(id: string, stageId: string): Promise<Opportunity
     stage: stage?.label ?? null,
     stageType: stage?.type ?? null,
   });
+  // Fire the org's enabled deal-lifecycle automations (won→onboarding,
+  // lost→win-back, stage handoff) — best-effort, never blocks the move.
+  await fireDealStageAutomations(opp, stage);
   return opp;
 }
