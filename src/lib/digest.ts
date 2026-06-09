@@ -120,8 +120,13 @@ export async function runDigests(now: Date = new Date()): Promise<DigestResult> 
   // No timezone → the fixed UTC hour (DIGEST_SEND_HOUR_UTC, default 13). Robust to
   // a missed tick; the per-day dedup keeps it to once a day.
   const tz = timezone || undefined;
-  const sendHour = Number(tz ? (process.env.DIGEST_SEND_HOUR_LOCAL ?? 8) : (process.env.DIGEST_SEND_HOUR_UTC ?? 13));
-  if (Number.isFinite(sendHour) && hourInZone(now, tz) < sendHour) return result;
+  // Parse to a valid hour [0,23] with a fallback. A non-numeric env var would
+  // make Number(...) NaN, skip the guard below, and let the digest fire at ANY
+  // hour (e.g. a "Good morning" email at 2am). `??` only guards undefined.
+  const rawHour = tz ? process.env.DIGEST_SEND_HOUR_LOCAL : process.env.DIGEST_SEND_HOUR_UTC;
+  const parsedHour = Math.floor(Number(rawHour));
+  const sendHour = Number.isFinite(parsedHour) && parsedHour >= 0 && parsedHour <= 23 ? parsedHour : tz ? 8 : 13;
+  if (hourInZone(now, tz) < sendHour) return result;
   const day = dayInZone(now, tz);
 
   const to = await recipientEmails();

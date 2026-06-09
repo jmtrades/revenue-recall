@@ -9,7 +9,9 @@ import { getOrgSettings } from "@/lib/org";
 import { accentVars } from "@/lib/theme";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const [org, user] = await Promise.all([getOrgSettings(), getSessionUser()]);
+  // Neither load may throw here — a layout throw escapes (app)/error.tsx to the
+  // root error page. getOrgSettings degrades internally; guard the session too.
+  const [org, user] = await Promise.all([getOrgSettings(), getSessionUser().catch(() => null)]);
   const industry = getIndustry(org.industryId);
   const mode = org.theme.mode;
   return (

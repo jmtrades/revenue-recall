@@ -74,30 +74,38 @@ function envFallback(): OrgSettings {
 async function read(): Promise<OrgSettings> {
   const client = getSupabase();
   if (!client) return envFallback();
-  const orgId = await resolveActiveOrgId();
-  if (!orgId) return envFallback();
-  const { data } = await client
-    .from("orgs")
-    .select("id,name,industry_id,language,currency,monthly_quota,notification_prefs,theme,compliance,caller_id,voice_id,automations,timezone")
-    .eq("id", orgId)
-    .maybeSingle();
-  if (!data) return envFallback();
-  return {
-    id: data.id as string,
-    name: (data.name as string) ?? getConfig().orgName,
-    industryId: (data.industry_id as string) ?? "generic",
-    language: (data.language as string) ?? DEFAULT_LANGUAGE,
-    currency: (data.currency as string) ?? "USD",
-    monthlyQuota: Number(data.monthly_quota ?? getConfig().monthlyQuota),
-    notificationPrefs: mergeNotificationPrefs(data.notification_prefs as Record<string, unknown> | null),
-    theme: mergeTheme(data.theme as Record<string, unknown> | null),
-    compliance: mergeCompliance(data.compliance as Record<string, unknown> | null),
-    automations: (data.automations && typeof data.automations === "object" ? (data.automations as Record<string, boolean>) : {}),
-    callerId: (data.caller_id as string) || process.env.OUTBOUND_FROM_NUMBER || undefined,
-    voiceId: (data.voice_id as string) || process.env.OUTBOUND_VOICE_ID || undefined,
-    timezone: (data.timezone as string) || process.env.AGENT_TIMEZONE || "",
-    persisted: true,
-  };
+  try {
+    const orgId = await resolveActiveOrgId();
+    if (!orgId) return envFallback();
+    const { data } = await client
+      .from("orgs")
+      .select("id,name,industry_id,language,currency,monthly_quota,notification_prefs,theme,compliance,caller_id,voice_id,automations,timezone")
+      .eq("id", orgId)
+      .maybeSingle();
+    if (!data) return envFallback();
+    return {
+      id: data.id as string,
+      name: (data.name as string) ?? getConfig().orgName,
+      industryId: (data.industry_id as string) ?? "generic",
+      language: (data.language as string) ?? DEFAULT_LANGUAGE,
+      currency: (data.currency as string) ?? "USD",
+      monthlyQuota: Number(data.monthly_quota ?? getConfig().monthlyQuota),
+      notificationPrefs: mergeNotificationPrefs(data.notification_prefs as Record<string, unknown> | null),
+      theme: mergeTheme(data.theme as Record<string, unknown> | null),
+      compliance: mergeCompliance(data.compliance as Record<string, unknown> | null),
+      automations: (data.automations && typeof data.automations === "object" ? (data.automations as Record<string, boolean>) : {}),
+      callerId: (data.caller_id as string) || process.env.OUTBOUND_FROM_NUMBER || undefined,
+      voiceId: (data.voice_id as string) || process.env.OUTBOUND_VOICE_ID || undefined,
+      timezone: (data.timezone as string) || process.env.AGENT_TIMEZONE || "",
+      persisted: true,
+    };
+  } catch {
+    // A transient DB/network failure must NOT bubble out of the (app) layout —
+    // a *layout* throw escapes the in-app error boundary ((app)/error.tsx) and
+    // degrades the user to the root error page. Fall back to env defaults so the
+    // shell still renders (every other getOrgSettings caller benefits too).
+    return envFallback();
+  }
 }
 
 /** Current org settings (DB-backed when available, else env). Request-cached. */

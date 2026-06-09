@@ -1,9 +1,13 @@
 export function money(value: number, currency = "USD"): string {
+  // ≥$1M: use the hydration-safe manual compact formatter. Intl's compact
+  // notation renders differently under Node ICU vs browser ICU ("$0" vs "$0.0"),
+  // which throws a React hydration mismatch in the client components that render
+  // money directly (RecallQueue, LeadsTable). See compactMoney's note below.
+  if (Math.abs(value) >= 1_000_000) return compactMoney(value, currency);
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
     maximumFractionDigits: value % 1 === 0 ? 0 : 2,
-    notation: value >= 1_000_000 ? "compact" : "standard",
   }).format(value);
 }
 
