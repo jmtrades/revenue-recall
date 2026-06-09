@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import type { InboxThread } from "@/lib/queries";
+import type { InboxThread, InboxMessage } from "@/lib/queries";
 import { Avatar, ChannelIcon, ChannelBadge, channelLabel, EmptyState, Button } from "@/components/ui";
 
 function timeAgo(iso: string): string {
@@ -26,23 +26,43 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Just-sent messages shown immediately, before the server refresh lands.
+  const [optimistic, setOptimistic] = useState<Record<string, InboxMessage[]>>({});
   const router = useRouter();
+
+  // Merge optimistic outbound messages with the server's, deduped by
+  // direction+body so the real message from the next refresh replaces the
+  // optimistic one rather than doubling it.
+  const messages: InboxMessage[] = (() => {
+    if (!active) return [];
+    const serverKeys = new Set(active.messages.map((m) => `${m.direction}:${m.body}`));
+    const pending = (optimistic[active.contactId] ?? []).filter((m) => !serverKeys.has(`${m.direction}:${m.body}`));
+    return [...active.messages, ...pending];
+  })();
 
   async function send() {
     if (!active || !draft.trim()) return;
     setSending(true);
     setError(null);
+    const cid = active.contactId;
+    const body = draft;
     try {
       const channel = replyChannel(active.channel);
       const res = await fetch("/api/messages/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channel, contactId: active.contactId, body: draft }),
+        body: JSON.stringify({ channel, contactId: cid, body }),
       });
       const b = await res.json().catch(() => ({}));
       if (res.ok) {
+        // Show the sent message instantly; the refresh brings the real one and
+        // the dedup hides this. A timer clears it as a safety net in case the
+        // stored body differs slightly, so it can never linger as a duplicate.
+        const msg: InboxMessage = { id: `tmp-${Date.now()}`, channel, direction: "outbound", body, at: new Date().toISOString() };
+        setOptimistic((o) => ({ ...o, [cid]: [...(o[cid] ?? []), msg] }));
         setDraft("");
         router.refresh();
+        setTimeout(() => setOptimistic((o) => { const next = { ...o }; delete next[cid]; return next; }), 8000);
       } else {
         // Don't fail silently (e.g. a 403 for an opted-out contact) — tell the rep.
         setError(b.error ?? "Couldn't send. Try again.");
@@ -121,7 +141,7 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
               </div>
             </div>
             <div className="flex-1 space-y-3 overflow-y-auto p-4">
-              {active.messages.map((m) => (
+              {messages.map((m) => (
                 <div key={m.id} className={`flex ${m.direction === "outbound" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm ${m.direction === "outbound" ? "bg-brand text-white" : "bg-surface-2 text-fg"}`}>
                     <p>{m.body}</p>
