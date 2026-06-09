@@ -56,6 +56,7 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
   const [summarizing, setSummarizing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [briefError, setBriefError] = useState<string | null>(null);
 
   const active = queue[idx];
   const remaining = queue.filter((q) => !done[q.dealId]).length;
@@ -73,9 +74,14 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
   async function loadBrief() {
     if (!active) return;
     setBriefBusy(true);
+    setBriefError(null);
     try {
       const res = await fetch("/api/ai/brief", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dealId: active.dealId }) });
-      if (res.ok) setBrief(await res.json());
+      if (!res.ok) throw new Error();
+      setBrief(await res.json());
+    } catch {
+      // Don't fail silently — the rep clicks "Prepare" and otherwise sees nothing.
+      setBriefError("Couldn't prepare the brief — try again.");
     } finally {
       setBriefBusy(false);
     }
@@ -91,6 +97,9 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
       const b = await res.json();
       if (!res.ok) setCallStatus(b.error ?? "Call failed");
       else setCallStatus(b.provider === "log" ? "Call logged — connect a phone number to dial for real" : `Dialing ${b.to}`);
+    } catch {
+      // Without this, a network blip leaves the status stuck on "Dialing…" forever.
+      setCallStatus("Couldn't place the call — check your connection and try again.");
     } finally {
       placingRef.current = false;
       setPlacing(false);
@@ -192,7 +201,7 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
               </div>
             </div>
             {!brief ? (
-              <p className="text-sm text-muted">Generate a talk track before you dial.</p>
+              <p className={`text-sm ${briefError ? "text-danger" : "text-muted"}`}>{briefError ?? "Generate a talk track before you dial."}</p>
             ) : (
               <div className="space-y-2 text-sm">
                 <p className="text-fg">{brief.summary}</p>
