@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { resolveProvider } from "@/lib/crm/registry";
 import { sendEmail, sendSms } from "@/lib/comms";
+import { trackLinks } from "@/lib/tracking";
 import { getOrgSettings } from "@/lib/org";
 import { sendReply, isSocialChannel } from "@/lib/outbound";
 import { platformTag } from "@/lib/social/ingest";
@@ -106,8 +107,10 @@ export const POST = withGuard(async (req: Request) => {
   const summary = subject ? `${subject}\n\n${body}` : body;
   if (isDuplicate(channel, summary)) return NextResponse.json({ ok: true, deduped: true });
 
-  const from = channel === "sms" ? (await getOrgSettings().catch(() => null))?.callerId : undefined;
-  const result = channel === "email" ? await sendEmail(to, subject ?? "", body) : await sendSms(to, body, { from });
+  const orgForSend = await getOrgSettings().catch(() => null);
+  const from = channel === "sms" ? orgForSend?.callerId : undefined;
+  const tracked = trackLinks(body, { orgId: orgForSend?.id, contactId: contactId ?? undefined, dealId: dealId ?? undefined, channel: channel === "email" ? "email" : "sms" });
+  const result = channel === "email" ? await sendEmail(to, subject ?? "", tracked) : await sendSms(to, tracked, { from });
   if (result.status === "failed") {
     return NextResponse.json({ error: result.detail ?? "Send failed", provider: result.provider }, { status: 502 });
   }

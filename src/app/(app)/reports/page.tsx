@@ -1,4 +1,5 @@
 import { getReports } from "@/lib/queries";
+import { clickStats } from "@/lib/tracking";
 import { compactMoney, money, pct } from "@/lib/format";
 import { PageHeader, Stat, Card, Avatar } from "@/components/ui";
 import { Funnel, Donut, BarChart } from "@/components/charts";
@@ -6,7 +7,7 @@ import { Funnel, Donut, BarChart } from "@/components/charts";
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  const r = await getReports();
+  const [r, clicks] = await Promise.all([getReports(), clickStats()]);
   const m = r.metrics;
 
   return (
@@ -111,6 +112,24 @@ export default async function ReportsPage() {
 
       <Card title="Lead sources">
         {r.sources.length === 0 ? <p className="text-sm text-muted">No source data.</p> : <Donut segments={r.sources} centerLabel={String(r.sources.reduce((s, x) => s + x.value, 0))} centerSub="total deals" />}
+      </Card>
+
+      <Card title="Link engagement · last 30 days">
+        {clicks.total30d === 0 ? (
+          <p className="text-sm text-muted">No link clicks yet. Links in outbound email and SMS are tracked automatically — clicks land here as they happen.</p>
+        ) : (
+          <div>
+            <p className="mb-3 text-sm text-fg"><span className="font-display text-2xl font-semibold tabular-nums tracking-tight">{clicks.total30d}</span> <span className="text-muted">clicks on your outreach links</span></p>
+            <ul className="space-y-1.5">
+              {clicks.topUrls.map((u) => (
+                <li key={u.url} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="truncate text-muted">{u.url}</span>
+                  <span className="shrink-0 tabular-nums text-fg">{u.count}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </Card>
     </div>
   );
