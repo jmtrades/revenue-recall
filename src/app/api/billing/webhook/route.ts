@@ -93,7 +93,7 @@ export async function POST(req: Request) {
             ...(typeof first?.quantity === "number" ? { seats: first.quantity } : {}),
             status: mapStatus(String(obj.status)),
             currentPeriodEnd: periodEnd,
-          });
+          }, (obj.metadata as Record<string, string> | undefined)?.org_id);
         }
         break;
       }
