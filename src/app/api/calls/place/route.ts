@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { oneLineUntrusted } from "@/lib/ai/untrusted";
 import { z } from "zod";
 import { resolveProvider } from "@/lib/crm/registry";
 import { placeCall } from "@/lib/comms";
@@ -52,8 +53,8 @@ export const POST = withGuard(async (req: Request) => {
     const rep = voice.senderName?.trim();
     const first = (contact?.name ?? "").trim().split(/\s+/)[0] || "there";
     const bits: string[] = [];
-    if (contact?.name) bits.push(`You're calling ${contact.name}${contact.company ? ` at ${contact.company}` : ""}.`);
-    if (opp?.title) bits.push(`It's about "${opp.title}"${opp.value ? ` — worth ${opp.currency ?? ""}${opp.value.toLocaleString()}` : ""}.`);
+    if (contact?.name) bits.push(`You're calling ${oneLineUntrusted(contact.name)}${contact.company ? ` at ${oneLineUntrusted(contact.company)}` : ""}.`);
+    if (opp?.title) bits.push(`It's about "${oneLineUntrusted(opp.title, 200)}"${opp.value ? ` — worth ${opp.currency ?? ""}${opp.value.toLocaleString()}` : ""}.`);
     if (opp?.lossReason) bits.push("This deal went cold / was marked lost — you're re-engaging warmly, no guilt-trip.");
     if (voice.business) bits.push(`Your business: ${voice.business}`);
     if (rep) bits.push(`You are ${rep}.`);
@@ -63,7 +64,9 @@ export const POST = withGuard(async (req: Request) => {
       .slice(-5)
       .map((a) => {
         const when = a.occurredAt ? new Date(a.occurredAt).toISOString().slice(0, 10) : "";
-        const text = (a.summary ?? "").replace(/\s+/g, " ").trim().slice(0, 140);
+        // Prospect replies are logged verbatim into summaries — treat as data,
+        // never as instructions the voice agent might obey on the next call.
+        const text = oneLineUntrusted(a.summary, 140);
         return text ? `${when ? when + " " : ""}${a.direction ?? "out"} ${a.kind}: ${text}` : "";
       })
       .filter(Boolean);

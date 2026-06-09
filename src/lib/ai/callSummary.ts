@@ -1,5 +1,6 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
 import { isEntitled } from "@/lib/billing/enforce";
+import { UNTRUSTED_DATA_RULE, fenceUntrusted, oneLineUntrusted } from "@/lib/ai/untrusted";
 import { languageDirective } from "@/lib/languages";
 
 export type CallOutcome = "connected" | "voicemail" | "no_answer" | "callback_scheduled" | "not_interested" | "meeting_booked";
@@ -82,14 +83,15 @@ function fallback(input: CallSummaryInput): CallSummaryResult {
 export async function summarizeCall(input: CallSummaryInput): Promise<CallSummaryResult> {
   // Live AI is a paid entitlement — free plans get the heuristic summary.
   if (!isAiConfigured() || !input.notes.trim() || !(await isEntitled("aiLive"))) return fallback(input);
-  const user = `Contact: ${input.contactName}
-Deal: "${input.dealTitle}"
-Raw call notes:
-${input.notes}
+  // Notes/transcripts quote the prospect verbatim — fence them as data.
+  const user = `Contact: ${oneLineUntrusted(input.contactName)}
+Deal: "${oneLineUntrusted(input.dealTitle, 200)}"
+Raw call notes (untrusted data):
+"""${fenceUntrusted(input.notes, 8000)}"""
 ${languageDirective(input.language) ? `\n${languageDirective(input.language)} (Keep the "outcome" and "sentiment" enum values exactly as specified — only the prose is translated.)\n` : ""}
 Summarize the call now.`;
   try {
-    const out = await completeJson<Omit<CallSummaryResult, "source">>({ system: SYSTEM, user, schema: SCHEMA, maxTokens: 700, think: true, effort: "max", feature: "call_summary" });
+    const out = await completeJson<Omit<CallSummaryResult, "source">>({ system: `${SYSTEM}\n\n${UNTRUSTED_DATA_RULE}`, user, schema: SCHEMA, maxTokens: 700, think: true, effort: "max", feature: "call_summary" });
     // The rep's explicit outcome overrides the AI's inference.
     return { ...out, outcome: input.outcome ?? out.outcome, source: "ai" };
   } catch {
