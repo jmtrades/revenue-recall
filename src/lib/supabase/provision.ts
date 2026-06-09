@@ -1,6 +1,7 @@
 import { cache } from "@/lib/cache";
 import { getSupabase } from "@/lib/supabase/client";
 import { bootstrapOrg } from "@/lib/supabase/bootstrap";
+import { sendWelcomeEmail } from "@/lib/billing/lifecycle";
 import { acceptPendingInvite } from "@/lib/invites-server";
 import type { SessionUser } from "@/lib/auth";
 
@@ -37,6 +38,10 @@ export const ensureOrgForUser = cache(async (user: SessionUser): Promise<string 
       orgName: workspaceName(user.email),
       member: { authUserId: user.id, name: user.name, email: user.email, role: "owner" },
     });
+    // First provision = the one true "welcome" moment (runs once per new user;
+    // the race-recovery path below is an EXISTING member, so no email there).
+    // Best-effort: provisioning must never fail on a mail hiccup.
+    sendWelcomeEmail(user.email, user.name).catch(() => {});
     return res.orgId;
   } catch {
     // Bootstrap can fail on a race: a concurrent first request already created

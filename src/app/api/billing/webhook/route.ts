@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyStripeSignature, planForPrice } from "@/lib/billing/stripe";
-import { saveSubscriptionForOrg, saveSubscriptionForCustomer, type SubStatus } from "@/lib/billing/store";
+import { saveSubscriptionForOrg, saveSubscriptionForCustomer, orgIdForCustomer, type SubStatus } from "@/lib/billing/store";
+import { sendTrialEndingEmail, sendPaymentFailedEmail } from "@/lib/billing/lifecycle";
 import { isPlanId } from "@/lib/billing/plans";
 import { addUsageCredits } from "@/lib/ai/usage";
 import { trialDays } from "@/lib/billing/stripe";
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  let event: { type?: string; data?: { object?: Record<string, unknown> } };
+  let event: { id?: string; type?: string; data?: { object?: Record<string, unknown> } };
   try {
     event = JSON.parse(raw);
   } catch {
@@ -104,7 +105,25 @@ export async function POST(req: Request) {
       }
       case "invoice.payment_failed": {
         const customer = obj.customer as string;
-        if (customer) await saveSubscriptionForCustomer(customer, { status: "past_due" });
+        if (customer) {
+          await saveSubscriptionForCustomer(customer, { status: "past_due" });
+          // Dunning: tell the customer before access lapses. Best-effort — an
+          // email problem must never 5xx the webhook (that's reserved for DB
+          // writes, where a Stripe retry helps). Deduped on the event id.
+          const orgId = await orgIdForCustomer(customer).catch(() => null);
+          if (orgId) await sendPaymentFailedEmail(orgId, event.id).catch(() => {});
+        }
+        break;
+      }
+      case "customer.subscription.trial_will_end": {
+        // Stripe fires this ~3 days before a trial converts and charges the
+        // card. The single highest-leverage conversion email a SaaS sends.
+        const customer = obj.customer as string;
+        const orgId = customer
+          ? (await orgIdForCustomer(customer).catch(() => null)) ?? ((obj.metadata as Record<string, string> | undefined)?.org_id ?? null)
+          : ((obj.metadata as Record<string, string> | undefined)?.org_id ?? null);
+        const trialEnd = typeof obj.trial_end === "number" ? new Date(obj.trial_end * 1000).toISOString() : undefined;
+        if (orgId) await sendTrialEndingEmail(orgId, trialEnd, event.id).catch(() => {});
         break;
       }
       case "invoice.payment_succeeded": {
