@@ -329,7 +329,7 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
       )}
       {note && <p className="mb-3 rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm text-success">{note}</p>}
 
-      <div className="card p-0">
+      <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">

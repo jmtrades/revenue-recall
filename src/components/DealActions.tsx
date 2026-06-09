@@ -218,7 +218,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
             <button
               key={k.id}
               onClick={() => setKind(k.id)}
-              className={`rounded-lg px-2.5 py-1 text-xs ${kind === k.id ? "bg-brand text-white" : "bg-surface-2 text-muted hover:text-white"}`}
+              className={`rounded-lg px-2.5 py-1 text-xs ${kind === k.id ? "bg-brand text-white" : "bg-surface-2 text-muted hover:text-fg"}`}
             >
               {k.label}
             </button>
