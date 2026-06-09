@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { moveDeal } from "@/lib/deals";
+import { writeRateLimit } from "@/lib/ratelimit";
+import { withGuard } from "@/lib/api/guard";
 import { z } from "zod";
 
 const Body = z.object({ stageId: z.string().min(1) });
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export const POST = withGuard<{ params: { id: string } }>(async (req, { params }) => {
+  if (!writeRateLimit(req, "deal-move").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "stageId is required" }, { status: 400 });
@@ -15,4 +18,4 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "move failed" }, { status: 409 });
   }
-}
+});

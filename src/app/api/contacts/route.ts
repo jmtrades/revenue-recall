@@ -29,6 +29,7 @@ const EditBody = z
   .refine((d) => [d.name, d.company, d.title, d.email, d.phone].some((v) => v !== undefined), { message: "Provide a field to update" });
 
 export async function POST(req: Request) {
+  if (!writeRateLimit(req, "contact-create").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid contact" }, { status: 400 });
   const { name, company, title, email, phone } = parsed.data;
