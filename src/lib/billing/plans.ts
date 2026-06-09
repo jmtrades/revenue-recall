@@ -62,7 +62,7 @@ export const PLANS: Plan[] = [
     blurb: "We run your entire outbound operation.",
     price: "Let's talk",
     cadence: "",
-    features: ["Everything in Autopilot", "Unlimited reps & volume", "SSO & RBAC · security review · SLA", "Dedicated success + done-for-you playbooks", "Custom model routing & integrations"],
+    features: ["Everything in Autopilot", "Unlimited reps & volume", "Role-based access control · security review · SLA", "Dedicated success + done-for-you playbooks", "Custom model routing & integrations"],
     purchasable: false,
     perSeat: false,
   },

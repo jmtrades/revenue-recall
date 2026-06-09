@@ -21,6 +21,14 @@ describe("plan action allowances", () => {
 });
 
 describe("usage meter", () => {
+  it("internal refine/health calls don't burn the customer's allowance", async () => {
+    await recordUsage({ model: "m", inputTokens: 1, outputTokens: 1, costUsd: 0.01, feature: "draft" });
+    await recordUsage({ model: "m", inputTokens: 1, outputTokens: 1, costUsd: 0.01, feature: "draft.refine" });
+    await recordUsage({ model: "m", inputTokens: 1, outputTokens: 1, costUsd: 0.01, feature: "health" });
+    const m = await usageMeter();
+    expect(m.used).toBe(1); // one customer-visible action, not three calls
+  });
+
   it("starts at the included allowance and decrements as actions are used", async () => {
     const before = await usageMeter();
     expect(before.unlimited).toBe(false);

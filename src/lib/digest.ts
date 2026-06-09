@@ -60,10 +60,16 @@ async function recipientEmails(): Promise<string[]> {
   return users.map((u) => u.email).filter((e): e is string => Boolean(e));
 }
 
+/** Deep link into the app, or null when no public URL is configured. */
+function appLink(path: string): string | null {
+  const base = process.env.NEXT_PUBLIC_SITE_URL;
+  return base ? `${base.replace(/\/$/, "")}${path}` : null;
+}
+
 async function broadcast(to: string[], subject: string, body: string): Promise<number> {
   let ok = 0;
   for (const addr of to) {
-    const r = await sendEmail(addr, subject, body).catch(() => null);
+    const r = await sendEmail(addr, subject, body, { internal: true }).catch(() => null);
     if (r && r.status !== "failed") ok++;
   }
   return ok;
@@ -91,8 +97,13 @@ async function buildDailyDigest(orgName: string): Promise<{ subject: string; bod
   const top = recall.slice(0, 3);
   if (top.length) {
     lines.push("", "Top 3 to work today:");
-    top.forEach((r, i) => lines.push(`  ${i + 1}. ${r.title} — ${r.recommendation}`));
+    top.forEach((r, i) => {
+      const link = appLink(`/deals/${r.opportunityId}`);
+      lines.push(`  ${i + 1}. ${r.title} — ${r.recommendation}${link ? `\n     ${link}` : ""}`);
+    });
   }
+  const queue = appLink("/recall");
+  if (queue) lines.push("", `Work the full queue: ${queue}`);
   return { subject: `Your pipeline today — ${orgName}`, body: lines.join("\n") };
 }
 
@@ -100,10 +111,12 @@ async function buildTaskReminders(orgName: string): Promise<{ subject: string; b
   const tasks = await getTasks();
   const due = tasks.filter((t) => t.dueInDays === 0);
   if (!due.length) return null;
+  const tasksLink = appLink("/tasks");
   const lines = [
     `${due.length} ${due.length === 1 ? "task needs" : "tasks need"} you today at ${orgName}.`,
     "",
     ...due.map((t) => `  • [${t.channel}] ${t.title} — ${t.note}`),
+    ...(tasksLink ? ["", `Open your tasks: ${tasksLink}`] : []),
   ];
   return { subject: `${due.length} ${due.length === 1 ? "task" : "tasks"} due today`, body: lines.join("\n"), count: due.length };
 }
