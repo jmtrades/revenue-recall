@@ -27,6 +27,10 @@ export interface LeadRow {
   status?: LeadStatus;
 }
 
+// How many rows to paint at once — keeps a large lead list from rendering
+// thousands of <tr>s on first paint. "Show more" reveals the next page.
+const PAGE_SIZE = 50;
+
 export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows: LeadRow[]; owners: string[]; valueLabel: string; sequences?: { id: string; name: string }[] }) {
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -42,6 +46,7 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [views, setViews] = useState<SavedView[]>([]);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   // Saved views live in the browser (no server round-trip, works for everyone).
   useEffect(() => {
@@ -111,6 +116,9 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
       return r.name.toLowerCase().includes(term) || r.company.toLowerCase().includes(term) || r.email.toLowerCase().includes(term);
     });
   }, [rows, q, owner, status, segment, hvt]);
+
+  // A new search/filter starts the window over from the top.
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [q, owner, status, segment]);
 
   async function changeStatus(id: string, next: LeadStatus) {
     setSaving(id);
@@ -346,7 +354,7 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r) => (
+            {filtered.slice(0, visibleCount).map((r) => (
               <tr key={r.id} onClick={() => router.push(`/leads/${r.id}`)} className="cursor-pointer border-b border-border/60 last:border-0 hover:bg-surface-2/40">
                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} aria-label={`Select ${r.name}`} className="accent-brand" />
@@ -387,6 +395,16 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
             )}
           </tbody>
         </table>
+        {filtered.length > visibleCount && (
+          <div className="border-t border-border p-3 text-center">
+            <button
+              onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+              className="rounded-lg border border-border px-4 py-2 text-sm text-fg transition hover:bg-surface-2"
+            >
+              Show more — {filtered.length - visibleCount} more
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
