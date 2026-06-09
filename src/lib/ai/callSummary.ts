@@ -9,6 +9,8 @@ export interface CallSummaryInput {
   notes: string;
   /** ISO 639-1 language to write the summary/next-step in (default English). */
   language?: string;
+  /** The rep's explicit outcome pick — always overrides the AI/heuristic guess. */
+  outcome?: CallOutcome;
 }
 
 export interface CallSummaryResult {
@@ -39,7 +41,7 @@ const SCHEMA = {
 
 function fallback(input: CallSummaryInput): CallSummaryResult {
   const n = input.notes.toLowerCase();
-  const outcome: CallOutcome = n.includes("voicemail") || n.includes("vm")
+  const inferred: CallOutcome = n.includes("voicemail") || n.includes("vm")
     ? "voicemail"
     : n.includes("no answer") || n.includes("didn't pick") || n.includes("did not answer")
       ? "no_answer"
@@ -49,7 +51,11 @@ function fallback(input: CallSummaryInput): CallSummaryResult {
           ? "not_interested"
           : n.includes("call back") || n.includes("callback") || n.includes("follow up")
             ? "callback_scheduled"
-            : "connected";
+            : n.trim()
+              ? "connected"
+              : "no_answer"; // empty notes ≠ "reached" — default to an unanswered attempt, not a connect
+  // A rep's explicit pick always wins over inference.
+  const outcome: CallOutcome = input.outcome ?? inferred;
   const sentiment = n.includes("not interested") || n.includes("angry") || n.includes("frustrat")
     ? "negative"
     : n.includes("interested") || n.includes("great") || n.includes("excited") || outcome === "meeting_booked"
@@ -82,7 +88,8 @@ ${languageDirective(input.language) ? `\n${languageDirective(input.language)} (K
 Summarize the call now.`;
   try {
     const out = await completeJson<Omit<CallSummaryResult, "source">>({ system: SYSTEM, user, schema: SCHEMA, maxTokens: 700, think: true, effort: "max", feature: "call_summary" });
-    return { ...out, source: "ai" };
+    // The rep's explicit outcome overrides the AI's inference.
+    return { ...out, outcome: input.outcome ?? out.outcome, source: "ai" };
   } catch {
     return fallback(input);
   }

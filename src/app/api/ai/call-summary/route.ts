@@ -9,7 +9,12 @@ import { aiRateLimit } from "@/lib/ratelimit";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const Body = z.object({ dealId: z.string().min(1), notes: z.string().max(8000) });
+const Body = z.object({
+  dealId: z.string().min(1),
+  notes: z.string().max(8000),
+  // The rep's explicit outcome pick from the dialer — overrides the AI guess.
+  outcome: z.enum(["connected", "voicemail", "no_answer", "callback_scheduled", "not_interested", "meeting_booked"]).optional(),
+});
 
 export const POST = withGuard(async (req: Request) => {
   if (!aiRateLimit(req, "ai-callsummary").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -25,6 +30,7 @@ export const POST = withGuard(async (req: Request) => {
     dealTitle: detail.opp.title,
     notes: parsed.data.notes,
     language: org.language,
+    outcome: parsed.data.outcome,
   });
   return NextResponse.json(result);
 });
