@@ -6,7 +6,7 @@ import { buildRecallQueue } from "@/lib/recall/engine";
 import { draftMessage } from "@/lib/ai/draft";
 import { isAiConfigured } from "@/lib/ai/client";
 import { sendEmail, sendSms, placeCall } from "@/lib/comms";
-import { sendGate, type SkipReason } from "@/lib/agent/guardrails";
+import { sendGate, dailySendCap, type SkipReason } from "@/lib/agent/guardrails";
 import { compactMoney } from "@/lib/format";
 import { createRun, createOutboxItem, touchTask } from "@/lib/agent/store";
 import { batchActivities } from "@/lib/crm/activities";
@@ -94,7 +94,16 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
     const actions: AgentAction[] = [];
     const pending: { dealId: string; contactId: string; channel: "email" | "sms"; subject?: string; body: string; source: "ai" | "template"; recall: boolean }[] = [];
     let recoverable = 0;
+    // Seed the send counter with the org's recent (rolling 24h) outbound sends so
+    // the daily cap is enforced across runs, not reset every (hourly) cron tick —
+    // otherwise "max 50/day" silently became "max 50 per run". Skip the query
+    // entirely when no cap is configured (the default), so behavior is unchanged.
     let sent = 0;
+    if (Number.isFinite(dailySendCap())) {
+      const dayAgo = Date.now() - 86_400_000;
+      const recent = await provider.listRecentActivities(500).catch(() => []);
+      sent = recent.filter((a) => a.direction === "outbound" && ["email", "sms", "call"].includes(a.kind) && new Date(a.occurredAt).getTime() >= dayAgo).length;
+    }
     let drafted = 0;
 
     for (const t of targets) {
