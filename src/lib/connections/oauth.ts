@@ -100,10 +100,15 @@ export function oauthRedirectUri(platform: OAuthPlatform, origin: string): strin
 
 const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-function stateSecret(): string {
-  // Reuse the app's encryption key as the HMAC secret; both are operator-set
-  // server secrets. Falls back to a per-process random so dev still works.
-  return process.env.ENCRYPTION_KEY || process.env.CRON_SECRET || "rr-oauth-dev-secret";
+function stateSecret(): string | null {
+  // Reuse the app's encryption key (or cron secret) as the HMAC secret — both
+  // are operator-set server secrets. Fail CLOSED in production when neither is
+  // set: a known constant would make the OAuth `state` HMAC forgeable (CSRF /
+  // cross-org binding). Only fall back to a constant in dev — mirrors the
+  // inbound-routing / calendar-feed token modules.
+  const real = process.env.ENCRYPTION_KEY || process.env.CRON_SECRET;
+  if (real) return real;
+  return process.env.NODE_ENV === "production" ? null : "rr-oauth-dev-secret";
 }
 
 export interface OAuthState {
@@ -116,15 +121,21 @@ export interface OAuthState {
 }
 
 export function signState(state: OAuthState): string {
+  const secret = stateSecret();
+  // Caller is withGuard-wrapped (oauth/[platform]/start) → clean 500. Failing
+  // here prevents minting a forgeable state when no real secret is configured.
+  if (!secret) throw new Error("OAuth state signing isn't configured — set ENCRYPTION_KEY.");
   const body = Buffer.from(JSON.stringify(state)).toString("base64url");
-  const mac = crypto.createHmac("sha256", stateSecret()).update(body).digest("base64url");
+  const mac = crypto.createHmac("sha256", secret).update(body).digest("base64url");
   return `${body}.${mac}`;
 }
 
 export function verifyState(token: string): OAuthState | null {
+  const secret = stateSecret();
+  if (!secret) return null; // no real secret in prod → reject every state
   const [body, mac] = token.split(".");
   if (!body || !mac) return null;
-  const expected = crypto.createHmac("sha256", stateSecret()).update(body).digest("base64url");
+  const expected = crypto.createHmac("sha256", secret).update(body).digest("base64url");
   const a = Buffer.from(mac);
   const b = Buffer.from(expected);
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;

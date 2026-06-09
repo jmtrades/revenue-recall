@@ -26,6 +26,7 @@ export async function POST(req: Request) {
 
 /** Un-snooze a deal (?opportunityId=…) — bring it back to the queue now. */
 export async function DELETE(req: Request) {
+  if (!writeRateLimit(req, "recall-snooze").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const id = new URL(req.url).searchParams.get("opportunityId");
   if (!id) return NextResponse.json({ error: "Missing opportunityId" }, { status: 400 });
   try {

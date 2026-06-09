@@ -3,6 +3,7 @@ import { withGuard } from "@/lib/api/guard";
 import { z } from "zod";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { writeRateLimit } from "@/lib/ratelimit";
+import { requireRole } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,9 @@ const Body = z.object({ channel: z.enum(["email", "sms"]), to: z.string().min(3)
  *  verify their connected email/SMS provider really delivers before going live. */
 export const POST = withGuard(async (req: Request) => {
   if (!writeRateLimit(req, "test-send").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  // Sending to an arbitrary recipient spends comms credits — owner/admin only.
+  const denied = await requireRole("owner", "admin");
+  if (denied) return denied;
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "channel and a valid recipient are required" }, { status: 400 });
 

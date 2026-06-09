@@ -37,6 +37,10 @@ export const POST = withGuard(async (req: Request) => {
       }
     } else if (token) {
       if (url.searchParams.get("token") !== token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    } else if (process.env.NODE_ENV === "production") {
+      // Fail closed in prod: an unauthenticated bounce endpoint lets anyone
+      // suppress a tenant's outbound email to any address. Configure a secret.
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     } else {
       logWarn("inbound.bounce.unauthenticated", { note: "set INBOUND_SIGNING_SECRET (preferred) or INBOUND_TOKEN" });
     }
