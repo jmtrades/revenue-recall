@@ -116,13 +116,21 @@ export async function orgIdForCustomer(customerId: string): Promise<string | nul
 }
 
 /** Apply a subscription change to a specific org by its Stripe customer id. */
-export async function saveSubscriptionForCustomer(customerId: string, patch: Partial<Subscription>): Promise<void> {
+export async function saveSubscriptionForCustomer(customerId: string, patch: Partial<Subscription>, fallbackOrgId?: string): Promise<void> {
   if (!isSupabaseConfigured()) {
     memSub = { ...(memSub ?? freeSubscription()), ...patch, updatedAt: new Date().toISOString() };
     return;
   }
   const id = await orgIdForCustomer(customerId);
-  if (!id) return;
+  if (!id) {
+    // The customer→org mapping is written by checkout.session.completed, but
+    // Stripe doesn't guarantee it arrives before subscription.created/updated.
+    // When the subscription carries our org_id in metadata, upsert against it
+    // (recording the customer id) so out-of-order delivery doesn't silently drop
+    // the seats / period / status until the next event.
+    if (fallbackOrgId) await saveSubscriptionForOrg(fallbackOrgId, { ...patch, stripeCustomerId: customerId });
+    return;
+  }
   const { error } = await getSupabase()!
     .from("subscriptions")
     .update({
