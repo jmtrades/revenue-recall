@@ -23,7 +23,7 @@ const Body = z.object({
 /** Run a complete simulated call end to end and return the transcript + scorecard. */
 export const POST = withGuard(async (req: Request) => {
   // A full call runs many model turns — throttle harder.
-  if (!aiRateLimit(req, "voice-call").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  if (!(await aiRateLimit(req, "voice-call")).ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 

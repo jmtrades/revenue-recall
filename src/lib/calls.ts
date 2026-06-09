@@ -5,6 +5,8 @@ import { listTasks } from "@/lib/agent/store";
 import { isEntitled } from "@/lib/billing/enforce";
 import { getOrgSettings } from "@/lib/org";
 import { placeCall } from "@/lib/comms";
+import { signCallMeta } from "@/lib/calls/meta-sig";
+import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { voicemailFollowupText } from "@/lib/voice/voicemail";
 import { createOutboxItem, listOutbox } from "@/lib/agent/store";
 import type { Activity, Contact, Opportunity } from "@/lib/crm/types";
@@ -203,6 +205,8 @@ export async function runCallRetries(now: Date = new Date()): Promise<RetryRunRe
 
     const provider = await resolveProvider();
     if (!provider.info().capabilities.write) return result;
+    // Org-address the gateway post-back so the transcript lands on this tenant.
+    const orgIdForMeta = await resolveActiveOrgId().catch(() => null);
     const [recent, contacts] = await Promise.all([provider.listRecentActivities(500), provider.listContacts()]);
     const cById = new Map(contacts.map((c) => [c.id, c]));
     const actsByContact = new Map<string, Activity[]>();
@@ -240,7 +244,7 @@ export async function runCallRetries(now: Date = new Date()): Promise<RetryRunRe
 
       const res = await placeCall(phone, {
         from: org.callerId,
-        meta: { contactId: contact.id, ...(a.opportunityId ? { dealId: a.opportunityId } : {}) },
+        meta: signCallMeta({ contactId: contact.id, ...(a.opportunityId ? { dealId: a.opportunityId } : {}), ...(orgIdForMeta ? { orgId: orgIdForMeta } : {}) }),
       }).catch(() => ({ status: "failed" as const }));
       if (res.status === "failed") {
         result.skipped += 1;

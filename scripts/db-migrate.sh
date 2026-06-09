@@ -20,9 +20,20 @@ if [[ "$SUPABASE_DB_URL" == *"[YOUR-PASSWORD]"* ]]; then
   exit 1
 fi
 
+# Ledger: record applied files so re-runs skip them and a future non-idempotent
+# migration can't half-apply twice. Each file runs in a single transaction.
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q -c "create table if not exists schema_migrations (filename text primary key, applied_at timestamptz not null default now());"
+
 for f in supabase/migrations/*.sql; do
-  echo "→ Applying $f"
-  psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f "$f"
+  name=$(basename "$f")
+  applied=$(psql "$SUPABASE_DB_URL" -tAc "select 1 from schema_migrations where filename = '$name' limit 1")
+  if [[ "$applied" == "1" ]]; then
+    echo "↷ Skipping $name (already applied)"
+    continue
+  fi
+  echo "→ Applying $name"
+  psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 --single-transaction -f "$f"
+  psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q -c "insert into schema_migrations (filename) values ('$name') on conflict (filename) do nothing;"
 done
 
 echo "✓ Migrations applied."

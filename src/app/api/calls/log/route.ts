@@ -3,6 +3,7 @@ import { z } from "zod";
 import { logCallOutcome, scheduleCallRetry, scheduleVoicemailFollowup } from "@/lib/calls";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 import { safeEqual } from "@/lib/safe-compare";
+import { verifyCallMeta } from "@/lib/calls/meta-sig";
 import { runWithOrg } from "@/lib/supabase/org-context";
 import { seenInboundEvent, forgetInboundEvent } from "@/lib/inbound-dedup";
 import { withGuard } from "@/lib/api/guard";
@@ -22,7 +23,7 @@ const Body = z.object({
   // The gateway echoes the per-call meta it received from /api/calls/place —
   // including the owning org id, so the transcript lands on the RIGHT tenant's
   // timeline instead of falling back to the first org.
-  meta: z.object({ contactId: z.string().optional(), dealId: z.string().optional(), orgId: z.string().max(200).optional() }).partial().optional(),
+  meta: z.object({ contactId: z.string().optional(), dealId: z.string().optional(), orgId: z.string().max(200).optional(), sig: z.string().max(64).optional() }).partial().optional(),
   outcome: z.string().max(80).optional(),
   transcript: z.string().max(20000).optional(),
   durationSec: z.number().nonnegative().optional(),
@@ -56,6 +57,12 @@ export const POST = withGuard(async (req: Request) => {
   // Idempotency: a retried post-back with the same callId no-ops (no double log).
   if (b.callId && (await seenInboundEvent("call", b.callId))) {
     return NextResponse.json({ ok: true, duplicate: true });
+  }
+  // An org-addressed post-back must carry the HMAC this server attached at
+  // place-time — the shared gateway token alone must not be able to write onto
+  // an arbitrary tenant's timeline.
+  if (b.meta?.orgId && !verifyCallMeta(b.meta)) {
+    return NextResponse.json({ error: "Invalid meta signature" }, { status: 401 });
   }
   const contactId = b.contactId ?? b.meta?.contactId;
   const dealId = b.dealId ?? b.meta?.dealId;

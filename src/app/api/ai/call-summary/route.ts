@@ -17,7 +17,7 @@ const Body = z.object({
 });
 
 export const POST = withGuard(async (req: Request) => {
-  if (!aiRateLimit(req, "ai-callsummary").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  if (!(await aiRateLimit(req, "ai-callsummary")).ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "dealId and notes required" }, { status: 400 });
 

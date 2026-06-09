@@ -20,13 +20,13 @@ function req(ip: string, body: unknown) {
 }
 
 describe("AI endpoint rate limiting (margin + abuse guard)", () => {
-  it("aiRateLimit caps a client and honors the env override", () => {
+  it("aiRateLimit caps a client and honors the env override", async () => {
     process.env.AI_RATE_LIMIT_PER_MIN = "3";
     const r = new Request("http://x", { headers: { "x-forwarded-for": "9.9.9.9" } });
-    expect(aiRateLimit(r, "t").ok).toBe(true);
-    expect(aiRateLimit(r, "t").ok).toBe(true);
-    expect(aiRateLimit(r, "t").ok).toBe(true);
-    expect(aiRateLimit(r, "t").ok).toBe(false); // 4th over the cap of 3
+    expect((await aiRateLimit(r, "t")).ok).toBe(true);
+    expect((await aiRateLimit(r, "t")).ok).toBe(true);
+    expect((await aiRateLimit(r, "t")).ok).toBe(true);
+    expect((await aiRateLimit(r, "t")).ok).toBe(false); // 4th over the cap of 3
   });
 
   it("the voice/turn route returns 429 once a client bursts past the limit", async () => {

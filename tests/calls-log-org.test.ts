@@ -25,10 +25,19 @@ const post = (body: unknown) =>
 
 describe("calls/log routes the transcript to the owning org", () => {
   it("runs the write inside runWithOrg(meta.orgId) so it can't land on the first org", async () => {
-    const res = await POST(post({ to: "+15551234567", outcome: "completed", meta: { orgId: "org_77", contactId: "c1" } }));
+    // Org-addressed metas must carry the HMAC the place route attaches.
+    process.env.ENCRYPTION_KEY = "test-key-at-least-16-chars-long";
+    const { signCallMeta } = await import("@/lib/calls/meta-sig");
+    const res = await POST(post({ to: "+15551234567", outcome: "completed", meta: signCallMeta({ orgId: "org_77", contactId: "c1" }) }));
     expect(res.status).toBe(200);
     expect(vi.mocked(runWithOrg)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(runWithOrg).mock.calls[0][0]).toBe("org_77");
+  });
+
+  it("rejects an org-addressed post-back without a valid signature (401)", async () => {
+    process.env.ENCRYPTION_KEY = "test-key-at-least-16-chars-long";
+    const res = await POST(post({ to: "+15551234567", outcome: "completed", meta: { orgId: "org_77", contactId: "c1" } }));
+    expect(res.status).toBe(401);
   });
 
   it("logs without an override when no orgId is supplied (back-compat)", async () => {

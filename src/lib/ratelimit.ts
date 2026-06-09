@@ -46,10 +46,13 @@ export function clientKey(req: Request, scope: string): string {
  * protects total spend; this stops a single client from bursting (abuse / runaway
  * loops). Tune with AI_RATE_LIMIT_PER_MIN (default 30/min).
  */
-export function aiRateLimit(req: Request, scope = "ai"): RateLimitResult {
+export async function aiRateLimit(req: Request, scope = "ai"): Promise<RateLimitResult> {
   const perMin = Number(process.env.AI_RATE_LIMIT_PER_MIN);
   const limit = Number.isFinite(perMin) && perMin > 0 ? perMin : 30;
-  return rateLimit(clientKey(req, scope), limit, 60_000);
+  // AI endpoints are the cost-bearing ones, so their limiter is the DB-backed
+  // counter (per-instance memory resets on every cold start and multiplies by
+  // instance count on serverless); falls back to in-memory without a database.
+  return distributedRateLimit(clientKey(req, scope), limit, 60_000);
 }
 
 /**
