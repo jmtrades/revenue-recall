@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { InboxThread, InboxMessage } from "@/lib/queries";
+import type { MessageTemplate } from "@/lib/templates";
+import { fillTokens } from "@/lib/templates-fill";
 import { Avatar, ChannelIcon, ChannelBadge, channelLabel, EmptyState, Button } from "@/components/ui";
 
 function timeAgo(iso: string): string {
@@ -18,7 +20,16 @@ function replyChannel(channel: string): string {
   return SENDABLE.has(channel) ? channel : "email";
 }
 
-export function InboxView({ threads }: { threads: InboxThread[] }) {
+export function InboxView({
+  threads,
+  templates = [],
+  sender,
+}: {
+  threads: InboxThread[];
+  /** Industry message templates for the reply composer (merge tokens fill from the active thread). */
+  templates?: MessageTemplate[];
+  sender?: { name?: string; bookingUrl?: string };
+}) {
   const [activeId, setActiveId] = useState(threads[0]?.contactId ?? "");
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const shown = filter === "unread" ? threads.filter((t) => t.unread) : threads;
@@ -151,6 +162,32 @@ export function InboxView({ threads }: { threads: InboxThread[] }) {
               ))}
             </div>
             <div className="border-t border-border p-3">
+              {(() => {
+                // Templates that fit the thread's reply channel (social DMs are
+                // SMS-length). Picking one fills the merge tokens from THIS
+                // conversation — the contact's name/company, the rep's name and
+                // booking link — so what lands in the box is ready to send.
+                const chan = replyChannel(active.channel) === "email" ? "email" : "sms";
+                const fitting = templates.filter((t) => t.channel === chan);
+                if (fitting.length === 0) return null;
+                return (
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      const t = fitting.find((x) => x.id === e.target.value);
+                      if (!t) return;
+                      setDraft(fillTokens(t.body, { contactName: active.contactName, company: active.company, senderName: sender?.name, bookingUrl: sender?.bookingUrl }));
+                    }}
+                    aria-label="Insert a template"
+                    className="mb-2 w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-xs text-muted outline-none focus:border-brand"
+                  >
+                    <option value="">Insert a template…</option>
+                    {fitting.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                );
+              })()}
               <div className="flex gap-2">
                 <input
                   value={draft}
