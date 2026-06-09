@@ -58,6 +58,15 @@ describe("scoreOpportunity", () => {
     expect(scoreOpportunity(opp({ stageId: "lost", value: 8000, lastActivityAt: daysAgo(200) }), stageMap)).toBeNull();
     expect(scoreOpportunity(opp({ stageId: "lost", value: 500, lastActivityAt: daysAgo(30) }), stageMap)).toBeNull();
   });
+
+  it("scales the 'too small' lost-deal floor by currency, not a flat 1000", () => {
+    // 0-decimal currency (JPY): floor ≈ 100,000, so 50,000 is too small but
+    // 200,000 is worth chasing — a flat 1000 floor would have kept both.
+    expect(scoreOpportunity(opp({ stageId: "lost", value: 50000, currency: "JPY", lastActivityAt: daysAgo(30) }), stageMap)).toBeNull();
+    expect(scoreOpportunity(opp({ stageId: "lost", value: 200000, currency: "JPY", lastActivityAt: daysAgo(30) }), stageMap)?.reason).toBe("lost_winnable");
+    // Same 50,000 figure in USD is well above the 1000 floor — kept.
+    expect(scoreOpportunity(opp({ stageId: "lost", value: 50000, currency: "USD", lastActivityAt: daysAgo(30) }), stageMap)?.reason).toBe("lost_winnable");
+  });
 });
 
 function act(p: Partial<Activity>): Activity {

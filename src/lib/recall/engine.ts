@@ -68,6 +68,25 @@ function daysSince(iso?: string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / DAY));
 }
 
+/**
+ * Smallest lost-deal value worth re-approaching, in the deal's own currency.
+ * A flat 1,000 floor is currency-blind — 1,000 JPY is ~$7, 1,000 BHD is ~$2,600 —
+ * so it would wrongly drop real lost deals in some currencies and admit trivial
+ * ones in others. We scale by the currency's standard fraction digits, a good
+ * proxy for unit magnitude: 2-digit currencies (USD/EUR/GBP) keep 1,000; 0-digit
+ * currencies (JPY/KRW/VND…) use 100,000; 3-digit (BHD/KWD) use 100. A deliberately
+ * coarse "too small to bother" heuristic, not FX math.
+ */
+function lostMinValue(currency: string): number {
+  let fractionDigits = 2;
+  try {
+    fractionDigits = new Intl.NumberFormat("en-US", { style: "currency", currency: currency || "USD" }).resolvedOptions().maximumFractionDigits ?? 2;
+  } catch {
+    // Unknown / invalid currency code → treat it like a 2-digit currency.
+  }
+  return Math.round(1000 * 10 ** (2 - fractionDigits));
+}
+
 function stageMap(pipelines: Pipeline[]): Map<string, Stage> {
   const m = new Map<string, Stage>();
   for (const p of pipelines) for (const s of p.stages) m.set(s.id, s);
@@ -158,7 +177,7 @@ export function scoreOpportunity(
   if (stage?.type === "won") return null;
 
   if (stage?.type === "lost") {
-    if (days > thresholds.lostWindowDays || opp.value < 1000) return null; // too cold / too small
+    if (days > thresholds.lostWindowDays || opp.value < lostMinValue(opp.currency)) return null; // too cold / too small
     reason = "lost_winnable";
     recoverable = 0.25;
   } else if (isNoShow(signals?.activities, thresholds.noShowGraceDays)) {
