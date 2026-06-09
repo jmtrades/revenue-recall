@@ -140,6 +140,22 @@ export function AgentsView({
     router.refresh();
   }
 
+  async function toggle(id: string, enabled: boolean) {
+    setTasks((ts) => ts.map((x) => (x.id === id ? { ...x, enabled } : x))); // optimistic
+    setError(null);
+    const res = await fetch(`/api/agent/tasks/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    }).catch(() => null);
+    if (!res || !res.ok) {
+      setTasks((ts) => ts.map((x) => (x.id === id ? { ...x, enabled: !enabled } : x))); // revert
+      setError("Couldn't update the agent — try again.");
+    } else {
+      router.refresh();
+    }
+  }
+
   const taskName = (id: string) => tasks.find((t) => t.id === id)?.name ?? "Task";
 
   const STATS: { label: string; value: string; icon: IconName; tone?: string }[] = [
@@ -265,14 +281,17 @@ export function AgentsView({
             ) : (
               <ul className="mt-3 space-y-2.5">
                 {tasks.map((t) => (
-                  <li key={t.id} className="raised lift rounded-xl border border-border bg-surface-2 p-3.5 hover:border-brand/40">
+                  <li key={t.id} className={`raised lift rounded-xl border border-border bg-surface-2 p-3.5 hover:border-brand/40 ${t.enabled ? "" : "opacity-60"}`}>
                     <div className="flex items-start justify-between gap-2">
                       <span className="flex items-center gap-2 text-sm font-medium text-fg">
                         <Icon name={CHANNEL_ICON[t.channel] ?? "recall"} size={14} className="text-brand" />
                         {t.name}
                       </span>
-                      <span className={`pill ${t.autonomy === "auto" ? "bg-brand-soft text-brand" : "bg-surface text-muted"}`}>
-                        {t.autonomy === "auto" ? "Autonomous" : "Review"}
+                      <span className="flex shrink-0 items-center gap-1.5">
+                        {!t.enabled && <span className="pill bg-warn/15 text-warn">Paused</span>}
+                        <span className={`pill ${t.autonomy === "auto" ? "bg-brand-soft text-brand" : "bg-surface text-muted"}`}>
+                          {t.autonomy === "auto" ? "Autonomous" : "Review"}
+                        </span>
                       </span>
                     </div>
                     <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted">{t.goal}</p>
@@ -280,6 +299,7 @@ export function AgentsView({
                       <button onClick={() => run(t.id)} disabled={busy === t.id} className="cta inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
                         {busy === t.id ? "Running…" : <><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg> Run now</>}
                       </button>
+                      <button onClick={() => toggle(t.id, !t.enabled)} className="rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted transition-colors hover:text-fg" title={t.enabled ? "Pause this agent (stops it running without deleting it)" : "Resume this agent"}>{t.enabled ? "Pause" : "Resume"}</button>
                       <button onClick={() => remove(t.id)} className="rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-danger/40 hover:text-danger">Delete</button>
                       <span className="ml-auto text-[11px] uppercase tracking-wide text-muted">{t.scope.startsWith("stage:") ? "Stage" : t.scope.replace("_", " ")}</span>
                     </div>
