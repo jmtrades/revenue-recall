@@ -232,12 +232,13 @@ export class SupabaseProvider implements CrmProvider {
     return opp;
   }
 
-  async updateOpportunity(id: Id, patch: Partial<Pick<Opportunity, "title" | "value" | "expectedCloseAt">>): Promise<Opportunity> {
+  async updateOpportunity(id: Id, patch: Partial<Pick<Opportunity, "title" | "value" | "expectedCloseAt" | "ownerId">>): Promise<Opportunity> {
     const orgId = await this.orgId();
     const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.title !== undefined) row.title = patch.title;
     if (patch.value !== undefined) row.value = patch.value;
     if (patch.expectedCloseAt !== undefined) row.expected_close_at = patch.expectedCloseAt;
+    if (patch.ownerId !== undefined) row.owner_id = patch.ownerId || null; // "" unassigns
     const { data, error } = await this.client
       .from("opportunities")
       .update(row)

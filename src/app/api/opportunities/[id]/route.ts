@@ -10,12 +10,14 @@ const PatchBody = z
     value: z.number().min(0).max(1_000_000_000).optional(),
     // From a <input type="date"> (YYYY-MM-DD) or a full ISO string.
     expectedCloseAt: z.string().trim().min(1).optional(),
+    // Reassign the deal; an empty string unassigns it.
+    ownerId: z.string().max(200).optional(),
   })
-  .refine((d) => d.title !== undefined || d.value !== undefined || d.expectedCloseAt !== undefined, {
+  .refine((d) => d.title !== undefined || d.value !== undefined || d.expectedCloseAt !== undefined || d.ownerId !== undefined, {
     message: "Provide a field to update",
   });
 
-/** Edit a deal's title / value / expected close. Session-gated; rate-limited. */
+/** Edit a deal's title / value / expected close / owner. Session-gated; rate-limited. */
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   if (!writeRateLimit(req, "deal-edit").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = PatchBody.safeParse(await req.json().catch(() => null));
@@ -24,6 +26,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const patch: DealPatch = {};
   if (parsed.data.title !== undefined) patch.title = parsed.data.title;
   if (parsed.data.value !== undefined) patch.value = parsed.data.value;
+  if (parsed.data.ownerId !== undefined) patch.ownerId = parsed.data.ownerId;
   if (parsed.data.expectedCloseAt !== undefined) {
     const d = new Date(parsed.data.expectedCloseAt);
     if (Number.isNaN(d.getTime())) return NextResponse.json({ error: "Invalid close date" }, { status: 400 });

@@ -25,6 +25,8 @@ export default async function DealPage({ params }: { params: { id: string } }) {
   if (!detail) notFound();
   const { opp, contact, owner, pipeline, stage, activities, fields } = detail;
   const provider = (await resolveProvider());
+  // Org members for the reassignment select (best-effort; hidden when empty).
+  const members = await provider.listUsers().catch(() => []);
   const canWrite = provider.info().capabilities.write;
   const canEdit = canWrite && typeof provider.updateOpportunity === "function";
   const canDelete = canWrite && typeof provider.deleteOpportunity === "function";
@@ -162,10 +164,12 @@ export default async function DealPage({ params }: { params: { id: string } }) {
               <DealInfoEdit
                 dealId={opp.id}
                 currency={opp.currency}
+                owners={members.map((u) => ({ id: u.id, name: u.name }))}
                 initial={{
                   title: opp.title,
                   value: opp.value,
                   expectedCloseAt: opp.expectedCloseAt ? new Date(opp.expectedCloseAt).toISOString().slice(0, 10) : "",
+                  ownerId: opp.ownerId ?? "",
                 }}
               />
             )}

@@ -184,12 +184,13 @@ export class BuiltinProvider implements CrmProvider {
     return opp;
   }
 
-  async updateOpportunity(id: Id, patch: Partial<Pick<Opportunity, "title" | "value" | "expectedCloseAt">>): Promise<Opportunity> {
+  async updateOpportunity(id: Id, patch: Partial<Pick<Opportunity, "title" | "value" | "expectedCloseAt" | "ownerId">>): Promise<Opportunity> {
     const opp = db().opportunities.find((o) => o.id === id);
     if (!opp) throw new Error(`Opportunity ${id} not found`);
     if (patch.title !== undefined) opp.title = patch.title;
     if (patch.value !== undefined) opp.value = patch.value;
     if (patch.expectedCloseAt !== undefined) opp.expectedCloseAt = patch.expectedCloseAt;
+    if (patch.ownerId !== undefined) opp.ownerId = patch.ownerId || undefined; // "" unassigns
     opp.updatedAt = new Date().toISOString();
     persist();
     return opp;
