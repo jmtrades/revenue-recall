@@ -26,12 +26,20 @@ export function BillingSettings({ configured, plan, status, seats, currentPeriod
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [checkout, setCheckout] = useState<CheckoutRequest | null>(null);
+  const [cycle, setCycle] = useState<"monthly" | "annual">("monthly");
+  const [seatCount, setSeatCount] = useState(Math.max(1, seats));
   const current = getPlan(plan);
 
+  // Derive the current cycle from the renew date — monthly periods are always
+  // within ~a month, annual ones ~a year out — so the summary reflects reality
+  // without needing a stored cycle column.
+  const currentCycle = currentPeriodEnd && new Date(currentPeriodEnd).getTime() - Date.now() > 60 * 86_400_000 ? "Annual" : "Monthly";
+
   // Open checkout — the modal does embedded (on our domain) when a publishable
-  // key is set, else falls back to hosted Stripe automatically.
+  // key is set, else falls back to hosted Stripe automatically. Passes the chosen
+  // seat count + billing cycle (the backend + catalog already support annual).
   function upgrade(planId: PlanId) {
-    setCheckout({ endpoint: "/api/billing/checkout", body: { plan: planId, seats } });
+    setCheckout({ endpoint: "/api/billing/checkout", body: { plan: planId, seats: seatCount, cycle } });
   }
 
   async function go(path: string, body?: unknown) {
@@ -71,7 +79,7 @@ export function BillingSettings({ configured, plan, status, seats, currentPeriod
           </div>
           <div className="flex items-center justify-between border-b border-border/60 py-2 text-sm">
             <span className="text-muted">Billing cycle</span>
-            <span className="text-fg">Monthly</span>
+            <span className="text-fg">{status === "none" ? "—" : currentCycle}</span>
           </div>
           <div className="flex items-center justify-between py-2 text-sm">
             <span className="text-muted">{status === "canceled" ? "Access until" : "Renews"}</span>
@@ -87,6 +95,32 @@ export function BillingSettings({ configured, plan, status, seats, currentPeriod
             {busy === "/api/billing/portal" ? "Opening…" : "Manage billing"}
           </button>
         )}
+      </div>
+
+      {/* Checkout options: billing cycle + seat count (both honored by checkout) */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3">
+        <div className="flex items-center gap-2">
+          <div className="inline-flex items-center rounded-lg border border-border bg-surface-2 p-0.5 text-sm">
+            {(["monthly", "annual"] as const).map((c) => (
+              <button
+                key={c}
+                onClick={() => setCycle(c)}
+                className={`rounded-md px-3 py-1.5 capitalize transition ${cycle === c ? "bg-brand text-white" : "text-muted hover:text-fg"}`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+          {cycle === "annual" && <span className="text-xs font-medium text-success">2 months free</span>}
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted">Reps</span>
+          <div className="inline-flex items-center rounded-lg border border-border">
+            <button onClick={() => setSeatCount((n) => Math.max(1, n - 1))} aria-label="Fewer reps" className="px-2.5 py-1.5 text-muted transition hover:text-fg">−</button>
+            <span className="min-w-[2ch] px-1 text-center tabular-nums text-fg">{seatCount}</span>
+            <button onClick={() => setSeatCount((n) => Math.min(1000, n + 1))} aria-label="More reps" className="px-2.5 py-1.5 text-muted transition hover:text-fg">+</button>
+          </div>
+        </div>
       </div>
 
       {/* Plans */}
