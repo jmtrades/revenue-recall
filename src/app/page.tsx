@@ -91,15 +91,6 @@ const INDUSTRY_ICONS: Record<string, IconName> = {
   home_services: "wrench",
 };
 
-// Honest capability statements — what the system actually does. No fabricated
-// customer quotes: we don't invent testimonials or attribute words to people
-// who didn't say them. Swap in real, attributable quotes once customers consent.
-const CAPABILITIES: { title: string; body: string; icon: IconName }[] = [
-  { title: "Works deals you've written off", body: "It re-engages cold and lost deals on a cadence — the second touch almost no team ever sends — and routes replies back into your pipeline.", icon: "recall" },
-  { title: "Replaces the busywork, not the judgment", body: "Prospecting, dialing, follow-up, and logging run autonomously. You approve, close, and keep the relationships.", icon: "approvals" },
-  { title: "Runs with a CRM or none at all", body: "The same playbook works on a team with Salesforce and a team with nothing. Built-in CRM included; plug into yours when ready.", icon: "database" },
-];
-
 // Who it's for — the SAME engine, right-sized for a team of one or a team of
 // thousands. Proves the product spans solo operators through the enterprise.
 const AUDIENCES: { scale: string; icon: IconName; title: string; body: string; points: string[] }[] = [
@@ -412,29 +403,6 @@ export default function LandingPage() {
           One person or one thousand — same two-minute setup, same engine.{" "}
           <Link href="/signup" className="font-medium text-brand hover:underline">Start free</Link> and scale when you&rsquo;re ready.
         </p>
-      </section>
-
-      {/* What it does */}
-      <section className="border-y border-border bg-surface/30">
-        <div className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
-          <Reveal className="mx-auto max-w-2xl text-center">
-            <span className="eyebrow">What it does</span>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">A sales rep that doesn&rsquo;t sleep</h2>
-          </Reveal>
-          <Stagger className="mt-12 grid gap-5 md:grid-cols-3">
-            {CAPABILITIES.map((c) => (
-              <StaggerItem key={c.title} className="h-full">
-                <figure className="raised flex h-full flex-col rounded-2xl border border-border bg-surface p-7">
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20">
-                  <Icon name={c.icon} size={18} />
-                </span>
-                <figcaption className="mt-5 text-base font-semibold text-fg">{c.title}</figcaption>
-                <p className="mt-2 flex-1 text-[15px] leading-relaxed text-body">{c.body}</p>
-                </figure>
-              </StaggerItem>
-            ))}
-          </Stagger>
-        </div>
       </section>
 
       {/* What it replaces — the ROI math */}
