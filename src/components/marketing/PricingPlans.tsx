@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { motion, useReducedMotion } from "motion/react";
+import { Stagger, StaggerItem } from "@/components/motion/Motion";
 
 type Cycle = "monthly" | "annual";
 
@@ -99,6 +101,7 @@ const PLANS: Plan[] = [
 
 export function PricingPlans() {
   const [cycle, setCycle] = useState<Cycle>("annual");
+  const reduced = useReducedMotion();
 
   return (
     <div>
@@ -108,28 +111,42 @@ export function PricingPlans() {
             <button
               key={c}
               onClick={() => setCycle(c)}
-              className={`cta inline-flex items-center gap-2 rounded-full px-4 py-1.5 font-medium capitalize ${cycle === c ? "bg-brand text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.2)]" : "text-muted hover:text-fg"}`}
+              className={`cta relative inline-flex items-center gap-2 rounded-full px-4 py-1.5 font-medium capitalize ${cycle === c ? "text-white" : "text-muted hover:text-fg"}`}
               aria-pressed={cycle === c}
             >
-              {c}
-              {c === "annual" && (
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${cycle === "annual" ? "bg-white/20 text-white" : "bg-success/15 text-success"}`}>
-                  −17%
-                </span>
-              )}
+              {/* The active pill GLIDES between options (shared layout). */}
+              {cycle === c &&
+                (reduced ? (
+                  <span className="absolute inset-0 rounded-full bg-brand shadow-[inset_0_1px_0_0_rgb(255_255_255/0.2)]" aria-hidden />
+                ) : (
+                  <motion.span
+                    layoutId="rr-cycle-pill"
+                    className="absolute inset-0 rounded-full bg-brand shadow-[inset_0_1px_0_0_rgb(255_255_255/0.2)]"
+                    transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                    aria-hidden
+                  />
+                ))}
+              <span className="relative z-10 inline-flex items-center gap-2">
+                {c}
+                {c === "annual" && (
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${cycle === "annual" ? "bg-white/20 text-white" : "bg-success/15 text-success"}`}>
+                    −17%
+                  </span>
+                )}
+              </span>
             </button>
           ))}
         </div>
       </div>
 
-      <div className="mt-12 grid items-start gap-5 lg:grid-cols-4">
+      <Stagger className="mt-12 grid items-start gap-5 lg:grid-cols-4">
         {PLANS.map((p) => {
           const isCustom = p.monthly === null;
           const isFree = p.monthly === 0;
           const shown = isCustom || isFree ? null : cycle === "annual" ? annualMonthly(p.monthly as number) : (p.monthly as number);
           const priceLabel = isCustom ? (p.customLabel ?? "Custom") : isFree ? "$0" : `$${shown}`;
           return (
-            <div
+            <StaggerItem
               key={p.name}
               className={`raised relative flex flex-col rounded-2xl border p-6 ${p.featured ? "border-brand bg-surface ring-glow lg:-mt-3 lg:pb-9" : "lift border-border bg-surface hover:border-brand/40"}`}
             >
@@ -137,7 +154,19 @@ export function PricingPlans() {
               <h3 className="text-lg font-semibold text-fg">{p.name}</h3>
               <p className="mt-1 text-sm leading-snug text-muted">{p.tagline}</p>
               <div className="mt-5 flex items-end gap-1">
-                <span className="font-display text-[2.1rem] font-semibold tabular-nums tracking-tight text-fg">{priceLabel}</span>
+                {reduced ? (
+                  <span className="font-display text-[2.1rem] font-semibold tabular-nums tracking-tight text-fg">{priceLabel}</span>
+                ) : (
+                  <motion.span
+                    key={priceLabel}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.28, ease: [0.23, 1, 0.32, 1] }}
+                    className="font-display text-[2.1rem] font-semibold tabular-nums tracking-tight text-fg"
+                  >
+                    {priceLabel}
+                  </motion.span>
+                )}
                 {p.unit && <span className="mb-1 text-sm text-muted">{p.unit}</span>}
               </div>
               <p className="mt-1 h-4 text-xs text-success">
@@ -163,10 +192,10 @@ export function PricingPlans() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </StaggerItem>
           );
         })}
-      </div>
+      </Stagger>
       <div className="mt-10 space-y-4 text-center">
         <p className="mx-auto max-w-2xl text-sm text-muted">
           Every plan includes a monthly pool of <span className="text-fg">AI messages</span> — each email, text, call, or reply it writes for you.

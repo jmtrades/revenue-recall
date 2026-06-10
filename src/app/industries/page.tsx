@@ -4,6 +4,7 @@ import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { Footer } from "@/components/marketing/Footer";
 import { StickyCTA } from "@/components/marketing/StickyCTA";
 import { INDUSTRIES } from "@/lib/industries";
+import { Stagger, StaggerItem } from "@/components/motion/Motion";
 
 export const dynamic = "force-static";
 
@@ -27,15 +28,17 @@ export default function IndustriesIndex() {
           Not a generic CRM with your logo on it. Revenue Recall ships with the pipeline, terminology, objections, and
           follow-up plays that match your world — then runs the whole motion across email, SMS, and the phone.
         </p>
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <Stagger className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {LISTED.map((ind) => (
-            <Link key={ind.id} href={`/industries/${slugFor(ind.id)}`} className="group rounded-2xl border border-border bg-surface p-6 transition hover:border-brand/50">
-              <h2 className="font-semibold text-fg group-hover:text-brand">{ind.label}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted">{ind.blurb}</p>
-              <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-brand">Explore <span aria-hidden>→</span></span>
-            </Link>
+            <StaggerItem key={ind.id} className="h-full">
+              <Link href={`/industries/${slugFor(ind.id)}`} className="group flex h-full flex-col rounded-2xl border border-border bg-surface p-6 transition hover:border-brand/50">
+                <h2 className="font-semibold text-fg group-hover:text-brand">{ind.label}</h2>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">{ind.blurb}</p>
+                <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-brand">Explore <span aria-hidden>→</span></span>
+              </Link>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </main>
       <StickyCTA />
       <Footer />
