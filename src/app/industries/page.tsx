@@ -4,6 +4,7 @@ import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { Footer } from "@/components/marketing/Footer";
 import { StickyCTA } from "@/components/marketing/StickyCTA";
 import { INDUSTRIES } from "@/lib/industries";
+import { SITE_URL } from "@/lib/site";
 import { Stagger, StaggerItem } from "@/components/motion/Motion";
 
 export const dynamic = "force-static";
@@ -14,7 +15,7 @@ const LISTED = INDUSTRIES.filter((i) => i.id !== "generic");
 export const metadata: Metadata = {
   title: "Industries — sales automation tuned to how you sell | Revenue Recall",
   description: "Revenue Recall ships with industry-specific pipelines, terminology, objections, and follow-up plays for real estate, mortgage, insurance, SaaS, agencies, automotive, and home services.",
-  alternates: { canonical: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.recall-touch.com"}/industries` },
+  alternates: { canonical: `${SITE_URL}/industries` },
 };
 
 export default function IndustriesIndex() {
