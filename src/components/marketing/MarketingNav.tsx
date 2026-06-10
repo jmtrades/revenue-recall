@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ScrollProgress } from "@/components/motion/ScrollProgress";
 
 function ArrowRight({ className = "" }: { className?: string }) {
   return (
@@ -12,6 +13,7 @@ function ArrowRight({ className = "" }: { className?: string }) {
 export function MarketingNav() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-bg/70 backdrop-blur-xl">
+      <ScrollProgress />
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
         <Link href="/" className="group flex items-center gap-2.5">
           <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-brand text-[13px] font-bold tracking-tight text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)] ring-1 ring-inset ring-white/10">
