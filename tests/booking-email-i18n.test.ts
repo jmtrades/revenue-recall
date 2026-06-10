@@ -73,6 +73,8 @@ describe("booking confirmation language", () => {
     expect(toInvitee!.body).toContain("Cuándo:");
     // Localized "Add to calendar" line with the signed .ics download.
     expect(toInvitee!.body).toContain("Añadir al calendario: https://app.example.com/api/bookings/ics?");
+    // Localized "cancel or reschedule" line with the signed cancel link.
+    expect(toInvitee!.body).toContain("¿Necesitas cancelar o reprogramar? https://app.example.com/api/bookings/cancel?");
 
     const toOwner = h.emails.find((e) => e.to === "owner@acme.com");
     expect(toOwner).toBeTruthy();

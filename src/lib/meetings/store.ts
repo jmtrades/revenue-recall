@@ -257,6 +257,22 @@ export async function busyIntervals(fromIso: string, toIso: string): Promise<{ s
   return ((data as { starts_at: string; ends_at: string }[] | null) ?? []).map((r) => ({ start: r.starts_at, end: r.ends_at }));
 }
 
+/** Cancel a booking (org-scoped). Returns the booking as it was BEFORE the
+ *  cancel (so the caller can notify with its details), or null if missing.
+ *  Idempotent: cancelling an already-cancelled booking is a no-op that still
+ *  returns it. Freeing the slot is automatic — busyIntervals only counts
+ *  confirmed bookings. Requires a database. */
+export async function cancelBooking(id: string): Promise<Booking | null> {
+  const { client, orgId } = await ctx();
+  const { data, error } = await client.from("bookings").select(BK_COLS).eq("org_id", orgId).eq("id", id).maybeSingle();
+  if (error || !data) return null;
+  const booking = toBooking(data as BookingRow);
+  if (booking.status === "confirmed") {
+    await client.from("bookings").update({ status: "cancelled" }).eq("id", id).eq("org_id", orgId);
+  }
+  return booking;
+}
+
 /** One booking by id (org-scoped), or null. Never throws. */
 export async function getBooking(id: string): Promise<Booking | null> {
   const client = getSupabase();

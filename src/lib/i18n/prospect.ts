@@ -15,6 +15,16 @@ export interface ProspectStrings {
   /** Text direction for page containers ("rtl" for Arabic). */
   dir: "ltr" | "rtl";
 
+  // Manage / cancel a booking (cancel page + the email's manage link)
+  emailManage: string;
+  cancelHeading: string;
+  cancelButton: string;
+  cancelledTitle: string;
+  cancelledBody: string;
+  cancelRebook: string;
+  cancelGoneTitle: string;
+  cancelGoneBody: string;
+
   // Hosted lead form (/f/[org])
   formUnavailableTitle: string;
   formUnavailableBody: string;
@@ -75,6 +85,14 @@ export interface ProspectStrings {
 }
 
 const en: ProspectStrings = {
+  emailManage: "Need to cancel or reschedule?",
+  cancelHeading: "Cancel this meeting?",
+  cancelButton: "Yes, cancel it",
+  cancelledTitle: "Meeting cancelled",
+  cancelledBody: "Your meeting has been cancelled.",
+  cancelRebook: "Book a new time",
+  cancelGoneTitle: "Nothing to cancel",
+  cancelGoneBody: "This meeting is already cancelled or no longer exists.",
   dir: "ltr",
   formUnavailableTitle: "Form unavailable",
   formUnavailableBody: "This form link is invalid or has expired. Please contact the site owner.",
@@ -129,6 +147,14 @@ const en: ProspectStrings = {
 };
 
 const es: Partial<ProspectStrings> = {
+  emailManage: "¿Necesitas cancelar o reprogramar?",
+  cancelHeading: "¿Cancelar esta reunión?",
+  cancelButton: "Sí, cancelar",
+  cancelledTitle: "Reunión cancelada",
+  cancelledBody: "Tu reunión ha sido cancelada.",
+  cancelRebook: "Reservar otro horario",
+  cancelGoneTitle: "Nada que cancelar",
+  cancelGoneBody: "Esta reunión ya está cancelada o ya no existe.",
   formUnavailableTitle: "Formulario no disponible",
   formUnavailableBody: "Este enlace no es válido o ha caducado. Contacta con el propietario del sitio.",
   formThanksTitle: "Gracias — te contactaremos",
@@ -182,6 +208,14 @@ const es: Partial<ProspectStrings> = {
 };
 
 const fr: Partial<ProspectStrings> = {
+  emailManage: "Besoin d'annuler ou de reprogrammer ?",
+  cancelHeading: "Annuler ce rendez-vous ?",
+  cancelButton: "Oui, annuler",
+  cancelledTitle: "Rendez-vous annulé",
+  cancelledBody: "Votre rendez-vous a été annulé.",
+  cancelRebook: "Réserver un autre créneau",
+  cancelGoneTitle: "Rien à annuler",
+  cancelGoneBody: "Ce rendez-vous est déjà annulé ou n'existe plus.",
   formUnavailableTitle: "Formulaire indisponible",
   formUnavailableBody: "Ce lien est invalide ou a expiré. Contactez le propriétaire du site.",
   formThanksTitle: "Merci — nous vous recontactons",
@@ -235,6 +269,14 @@ const fr: Partial<ProspectStrings> = {
 };
 
 const de: Partial<ProspectStrings> = {
+  emailManage: "Absagen oder verschieben?",
+  cancelHeading: "Diesen Termin absagen?",
+  cancelButton: "Ja, absagen",
+  cancelledTitle: "Termin abgesagt",
+  cancelledBody: "Ihr Termin wurde abgesagt.",
+  cancelRebook: "Neuen Termin buchen",
+  cancelGoneTitle: "Nichts abzusagen",
+  cancelGoneBody: "Dieser Termin ist bereits abgesagt oder existiert nicht mehr.",
   formUnavailableTitle: "Formular nicht verfügbar",
   formUnavailableBody: "Dieser Link ist ungültig oder abgelaufen. Bitte wenden Sie sich an den Seitenbetreiber.",
   formThanksTitle: "Danke — wir melden uns",
@@ -288,6 +330,14 @@ const de: Partial<ProspectStrings> = {
 };
 
 const pt: Partial<ProspectStrings> = {
+  emailManage: "Precisa cancelar ou remarcar?",
+  cancelHeading: "Cancelar esta reunião?",
+  cancelButton: "Sim, cancelar",
+  cancelledTitle: "Reunião cancelada",
+  cancelledBody: "Sua reunião foi cancelada.",
+  cancelRebook: "Agendar outro horário",
+  cancelGoneTitle: "Nada para cancelar",
+  cancelGoneBody: "Esta reunião já foi cancelada ou não existe mais.",
   formUnavailableTitle: "Formulário indisponível",
   formUnavailableBody: "Este link é inválido ou expirou. Contate o responsável pelo site.",
   formThanksTitle: "Obrigado — entraremos em contato",
@@ -341,6 +391,14 @@ const pt: Partial<ProspectStrings> = {
 };
 
 const it: Partial<ProspectStrings> = {
+  emailManage: "Devi annullare o riprogrammare?",
+  cancelHeading: "Annullare questo incontro?",
+  cancelButton: "Sì, annulla",
+  cancelledTitle: "Incontro annullato",
+  cancelledBody: "Il tuo incontro è stato annullato.",
+  cancelRebook: "Prenota un altro orario",
+  cancelGoneTitle: "Niente da annullare",
+  cancelGoneBody: "Questo incontro è già annullato o non esiste più.",
   formUnavailableTitle: "Modulo non disponibile",
   formUnavailableBody: "Questo link non è valido o è scaduto. Contatta il proprietario del sito.",
   formThanksTitle: "Grazie — ti contatteremo",
@@ -394,6 +452,14 @@ const it: Partial<ProspectStrings> = {
 };
 
 const nl: Partial<ProspectStrings> = {
+  emailManage: "Annuleren of verzetten?",
+  cancelHeading: "Deze afspraak annuleren?",
+  cancelButton: "Ja, annuleren",
+  cancelledTitle: "Afspraak geannuleerd",
+  cancelledBody: "Je afspraak is geannuleerd.",
+  cancelRebook: "Een nieuwe tijd boeken",
+  cancelGoneTitle: "Niets te annuleren",
+  cancelGoneBody: "Deze afspraak is al geannuleerd of bestaat niet meer.",
   formUnavailableTitle: "Formulier niet beschikbaar",
   formUnavailableBody: "Deze link is ongeldig of verlopen. Neem contact op met de site-eigenaar.",
   formThanksTitle: "Bedankt — we nemen contact op",
@@ -447,6 +513,14 @@ const nl: Partial<ProspectStrings> = {
 };
 
 const pl: Partial<ProspectStrings> = {
+  emailManage: "Chcesz odwołać lub zmienić termin?",
+  cancelHeading: "Odwołać to spotkanie?",
+  cancelButton: "Tak, odwołaj",
+  cancelledTitle: "Spotkanie odwołane",
+  cancelledBody: "Twoje spotkanie zostało odwołane.",
+  cancelRebook: "Zarezerwuj nowy termin",
+  cancelGoneTitle: "Nie ma czego odwoływać",
+  cancelGoneBody: "To spotkanie zostało już odwołane lub nie istnieje.",
   formUnavailableTitle: "Formularz niedostępny",
   formUnavailableBody: "Ten link jest nieprawidłowy lub wygasł. Skontaktuj się z właścicielem strony.",
   formThanksTitle: "Dziękujemy — odezwiemy się",
@@ -500,6 +574,14 @@ const pl: Partial<ProspectStrings> = {
 };
 
 const ja: Partial<ProspectStrings> = {
+  emailManage: "キャンセルまたは再予約が必要ですか？",
+  cancelHeading: "この打ち合わせをキャンセルしますか？",
+  cancelButton: "はい、キャンセルする",
+  cancelledTitle: "打ち合わせをキャンセルしました",
+  cancelledBody: "ご予約をキャンセルしました。",
+  cancelRebook: "別の時間を予約する",
+  cancelGoneTitle: "キャンセルする予約はありません",
+  cancelGoneBody: "この打ち合わせはすでにキャンセルされたか、存在しません。",
   formUnavailableTitle: "フォームは利用できません",
   formUnavailableBody: "このリンクは無効か期限切れです。サイト管理者にお問い合わせください。",
   formThanksTitle: "ありがとうございます — 追ってご連絡します",
@@ -553,6 +635,14 @@ const ja: Partial<ProspectStrings> = {
 };
 
 const zh: Partial<ProspectStrings> = {
+  emailManage: "需要取消或改期吗？",
+  cancelHeading: "取消此次会议？",
+  cancelButton: "是的，取消",
+  cancelledTitle: "会议已取消",
+  cancelledBody: "您的会议已取消。",
+  cancelRebook: "预约其他时间",
+  cancelGoneTitle: "没有可取消的会议",
+  cancelGoneBody: "此会议已取消或不存在。",
   formUnavailableTitle: "表单不可用",
   formUnavailableBody: "此链接无效或已过期。请联系网站所有者。",
   formThanksTitle: "感谢您 — 我们会尽快联系您",
@@ -606,6 +696,14 @@ const zh: Partial<ProspectStrings> = {
 };
 
 const ko: Partial<ProspectStrings> = {
+  emailManage: "취소 또는 일정 변경이 필요하신가요?",
+  cancelHeading: "이 미팅을 취소하시겠어요?",
+  cancelButton: "네, 취소합니다",
+  cancelledTitle: "미팅이 취소되었습니다",
+  cancelledBody: "미팅이 취소되었습니다.",
+  cancelRebook: "다른 시간 예약하기",
+  cancelGoneTitle: "취소할 항목이 없습니다",
+  cancelGoneBody: "이 미팅은 이미 취소되었거나 존재하지 않습니다.",
   formUnavailableTitle: "양식을 사용할 수 없습니다",
   formUnavailableBody: "이 링크는 유효하지 않거나 만료되었습니다. 사이트 운영자에게 문의하세요.",
   formThanksTitle: "감사합니다 — 곧 연락드리겠습니다",
@@ -659,6 +757,14 @@ const ko: Partial<ProspectStrings> = {
 };
 
 const ar: Partial<ProspectStrings> = {
+  emailManage: "هل تحتاج إلى الإلغاء أو إعادة الجدولة؟",
+  cancelHeading: "إلغاء هذا الاجتماع؟",
+  cancelButton: "نعم، ألغِه",
+  cancelledTitle: "تم إلغاء الاجتماع",
+  cancelledBody: "تم إلغاء اجتماعك.",
+  cancelRebook: "احجز موعدًا جديدًا",
+  cancelGoneTitle: "لا شيء لإلغائه",
+  cancelGoneBody: "هذا الاجتماع ملغى بالفعل أو لم يعد موجودًا.",
   dir: "rtl",
   formUnavailableTitle: "النموذج غير متاح",
   formUnavailableBody: "هذا الرابط غير صالح أو منتهي الصلاحية. يرجى التواصل مع مالك الموقع.",
@@ -713,6 +819,14 @@ const ar: Partial<ProspectStrings> = {
 };
 
 const hi: Partial<ProspectStrings> = {
+  emailManage: "रद्द या पुनर्निर्धारित करना है?",
+  cancelHeading: "क्या यह मीटिंग रद्द करें?",
+  cancelButton: "हाँ, रद्द करें",
+  cancelledTitle: "मीटिंग रद्द कर दी गई",
+  cancelledBody: "आपकी मीटिंग रद्द कर दी गई है।",
+  cancelRebook: "नया समय बुक करें",
+  cancelGoneTitle: "रद्द करने के लिए कुछ नहीं",
+  cancelGoneBody: "यह मीटिंग पहले ही रद्द हो चुकी है या अब मौजूद नहीं है।",
   formUnavailableTitle: "फ़ॉर्म उपलब्ध नहीं है",
   formUnavailableBody: "यह लिंक अमान्य है या समाप्त हो गया है। कृपया साइट के मालिक से संपर्क करें।",
   formThanksTitle: "धन्यवाद — हम संपर्क करेंगे",
