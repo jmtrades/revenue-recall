@@ -3,6 +3,7 @@ import { getSubscription } from "@/lib/billing/store";
 import { effectivePlan, entitlements } from "@/lib/billing/entitlements";
 import { money } from "@/lib/format";
 import { Icon } from "@/components/icons";
+import { CountUp } from "@/components/CountUp";
 
 /**
  * Contextual upgrade moment on the Recall page — the one place we can tie the
@@ -34,7 +35,7 @@ export async function RecallAutopilotUpsell({
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-fg">
             Autopilot could be working {itemCount === 1 ? "this deal" : `all ${itemCount} of these`} right now —{" "}
-            <span className="text-brand">{money(recoverable, currency)}</span> on the line.
+            <span className="text-brand"><CountUp value={money(recoverable, currency)} /></span> on the line.
           </p>
           <p className="mt-0.5 text-sm text-muted">
             It writes in your voice, sends, calls, and follows up until they reply — around the clock, with guardrails. You approve the wins.

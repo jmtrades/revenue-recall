@@ -70,8 +70,8 @@ export default async function RecallPage() {
       <PageHeader title="Revenue Recall" subtitle="Deals slipping away, ranked by recoverable revenue and urgency. Click any row to act." />
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Stat label="Recoverable" value={money(summary.totalRecoverable, summary.currency)} tone="warn" hint="probability-weighted" />
-        <Stat label="At-risk deals" value={String(summary.itemCount)} hint="across all reasons" />
+        <Stat label="Recoverable" value={money(summary.totalRecoverable, summary.currency)} tone="warn" hint="probability-weighted" countUp />
+        <Stat label="At-risk deals" value={String(summary.itemCount)} hint="across all reasons" countUp />
         <div className="card">
           <p className="stat-label mb-3">Breakdown</p>
           {segments.length > 0 ? <MiniLegendBar segments={segments} /> : <p className="text-sm text-muted">Nothing at risk.</p>}
@@ -82,10 +82,10 @@ export default async function RecallPage() {
         <section>
           <p className="stat-label mb-3">Recall results so far</p>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <Stat label="Recalled" value={String(outcomes.recalled)} hint="deals worked" />
-            <Stat label="Re-engaged" value={String(outcomes.reEngaged)} hint="got a touch" />
-            <Stat label="Won back" value={String(outcomes.wonBack)} tone="success" hint="closed after recall" />
-            <Stat label="Recovered" value={money(outcomes.recoveredValue, outcomes.currency)} tone="success" hint="revenue won back" />
+            <Stat label="Recalled" value={String(outcomes.recalled)} hint="deals worked" countUp />
+            <Stat label="Re-engaged" value={String(outcomes.reEngaged)} hint="got a touch" countUp />
+            <Stat label="Won back" value={String(outcomes.wonBack)} tone="success" hint="closed after recall" countUp />
+            <Stat label="Recovered" value={money(outcomes.recoveredValue, outcomes.currency)} tone="success" hint="revenue won back" countUp />
           </div>
         </section>
       )}
