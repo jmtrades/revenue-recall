@@ -1,6 +1,6 @@
 import { ResetForm } from "@/components/ResetForm";
 
-export const metadata = { title: "Set a new password — Revenue Recall" };
+export const metadata = { title: "Set a new password — Revenue Recall", robots: { index: false } };
 
 export default function ResetUpdatePage() {
   return (
