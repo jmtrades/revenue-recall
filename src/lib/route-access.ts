@@ -10,7 +10,7 @@
 // linked from the marketing footer and the signup consent line, and a
 // login-gated privacy policy is a compliance problem. (/reset/update is NOT
 // here — it needs the short recovery session the email link establishes.)
-export const PUBLIC_PAGES = new Set(["/", "/login", "/signup", "/reset", "/privacy", "/terms", "/security"]);
+export const PUBLIC_PAGES = new Set(["/", "/login", "/signup", "/reset", "/pricing", "/privacy", "/terms", "/security"]);
 
 // Machine-to-machine API endpoints that authenticate by their OWN secret
 // (Stripe signature, CRON_SECRET, INBOUND_TOKEN, COMMS_WEBHOOK_TOKEN,
@@ -38,6 +38,13 @@ export const PUBLIC_API = [
 /** True when `path` is reachable without a session. */
 export function isPublicRoute(path: string): boolean {
   if (PUBLIC_PAGES.has(path)) return true;
+  // Brand/SEO assets served from extensionless metadata routes (the middleware
+  // matcher only skips *.png/svg/… URLs). A login redirect here breaks every
+  // social-share card scraper and the iOS home-screen icon fetch.
+  if (path === "/opengraph-image" || path.endsWith("/opengraph-image")) return true;
+  if (path === "/twitter-image" || path.endsWith("/twitter-image")) return true;
+  if (path === "/apple-icon" || path === "/icon") return true;
+  if (path.startsWith("/.well-known/")) return true; // security.txt & friends
   if (path.startsWith("/auth/")) return true; // OAuth / email-confirm callback
   if (path.startsWith("/f/")) return true; // hosted lead-capture form (token-authed page)
   if (path.startsWith("/book/")) return true; // hosted booking page (token-authed page)
