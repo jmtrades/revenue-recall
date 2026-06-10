@@ -104,32 +104,75 @@ export function isRecognitionSupported(): boolean {
   );
 }
 
+// Modern OSes ship genuinely good neural voices alongside decades-old robotic
+// and novelty ones. The difference between "studio-grade" and "sounds like a
+// 1990s toy" is entirely which one we pick — so we score, not first-match.
+
+// Neural / premium engine markers (Microsoft "… Online (Natural)", Apple
+// "(Enhanced)/(Premium)", etc.) — the biggest single quality jump available.
+const PREMIUM_HINTS = ["natural", "neural", "enhanced", "premium", "online"];
+// Specific high-quality, neutral, professional-sounding voices worth preferring.
+const GOOD_NAMES = [
+  "samantha", "ava", "allison", "joelle", "zoe", "evan", "nathan", "noah",
+  "aria", "jenny", "guy", "michelle", "nova", "google us english", "google uk english",
+];
+// Legacy-robotic and novelty/character voices — the "sounds like a toy or a
+// 1990s GPS" tell. Avoided unless nothing better exists.
+const BAD_NAMES = [
+  // Apple novelty / character voices
+  "albert", "bad news", "good news", "bahh", "bells", "boing", "bubbles", "cellos",
+  "wobble", "zarvox", "trinoids", "whisper", "jester", "organ", "superstar",
+  "ralph", "fred", "junior", "kathy", "princess", "deranged", "hysterical",
+  "grandma", "grandpa", "rocko", "shelley", "sandy", "flo", "eddy", "reed", "rishi",
+  // Microsoft legacy desktop voices
+  "david", "zira", "mark", "hazel", "heera", "ravi", "sean",
+];
+
+/** Quality score for a voice given the target language. Higher is better. */
+function voiceScore(v: SpeechSynthesisVoice, lang: string): number {
+  const name = (v.name ?? "").toLowerCase();
+  const vlang = (v.lang ?? "").toLowerCase();
+  let score = 0;
+  const premium = PREMIUM_HINTS.some((h) => name.includes(h));
+  if (premium) score += 60;
+  if (GOOD_NAMES.some((g) => name.includes(g))) score += 30;
+  // Penalize legacy/novelty — but never let it outweigh a real premium engine
+  // (a hypothetical "David Natural" should still rank as premium).
+  if (!premium && BAD_NAMES.some((b) => name.includes(b))) score -= 100;
+  if (vlang.startsWith(lang.slice(0, 2))) score += 12; // right language family
+  if (vlang === lang) score += 6; // exact locale (en-US over en-GB)
+  if (v.localService) score += 2; // on-device: lower latency, dependable
+  return score;
+}
+
 /**
- * Choose the most natural-sounding available voice. Prefers an explicit name,
- * then known higher-quality voice families, then any local voice in the lang,
- * then the first available. Pure given the voice list, so it's testable.
+ * Choose the best-sounding available voice. An explicit preferred name always
+ * wins; otherwise every voice is scored (premium/neural engines and known-good
+ * voices up, legacy/novelty voices down, right-language up) and the top one is
+ * returned. Pure given the voice list, so it's unit-tested.
  */
 export function pickVoice(
   voices: SpeechSynthesisVoice[],
   prefs: VoicePrefs = {},
 ): SpeechSynthesisVoice | null {
   if (!voices.length) return null;
-  const lang = (prefs.lang ?? "en").toLowerCase();
-  const inLang = voices.filter((v) => v.lang?.toLowerCase().startsWith(lang.slice(0, 2)));
-  const pool = inLang.length ? inLang : voices;
+  const lang = (prefs.lang ?? "en-US").toLowerCase();
 
   if (prefs.preferName) {
-    const named = pool.find((v) => v.name.toLowerCase().includes(prefs.preferName!.toLowerCase()));
+    const named = voices.find((v) => v.name.toLowerCase().includes(prefs.preferName!.toLowerCase()));
     if (named) return named;
   }
-  // Voice families that tend to sound the most natural across platforms.
-  const NATURAL = ["natural", "neural", "samantha", "aaron", "siri", "google", "premium", "enhanced"];
-  for (const hint of NATURAL) {
-    const match = pool.find((v) => v.name.toLowerCase().includes(hint));
-    if (match) return match;
+
+  let best = voices[0];
+  let bestScore = -Infinity;
+  for (const v of voices) {
+    const s = voiceScore(v, lang);
+    if (s > bestScore) {
+      bestScore = s;
+      best = v;
+    }
   }
-  const local = pool.find((v) => v.localService);
-  return local ?? pool[0];
+  return best;
 }
 
 /**
