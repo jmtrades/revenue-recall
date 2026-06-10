@@ -514,7 +514,7 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="mx-auto max-w-3xl px-5 py-20">
+      <section id="faq" className="mx-auto max-w-3xl px-5 py-20">
         <Reveal className="flex flex-col items-center text-center">
           <span className="eyebrow">FAQ</span>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Questions, answered</h2>
