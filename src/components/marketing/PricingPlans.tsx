@@ -28,6 +28,11 @@ export function annualMonthly(monthly: number): number {
   return Math.round(monthly * ANNUAL_FACTOR);
 }
 
+// Enterprise leads go straight to a human — a "demo" CTA that lands on a signup
+// form is a broken promise that costs exactly the deals worth the most.
+const SALES_EMAIL = process.env.NEXT_PUBLIC_SALES_EMAIL || "sales@recall-touch.com";
+const SALES_HREF = `mailto:${SALES_EMAIL}?subject=${encodeURIComponent("Scale plan — running our outbound on Revenue Recall")}`;
+
 const PLANS: Plan[] = [
   {
     name: "Starter",
@@ -85,8 +90,8 @@ const PLANS: Plan[] = [
     customLabel: "Let's talk",
     unit: "",
     tagline: "We run your entire outbound operation.",
-    cta: "Book a demo",
-    href: "/signup",
+    cta: "Talk to sales",
+    href: SALES_HREF,
     featured: false,
     anchor: "Replace a whole SDR team — at a fraction of the headcount cost.",
     features: [
@@ -169,15 +174,29 @@ export function PricingPlans() {
                 )}
                 {p.unit && <span className="mb-1 text-sm text-muted">{p.unit}</span>}
               </div>
-              <p className="mt-1 h-4 text-xs text-success">
-                {cycle === "annual" && !isCustom && !isFree ? `Save $${((p.monthly as number) - (shown as number)) * 12}/yr` : ""}
+              <p className="mt-1 h-4 text-xs">
+                {cycle === "annual" && !isCustom && !isFree && (
+                  <>
+                    <span className="text-success">{`Save $${((p.monthly as number) - (shown as number)) * 12}/yr`}</span>
+                    <span className="text-muted"> · billed annually</span>
+                  </>
+                )}
               </p>
-              <Link
-                href={p.href}
-                className={`cta mt-5 block rounded-full px-4 py-2.5 text-center text-sm font-semibold ${p.featured ? "bg-brand text-white hover:bg-brand/90" : "border border-border text-fg hover:bg-surface-2"}`}
-              >
-                {p.cta}
-              </Link>
+              {p.href.startsWith("mailto:") ? (
+                <a
+                  href={p.href}
+                  className={`cta mt-5 block rounded-full px-4 py-2.5 text-center text-sm font-semibold ${p.featured ? "bg-brand text-white hover:bg-brand/90" : "border border-border text-fg hover:bg-surface-2"}`}
+                >
+                  {p.cta}
+                </a>
+              ) : (
+                <Link
+                  href={p.href}
+                  className={`cta mt-5 block rounded-full px-4 py-2.5 text-center text-sm font-semibold ${p.featured ? "bg-brand text-white hover:bg-brand/90" : "border border-border text-fg hover:bg-surface-2"}`}
+                >
+                  {p.cta}
+                </Link>
+              )}
               {!isCustom && !isFree && (
                 <p className="mt-2 text-center text-[11px] font-medium text-brand">Cancel anytime · live in minutes</p>
               )}
