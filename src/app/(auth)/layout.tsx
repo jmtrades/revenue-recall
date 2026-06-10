@@ -4,16 +4,37 @@ import { Icon } from "@/components/icons";
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="hidden flex-col justify-between border-r border-border bg-surface p-12 lg:flex">
-        <Link href="/" className="flex items-center gap-2.5">
+      <div className="hero-glow relative hidden flex-col justify-between overflow-hidden border-r border-border bg-surface p-12 lg:flex">
+        {/* Blueprint texture + glow so the brand panel reads as crafted, not flat. */}
+        <div className="surface-grid absolute inset-0 opacity-40" aria-hidden />
+        <Link href="/" className="relative flex items-center gap-2.5 animate-fade-up">
           <span className="grid h-9 w-9 place-items-center rounded-[11px] bg-brand text-sm font-bold tracking-tight text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)] ring-1 ring-inset ring-white/10">RR</span>
           <span className="font-display text-[15px] font-semibold tracking-tight text-fg">Revenue Recall</span>
         </Link>
-        <div>
-          <h1 className="font-display text-3xl font-semibold leading-tight tracking-tight text-fg">Autonomous outbound that recovers the revenue you&apos;re about to lose.</h1>
-          <p className="mt-4 max-w-md text-muted">Works with any CRM — or none at all — and adapts to any industry. Pipeline, sequences, automations, and a recall engine that never lets a deal go cold.</p>
+        <div className="relative">
+          <h1 className="display-hero font-display text-[2.6rem] font-semibold leading-[1.06] tracking-tight animate-fade-up [animation-delay:80ms]">
+            Autonomous outbound that recovers the revenue you&apos;re about to <span className="gradient-text">lose.</span>
+          </h1>
+          <p className="mt-5 max-w-md text-muted animate-fade-up [animation-delay:160ms]">
+            Works with any CRM — or none at all — and adapts to any industry. Pipeline, sequences, automations, and a
+            recall engine that never lets a deal go cold.
+          </p>
+          <ul className="mt-8 space-y-3 animate-fade-up [animation-delay:240ms]">
+            {[
+              "Live in 2 minutes — no credit card",
+              "Email, SMS & the phone, in your voice",
+              "Reports the revenue it put back on the board",
+            ].map((t) => (
+              <li key={t} className="flex items-center gap-2.5 text-sm text-body">
+                <span className="grid h-[18px] w-[18px] flex-none place-items-center rounded-full bg-brand/15 text-brand">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+                </span>
+                {t}
+              </li>
+            ))}
+          </ul>
         </div>
-        <div className="flex gap-6 text-sm text-muted">
+        <div className="relative flex gap-6 text-sm text-muted animate-fade-up [animation-delay:320ms]">
           <span className="inline-flex items-center gap-1.5"><Icon name="recall" size={14} /> Revenue Recall</span>
           <span className="inline-flex items-center gap-1.5"><Icon name="pipeline" size={14} /> Any pipeline</span>
           <span className="inline-flex items-center gap-1.5"><Icon name="automations" size={14} /> Automations</span>
@@ -27,7 +48,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <span className="grid h-9 w-9 place-items-center rounded-[11px] bg-brand text-sm font-bold tracking-tight text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)] ring-1 ring-inset ring-white/10">RR</span>
           <span className="font-display text-[15px] font-semibold tracking-tight text-fg">Revenue Recall</span>
         </Link>
-        <div className="relative mx-auto w-full max-w-sm">{children}</div>
+        <div className="relative mx-auto w-full max-w-sm animate-fade-up [animation-delay:120ms]">{children}</div>
       </div>
     </div>
   );
