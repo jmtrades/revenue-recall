@@ -3,6 +3,7 @@ import { money } from "@/lib/format";
 import { PageHeader, Stat, EmptyState, Button } from "@/components/ui";
 import { MiniLegendBar } from "@/components/charts";
 import { RecallQueue, type RecallRow } from "@/components/RecallQueue";
+import { RecallAutopilotUpsell } from "@/components/RecallAutopilotUpsell";
 import type { Contact } from "@/lib/crm/types";
 
 export const dynamic = "force-dynamic";
@@ -88,6 +89,8 @@ export default async function RecallPage() {
           </div>
         </section>
       )}
+
+      <RecallAutopilotUpsell itemCount={summary.itemCount} recoverable={summary.totalRecoverable} currency={summary.currency} />
 
       <RecallQueue rows={rows} />
     </div>
