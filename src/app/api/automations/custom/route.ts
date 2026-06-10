@@ -31,7 +31,7 @@ const ActionZ = z.discriminatedUnion("type", [
 
 const CreateBody = z.object({
   name: z.string().trim().min(1).max(80),
-  triggerKind: z.enum(["stage_changed", "deal_won", "deal_lost"]),
+  triggerKind: z.enum(["stage_changed", "deal_won", "deal_lost", "lead_created"]),
   stageId: z.string().trim().max(200).nullish(),
   conditions: z.array(ConditionZ).max(10).optional().default([]),
   actions: z.array(ActionZ).min(1).max(10),
@@ -42,7 +42,7 @@ const PatchBody = z
   .object({
     id: z.string().min(1).max(200),
     name: z.string().trim().min(1).max(80).optional(),
-    triggerKind: z.enum(["stage_changed", "deal_won", "deal_lost"]).optional(),
+    triggerKind: z.enum(["stage_changed", "deal_won", "deal_lost", "lead_created"]).optional(),
     stageId: z.string().trim().max(200).nullish(),
     conditions: z.array(ConditionZ).max(10).optional(),
     actions: z.array(ActionZ).min(1).max(10).optional(),

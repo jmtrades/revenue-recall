@@ -63,7 +63,9 @@ export function matchesConditions(opp: Opportunity, conditions: Condition[]): bo
 
 /** True when a stage transition fires this rule's trigger. stage_changed means a
  *  move INTO an open stage (optionally narrowed to one stage); won/lost have
- *  their own triggers so a single move never double-fires across kinds. */
+ *  their own triggers so a single move never double-fires across kinds.
+ *  lead_created is NOT stage-driven — it fires from the lead-capture choke
+ *  point (runCustomLeadAutomations), never from a stage move. */
 export function triggerMatches(rule: CustomAutomation, stage: Stage): boolean {
   switch (rule.triggerKind) {
     case "deal_won":

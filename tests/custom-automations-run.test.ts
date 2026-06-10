@@ -50,7 +50,7 @@ vi.mock("@/lib/supabase/active-org", async (orig) => ({
   resolveActiveOrgId: vi.fn(async () => "org_1"),
 }));
 
-import { runCustomDealAutomations } from "@/lib/automations/run-custom";
+import { runCustomDealAutomations, runCustomLeadAutomations } from "@/lib/automations/run-custom";
 
 function opp(p: Partial<Opportunity> = {}): Opportunity {
   return { id: "o1", title: "Acme — 50 seats", pipelineId: "p1", stageId: "s1", value: 5000, currency: "USD", contactId: "c1", source: "Web form", createdAt: "", updatedAt: "", ...p };
@@ -116,5 +116,32 @@ describe("runCustomDealAutomations", () => {
     await runCustomDealAutomations(opp(), won);
     expect(h.tasks).toHaveLength(0);
     expect(h.emails).toHaveLength(0);
+  });
+});
+
+describe("runCustomLeadAutomations (lead_created trigger)", () => {
+  it("fires lead_created rules whose conditions match the fresh lead", async () => {
+    h.rules = [
+      rule({ id: "a", triggerKind: "lead_created", conditions: [{ field: "source", op: "contains", value: "web" }], actions: [{ type: "create_task", title: "Call in 5 minutes" }] }),
+      rule({ id: "b", triggerKind: "lead_created", conditions: [{ field: "value", op: "gt", value: 99999 }], actions: [{ type: "notify_owner" }] }), // condition fails
+      rule({ id: "c", triggerKind: "deal_won", actions: [{ type: "notify_owner" }] }), // wrong trigger — must NOT fire on capture
+    ];
+    await runCustomLeadAutomations(opp({ source: "Web form" }));
+    expect(h.tasks).toHaveLength(1);
+    expect(h.tasks[0].title).toMatch(/Call in 5 minutes — Acme/);
+    expect(h.emails).toHaveLength(0);
+  });
+
+  it("a stage move never fires a lead_created rule", async () => {
+    h.rules = [rule({ triggerKind: "lead_created", actions: [{ type: "create_task", title: "X" }] })];
+    await runCustomDealAutomations(opp(), won);
+    await runCustomDealAutomations(opp(), open);
+    expect(h.tasks).toHaveLength(0);
+  });
+
+  it("never throws", async () => {
+    h.failTask = true;
+    h.rules = [rule({ triggerKind: "lead_created", actions: [{ type: "create_task", title: "X" }] })];
+    await expect(runCustomLeadAutomations(opp())).resolves.toBeUndefined();
   });
 });

@@ -143,6 +143,11 @@ export async function captureLead(lead: LeadInput): Promise<CaptureResult> {
       value: lead.value ?? 0,
       source: lead.source || "API",
     });
+    // The org's own lead_created automation rules (same new-only gating, same
+    // best-effort contract — a rule can never fail the capture).
+    await import("@/lib/automations/run-custom")
+      .then((m) => m.runCustomLeadAutomations(opp!))
+      .catch(() => undefined);
   }
 
   return { contactId: contact.id, dealId: opp.id, enrolled, deduped: !newContact && !newDeal };

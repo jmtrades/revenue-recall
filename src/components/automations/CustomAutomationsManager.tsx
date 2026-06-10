@@ -32,6 +32,7 @@ const TRIGGERS: { value: CustomTriggerKind; label: string }[] = [
   { value: "stage_changed", label: "Deal moves to a stage" },
   { value: "deal_won", label: "Deal is won" },
   { value: "deal_lost", label: "Deal is lost" },
+  { value: "lead_created", label: "A new lead is created" },
 ];
 
 const OPS_BY_FIELD: Record<ConditionField, ConditionOp[]> = {
