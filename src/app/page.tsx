@@ -185,7 +185,7 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="hero-glow relative overflow-hidden">
         <div className="surface-grid absolute inset-0 opacity-40" />
-        <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-12 px-5 pb-20 pt-14 lg:grid-cols-2 lg:items-center lg:pb-28 lg:pt-20">
+        <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-8 px-5 pb-12 pt-10 sm:gap-12 sm:pb-20 sm:pt-14 lg:grid-cols-2 lg:items-center lg:pb-28 lg:pt-20">
           <div className="min-w-0 animate-fade-up">
             <span className="eyebrow">Autonomous outbound · every industry, any size</span>
             <h1 className="display-hero mt-5 text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.02em] sm:text-[3.5rem] sm:leading-[0.98] lg:text-[4.25rem]">
@@ -223,7 +223,7 @@ export default function LandingPage() {
       <section className="border-y border-border bg-surface/30">
         <Stagger className="mx-auto grid max-w-6xl grid-cols-1 divide-y divide-border px-5 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           {METRICS.map((m) => (
-            <StaggerItem key={m.label} className="px-2 py-10 text-center sm:px-8 sm:text-left">
+            <StaggerItem key={m.label} className="px-2 py-6 text-center sm:px-8 sm:py-10 sm:text-left">
               <div className="font-display text-4xl font-semibold tabular-nums tracking-tight text-fg sm:text-5xl">{m.stat}</div>
               <p className="mt-2 text-sm leading-relaxed text-muted">{m.label}</p>
             </StaggerItem>
