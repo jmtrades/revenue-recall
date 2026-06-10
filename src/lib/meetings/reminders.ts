@@ -1,5 +1,5 @@
 import { getOrgSettings } from "@/lib/org";
-import { sendEmail } from "@/lib/comms";
+import { sendEmail, sendSms, channelStatus } from "@/lib/comms";
 import { prospectStrings, fill } from "@/lib/i18n/prospect";
 import { localeFor } from "@/lib/languages";
 import { bookingsNeedingReminder, markReminderSent } from "@/lib/meetings/store";
@@ -34,26 +34,39 @@ export async function runBookingReminders(now: Date = new Date()): Promise<{ sen
     const orgId = await resolveActiveOrgId().catch(() => null);
     const s = prospectStrings(org?.language);
     const brand = org?.name || "the team";
+    const smsLive = channelStatus().sms.live;
 
     let sent = 0;
     for (const b of due) {
       // Mark first so a thrown send / crash can't double-remind on the next tick.
       await markReminderSent(b.id).catch(() => undefined);
-      if (!b.inviteeEmail) continue;
       const when = whenLabel(b.startsAt, b.timezone, org?.language);
-      const cancelUrl = orgId ? bookingCancelUrl(orgId, b.id) : null;
-      const body = [
-        fill(s.emailGreeting, { name: b.inviteeName }),
-        "",
-        fill(s.reminderBody, { meeting: b.meetingName, brand }),
-        "",
-        fill(s.emailWhen, { when }),
-        cancelUrl ? `${s.emailManage} ${cancelUrl}` : "",
-      ]
-        .filter((l) => l !== "")
-        .join("\n");
-      const r = await sendEmail(b.inviteeEmail, fill(s.reminderSubject, { meeting: b.meetingName, brand }), body, { internal: true }).catch(() => null);
-      if (r && r.status !== "failed") sent++;
+      let delivered = false;
+
+      if (b.inviteeEmail) {
+        const cancelUrl = orgId ? bookingCancelUrl(orgId, b.id) : null;
+        const body = [
+          fill(s.emailGreeting, { name: b.inviteeName }),
+          "",
+          fill(s.reminderBody, { meeting: b.meetingName, brand }),
+          "",
+          fill(s.emailWhen, { when }),
+          cancelUrl ? `${s.emailManage} ${cancelUrl}` : "",
+        ]
+          .filter((l) => l !== "")
+          .join("\n");
+        const r = await sendEmail(b.inviteeEmail, fill(s.reminderSubject, { meeting: b.meetingName, brand }), body, { internal: true }).catch(() => null);
+        if (r && r.status !== "failed") delivered = true;
+      }
+
+      // SMS reminder too when a phone was given and SMS is live — higher open
+      // rates are the point of a reminder. Transactional (they booked this).
+      if (b.inviteePhone && smsLive) {
+        const r = await sendSms(b.inviteePhone, fill(s.smsReminder, { meeting: b.meetingName, brand, when }), { from: org?.callerId }).catch(() => null);
+        if (r && r.status !== "failed") delivered = true;
+      }
+
+      if (delivered) sent++;
     }
     return { sent };
   } catch {
