@@ -24,12 +24,13 @@ interface Row {
   name: string;
   trigger_kind: string;
   stage_id: string | null;
+  idle_days: number | null;
   conditions: unknown;
   actions: unknown;
   enabled: boolean;
 }
 
-const COLS = "id,name,trigger_kind,stage_id,conditions,actions,enabled";
+const COLS = "id,name,trigger_kind,stage_id,idle_days,conditions,actions,enabled";
 
 /** Coerce stored JSONB into a clean Condition[] (drops anything malformed). */
 export function sanitizeConditions(raw: unknown): Condition[] {
@@ -73,6 +74,7 @@ function toAutomation(r: Row): CustomAutomation {
     name: r.name,
     triggerKind: r.trigger_kind as CustomTriggerKind,
     stageId: r.stage_id ?? undefined,
+    idleDays: r.idle_days ?? undefined,
     conditions: sanitizeConditions(r.conditions),
     actions: sanitizeActions(r.actions),
     enabled: r.enabled,
@@ -105,9 +107,17 @@ export interface CustomAutomationInput {
   name: string;
   triggerKind: CustomTriggerKind;
   stageId?: string | null;
+  idleDays?: number | null;
   conditions: Condition[];
   actions: Action[];
   enabled?: boolean;
+}
+
+/** Clamp a deal_idle threshold to a sane range; null for other triggers. */
+function idleDaysFor(triggerKind: CustomTriggerKind, idleDays: number | null | undefined): number | null {
+  if (triggerKind !== "deal_idle") return null;
+  const n = Math.round(Number(idleDays));
+  return Number.isFinite(n) ? Math.max(1, Math.min(365, n)) : 14;
 }
 
 async function ctx() {
@@ -128,6 +138,7 @@ export async function createCustomAutomation(input: CustomAutomationInput): Prom
       name: input.name,
       trigger_kind: input.triggerKind,
       stage_id: input.triggerKind === "stage_changed" ? input.stageId || null : null,
+      idle_days: idleDaysFor(input.triggerKind, input.idleDays),
       conditions: sanitizeConditions(input.conditions),
       actions: sanitizeActions(input.actions),
       enabled: input.enabled ?? true,
@@ -143,8 +154,14 @@ export async function updateCustomAutomation(id: string, patch: Partial<CustomAu
   const { client, orgId } = await ctx();
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.name !== undefined) update.name = patch.name;
-  if (patch.triggerKind !== undefined) update.trigger_kind = patch.triggerKind;
-  if (patch.stageId !== undefined) update.stage_id = patch.stageId || null;
+  if (patch.triggerKind !== undefined) {
+    update.trigger_kind = patch.triggerKind;
+    update.stage_id = patch.triggerKind === "stage_changed" ? patch.stageId || null : null;
+    update.idle_days = idleDaysFor(patch.triggerKind, patch.idleDays);
+  } else {
+    if (patch.stageId !== undefined) update.stage_id = patch.stageId || null;
+    if (patch.idleDays !== undefined) update.idle_days = idleDaysFor("deal_idle", patch.idleDays);
+  }
   if (patch.conditions !== undefined) update.conditions = sanitizeConditions(patch.conditions);
   if (patch.actions !== undefined) update.actions = sanitizeActions(patch.actions);
   if (patch.enabled !== undefined) update.enabled = patch.enabled;
@@ -156,4 +173,28 @@ export async function deleteCustomAutomation(id: string): Promise<void> {
   const { client, orgId } = await ctx();
   const { error } = await client.from("custom_automations").delete().eq("id", id).eq("org_id", orgId);
   if (error) throw new Error(error.message);
+}
+
+/** Set of `${automationId}|${entityId}` a scan-based rule has already acted on,
+ *  so a recurring scan never re-fires the same rule for the same deal. Never
+ *  throws (no DB → empty, so nothing is suppressed). */
+export async function listFiredKeys(automationIds: string[]): Promise<Set<string>> {
+  const out = new Set<string>();
+  const client = getSupabase();
+  if (!client || automationIds.length === 0) return out;
+  const orgId = await resolveActiveOrgId().catch(() => null);
+  if (!orgId) return out;
+  const { data, error } = await client.from("custom_automation_runs").select("automation_id,entity_id").eq("org_id", orgId).in("automation_id", automationIds);
+  if (error) return out;
+  for (const r of (data as { automation_id: string; entity_id: string }[] | null) ?? []) out.add(`${r.automation_id}|${r.entity_id}`);
+  return out;
+}
+
+/** Record that a scan-based rule has acted on an entity (idempotent insert). */
+export async function recordFired(automationId: string, entityId: string): Promise<void> {
+  const client = getSupabase();
+  if (!client) return;
+  const orgId = await resolveActiveOrgId().catch(() => null);
+  if (!orgId) return;
+  await client.from("custom_automation_runs").upsert({ org_id: orgId, automation_id: automationId, entity_id: entityId }, { onConflict: "org_id,automation_id,entity_id" });
 }

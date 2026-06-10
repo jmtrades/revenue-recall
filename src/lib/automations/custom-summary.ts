@@ -23,6 +23,8 @@ export function triggerLabel(rule: CustomAutomation, labels: Labels = {}): strin
       return rule.stageId ? `Deal moves to ${labels.stage?.(rule.stageId) ?? "a stage"}` : "Deal changes stage";
     case "lead_created":
       return "New lead created";
+    case "deal_idle":
+      return `Deal idle ${rule.idleDays ?? 14} days`;
     default:
       return "Trigger";
   }
