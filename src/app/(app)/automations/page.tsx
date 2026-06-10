@@ -25,7 +25,7 @@ export default async function AutomationsPage() {
         <AutomationsList automations={automations} />
       </div>
       <div>
-        <h2 className="mb-3 font-editorial text-xl font-semibold text-fg">Build your own</h2>
+        <h2 className="mb-3 text-xl font-semibold text-fg">Build your own</h2>
         <CustomAutomationsManager initial={custom} stages={stages} sequences={sequences.map((s) => ({ id: s.id, name: s.name }))} canManage={canManage} />
       </div>
     </div>

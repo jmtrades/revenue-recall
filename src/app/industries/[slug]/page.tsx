@@ -77,8 +77,8 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
 
         {/* Hero */}
         <section className="max-w-3xl animate-fade-up">
-          <span className="eyebrow-editorial text-brand">Built for {ind.label}</span>
-          <h1 className="mt-3 font-editorial text-4xl font-semibold tracking-tight text-fg sm:text-5xl">
+          <span className="eyebrow">Built for {ind.label}</span>
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-fg sm:text-5xl">
             Autonomous outbound for {ind.label.toLowerCase()} — it works every deal you&apos;re letting slip.
           </h1>
           <p className="mt-5 text-lg leading-relaxed text-muted">
@@ -95,7 +95,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
         {/* Pipeline out of the box */}
         <section className="mt-16">
           <Reveal>
-            <h2 className="font-editorial text-2xl font-semibold text-fg">Your pipeline, day one</h2>
+            <h2 className="text-2xl font-semibold text-fg">Your pipeline, day one</h2>
             <p className="mt-2 text-muted">No setup — the {ind.label} workspace lands with these stages, win-probabilities, and a {term.contact.toLowerCase()}/{term.opportunity.toLowerCase()} model already wired into the forecast.</p>
           </Reveal>
           <Stagger className="mt-6 flex flex-wrap items-stretch gap-2">
@@ -127,7 +127,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
         {objectionAngles && (
           <section className="mt-16">
             <Reveal>
-              <h2 className="font-editorial text-2xl font-semibold text-fg">It answers the objections you actually hear</h2>
+              <h2 className="text-2xl font-semibold text-fg">It answers the objections you actually hear</h2>
             </Reveal>
             <Stagger className="mt-6 space-y-3">
               {([["price", "Price"], ["timing", "Timing"], ["trust", "Trust"]] as const).map(([k, label]) =>
@@ -146,7 +146,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
         {sampleVoice.length > 0 && (
           <section className="mt-16">
             <Reveal>
-              <h2 className="font-editorial text-2xl font-semibold text-fg">Messages that sound like you, not a bot</h2>
+              <h2 className="text-2xl font-semibold text-fg">Messages that sound like you, not a bot</h2>
             </Reveal>
             <Stagger className="mt-6 grid gap-4 sm:grid-cols-2">
               {sampleVoice.map((v, i) => (
@@ -160,7 +160,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
 
         {/* CTA */}
         <ScaleIn className="mt-20 rounded-3xl border border-brand/30 bg-brand-soft/20 p-10 text-center">
-          <h2 className="font-editorial text-3xl font-semibold tracking-tight text-fg">Put your {ind.label.toLowerCase()} pipeline on autopilot.</h2>
+          <h2 className="text-3xl font-semibold tracking-tight text-fg">Put your {ind.label.toLowerCase()} pipeline on autopilot.</h2>
           <p className="mx-auto mt-3 max-w-xl text-muted">Start free. The system maps your pipeline, learns your voice, and starts recovering revenue the same day.</p>
           <Link href="/signup" className="cta mt-6 inline-flex rounded-full bg-brand px-7 py-3 text-sm font-semibold text-white transition hover:bg-brand/90">Start free</Link>
         </ScaleIn>
