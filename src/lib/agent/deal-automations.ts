@@ -1,6 +1,7 @@
 import { createManualTask } from "@/lib/tasks/manual";
 import { getOrgSettings } from "@/lib/org";
 import { isAutomationEnabled } from "@/lib/automations";
+import { runCustomDealAutomations } from "@/lib/automations/run-custom";
 import type { Opportunity, Stage } from "@/lib/crm/types";
 
 /**
@@ -24,6 +25,10 @@ export async function fireDealStageAutomations(opp: Opportunity, stage: Stage | 
     const org = await getOrgSettings().catch(() => null);
     const overrides = org?.automations;
     const deal = (opp.title || "this deal").slice(0, 120);
+
+    // Org-authored custom rules run alongside the presets (each gated by its own
+    // enabled flag). Best-effort and isolated — never blocks the move.
+    await runCustomDealAutomations(opp, stage);
 
     if (stage.type === "won" && isAutomationEnabled("won_onboarding", overrides)) {
       await createManualTask(`Welcome & kick off — ${deal}`).catch(() => {});
