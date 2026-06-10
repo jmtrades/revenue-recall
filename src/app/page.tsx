@@ -136,6 +136,19 @@ const FAQ = [
   { q: "How fast can I be live?", a: "Two minutes. Sign up, pick your industry, connect a CRM or start fresh — your pipeline, sequences, and autonomous outbound are ready immediately." },
 ];
 
+// FAQPage structured data — makes the Q&A below eligible for Google's FAQ rich
+// result. Built straight from the FAQ above, so the markup can't drift from the
+// rendered copy.
+const FAQ_LD = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQ.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
 function Arrow({ className = "" }: { className?: string }) {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
@@ -166,6 +179,7 @@ export default function LandingPage() {
   return (
     <div className="landing min-h-screen">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_LD) }} />
       <MarketingNav />
 
       {/* Hero */}
