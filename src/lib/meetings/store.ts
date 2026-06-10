@@ -257,6 +257,35 @@ export async function busyIntervals(fromIso: string, toIso: string): Promise<{ s
   return ((data as { starts_at: string; ends_at: string }[] | null) ?? []).map((r) => ({ start: r.starts_at, end: r.ends_at }));
 }
 
+/** Confirmed, not-yet-reminded bookings starting in (now, within]. For the cron
+ *  reminder scan. Never throws (no DB → none). */
+export async function bookingsNeedingReminder(nowIso: string, withinIso: string): Promise<Booking[]> {
+  const client = getSupabase();
+  if (!client) return [];
+  const orgId = await resolveActiveOrgId().catch(() => null);
+  if (!orgId) return [];
+  const { data, error } = await client
+    .from("bookings")
+    .select(BK_COLS)
+    .eq("org_id", orgId)
+    .eq("status", "confirmed")
+    .eq("reminder_sent", false)
+    .gt("starts_at", nowIso)
+    .lte("starts_at", withinIso)
+    .order("starts_at", { ascending: true });
+  if (error) return [];
+  return ((data as BookingRow[] | null) ?? []).map(toBooking);
+}
+
+/** Mark a booking's reminder as sent (so it's never reminded twice). Best-effort. */
+export async function markReminderSent(id: string): Promise<void> {
+  const client = getSupabase();
+  if (!client) return;
+  const orgId = await resolveActiveOrgId().catch(() => null);
+  if (!orgId) return;
+  await client.from("bookings").update({ reminder_sent: true }).eq("id", id).eq("org_id", orgId);
+}
+
 /** Cancel a booking (org-scoped). Returns the booking as it was BEFORE the
  *  cancel (so the caller can notify with its details), or null if missing.
  *  Idempotent: cancelling an already-cancelled booking is a no-op that still

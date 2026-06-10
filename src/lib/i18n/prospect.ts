@@ -71,6 +71,8 @@ export interface ProspectStrings {
   emailWhere: string; // {where}
   emailChange: string;
   emailAddToCalendar: string;
+  reminderSubject: string; // {meeting} {brand}
+  reminderBody: string; // {meeting} {brand}
   locPhoneLong: string;
   locVideoLong: string;
   locInPersonLong: string;
@@ -85,6 +87,8 @@ export interface ProspectStrings {
 }
 
 const en: ProspectStrings = {
+  reminderSubject: "Reminder: {meeting} with {brand}",
+  reminderBody: "A quick reminder about your {meeting} with {brand}.",
   emailManage: "Need to cancel or reschedule?",
   cancelHeading: "Cancel this meeting?",
   cancelButton: "Yes, cancel it",
@@ -147,6 +151,8 @@ const en: ProspectStrings = {
 };
 
 const es: Partial<ProspectStrings> = {
+  reminderSubject: "Recordatorio: {meeting} con {brand}",
+  reminderBody: "Un recordatorio rápido sobre tu {meeting} con {brand}.",
   emailManage: "¿Necesitas cancelar o reprogramar?",
   cancelHeading: "¿Cancelar esta reunión?",
   cancelButton: "Sí, cancelar",
@@ -208,6 +214,8 @@ const es: Partial<ProspectStrings> = {
 };
 
 const fr: Partial<ProspectStrings> = {
+  reminderSubject: "Rappel : {meeting} avec {brand}",
+  reminderBody: "Petit rappel concernant votre {meeting} avec {brand}.",
   emailManage: "Besoin d'annuler ou de reprogrammer ?",
   cancelHeading: "Annuler ce rendez-vous ?",
   cancelButton: "Oui, annuler",
@@ -269,6 +277,8 @@ const fr: Partial<ProspectStrings> = {
 };
 
 const de: Partial<ProspectStrings> = {
+  reminderSubject: "Erinnerung: {meeting} mit {brand}",
+  reminderBody: "Eine kurze Erinnerung an Ihren {meeting} mit {brand}.",
   emailManage: "Absagen oder verschieben?",
   cancelHeading: "Diesen Termin absagen?",
   cancelButton: "Ja, absagen",
@@ -330,6 +340,8 @@ const de: Partial<ProspectStrings> = {
 };
 
 const pt: Partial<ProspectStrings> = {
+  reminderSubject: "Lembrete: {meeting} com {brand}",
+  reminderBody: "Um lembrete rápido sobre o seu {meeting} com {brand}.",
   emailManage: "Precisa cancelar ou remarcar?",
   cancelHeading: "Cancelar esta reunião?",
   cancelButton: "Sim, cancelar",
@@ -391,6 +403,8 @@ const pt: Partial<ProspectStrings> = {
 };
 
 const it: Partial<ProspectStrings> = {
+  reminderSubject: "Promemoria: {meeting} con {brand}",
+  reminderBody: "Un breve promemoria per il tuo {meeting} con {brand}.",
   emailManage: "Devi annullare o riprogrammare?",
   cancelHeading: "Annullare questo incontro?",
   cancelButton: "Sì, annulla",
@@ -452,6 +466,8 @@ const it: Partial<ProspectStrings> = {
 };
 
 const nl: Partial<ProspectStrings> = {
+  reminderSubject: "Herinnering: {meeting} met {brand}",
+  reminderBody: "Een korte herinnering aan je {meeting} met {brand}.",
   emailManage: "Annuleren of verzetten?",
   cancelHeading: "Deze afspraak annuleren?",
   cancelButton: "Ja, annuleren",
@@ -513,6 +529,8 @@ const nl: Partial<ProspectStrings> = {
 };
 
 const pl: Partial<ProspectStrings> = {
+  reminderSubject: "Przypomnienie: {meeting} z {brand}",
+  reminderBody: "Krótkie przypomnienie o Twoim spotkaniu ({meeting}) z {brand}.",
   emailManage: "Chcesz odwołać lub zmienić termin?",
   cancelHeading: "Odwołać to spotkanie?",
   cancelButton: "Tak, odwołaj",
@@ -574,6 +592,8 @@ const pl: Partial<ProspectStrings> = {
 };
 
 const ja: Partial<ProspectStrings> = {
+  reminderSubject: "リマインダー: {brand}との{meeting}",
+  reminderBody: "{brand}との{meeting}についてのリマインダーです。",
   emailManage: "キャンセルまたは再予約が必要ですか？",
   cancelHeading: "この打ち合わせをキャンセルしますか？",
   cancelButton: "はい、キャンセルする",
@@ -635,6 +655,8 @@ const ja: Partial<ProspectStrings> = {
 };
 
 const zh: Partial<ProspectStrings> = {
+  reminderSubject: "提醒：与{brand}的{meeting}",
+  reminderBody: "温馨提醒您与{brand}的{meeting}。",
   emailManage: "需要取消或改期吗？",
   cancelHeading: "取消此次会议？",
   cancelButton: "是的，取消",
@@ -696,6 +718,8 @@ const zh: Partial<ProspectStrings> = {
 };
 
 const ko: Partial<ProspectStrings> = {
+  reminderSubject: "리마인더: {brand}와(과)의 {meeting}",
+  reminderBody: "{brand}와(과)의 {meeting} 일정을 다시 안내드립니다.",
   emailManage: "취소 또는 일정 변경이 필요하신가요?",
   cancelHeading: "이 미팅을 취소하시겠어요?",
   cancelButton: "네, 취소합니다",
@@ -757,6 +781,8 @@ const ko: Partial<ProspectStrings> = {
 };
 
 const ar: Partial<ProspectStrings> = {
+  reminderSubject: "تذكير: {meeting} مع {brand}",
+  reminderBody: "تذكير سريع بشأن {meeting} مع {brand}.",
   emailManage: "هل تحتاج إلى الإلغاء أو إعادة الجدولة؟",
   cancelHeading: "إلغاء هذا الاجتماع؟",
   cancelButton: "نعم، ألغِه",
@@ -819,6 +845,8 @@ const ar: Partial<ProspectStrings> = {
 };
 
 const hi: Partial<ProspectStrings> = {
+  reminderSubject: "रिमाइंडर: {brand} के साथ {meeting}",
+  reminderBody: "{brand} के साथ आपकी {meeting} की एक त्वरित याद।",
   emailManage: "रद्द या पुनर्निर्धारित करना है?",
   cancelHeading: "क्या यह मीटिंग रद्द करें?",
   cancelButton: "हाँ, रद्द करें",
