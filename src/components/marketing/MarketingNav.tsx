@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { MobileMenu } from "@/components/marketing/MobileMenu";
@@ -12,12 +15,29 @@ function ArrowRight({ className = "" }: { className?: string }) {
 }
 
 export function MarketingNav() {
+  // Scroll-aware chrome: airy and near-transparent over the hero, condensing to a
+  // blurred, bordered bar with a soft shadow once the page scrolls — the premium
+  // sticky-nav treatment every top site uses.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-bg/70 backdrop-blur-xl">
+    <header
+      className={`sticky top-0 z-40 border-b transition-[background-color,border-color,box-shadow] duration-300 ${
+        scrolled
+          ? "border-border/60 bg-bg/80 shadow-[0_1px_0_0_rgb(255_255_255/0.03),0_10px_30px_-22px_rgb(0_0_0/0.8)] backdrop-blur-xl"
+          : "border-transparent bg-bg/30 backdrop-blur-md"
+      }`}
+    >
       <ScrollProgress />
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
         <Link href="/" className="group flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-brand text-[13px] font-bold tracking-tight text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)] ring-1 ring-inset ring-white/10">
+          <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-brand text-[13px] font-bold tracking-tight text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)] ring-1 ring-inset ring-white/10 transition-transform duration-200 ease-out group-hover:scale-105">
             RR
           </span>
           <span className="font-display text-[15px] font-semibold tracking-tight text-fg">Revenue Recall</span>
