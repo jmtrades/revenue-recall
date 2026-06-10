@@ -5,8 +5,8 @@
  * lead_created / deal_idle can join later via the cron scan.
  */
 
-export type CustomTriggerKind = "stage_changed" | "deal_won" | "deal_lost";
-export const CUSTOM_TRIGGER_KINDS: CustomTriggerKind[] = ["stage_changed", "deal_won", "deal_lost"];
+export type CustomTriggerKind = "stage_changed" | "deal_won" | "deal_lost" | "lead_created";
+export const CUSTOM_TRIGGER_KINDS: CustomTriggerKind[] = ["stage_changed", "deal_won", "deal_lost", "lead_created"];
 
 export type ConditionField = "value" | "source" | "pipeline";
 export const CONDITION_FIELDS: ConditionField[] = ["value", "source", "pipeline"];

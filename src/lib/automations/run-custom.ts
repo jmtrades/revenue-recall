@@ -4,7 +4,7 @@ import { sendEmail } from "@/lib/comms";
 import { ownerEmailsForOrg } from "@/lib/billing/lifecycle";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { listEnabledCustomAutomations } from "@/lib/automations/custom-store";
-import { rulesToFire } from "@/lib/automations/custom-evaluate";
+import { rulesToFire, matchesConditions } from "@/lib/automations/custom-evaluate";
 import type { Action, CustomAutomation } from "@/lib/automations/custom-types";
 import type { Opportunity, Stage } from "@/lib/crm/types";
 
@@ -24,31 +24,49 @@ export async function runCustomDealAutomations(opp: Opportunity, stage: Stage): 
   try {
     const rules = await listEnabledCustomAutomations().catch(() => [] as CustomAutomation[]);
     if (rules.length === 0) return;
-    const firing = rulesToFire(rules, opp, stage);
-    if (firing.length === 0) return;
-
-    const deal = (opp.title || "this deal").slice(0, 120);
-    let ownerEmails: string[] | null = null; // resolved once, only if a notify action runs
-
-    for (const rule of firing) {
-      for (const action of rule.actions) {
-        try {
-          if (action.type === "create_task") {
-            const due = typeof action.dueInDays === "number" && action.dueInDays > 0 ? inDays(action.dueInDays) : null;
-            await createManualTask(`${action.title.slice(0, 160)} — ${deal}`, due);
-          } else if (action.type === "enroll_sequence") {
-            await enroll(action.sequenceId, `deal:${opp.id}`);
-          } else if (action.type === "notify_owner") {
-            ownerEmails ??= await resolveOwners();
-            await notifyOwners(ownerEmails, rule, action, deal);
-          }
-        } catch {
-          /* one action failing must not stop the others, or block the move */
-        }
-      }
-    }
+    await executeRules(rulesToFire(rules, opp, stage), opp);
   } catch {
     /* never block a stage move */
+  }
+}
+
+/**
+ * Execute the org's lead_created rules for a freshly captured lead. Fired from
+ * the shared lead-capture choke point (API, hosted form, booking page) only when
+ * something NEW was created — a deduped repeat submission never re-fires. Same
+ * safety contract as the deal path: internal actions only, never throws.
+ */
+export async function runCustomLeadAutomations(opp: Opportunity): Promise<void> {
+  try {
+    const rules = await listEnabledCustomAutomations().catch(() => [] as CustomAutomation[]);
+    const firing = rules.filter((r) => r.enabled && r.triggerKind === "lead_created" && matchesConditions(opp, r.conditions));
+    await executeRules(firing, opp);
+  } catch {
+    /* never block a lead capture */
+  }
+}
+
+async function executeRules(firing: CustomAutomation[], opp: Opportunity): Promise<void> {
+  if (firing.length === 0) return;
+  const deal = (opp.title || "this deal").slice(0, 120);
+  let ownerEmails: string[] | null = null; // resolved once, only if a notify action runs
+
+  for (const rule of firing) {
+    for (const action of rule.actions) {
+      try {
+        if (action.type === "create_task") {
+          const due = typeof action.dueInDays === "number" && action.dueInDays > 0 ? inDays(action.dueInDays) : null;
+          await createManualTask(`${action.title.slice(0, 160)} — ${deal}`, due);
+        } else if (action.type === "enroll_sequence") {
+          await enroll(action.sequenceId, `deal:${opp.id}`);
+        } else if (action.type === "notify_owner") {
+          ownerEmails ??= await resolveOwners();
+          await notifyOwners(ownerEmails, rule, action, deal);
+        }
+      } catch {
+        /* one action failing must not stop the others, or block the trigger */
+      }
+    }
   }
 }
 
