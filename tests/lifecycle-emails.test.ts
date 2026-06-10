@@ -14,7 +14,7 @@ vi.mock("@/lib/inbound-dedup", () => ({
   forgetInboundEvent: async () => {},
 }));
 
-import { sendWelcomeEmail, sendTrialEndingEmail, sendPaymentFailedEmail } from "@/lib/billing/lifecycle";
+import { sendWelcomeEmail, sendPaymentFailedEmail } from "@/lib/billing/lifecycle";
 
 // No email transport in tests: sendEmail falls back to the "log" transport
 // (status "logged" — counts as delivered); the owner lookup returns [] (no DB).
@@ -28,15 +28,14 @@ describe("lifecycle emails", () => {
     expect((await sendWelcomeEmail("")).reason).toBe("no_recipient");
   });
 
-  it("trial/dunning emails fail closed without a resolvable owner", async () => {
-    expect((await sendTrialEndingEmail("org_x", undefined, "evt_1")).reason).toBe("no_recipient");
+  it("dunning emails fail closed without a resolvable owner", async () => {
     expect((await sendPaymentFailedEmail("org_x", "evt_2")).reason).toBe("no_recipient");
   });
 
   it("dedupes on the Stripe event id so webhook retries can't double-send", async () => {
-    await sendTrialEndingEmail("org_y", undefined, "evt_dup");
-    expect((await sendTrialEndingEmail("org_y", undefined, "evt_dup")).reason).toBe("duplicate");
+    await sendPaymentFailedEmail("org_y", "evt_dup");
+    expect((await sendPaymentFailedEmail("org_y", "evt_dup")).reason).toBe("duplicate");
     // Different event id for the same org is NOT a duplicate.
-    expect((await sendTrialEndingEmail("org_y", undefined, "evt_other")).reason).toBe("no_recipient");
+    expect((await sendPaymentFailedEmail("org_y", "evt_other")).reason).toBe("no_recipient");
   });
 });

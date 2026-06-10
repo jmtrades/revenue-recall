@@ -78,10 +78,9 @@ point a webhook at `…/api/billing/webhook`.
 | `STRIPE_WEBHOOK_SECRET` | from the `…/api/billing/webhook` endpoint |
 | `STRIPE_PRICE_GROWTH` (Operator, $299 **per unit**) / `STRIPE_PRICE_TEAM` (Autopilot, $899 flat) | monthly price IDs |
 | `STRIPE_PRICE_GROWTH_ANNUAL` ($2,990/yr per unit) / `STRIPE_PRICE_TEAM_ANNUAL` ($8,990/yr) | optional annual price IDs (~2 months free) |
-| `BILLING_ENFORCE=true` | enforce plan limits + action allowances (off = unrestricted trial) |
-| `STRIPE_TRIAL_DAYS=14` | **card-required free trial** length for paid plans (set `0` to charge immediately) |
+| `BILLING_ENFORCE=true` | enforce plan limits + action allowances (off = unrestricted) |
 
-**Card-required free trial:** paid checkouts collect a card up front *and* start a 14-day trial — "free trial" never means "no card," and the trial converts to a paid subscription automatically (cancel before it ends = no charge). Starter stays free with no card. The pricing CTAs flow straight through: choose a paid plan → sign up → the dashboard auto-opens the trial checkout. Tune the length with `STRIPE_TRIAL_DAYS`.
+**No trials:** paid checkouts charge immediately — a completed checkout is an `active` subscription. Starter stays free with no card. The pricing CTAs flow straight through: choose a paid plan → sign up → the dashboard auto-opens checkout.
 
 **Usage top-ups (buy extra AI actions):** create **one-time** prices in Stripe and paste the ids — each pack is purchasable only once its price is set. Amounts are defined in `src/lib/billing/topups.ts`.
 

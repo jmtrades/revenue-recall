@@ -149,7 +149,7 @@ export function BillingSettings({ configured, plan, status, seats, currentPeriod
                     disabled={!configured || busy !== null}
                     className="block w-full rounded-lg bg-brand px-3 py-1.5 text-center text-xs font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
                   >
-                    {busy === "/api/billing/checkout" ? "Starting…" : `Start ${p.name} trial`}
+                    {busy === "/api/billing/checkout" ? "Starting…" : `Upgrade to ${p.name}`}
                   </button>
                 ) : (
                   <a href="/security" className="block rounded-lg border border-border px-3 py-1.5 text-center text-xs text-fg transition hover:bg-surface-2">
@@ -163,7 +163,7 @@ export function BillingSettings({ configured, plan, status, seats, currentPeriod
       </div>
 
       <p className="text-xs text-muted">
-        Start with a <span className="text-fg">14-day free trial</span> — you won&apos;t be charged until it ends, and you can cancel anytime.
+        Billed through Stripe — change plans or <span className="text-fg">cancel anytime</span> from this page.
       </p>
       {!configured && (
         <p className="text-xs text-muted">

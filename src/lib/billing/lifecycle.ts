@@ -46,25 +46,6 @@ async function alreadySent(kind: string, eventId?: string): Promise<boolean> {
   return seenInboundEvent("billing-mail", `${kind}:${eventId}`);
 }
 
-/** "Your trial ends soon" — sent on Stripe's trial_will_end (~3 days out). */
-export async function sendTrialEndingEmail(orgId: string, trialEndIso?: string, eventId?: string): Promise<LifecycleResult> {
-  if (await alreadySent("trial", eventId)) return { sent: false, reason: "duplicate" };
-  const to = await ownerEmailsForOrg(orgId);
-  if (to.length === 0) return { sent: false, reason: "no_recipient" };
-  const when = trialEndIso ? ` on ${new Date(trialEndIso).toLocaleDateString("en-US", { month: "long", day: "numeric" })}` : " soon";
-  const body = [
-    `Your Revenue Recall trial ends${when}, and your card will be charged when it does.`,
-    "",
-    "Keep going — your recall queue, sequences, and autopilot stay exactly as you set them.",
-    `Manage your plan or seats any time: ${appLink("/settings?tab=billing")}`,
-    "",
-    "Questions? Just reply to this email.",
-  ].join("\n");
-  const ok = await deliver(to, "Your trial ends soon — here's what happens next", body);
-  if (ok) logInfo("lifecycle.trial_ending_sent", { orgId });
-  return ok ? { sent: true } : { sent: false, reason: "send_failed" };
-}
-
 /** Dunning: a renewal payment failed — tell the customer before access lapses. */
 export async function sendPaymentFailedEmail(orgId: string, eventId?: string): Promise<LifecycleResult> {
   if (await alreadySent("dunning", eventId)) return { sent: false, reason: "duplicate" };
