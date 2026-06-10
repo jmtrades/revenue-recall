@@ -10,6 +10,7 @@ import { ContactReachOut } from "@/components/ContactReachOut";
 import { ContactInfoEdit } from "@/components/ContactInfoEdit";
 import { DeleteButton } from "@/components/DeleteButton";
 
+export const metadata = { title: "Lead" };
 export const dynamic = "force-dynamic";
 
 function daysAgo(iso: string): number {

@@ -63,6 +63,7 @@ import { listMembers } from "@/lib/members-server";
 import { getSessionRole } from "@/lib/authz";
 import { MembersList } from "@/components/MembersList";
 
+export const metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage({ searchParams }: { searchParams: { billing?: string; tab?: string; connected?: string } }) {

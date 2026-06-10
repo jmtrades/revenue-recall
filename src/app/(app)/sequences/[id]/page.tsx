@@ -8,6 +8,7 @@ import { PageHeader, Card, ChannelBadge, Stat } from "@/components/ui";
 import { EnrollSequence } from "@/components/EnrollSequence";
 import { EnrollmentList, type EnrollmentRow } from "@/components/EnrollmentList";
 
+export const metadata = { title: "Sequence" };
 export const dynamic = "force-dynamic";
 
 export default async function SequenceDetailPage({ params }: { params: { id: string } }) {

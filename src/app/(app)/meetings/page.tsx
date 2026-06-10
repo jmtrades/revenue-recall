@@ -5,6 +5,7 @@ import { hostedBookingUrl } from "@/lib/meetings/token";
 import { PageHeader, Card } from "@/components/ui";
 import { BookingsManager, type BookingRow } from "@/components/meetings/BookingsManager";
 
+export const metadata = { title: "Meetings" };
 export const dynamic = "force-dynamic";
 
 function whenLabel(iso: string, tz: string, locale: string): string {

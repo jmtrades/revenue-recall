@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui";
 import { TaskList } from "@/components/TaskList";
 import { ManualTasks } from "@/components/ManualTasks";
 
+export const metadata = { title: "Tasks" };
 export const dynamic = "force-dynamic";
 
 export default async function TasksPage() {

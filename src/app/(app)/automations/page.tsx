@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui";
 import { AutomationsList } from "@/components/AutomationsList";
 import { CustomAutomationsManager } from "@/components/automations/CustomAutomationsManager";
 
+export const metadata = { title: "Automations" };
 export const dynamic = "force-dynamic";
 
 export default async function AutomationsPage() {

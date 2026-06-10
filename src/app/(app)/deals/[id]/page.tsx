@@ -14,6 +14,7 @@ import { AiBrief } from "@/components/AiBrief";
 import { contactInsights } from "@/lib/insights";
 import { getLanguage, toLanguageCode } from "@/lib/languages";
 
+export const metadata = { title: "Deal" };
 export const dynamic = "force-dynamic";
 
 function daysAgo(iso: string): number {

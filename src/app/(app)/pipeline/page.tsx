@@ -4,6 +4,7 @@ import { money } from "@/lib/format";
 import { PageHeader, EmptyState, Button } from "@/components/ui";
 import { Board } from "@/components/Board";
 
+export const metadata = { title: "Pipeline" };
 export const dynamic = "force-dynamic";
 
 export default async function PipelinePage() {

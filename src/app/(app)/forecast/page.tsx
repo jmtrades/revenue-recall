@@ -3,6 +3,7 @@ import { compactMoney, money } from "@/lib/format";
 import { PageHeader, Stat, Card, EmptyState, Button } from "@/components/ui";
 import { MiniLegendBar, ProgressRing } from "@/components/charts";
 
+export const metadata = { title: "Forecast" };
 export const dynamic = "force-dynamic";
 
 export default async function ForecastPage() {

@@ -5,6 +5,7 @@ import { calendarFeedUrl } from "@/lib/calendar-feed";
 import { PageHeader, Card, EmptyState, Button } from "@/components/ui";
 import { CalendarSubscribe } from "@/components/CalendarSubscribe";
 
+export const metadata = { title: "Calendar" };
 export const dynamic = "force-dynamic";
 
 const DOW = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
