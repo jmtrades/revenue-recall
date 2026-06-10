@@ -53,7 +53,8 @@ function BookingLinkCard({ bookingUrl, embed }: { bookingUrl: string | null; emb
       <h2 className="font-semibold text-fg">Your booking link</h2>
       <p className="mt-1 text-sm text-muted">
         Share this link or drop it into your outreach — prospects pick a time and it books straight onto your pipeline as a new deal. The
-        link carries a write-only token (safe to put anywhere; it can only create a booking).
+        link carries a write-only token (safe to put anywhere; it can only create a booking). Once you have an enabled meeting type, the AI
+        offers this link automatically when a call is the natural next step (a custom scheduling link in your Voice settings overrides it).
       </p>
       {!bookingUrl ? (
         <p className="mt-3 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-sm text-warn">

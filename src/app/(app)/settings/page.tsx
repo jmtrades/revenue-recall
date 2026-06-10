@@ -16,7 +16,7 @@ import { PipelineStagesEditor } from "@/components/PipelineStagesEditor";
 import { getTeamAndPipeline, getRecentCaptures } from "@/lib/queries";
 import { money } from "@/lib/format";
 import { getOrgSettings } from "@/lib/org";
-import { getActiveVoice } from "@/lib/voice";
+import { getStoredVoice } from "@/lib/voice";
 import { pct } from "@/lib/format";
 import { PageHeader, Card, Avatar, InfoRow } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
@@ -65,7 +65,7 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage({ searchParams }: { searchParams: { billing?: string; tab?: string; connected?: string } }) {
   const cfg = getConfig();
   const org = await getOrgSettings();
-  const voice = await getActiveVoice();
+  const voice = await getStoredVoice();
   const active = getIndustry(org.industryId);
 
   const ch = channelStatus();
