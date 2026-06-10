@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { getOverview, getActivityFeed, getReports } from "@/lib/queries";
+import { engagementStats } from "@/lib/tracking";
+import { bookingStats } from "@/lib/meetings/stats";
 import { getOrgSettings } from "@/lib/org";
 import { getSubscription } from "@/lib/billing/store";
 import { canStartTrial } from "@/lib/billing/trial";
@@ -32,13 +34,15 @@ function focusLine(recallCount: number, recoverable: number, currency: string): 
 }
 
 export default async function DashboardPage() {
-  const [o, feed, reports, org, user, sub] = await Promise.all([
+  const [o, feed, reports, org, user, sub, engagement, meetings] = await Promise.all([
     getOverview(),
     getActivityFeed(8),
     getReports(),
     getOrgSettings(),
     getSessionUser(),
     getSubscription(),
+    engagementStats(),
+    bookingStats(),
   ]);
   // Only auto-open the trial checkout for someone who can actually start one —
   // never re-prompt a customer who's already trialing or active.
@@ -54,6 +58,9 @@ export default async function DashboardPage() {
   const firstRevenue = wonPrevMonth === 0 && wonThisMonth > 0;
   const attainment = org.monthlyQuota > 0 ? wonThisMonth / org.monthlyQuota : 0;
   const greeting = user?.name ? `${partOfDay(new Date().getHours())}, ${firstName(user.name)}` : partOfDay(new Date().getHours());
+  // Surface outbound health only once there's something to show, so it never
+  // reads as a row of dead zeros on a workspace that hasn't sent yet.
+  const showOutreach = engagement.sent > 0 || meetings.upcoming > 0 || meetings.booked30d > 0;
 
   // Brand-new workspace: no deals and nothing logged yet. Zero-filled stats and
   // empty charts read as broken — show a guided first-run experience instead.
@@ -75,6 +82,17 @@ export default async function DashboardPage() {
         <Stat label="Recoverable Revenue" value={money(o.recallSummary.totalRecoverable, m.currency)} hint={`${o.recallSummary.itemCount} at-risk deals`} tone="warn" icon="recall" />
         <Stat label="Win Rate" value={pct(m.winRate)} hint={`${m.wonCount} won · ${m.lostCount} lost`} tone="success" icon="reports" />
       </section>
+
+      {showOutreach && (
+        <Card title="Outreach · last 30 days" action={<Link href="/reports" className="text-sm text-brand hover:underline">Reports →</Link>}>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <Stat label="Sent" value={String(engagement.sent)} hint="emails + texts" icon="mail" />
+            <Stat label="Reply rate" value={pct(engagement.replyRate)} hint={`${engagement.replied} replies`} tone={engagement.replyRate >= 0.05 ? "success" : "default"} icon="inbox" />
+            <Stat label="Meetings ahead" value={String(meetings.upcoming)} hint="confirmed" tone="success" icon="calendar" />
+            <Stat label="Booked" value={String(meetings.booked30d)} hint="last 30 days" icon="approvals" />
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card title="Revenue trend" className="lg:col-span-2" action={<Link href="/reports" className="text-sm text-brand hover:underline">Reports →</Link>}>
