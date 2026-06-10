@@ -14,8 +14,8 @@ const LINKS = [
   { href: "/#features", label: "Features" },
   { href: "/#how", label: "How it works" },
   { href: "/#industries", label: "Industries" },
-  { href: "/#integrations", label: "Integrations" },
   { href: "/#who", label: "Who it's for" },
+  { href: "/#integrations", label: "Integrations" },
   { href: "/#pricing", label: "Pricing" },
 ];
 
