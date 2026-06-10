@@ -11,7 +11,7 @@ const COLS: { heading: string; links: { label: string; href: string }[] }[] = [
       { label: "Revenue Recall", href: "/#features" },
       { label: "Power Dialer", href: "/#features" },
       { label: "Automations", href: "/#features" },
-      { label: "Pricing", href: "/#pricing" },
+      { label: "Pricing", href: "/pricing" },
     ],
   },
   {

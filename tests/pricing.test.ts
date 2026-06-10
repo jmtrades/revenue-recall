@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { annualMonthly } from "@/components/marketing/PricingPlans";
+import { annualMonthly } from "@/components/marketing/pricing-data";
 
 describe("annual pricing", () => {
   it("gives ~2 months free (charges for 10 of 12 months)", () => {
