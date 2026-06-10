@@ -1,5 +1,6 @@
 import { getReports } from "@/lib/queries";
 import { clickStats } from "@/lib/tracking";
+import { bookingStats } from "@/lib/meetings/stats";
 import { compactMoney, money, pct } from "@/lib/format";
 import { PageHeader, Stat, Card, Avatar } from "@/components/ui";
 import { Funnel, Donut, BarChart } from "@/components/charts";
@@ -7,7 +8,7 @@ import { Funnel, Donut, BarChart } from "@/components/charts";
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  const [r, clicks] = await Promise.all([getReports(), clickStats()]);
+  const [r, clicks, meetings] = await Promise.all([getReports(), clickStats(), bookingStats()]);
   const m = r.metrics;
 
   return (
@@ -112,6 +113,27 @@ export default async function ReportsPage() {
 
       <Card title="Lead sources">
         {r.sources.length === 0 ? <p className="text-sm text-muted">No source data.</p> : <Donut segments={r.sources} centerLabel={String(r.sources.reduce((s, x) => s + x.value, 0))} centerSub="total deals" />}
+      </Card>
+
+      <Card title="Meetings booked">
+        {!meetings.any ? (
+          <p className="text-sm text-muted">No meetings booked yet. Share your booking link (Settings → Scheduling) — meetings booked there land on your pipeline and show up here.</p>
+        ) : (
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <Stat label="Upcoming" value={String(meetings.upcoming)} hint="confirmed ahead" tone="success" />
+              <Stat label="Booked" value={String(meetings.booked30d)} hint="last 30 days" />
+              <Stat label="Cancelled" value={String(meetings.cancelled30d)} hint="last 30 days" />
+              <Stat label="Cancel rate" value={pct(meetings.cancelRate)} hint="last 30 days" tone={meetings.cancelRate > 0.3 ? "warn" : undefined} />
+            </div>
+            {meetings.trend.some((w) => w.value > 0) && (
+              <div>
+                <p className="stat-label mb-2">Booked per week (6 weeks)</p>
+                <BarChart data={meetings.trend} height={120} color="rgb(var(--brand-rgb))" />
+              </div>
+            )}
+          </div>
+        )}
       </Card>
 
       <Card title="Link engagement · last 30 days">
