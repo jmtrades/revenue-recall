@@ -6,6 +6,7 @@ import { StickyCTA } from "@/components/marketing/StickyCTA";
 import { PricingPlans } from "@/components/marketing/PricingPlans";
 import { BrandLogos } from "@/components/marketing/BrandLogos";
 import { Icon, type IconName } from "@/components/icons";
+import { Reveal, Stagger, StaggerItem, ScaleIn } from "@/components/motion/Motion";
 import { INDUSTRIES } from "@/lib/industries";
 
 const DESCRIPTION =
@@ -191,7 +192,7 @@ export default function LandingPage() {
 
       {/* Objection killer: not a drafting tool */}
       <section className="mx-auto max-w-5xl px-5 py-20">
-        <div className="mx-auto max-w-2xl text-center">
+        <Reveal className="mx-auto max-w-2xl text-center">
           <span className="eyebrow">The difference</span>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">
             You don&apos;t need another AI that writes. You need the work <span className="gradient-text">done.</span>
@@ -199,9 +200,9 @@ export default function LandingPage() {
           <p className="mt-5 text-lg leading-relaxed text-muted">
             Everyone has ChatGPT and Claude. They hand you a draft and stop. The hard part was never the words — it&apos;s knowing who to chase, doing it relentlessly across every channel, and never dropping a follow-up.
           </p>
-        </div>
-        <div className="mt-12 grid gap-5 md:grid-cols-2">
-          <div className="rounded-2xl border border-border bg-surface p-7">
+        </Reveal>
+        <Stagger className="mt-12 grid gap-5 md:grid-cols-2">
+          <StaggerItem className="rounded-2xl border border-border bg-surface p-7">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">AI writing tools</p>
             <ul className="mt-5 space-y-3.5 text-sm text-muted">
               {["You decide who to contact", "You paste in the context", "You copy the draft out", "You send it — once", "You remember to follow up (or don't)", "You log it in the CRM later"].map((t) => (
@@ -212,8 +213,8 @@ export default function LandingPage() {
               ))}
             </ul>
             <p className="mt-6 text-xs text-muted">You still do all the work. It just types faster.</p>
-          </div>
-          <div className="raised rounded-2xl border border-brand/40 bg-surface p-7 ring-glow">
+          </StaggerItem>
+          <StaggerItem className="raised rounded-2xl border border-brand/40 bg-surface p-7 ring-glow">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand">Revenue Recall</p>
             <ul className="mt-5 space-y-3.5 text-sm text-body">
               {["Finds the deals worth working, ranked by $ recoverable", "Pulls the context from your CRM itself", "Writes in your voice — across email, SMS & calls", "Sends, dials, and leaves voicemails autonomously", "Follows up on a cadence until they reply", "Logs every touch and reports what it recovered"].map((t) => (
@@ -224,43 +225,43 @@ export default function LandingPage() {
               ))}
             </ul>
             <p className="mt-6 text-xs font-medium text-brand">It does the job. You collect the wins.</p>
-          </div>
-        </div>
+          </StaggerItem>
+        </Stagger>
       </section>
 
       {/* Pillars — what it does */}
       <section id="features" className="border-y border-border bg-surface/30">
         <div className="mx-auto max-w-6xl px-5 py-20">
-          <div className="mx-auto max-w-2xl text-center">
+          <Reveal className="mx-auto max-w-2xl text-center">
             <span className="eyebrow">One system, the whole motion</span>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">An autonomous sales force, not a feature</h2>
-          </div>
-          <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          </Reveal>
+          <Stagger className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {PILLARS.map((f) => (
-              <div key={f.title} className="group raised lift rounded-2xl border border-border bg-surface p-6 hover:border-brand/40">
+              <StaggerItem key={f.title} className="group raised lift rounded-2xl border border-border bg-surface p-6 hover:border-brand/40">
                 <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20 transition-transform duration-200 ease-out group-hover:scale-105"><Icon name={f.icon} size={22} /></div>
                 <h3 className="mt-4 font-semibold text-fg">{f.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">{f.body}</p>
-              </div>
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         </div>
       </section>
 
       {/* Autonomy spectrum */}
       <section className="mx-auto max-w-5xl px-5 py-20">
-        <div className="mx-auto max-w-2xl text-center">
+        <Reveal className="mx-auto max-w-2xl text-center">
           <span className="eyebrow">You set the leash</span>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">From co-pilot to fully hands-off</h2>
           <p className="mt-4 text-muted">Start with everything queued for your approval. Trust it more, hand it more — all the way to running your outbound while you sleep.</p>
-        </div>
-        <div className="mt-10 grid gap-5 md:grid-cols-3">
+        </Reveal>
+        <Stagger className="mt-10 grid gap-5 md:grid-cols-3">
           {[
             { tag: "Review", title: "It drafts, you approve", body: "Every message and call plan is queued for one-click approval. Perfect for week one." },
             { tag: "Scheduled", title: "It runs on a cadence", body: "Sequences fire on schedule across channels. You stay in the loop on the outcomes, not the busywork." },
             { tag: "Autopilot", title: "It runs the operation", body: "Full end-to-end autonomy — sends, calls, follows up, and recovers deals with guardrails on quiet hours, opt-outs, and caps." },
           ].map((s, i) => (
-            <div key={s.tag} className={`raised rounded-2xl border p-6 ${i === 2 ? "border-brand/40 bg-surface ring-glow" : "border-border bg-surface"}`}>
+            <StaggerItem key={s.tag} className={`raised rounded-2xl border p-6 ${i === 2 ? "border-brand/40 bg-surface ring-glow" : "border-border bg-surface"}`}>
               <div className="flex items-center justify-between">
                 <span className={`pill ${i === 2 ? "bg-brand-soft text-brand" : "bg-surface-2 text-muted"}`}>{s.tag}</span>
                 {/* escalating autonomy level — visualizes "you set the leash" */}
@@ -272,22 +273,22 @@ export default function LandingPage() {
               </div>
               <h3 className="mt-4 font-semibold text-fg">{s.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted">{s.body}</p>
-            </div>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </section>
 
       {/* How it works */}
       <section id="how" className="border-y border-border bg-surface/30">
         <div className="mx-auto max-w-6xl px-5 py-20">
-          <div className="mx-auto max-w-2xl text-center">
+          <Reveal className="mx-auto max-w-2xl text-center">
             <span className="eyebrow">How it works</span>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Live in minutes. Recovering by day one.</h2>
-          </div>
+          </Reveal>
           {/* Open process timeline — numbered nodes + fading connectors, not more boxes. */}
-          <div className="mt-14 grid gap-x-8 gap-y-10 md:grid-cols-3">
+          <Stagger className="mt-14 grid gap-x-8 gap-y-10 md:grid-cols-3">
             {STEPS.map((s, i) => (
-              <div key={s.n} className="relative">
+              <StaggerItem key={s.n} className="relative">
                 <div className="flex items-center gap-4">
                   <span className="grid h-11 w-11 flex-none place-items-center rounded-full border border-brand/30 bg-brand-soft font-display text-sm font-semibold tabular-nums text-brand shadow-[inset_0_1px_0_0_rgb(255_255_255/0.06)]">
                     {s.n}
@@ -298,47 +299,47 @@ export default function LandingPage() {
                 </div>
                 <h3 className="mt-5 font-semibold text-fg">{s.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">{s.body}</p>
-              </div>
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         </div>
       </section>
 
       {/* Industries */}
       <section id="industries" className="mx-auto max-w-6xl px-5 py-20">
-        <div className="mx-auto max-w-2xl text-center">
+        <Reveal className="mx-auto max-w-2xl text-center">
           <span className="eyebrow">Tuned to your world</span>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Built for every industry</h2>
           <p className="mt-4 text-muted">It knows the terminology, the objections, and the way deals actually close in your business — out of the box.</p>
-        </div>
-        <div className="mx-auto mt-12 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        </Reveal>
+        <Stagger className="mx-auto mt-12 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {INDUSTRIES.filter((i) => i.id !== "generic").map((i) => (
-            <div key={i.id} className="raised lift group flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 hover:border-brand/40">
+            <StaggerItem key={i.id} className="raised lift group flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 hover:border-brand/40">
               <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20 transition-transform duration-200 ease-out group-hover:scale-105">
                 <Icon name={INDUSTRY_ICONS[i.id] ?? "layers"} size={18} />
               </span>
               <span className="text-sm font-semibold text-fg">{i.label}</span>
-            </div>
+            </StaggerItem>
           ))}
-          <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border px-4 py-3.5">
+          <StaggerItem className="flex items-center gap-3 rounded-2xl border border-dashed border-border px-4 py-3.5">
             <span className="grid h-9 w-9 flex-none place-items-center rounded-xl border border-dashed border-border text-muted">
               <Icon name="plus" size={16} />
             </span>
             <span className="text-sm font-medium text-muted">Your vertical</span>
-          </div>
-        </div>
+          </StaggerItem>
+        </Stagger>
       </section>
 
       {/* Who it's for — solo operators through the enterprise */}
       <section id="who" className="mx-auto max-w-6xl px-5 py-20">
-        <div className="mx-auto max-w-2xl text-center">
+        <Reveal className="mx-auto max-w-2xl text-center">
           <span className="eyebrow">Who it&rsquo;s for</span>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">From solo founders to the enterprise</h2>
           <p className="mt-4 text-muted">The same autonomous engine — right-sized whether you&rsquo;re a team of one or a team of thousands. It scales the moment you do.</p>
-        </div>
-        <div className="mt-12 grid gap-5 md:grid-cols-3">
+        </Reveal>
+        <Stagger className="mt-12 grid gap-5 md:grid-cols-3">
           {AUDIENCES.map((a) => (
-            <div key={a.title} className="raised lift group flex h-full flex-col rounded-2xl border border-border bg-surface p-7 hover:border-brand/40">
+            <StaggerItem key={a.title} className="raised lift group flex h-full flex-col rounded-2xl border border-border bg-surface p-7 hover:border-brand/40">
               <div className="flex items-center justify-between">
                 <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20 transition-transform duration-200 ease-out group-hover:scale-105">
                   <Icon name={a.icon} size={18} />
@@ -355,9 +356,9 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
         <p className="mx-auto mt-10 max-w-2xl text-center text-sm text-muted">
           One person or one thousand — same two-minute setup, same engine.{" "}
           <Link href="/signup" className="font-medium text-brand hover:underline">Start free</Link> and scale when you&rsquo;re ready.
@@ -367,32 +368,34 @@ export default function LandingPage() {
       {/* What it does */}
       <section className="border-y border-border bg-surface/30">
         <div className="mx-auto max-w-6xl px-5 py-20">
-          <div className="mx-auto max-w-2xl text-center">
+          <Reveal className="mx-auto max-w-2xl text-center">
             <span className="eyebrow">What it does</span>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">A sales rep that doesn&rsquo;t sleep</h2>
-          </div>
-          <div className="mt-12 grid gap-5 md:grid-cols-3">
+          </Reveal>
+          <Stagger className="mt-12 grid gap-5 md:grid-cols-3">
             {CAPABILITIES.map((c) => (
-              <figure key={c.title} className="raised flex h-full flex-col rounded-2xl border border-border bg-surface p-7">
+              <StaggerItem key={c.title} className="h-full">
+                <figure className="raised flex h-full flex-col rounded-2xl border border-border bg-surface p-7">
                 <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20">
                   <Icon name={c.icon} size={18} />
                 </span>
                 <figcaption className="mt-5 text-base font-semibold text-fg">{c.title}</figcaption>
                 <p className="mt-2 flex-1 text-[15px] leading-relaxed text-body">{c.body}</p>
-              </figure>
+                </figure>
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         </div>
       </section>
 
       {/* What it replaces — the ROI math */}
       <section className="mx-auto max-w-5xl px-5 py-20">
-        <div className="mx-auto max-w-2xl text-center">
+        <Reveal className="mx-auto max-w-2xl text-center">
           <span className="eyebrow">The math</span>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">One system replaces the whole stack — and the headcount.</h2>
           <p className="mt-4 text-muted">What teams pay today to do what Revenue Recall does autonomously:</p>
-        </div>
-        <div className="raised mx-auto mt-10 grid max-w-3xl gap-px overflow-hidden rounded-2xl border border-border bg-border">
+        </Reveal>
+        <ScaleIn className="raised mx-auto mt-10 grid max-w-3xl gap-px overflow-hidden rounded-2xl border border-border bg-border">
           {[
             { item: "An SDR / appointment setter (salary + ramp)", cost: "$4,000–6,000 / mo" },
             { item: "Sales sequencer (Outreach, Salesloft)", cost: "$100+ / user / mo" },
@@ -414,7 +417,7 @@ export default function LandingPage() {
             </span>
             <span className="shrink-0 font-display text-lg font-semibold text-brand">from $299 / mo</span>
           </div>
-        </div>
+        </ScaleIn>
         <p className="mx-auto mt-6 max-w-2xl text-center text-sm text-muted">
           Reactivate a single mid-size deal and it&apos;s paid for the year. Everything else it recovers is margin.
         </p>
@@ -423,24 +426,24 @@ export default function LandingPage() {
       {/* Integrations / developer platform */}
       <section id="integrations" className="border-y border-border bg-surface/30">
         <div className="mx-auto max-w-6xl px-5 py-20">
-          <div className="mx-auto max-w-2xl text-center">
+          <Reveal className="mx-auto max-w-2xl text-center">
             <span className="eyebrow">Open platform</span>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Connects to everything you run</h2>
             <p className="mt-4 text-muted">A REST API, webhooks, and a drop-in form — so leads flow in from anywhere and your stack stays in sync, automatically.</p>
-          </div>
-          <div className="mt-12 grid gap-5 md:grid-cols-3">
+          </Reveal>
+          <Stagger className="mt-12 grid gap-5 md:grid-cols-3">
             {[
               { icon: "automations" as IconName, title: "REST API", body: "Push leads, and sync contacts & deals both ways with a workspace API key. Full two-way CRUD." },
               { icon: "bell" as IconName, title: "Signed webhooks", body: "Get events the moment they happen — lead.created, deal.won, and more — HMAC-signed for your peace of mind." },
               { icon: "leads" as IconName, title: "Embeddable form", body: "Drop a capture form on any site. Every submission becomes a lead the AI works immediately — no code." },
             ].map((f) => (
-              <div key={f.title} className="group raised lift rounded-2xl border border-border bg-surface p-6 hover:border-brand/40">
+              <StaggerItem key={f.title} className="group raised lift rounded-2xl border border-border bg-surface p-6 hover:border-brand/40">
                 <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20 transition-transform duration-200 ease-out group-hover:scale-105"><Icon name={f.icon} size={22} /></div>
                 <h3 className="mt-4 font-semibold text-fg">{f.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">{f.body}</p>
-              </div>
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
           <div className="mt-8 text-center">
             <Link href="/docs/api" className="inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline">
               Read the API docs <Arrow className="h-3.5 w-3.5" />
@@ -452,24 +455,25 @@ export default function LandingPage() {
       {/* Pricing */}
       <section id="pricing" className="border-y border-border bg-surface/30">
         <div className="mx-auto max-w-6xl px-5 py-20">
-          <div className="mx-auto max-w-2xl text-center">
+          <Reveal className="mx-auto max-w-2xl text-center">
             <span className="eyebrow">Pricing</span>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Priced per AI rep — a fraction of the human one.</h2>
             <p className="mt-4 text-muted">Start free and watch it surface the revenue you&apos;re losing. Add reps when it&apos;s already paying for itself.</p>
-          </div>
+          </Reveal>
           <PricingPlans />
         </div>
       </section>
 
       {/* FAQ */}
       <section className="mx-auto max-w-3xl px-5 py-20">
-        <div className="flex flex-col items-center text-center">
+        <Reveal className="flex flex-col items-center text-center">
           <span className="eyebrow">FAQ</span>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Questions, answered</h2>
-        </div>
-        <div className="mt-10 space-y-3">
+        </Reveal>
+        <Stagger className="mt-10 space-y-3">
           {FAQ.map((f) => (
-            <details key={f.q} className="group rounded-xl border border-border bg-surface p-5 transition-colors open:border-brand/30 [&_summary]:cursor-pointer">
+            <StaggerItem key={f.q}>
+            <details className="group rounded-xl border border-border bg-surface p-5 transition-colors open:border-brand/30 [&_summary]:cursor-pointer">
               <summary className="flex items-center justify-between gap-4 text-[15px] font-medium text-fg marker:content-['']">
                 {f.q}
                 <span className="grid h-6 w-6 flex-none place-items-center rounded-full border border-border text-muted transition-transform duration-200 ease-out group-open:rotate-45 group-open:border-brand/40 group-open:text-brand">
@@ -478,13 +482,14 @@ export default function LandingPage() {
               </summary>
               <p className="mt-3 text-sm leading-relaxed text-muted">{f.a}</p>
             </details>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </section>
 
       {/* Final CTA */}
       <section className="mx-auto max-w-6xl px-5 pb-24">
-        <div className="hero-glow bezel relative overflow-hidden rounded-3xl border border-border bg-surface px-8 py-20 text-center">
+        <ScaleIn className="hero-glow bezel relative overflow-hidden rounded-3xl border border-border bg-surface px-8 py-20 text-center">
           <div className="surface-grid absolute inset-0 opacity-30" />
           <div className="relative mx-auto max-w-2xl">
             <h2 className="text-3xl font-semibold tracking-tight text-fg sm:text-[2.75rem] sm:leading-[1.08]">Your pipeline is full of revenue you&apos;re not working.</h2>
@@ -503,7 +508,7 @@ export default function LandingPage() {
             </div>
             <p className="mt-4 text-xs text-muted">Free forever to start · No credit card · Cancel anytime</p>
           </div>
-        </div>
+        </ScaleIn>
       </section>
 
       <Footer />
