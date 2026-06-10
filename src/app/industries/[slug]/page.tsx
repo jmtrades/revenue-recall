@@ -53,14 +53,26 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
   const sampleVoice = full.playbook.sampleVoice.slice(0, 2);
   const term = full.terminology;
 
-  // JSON-LD so the page is rich-result eligible.
+  // JSON-LD so the page is rich-result eligible: the product itself + a
+  // breadcrumb trail (Industries → this industry) for breadcrumb rich results.
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: `Revenue Recall for ${ind.label}`,
-    applicationCategory: "BusinessApplication",
-    description: ind.blurb,
-    offers: { "@type": "Offer", category: "SaaS" },
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        name: `Revenue Recall for ${ind.label}`,
+        applicationCategory: "BusinessApplication",
+        description: ind.blurb,
+        offers: { "@type": "Offer", category: "SaaS" },
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Industries", item: `${SITE_URL}/industries` },
+          { "@type": "ListItem", position: 2, name: ind.label, item: `${SITE_URL}/industries/${params.slug}` },
+        ],
+      },
+    ],
   };
 
   return (
