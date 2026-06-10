@@ -4,7 +4,6 @@ import { engagementStats } from "@/lib/tracking";
 import { bookingStats } from "@/lib/meetings/stats";
 import { getOrgSettings } from "@/lib/org";
 import { getSubscription } from "@/lib/billing/store";
-import { canStartTrial } from "@/lib/billing/trial";
 import { getSessionUser } from "@/lib/auth";
 import { firstName } from "@/lib/copy";
 import { compactMoney, money, pct, relativeDays } from "@/lib/format";
@@ -12,7 +11,7 @@ import { PageHeader, Stat, ReasonBadge, ScoreDot, Card, Avatar, ActivityIcon, Bu
 import { Funnel, ProgressRing, BarChart, Sparkline } from "@/components/charts";
 import { Icon } from "@/components/icons";
 import { DashboardWelcome } from "@/components/DashboardWelcome";
-import { StartTrialWatcher } from "@/components/StartTrialWatcher";
+import { StartCheckoutWatcher } from "@/components/StartCheckoutWatcher";
 
 export const dynamic = "force-dynamic";
 
@@ -44,9 +43,9 @@ export default async function DashboardPage() {
     engagementStats(),
     bookingStats(),
   ]);
-  // Only auto-open the trial checkout for someone who can actually start one —
-  // never re-prompt a customer who's already trialing or active.
-  const trialEligible = canStartTrial(sub.status);
+  // Only auto-open checkout for someone without a subscription — never
+  // re-prompt a customer who's already paying (or mid-dunning).
+  const checkoutEligible = sub.status === "none" || sub.status === "canceled";
   const m = o.metrics;
   const wonSeries = reports.monthlyWon;
   const wonThisMonth = wonSeries[wonSeries.length - 1]?.value ?? 0;
@@ -65,11 +64,11 @@ export default async function DashboardPage() {
   // Brand-new workspace: no deals and nothing logged yet. Zero-filled stats and
   // empty charts read as broken — show a guided first-run experience instead.
   const isEmpty = m.openCount + m.wonCount + m.lostCount === 0 && feed.length === 0;
-  if (isEmpty) return (<><StartTrialWatcher eligible={trialEligible} /><DashboardWelcome greeting={greeting} /></>);
+  if (isEmpty) return (<><StartCheckoutWatcher eligible={checkoutEligible} /><DashboardWelcome greeting={greeting} /></>);
 
   return (
     <div className="space-y-6">
-      <StartTrialWatcher eligible={trialEligible} />
+      <StartCheckoutWatcher eligible={checkoutEligible} />
       <PageHeader
         title={greeting}
         subtitle={focusLine(o.recallSummary.itemCount, o.recallSummary.totalRecoverable, m.currency)}

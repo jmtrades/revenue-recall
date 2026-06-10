@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { billingConfigured, createCheckoutSession, trialDays } from "@/lib/billing/stripe";
+import { billingConfigured, createCheckoutSession } from "@/lib/billing/stripe";
 import { getSubscription } from "@/lib/billing/store";
 import { isPlanId } from "@/lib/billing/plans";
 import { getSessionUser } from "@/lib/auth";
@@ -44,10 +44,6 @@ export async function POST(req: Request) {
       cycle: parsed.data.cycle,
       customerEmail: user?.email,
       embedded: parsed.data.embedded,
-      // Card-required free trial: a card is collected now; the trial (and the
-      // "trialing" status) only begins once checkout completes, via the webhook —
-      // never on intent alone, so there's no card-less trial.
-      trialDays: trialDays(),
       successUrl: `${origin}/settings?billing=success`,
       cancelUrl: `${origin}/settings?billing=cancelled`,
       returnUrl: `${origin}/settings?billing=success&session_id={CHECKOUT_SESSION_ID}`,

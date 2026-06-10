@@ -17,7 +17,7 @@ and live AI phone calls. The app is already deployed and live at
 
 ## What's already live — do NOT redo
 Database (Supabase), AI brain (Anthropic), login/accounts, **email sending**, and
-**billing** (Stripe, live, with a card-required 14‑day free trial). You're only
+**billing** (Stripe, live — paid checkouts charge immediately; no trial). You're only
 adding: compliance info, **SMS**, **phone calls**, and **numbers**.
 
 ## Cost (so there are no surprises)

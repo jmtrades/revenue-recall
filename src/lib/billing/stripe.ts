@@ -20,17 +20,6 @@ export function billingConfigured(): boolean {
 }
 
 /**
- * Free-trial length (days) for paid-plan checkouts. Default 14, override with
- * STRIPE_TRIAL_DAYS; set to 0 to disable trials (charge immediately). A trial
- * still collects a card up front — `createCheckoutSession` forces
- * payment_method_collection=always — so "free trial" never means "no card".
- */
-export function trialDays(): number {
-  const n = Number(env("STRIPE_TRIAL_DAYS"));
-  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 14;
-}
-
-/**
  * Publishable key for client-side Stripe.js (embedded on-domain checkout).
  * Read at RUNTIME from STRIPE_PUBLISHABLE_KEY (no rebuild needed), with the
  * build-time NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY accepted as a fallback. The
@@ -156,9 +145,6 @@ export interface CheckoutInput {
   embedded?: boolean;
   /** Where Stripe returns the buyer after embedded checkout (use {CHECKOUT_SESSION_ID}). */
   returnUrl?: string;
-  /** Free-trial length in days. >0 starts the subscription in trial (card still
-   *  collected up front); 0/undefined charges immediately. */
-  trialDays?: number;
 }
 
 export interface CheckoutResult {
@@ -189,13 +175,6 @@ export async function createCheckoutSession(input: CheckoutInput): Promise<Check
     "subscription_data[metadata][org_id]": input.orgId,
     allow_promotion_codes: "true",
   };
-  // Card-required free trial: start the subscription in trial, but ALWAYS collect
-  // a payment method now — so the trial converts automatically and "free trial"
-  // never means "no card".
-  if (input.trialDays && input.trialDays > 0) {
-    form["subscription_data[trial_period_days]"] = String(input.trialDays);
-    form.payment_method_collection = "always";
-  }
   if (input.embedded) {
     form.ui_mode = "embedded";
     form.return_url = input.returnUrl ?? input.successUrl;

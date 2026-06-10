@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { verifyStripeSignature, planForPrice } from "@/lib/billing/stripe";
 import { saveSubscriptionForOrg, saveSubscriptionForCustomer, orgIdForCustomer, type SubStatus } from "@/lib/billing/store";
-import { sendTrialEndingEmail, sendPaymentFailedEmail } from "@/lib/billing/lifecycle";
+import { sendPaymentFailedEmail } from "@/lib/billing/lifecycle";
 import { isPlanId } from "@/lib/billing/plans";
 import { addUsageCredits } from "@/lib/ai/usage";
-import { trialDays } from "@/lib/billing/stripe";
 import { logError, errMessage } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
@@ -67,10 +66,8 @@ export async function POST(req: Request) {
         if (orgId) {
           await saveSubscriptionForOrg(orgId, {
             plan: isPlanId(metaPlan) ? metaPlan : "growth",
-            // Card-required trials start in "trialing"; the subscription.* and
-            // invoice.payment_succeeded events flip it to "active" when the trial
-            // converts. (Stripe also sends subscription.created right after.)
-            status: trialDays() > 0 ? "trialing" : "active",
+            // No trials: a completed checkout charges immediately and is active.
+            status: "active",
             stripeCustomerId: (obj.customer as string) ?? undefined,
             stripeSubscriptionId: (obj.subscription as string) ?? undefined,
           });
@@ -116,14 +113,9 @@ export async function POST(req: Request) {
         break;
       }
       case "customer.subscription.trial_will_end": {
-        // Stripe fires this ~3 days before a trial converts and charges the
-        // card. The single highest-leverage conversion email a SaaS sends.
-        const customer = obj.customer as string;
-        const orgId = customer
-          ? (await orgIdForCustomer(customer).catch(() => null)) ?? ((obj.metadata as Record<string, string> | undefined)?.org_id ?? null)
-          : ((obj.metadata as Record<string, string> | undefined)?.org_id ?? null);
-        const trialEnd = typeof obj.trial_end === "number" ? new Date(obj.trial_end * 1000).toISOString() : undefined;
-        if (orgId) await sendTrialEndingEmail(orgId, trialEnd, event.id).catch(() => {});
+        // The product no longer offers trials, so this only fires for
+        // subscriptions created before trials were removed. Acknowledge and
+        // ignore — the trial simply converts (or cancels) on Stripe's side.
         break;
       }
       case "invoice.payment_succeeded": {
