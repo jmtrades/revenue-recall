@@ -91,15 +91,6 @@ const INDUSTRY_ICONS: Record<string, IconName> = {
   home_services: "wrench",
 };
 
-// Honest capability statements — what the system actually does. No fabricated
-// customer quotes: we don't invent testimonials or attribute words to people
-// who didn't say them. Swap in real, attributable quotes once customers consent.
-const CAPABILITIES: { title: string; body: string; icon: IconName }[] = [
-  { title: "Works deals you've written off", body: "It re-engages cold and lost deals on a cadence — the second touch almost no team ever sends — and routes replies back into your pipeline.", icon: "recall" },
-  { title: "Replaces the busywork, not the judgment", body: "Prospecting, dialing, follow-up, and logging run autonomously. You approve, close, and keep the relationships.", icon: "approvals" },
-  { title: "Runs with a CRM or none at all", body: "The same playbook works on a team with Salesforce and a team with nothing. Built-in CRM included; plug into yours when ready.", icon: "database" },
-];
-
 // Who it's for — the SAME engine, right-sized for a team of one or a team of
 // thousands. Proves the product spans solo operators through the enterprise.
 const AUDIENCES: { scale: string; icon: IconName; title: string; body: string; points: string[] }[] = [
@@ -185,14 +176,14 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="hero-glow relative overflow-hidden">
         <div className="surface-grid absolute inset-0 opacity-40" />
-        <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-12 px-5 pb-20 pt-14 lg:grid-cols-2 lg:items-center lg:pb-28 lg:pt-20">
+        <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-8 px-5 pb-12 pt-10 sm:gap-12 sm:pb-20 sm:pt-14 lg:grid-cols-2 lg:items-center lg:pb-28 lg:pt-20">
           <div className="min-w-0 animate-fade-up">
             <span className="eyebrow">Autonomous outbound · every industry, any size</span>
-            <h1 className="display-hero mt-5 text-[2.9rem] font-semibold leading-[0.98] tracking-[-0.02em] sm:text-[3.5rem] lg:text-[4.25rem]">
+            <h1 className="display-hero mt-5 text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.02em] sm:text-[3.5rem] sm:leading-[0.98] lg:text-[4.25rem]">
               Put your entire sales operation <span className="gradient-text">on autopilot.</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-body">
-              Revenue Recall doesn&apos;t just draft messages — it <strong className="font-semibold text-fg">runs your outbound end to end</strong>. It finds the deals slipping away, works them across email, SMS, and the phone, follows up until they reply, and recovers the revenue you&apos;re losing. A sales force that never sleeps — for a solo founder or a thousand-rep enterprise, in any industry, on any CRM, or none.
+              An AI sales force that <strong className="font-semibold text-fg">runs your outbound end to end</strong> — finds the deals slipping away, works them by email, text, and phone until they reply, and wins back the revenue you&apos;re losing. Any industry. Any CRM, or none.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link href="/signup" className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-2 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand/90">
@@ -206,7 +197,7 @@ export default function LandingPage() {
                 <Arrow className="text-muted" />
               </Link>
             </div>
-            <p className="mt-3 text-xs text-muted">Free to start · No credit card · Live in 2 minutes</p>
+            <p className="mt-3 text-xs text-muted">Live in 2 minutes · Cancel anytime</p>
             <div className="mt-10 pt-6">
               <div className="hairline" />
               <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Runs closing teams in</p>
@@ -223,7 +214,7 @@ export default function LandingPage() {
       <section className="border-y border-border bg-surface/30">
         <Stagger className="mx-auto grid max-w-6xl grid-cols-1 divide-y divide-border px-5 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           {METRICS.map((m) => (
-            <StaggerItem key={m.label} className="px-2 py-10 text-center sm:px-8 sm:text-left">
+            <StaggerItem key={m.label} className="px-2 py-6 text-center sm:px-8 sm:py-10 sm:text-left">
               <div className="font-display text-4xl font-semibold tabular-nums tracking-tight text-fg sm:text-5xl">{m.stat}</div>
               <p className="mt-2 text-sm leading-relaxed text-muted">{m.label}</p>
             </StaggerItem>
@@ -412,29 +403,6 @@ export default function LandingPage() {
           One person or one thousand — same two-minute setup, same engine.{" "}
           <Link href="/signup" className="font-medium text-brand hover:underline">Start free</Link> and scale when you&rsquo;re ready.
         </p>
-      </section>
-
-      {/* What it does */}
-      <section className="border-y border-border bg-surface/30">
-        <div className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
-          <Reveal className="mx-auto max-w-2xl text-center">
-            <span className="eyebrow">What it does</span>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">A sales rep that doesn&rsquo;t sleep</h2>
-          </Reveal>
-          <Stagger className="mt-12 grid gap-5 md:grid-cols-3">
-            {CAPABILITIES.map((c) => (
-              <StaggerItem key={c.title} className="h-full">
-                <figure className="raised flex h-full flex-col rounded-2xl border border-border bg-surface p-7">
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20">
-                  <Icon name={c.icon} size={18} />
-                </span>
-                <figcaption className="mt-5 text-base font-semibold text-fg">{c.title}</figcaption>
-                <p className="mt-2 flex-1 text-[15px] leading-relaxed text-body">{c.body}</p>
-                </figure>
-              </StaggerItem>
-            ))}
-          </Stagger>
-        </div>
       </section>
 
       {/* What it replaces — the ROI math */}

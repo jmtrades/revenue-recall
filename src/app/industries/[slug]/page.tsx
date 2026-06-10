@@ -80,7 +80,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <MarketingNav />
 
-      <main className="mx-auto max-w-5xl px-6 py-16">
+      <main className="mx-auto max-w-5xl px-5 py-10 sm:py-16">
         <nav className="mb-6 flex items-center gap-2 text-sm text-muted">
           <Link href="/industries" className="hover:text-fg">Industries</Link>
           <span>/</span>
@@ -105,7 +105,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
         </section>
 
         {/* Pipeline out of the box */}
-        <section className="mt-16">
+        <section className="mt-10 sm:mt-16">
           <Reveal>
             <h2 className="text-2xl font-semibold text-fg">Your pipeline, day one</h2>
             <p className="mt-2 text-muted">No setup — the {ind.label} workspace lands with these stages, win-probabilities, and a {term.contact.toLowerCase()}/{term.opportunity.toLowerCase()} model already wired into the forecast.</p>
@@ -121,7 +121,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
         </section>
 
         {/* What it does for this vertical */}
-        <Stagger className="mt-16 grid gap-5 sm:grid-cols-3">
+        <Stagger className="mt-10 sm:mt-16 grid gap-5 sm:grid-cols-3">
           {[
             { icon: "recall" as const, title: "Recovers slipping deals", body: `It scores every ${term.opportunity.toLowerCase()} going cold across your ${openStages.length} working stages, ranks by recoverable ${term.value.toLowerCase()}, and works them back.` },
             { icon: "dialer" as const, title: "Every channel they answer", body: "Email, SMS, and a power dialer with AI call prep — tuned to the cadence and timing your buyers actually respond to." },
@@ -137,7 +137,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
 
         {/* Objection handling proof */}
         {objectionAngles && (
-          <section className="mt-16">
+          <section className="mt-10 sm:mt-16">
             <Reveal>
               <h2 className="text-2xl font-semibold text-fg">It answers the objections you actually hear</h2>
             </Reveal>
@@ -156,7 +156,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
 
         {/* Voice samples */}
         {sampleVoice.length > 0 && (
-          <section className="mt-16">
+          <section className="mt-10 sm:mt-16">
             <Reveal>
               <h2 className="text-2xl font-semibold text-fg">Messages that sound like you, not a bot</h2>
             </Reveal>
@@ -178,7 +178,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
         </ScaleIn>
 
         {/* Cross-links (internal SEO) */}
-        <Reveal className="mt-16 border-t border-border pt-8">
+        <Reveal className="mt-10 sm:mt-16 border-t border-border pt-8">
           <p className="text-sm text-muted">Other industries:</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {LISTED.filter((i) => i.id !== ind.id).map((i) => (
