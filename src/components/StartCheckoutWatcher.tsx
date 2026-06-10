@@ -31,9 +31,21 @@ export function StartCheckoutWatcher({ eligible = true }: { eligible?: boolean }
       clearCookie("rr_plan");
       clearCookie("rr_trial_plan");
     }
-    if (eligible && plan && PAID_PLANS.has(plan)) {
-      setCheckout({ endpoint: "/api/billing/checkout", body: { plan } });
-    }
+    if (!(eligible && plan && PAID_PLANS.has(plan))) return;
+    // Only auto-open checkout when billing is actually live. Otherwise a brand-new
+    // owner whose Stripe isn't configured yet would be greeted by a checkout
+    // error on their very first dashboard load — fail closed and stay silent;
+    // they can upgrade from Settings → Billing once it's switched on.
+    let cancelled = false;
+    fetch("/api/billing/config")
+      .then((r) => r.json())
+      .then((cfg) => {
+        if (!cancelled && cfg?.configured) setCheckout({ endpoint: "/api/billing/checkout", body: { plan } });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [eligible]);
   return <EmbeddedCheckoutModal request={checkout} onClose={() => setCheckout(null)} />;
 }

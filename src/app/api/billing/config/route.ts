@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { publishableKey } from "@/lib/billing/stripe";
+import { publishableKey, billingConfigured } from "@/lib/billing/stripe";
 import { enforcementOn } from "@/lib/billing/enforce";
 
 export const dynamic = "force-dynamic";
@@ -14,5 +14,7 @@ export const dynamic = "force-dynamic";
  * usage (calls + everything); when true, live AI/usage is gated to paid plans.
  */
 export async function GET() {
-  return NextResponse.json({ publishable: publishableKey() ?? null, enforce: enforcementOn() });
+  // `configured` lets the client avoid opening checkout (and showing an error)
+  // when Stripe isn't wired up yet — e.g. the post-signup auto-checkout.
+  return NextResponse.json({ publishable: publishableKey() ?? null, configured: billingConfigured(), enforce: enforcementOn() });
 }
