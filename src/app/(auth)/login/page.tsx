@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { AuthForm } from "@/components/AuthForm";
 
-export const metadata = { title: "Sign in — Revenue Recall" };
+// Utility page — no search value, so keep it out of the index (meta noindex,
+// not robots.txt, so crawlers can still reach it and see the directive).
+export const metadata = { title: "Sign in — Revenue Recall", robots: { index: false } };
 
 const CALLBACK_ERRORS: Record<string, string> = {
   link: "That sign-in link has expired or was already used. Please sign in again.",

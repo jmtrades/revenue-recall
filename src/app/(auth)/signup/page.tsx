@@ -2,7 +2,11 @@ import Link from "next/link";
 import { AuthForm } from "@/components/AuthForm";
 import { RememberPlan } from "@/components/RememberPlan";
 
-export const metadata = { title: "Create account — Revenue Recall" };
+export const metadata = {
+  title: "Create account — Revenue Recall",
+  description:
+    "Start with Revenue Recall — autonomous outbound that works every deal across email, SMS, and the phone. Live in two minutes, with any CRM or none.",
+};
 
 export default function SignupPage({ searchParams }: { searchParams?: { plan?: string } }) {
   const plan = searchParams?.plan;
