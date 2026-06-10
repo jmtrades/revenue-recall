@@ -207,22 +207,22 @@ export default function LandingPage() {
 
       {/* Metrics strip */}
       <section className="border-y border-border bg-surface/30">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 divide-y divide-border px-5 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <Stagger className="mx-auto grid max-w-6xl grid-cols-1 divide-y divide-border px-5 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           {METRICS.map((m) => (
-            <div key={m.label} className="px-2 py-10 text-center sm:px-8 sm:text-left">
+            <StaggerItem key={m.label} className="px-2 py-10 text-center sm:px-8 sm:text-left">
               <div className="font-display text-4xl font-semibold tabular-nums tracking-tight text-fg sm:text-5xl">{m.stat}</div>
               <p className="mt-2 text-sm leading-relaxed text-muted">{m.label}</p>
-            </div>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </section>
 
       {/* Integrations / works-with bar */}
       <section className="border-b border-border">
-        <div className="mx-auto max-w-6xl px-5 py-10">
+        <Reveal className="mx-auto max-w-6xl px-5 py-10">
           <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Runs on the stack you already use — or none of it</p>
           <BrandLogos />
-        </div>
+        </Reveal>
       </section>
 
       {/* Objection killer: not a drafting tool */}
