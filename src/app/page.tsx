@@ -8,6 +8,7 @@ import { BrandLogos } from "@/components/marketing/BrandLogos";
 import { Icon, type IconName } from "@/components/icons";
 import { Reveal, Stagger, StaggerItem, ScaleIn } from "@/components/motion/Motion";
 import { INDUSTRIES } from "@/lib/industries";
+import { SITE_URL } from "@/lib/site";
 
 const DESCRIPTION =
   "Revenue Recall is an autonomous AI sales force. It runs your outbound end to end — finds the deals slipping away, works them across email, SMS, and the phone, follows up until they reply, and recovers the revenue you're losing. Every industry. Any CRM, or none.";
@@ -22,6 +23,39 @@ export const metadata = {
     siteName: "Revenue Recall",
   },
   twitter: { card: "summary_large_image", title: "Revenue Recall", description: DESCRIPTION },
+  alternates: { canonical: SITE_URL },
+};
+
+// Structured data so search engines render a rich result (org + product). No
+// hardcoded price — `catalog.ts` is the single source of truth for that, and we
+// don't fabricate ratings or reviews.
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: "Revenue Recall",
+      url: SITE_URL,
+      logo: `${SITE_URL}/icon.svg`,
+      description: DESCRIPTION,
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: "Revenue Recall",
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "Revenue Recall",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description: DESCRIPTION,
+      offers: { "@type": "Offer", category: "SaaS" },
+    },
+  ],
 };
 
 // What it actually DOES — the whole motion, not a writing assistant.
@@ -131,6 +165,7 @@ function CrossMini() {
 export default function LandingPage() {
   return (
     <div className="landing min-h-screen">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       <MarketingNav />
 
       {/* Hero */}

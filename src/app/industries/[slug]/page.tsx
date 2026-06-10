@@ -7,6 +7,7 @@ import { StickyCTA } from "@/components/marketing/StickyCTA";
 import { Icon } from "@/components/icons";
 import { Reveal, Stagger, StaggerItem, ScaleIn } from "@/components/motion/Motion";
 import { INDUSTRIES, getIndustry } from "@/lib/industries";
+import { SITE_URL } from "@/lib/site";
 
 export const dynamic = "force-static";
 
@@ -32,7 +33,7 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
   if (!ind) return {};
   const title = `${ind.label} sales automation — Revenue Recall`;
   const description = `Autonomous outbound built for ${ind.label.toLowerCase()}: a ${ind.pipeline.label.toLowerCase()} tuned to how you actually sell, AI that works every slipping deal across email, SMS, and the phone, and the revenue you're losing — recovered. ${ind.blurb}`;
-  const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.recall-touch.com"}/industries/${params.slug}`;
+  const url = `${SITE_URL}/industries/${params.slug}`;
   return {
     title,
     description,
