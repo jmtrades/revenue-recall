@@ -188,11 +188,11 @@ export default function LandingPage() {
         <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-12 px-5 pb-20 pt-14 lg:grid-cols-2 lg:items-center lg:pb-28 lg:pt-20">
           <div className="min-w-0 animate-fade-up">
             <span className="eyebrow">Autonomous outbound · every industry, any size</span>
-            <h1 className="display-hero mt-5 text-[2.9rem] font-semibold leading-[0.98] tracking-[-0.02em] sm:text-[3.5rem] lg:text-[4.25rem]">
+            <h1 className="display-hero mt-5 text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.02em] sm:text-[3.5rem] sm:leading-[0.98] lg:text-[4.25rem]">
               Put your entire sales operation <span className="gradient-text">on autopilot.</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-body">
-              Revenue Recall doesn&apos;t just draft messages — it <strong className="font-semibold text-fg">runs your outbound end to end</strong>. It finds the deals slipping away, works them across email, SMS, and the phone, follows up until they reply, and recovers the revenue you&apos;re losing. A sales force that never sleeps — for a solo founder or a thousand-rep enterprise, in any industry, on any CRM, or none.
+              An AI sales force that <strong className="font-semibold text-fg">runs your outbound end to end</strong> — finds the deals slipping away, works them by email, text, and phone until they reply, and wins back the revenue you&apos;re losing. Any industry. Any CRM, or none.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link href="/signup" className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-2 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand/90">
@@ -206,7 +206,7 @@ export default function LandingPage() {
                 <Arrow className="text-muted" />
               </Link>
             </div>
-            <p className="mt-3 text-xs text-muted">Free to start · No credit card · Live in 2 minutes</p>
+            <p className="mt-3 text-xs text-muted">Live in 2 minutes · Cancel anytime</p>
             <div className="mt-10 pt-6">
               <div className="hairline" />
               <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Runs closing teams in</p>

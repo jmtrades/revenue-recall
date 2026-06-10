@@ -48,7 +48,7 @@ export function PricingPlans() {
         </div>
       </div>
 
-      <Stagger className="mt-12 grid items-start gap-5 lg:grid-cols-4">
+      <Stagger className="mt-12 grid items-start gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {PLANS.map((p) => {
           const isCustom = p.monthly === null;
           const isFree = p.monthly === 0;

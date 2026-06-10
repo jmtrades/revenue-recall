@@ -22,7 +22,7 @@ export default function IndustriesIndex() {
   return (
     <div className="min-h-screen bg-bg">
       <MarketingNav />
-      <main className="mx-auto max-w-5xl px-6 py-16">
+      <main className="mx-auto max-w-5xl px-5 py-10 sm:py-16">
         <span className="eyebrow">Built for your world</span>
         <h1 className="mt-3 text-4xl font-semibold tracking-tight text-fg sm:text-5xl">Sales automation tuned to how your industry actually sells.</h1>
         <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted">
