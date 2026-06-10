@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { fill, type ProspectStrings } from "@/lib/i18n/prospect";
 import type { BookableSlot } from "@/lib/meetings/types";
 
@@ -25,7 +26,10 @@ interface Props {
 
 const field = "w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-fg outline-none focus:border-brand";
 
+const EASE = [0.23, 1, 0.32, 1] as const;
+
 export function BookingWidget({ org, token, brand, meeting, others, slots, s }: Props) {
+  const reduced = useReducedMotion();
   const [selected, setSelected] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,13 +84,18 @@ export function BookingWidget({ org, token, brand, meeting, others, slots, s }: 
 
   if (done) {
     return (
-      <div className="text-center">
+      <motion.div
+        className="text-center"
+        initial={reduced ? false : { opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.45, ease: EASE }}
+      >
         <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-success/15 text-2xl text-success">✓</div>
         <h1 className="font-display text-lg font-semibold text-fg">{s.bookedTitle}</h1>
         <p className="mt-2 text-sm text-muted">{fill(s.bookedWith, { meeting: meeting.name, brand })}</p>
         <p className="mt-1 text-sm font-medium text-fg">{done.when}</p>
         <p className="mt-3 text-xs text-muted">{s.bookedFootnote}</p>
-      </div>
+      </motion.div>
     );
   }
 
@@ -128,23 +137,34 @@ export function BookingWidget({ org, token, brand, meeting, others, slots, s }: 
               </button>
             ))}
           </div>
-          {/* Times */}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {/* Times — keyed by day so switching days re-cascades the grid. */}
+          <motion.div
+            key={active?.key}
+            className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+            initial={reduced ? false : "hidden"}
+            animate="show"
+            variants={{ hidden: {}, show: { transition: { staggerChildren: 0.025 } } }}
+          >
             {active?.slots.map((sl) => (
-              <button
+              <motion.button
                 key={sl.start}
                 type="button"
                 onClick={() => setSelected(sl.start)}
+                variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: EASE } } }}
+                whileTap={reduced ? undefined : { scale: 0.96 }}
                 className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-fg transition hover:border-brand hover:bg-brand/5"
               >
                 {formatTime(sl.start)}
-              </button>
+              </motion.button>
             ))}
-          </div>
+          </motion.div>
         </div>
       ) : (
-        <form
+        <motion.form
           className="mt-5 space-y-3"
+          initial={reduced ? false : { opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: EASE }}
           onSubmit={(e) => {
             e.preventDefault();
             void submit(e.currentTarget);
@@ -179,7 +199,7 @@ export function BookingWidget({ org, token, brand, meeting, others, slots, s }: 
             {submitting ? s.confirming : s.confirm}
           </button>
           <p className="text-center text-[11px] text-muted">{s.bookingFootnote}</p>
-        </form>
+        </motion.form>
       )}
     </div>
   );

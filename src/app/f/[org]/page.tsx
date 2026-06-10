@@ -31,8 +31,9 @@ export default async function HostedLeadForm({ params, searchParams }: Props) {
   const s = prospectStrings(valid ? language : undefined);
 
   return (
-    <main dir={s.dir} className="grid min-h-screen place-items-center bg-bg px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-lg">
+    <main dir={s.dir} className="hero-glow relative grid min-h-screen place-items-center overflow-hidden bg-bg px-4 py-10">
+      <div className="surface-grid absolute inset-0 opacity-30" aria-hidden />
+      <div className="raised relative w-full max-w-md rounded-2xl border border-border bg-surface p-6 animate-fade-up">
         {!valid ? (
           <div className="text-center">
             <h1 className="font-display text-lg font-semibold text-fg">{s.formUnavailableTitle}</h1>

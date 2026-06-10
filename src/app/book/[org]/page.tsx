@@ -90,8 +90,9 @@ export default async function BookingPage({ params, searchParams }: Props) {
 
 function Shell({ children, dir }: { children: React.ReactNode; dir: "ltr" | "rtl" }) {
   return (
-    <main dir={dir} className="grid min-h-screen place-items-center bg-bg px-4 py-10">
-      <div className="w-full max-w-xl rounded-2xl border border-border bg-surface p-6 shadow-lg">{children}</div>
+    <main dir={dir} className="hero-glow relative grid min-h-screen place-items-center overflow-hidden bg-bg px-4 py-10">
+      <div className="surface-grid absolute inset-0 opacity-30" aria-hidden />
+      <div className="raised relative w-full max-w-xl rounded-2xl border border-border bg-surface p-6 animate-fade-up">{children}</div>
     </main>
   );
 }
