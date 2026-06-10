@@ -240,7 +240,7 @@ export default function LandingPage() {
       </section>
 
       {/* Objection killer: not a drafting tool */}
-      <section className="mx-auto max-w-5xl px-5 py-20">
+      <section className="mx-auto max-w-5xl px-5 py-14 sm:py-20">
         <Reveal className="mx-auto max-w-2xl text-center">
           <span className="eyebrow">The difference</span>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">
@@ -280,7 +280,7 @@ export default function LandingPage() {
 
       {/* Pillars — what it does */}
       <section id="features" className="border-y border-border bg-surface/30">
-        <div className="mx-auto max-w-6xl px-5 py-20">
+        <div className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
           <Reveal className="mx-auto max-w-2xl text-center">
             <span className="eyebrow">One system, the whole motion</span>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">An autonomous sales force, not a feature</h2>
@@ -298,7 +298,7 @@ export default function LandingPage() {
       </section>
 
       {/* Autonomy spectrum */}
-      <section className="mx-auto max-w-5xl px-5 py-20">
+      <section className="mx-auto max-w-5xl px-5 py-14 sm:py-20">
         <Reveal className="mx-auto max-w-2xl text-center">
           <span className="eyebrow">You set the leash</span>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">From co-pilot to fully hands-off</h2>
@@ -329,7 +329,7 @@ export default function LandingPage() {
 
       {/* How it works */}
       <section id="how" className="border-y border-border bg-surface/30">
-        <div className="mx-auto max-w-6xl px-5 py-20">
+        <div className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
           <Reveal className="mx-auto max-w-2xl text-center">
             <span className="eyebrow">How it works</span>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Live in minutes. Recovering by day one.</h2>
@@ -355,7 +355,7 @@ export default function LandingPage() {
       </section>
 
       {/* Industries */}
-      <section id="industries" className="mx-auto max-w-6xl px-5 py-20">
+      <section id="industries" className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
         <Reveal className="mx-auto max-w-2xl text-center">
           <span className="eyebrow">Tuned to your world</span>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Built for every industry</h2>
@@ -380,7 +380,7 @@ export default function LandingPage() {
       </section>
 
       {/* Who it's for — solo operators through the enterprise */}
-      <section id="who" className="mx-auto max-w-6xl px-5 py-20">
+      <section id="who" className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
         <Reveal className="mx-auto max-w-2xl text-center">
           <span className="eyebrow">Who it&rsquo;s for</span>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">From solo founders to the enterprise</h2>
@@ -416,7 +416,7 @@ export default function LandingPage() {
 
       {/* What it does */}
       <section className="border-y border-border bg-surface/30">
-        <div className="mx-auto max-w-6xl px-5 py-20">
+        <div className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
           <Reveal className="mx-auto max-w-2xl text-center">
             <span className="eyebrow">What it does</span>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">A sales rep that doesn&rsquo;t sleep</h2>
@@ -438,7 +438,7 @@ export default function LandingPage() {
       </section>
 
       {/* What it replaces — the ROI math */}
-      <section className="mx-auto max-w-5xl px-5 py-20">
+      <section className="mx-auto max-w-5xl px-5 py-14 sm:py-20">
         <Reveal className="mx-auto max-w-2xl text-center">
           <span className="eyebrow">The math</span>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">One system replaces the whole stack — and the headcount.</h2>
@@ -474,7 +474,7 @@ export default function LandingPage() {
 
       {/* Integrations / developer platform */}
       <section id="integrations" className="border-y border-border bg-surface/30">
-        <div className="mx-auto max-w-6xl px-5 py-20">
+        <div className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
           <Reveal className="mx-auto max-w-2xl text-center">
             <span className="eyebrow">Open platform</span>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Connects to everything you run</h2>
@@ -503,7 +503,7 @@ export default function LandingPage() {
 
       {/* Pricing */}
       <section id="pricing" className="border-y border-border bg-surface/30">
-        <div className="mx-auto max-w-6xl px-5 py-20">
+        <div className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
           <Reveal className="mx-auto max-w-2xl text-center">
             <span className="eyebrow">Pricing</span>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Priced per AI rep — a fraction of the human one.</h2>
@@ -514,7 +514,7 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="mx-auto max-w-3xl px-5 py-20">
+      <section id="faq" className="mx-auto max-w-3xl px-5 py-14 sm:py-20">
         <Reveal className="flex flex-col items-center text-center">
           <span className="eyebrow">FAQ</span>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Questions, answered</h2>
