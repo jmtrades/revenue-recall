@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { setBookingStatus, getBooking } from "@/lib/meetings/store";
 import { resolveProvider } from "@/lib/crm/registry";
+import { emitWebhook } from "@/lib/webhooks-out";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { withGuard } from "@/lib/api/guard";
 
@@ -33,6 +34,10 @@ export const POST = withGuard(async (req: Request) => {
       await resolveProvider()
         .then((p) => p.logActivity({ contactId: booking.contactId ?? undefined, opportunityId: booking.dealId ?? undefined, kind: "note", summary: `Meeting marked ${LABEL[status] ?? status}: ${booking.meetingName} with ${booking.inviteeName}.`, occurredAt: new Date().toISOString() }))
         .catch(() => undefined);
+    }
+    // Emit a lifecycle webhook for a real outcome change (not a reopen).
+    if (status !== "confirmed") {
+      await emitWebhook(`meeting.${status === "no_show" ? "no_show" : status}`, { bookingId: id, contactId: booking.contactId, dealId: booking.dealId, name: booking.inviteeName, meeting: booking.meetingName, startsAt: booking.startsAt, by: "rep" }).catch(() => undefined);
     }
     return NextResponse.json({ ok: true });
   } catch (e) {

@@ -11,6 +11,14 @@ const h = vi.hoisted(() => ({
   booking: null as Booking | null,
   setCalls: [] as Array<{ id: string; status: string }>,
   activities: [] as string[],
+  webhooks: [] as string[],
+}));
+
+vi.mock("@/lib/webhooks-out", async (orig) => ({
+  ...(await orig<typeof import("@/lib/webhooks-out")>()),
+  emitWebhook: vi.fn(async (event: string) => {
+    h.webhooks.push(event);
+  }),
 }));
 
 vi.mock("@/lib/meetings/store", async (orig) => ({
@@ -39,6 +47,7 @@ beforeEach(() => {
   h.booking = null;
   h.setCalls = [];
   h.activities = [];
+  h.webhooks = [];
   _resetRateLimit();
 });
 
@@ -68,5 +77,6 @@ describe("POST /api/meetings/status", () => {
     expect(res.status).toBe(200);
     expect(h.setCalls).toEqual([{ id: "bk_1", status: "no_show" }]);
     expect(h.activities.some((a) => /no-show/.test(a))).toBe(true);
+    expect(h.webhooks).toContain("meeting.no_show");
   });
 });

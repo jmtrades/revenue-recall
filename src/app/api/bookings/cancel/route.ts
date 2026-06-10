@@ -6,6 +6,7 @@ import { verifyBookingManageToken } from "@/lib/meetings/manage";
 import { hostedBookingUrl } from "@/lib/meetings/token";
 import { ownerEmailsForOrg } from "@/lib/billing/lifecycle";
 import { sendEmail } from "@/lib/comms";
+import { emitWebhook } from "@/lib/webhooks-out";
 import { prospectStrings, fill, type ProspectStrings } from "@/lib/i18n/prospect";
 import { localeFor } from "@/lib/languages";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
@@ -94,6 +95,7 @@ export async function POST(req: Request) {
       for (const addr of owners) {
         await sendEmail(addr, `Booking cancelled: ${booking.meetingName} with ${booking.inviteeName}`, `${booking.inviteeName} cancelled their ${booking.meetingName}. The slot is free again.`, { internal: true }).catch(() => null);
       }
+      await emitWebhook("meeting.cancelled", { bookingId: booking.id, contactId: booking.contactId, dealId: booking.dealId, name: booking.inviteeName, meeting: booking.meetingName, startsAt: booking.startsAt, by: "invitee" }).catch(() => undefined);
     }
     return { booking, brand: settings?.name || "us", lang: settings?.language };
   }).catch(() => ({ booking: null, brand: "us", lang: undefined as string | undefined }));

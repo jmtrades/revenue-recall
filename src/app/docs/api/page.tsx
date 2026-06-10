@@ -143,9 +143,11 @@ x-api-key: rr_live_xxxxxxxxxxxxxxxx`}</Code>
             <code className="text-fg">lead.created</code> (every API and form capture),{" "}
             <code className="text-fg">contact.created</code>, <code className="text-fg">contact.updated</code>,{" "}
             <code className="text-fg">deal.created</code>, <code className="text-fg">deal.stage_changed</code>,{" "}
-            <code className="text-fg">deal.won</code>, <code className="text-fg">deal.lost</code>, and{" "}
-            <code className="text-fg">message.received</code> (a lead replied). Verify each delivery with the signing
-            secret shown when you save the endpoint.
+            <code className="text-fg">deal.won</code>, <code className="text-fg">deal.lost</code>,{" "}
+            <code className="text-fg">message.received</code> (a lead replied),{" "}
+            <code className="text-fg">meeting.booked</code>, <code className="text-fg">meeting.cancelled</code>,{" "}
+            <code className="text-fg">meeting.completed</code>, and <code className="text-fg">meeting.no_show</code>.
+            Verify each delivery with the signing secret shown when you save the endpoint.
           </p>
           <Code>{`POST (your endpoint)
 X-RR-Event: lead.created

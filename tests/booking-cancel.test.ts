@@ -11,6 +11,14 @@ const h = vi.hoisted(() => ({
   booking: null as Booking | null,
   cancelled: [] as string[],
   ownerEmails: [] as Array<{ to: string; subject: string }>,
+  webhooks: [] as string[],
+}));
+
+vi.mock("@/lib/webhooks-out", async (orig) => ({
+  ...(await orig<typeof import("@/lib/webhooks-out")>()),
+  emitWebhook: vi.fn(async (event: string) => {
+    h.webhooks.push(event);
+  }),
 }));
 
 vi.mock("@/lib/meetings/store", async (orig) => ({
@@ -67,6 +75,7 @@ beforeEach(() => {
   h.booking = null;
   h.cancelled = [];
   h.ownerEmails = [];
+  h.webhooks = [];
   _resetRateLimit();
   process.env.UNSUBSCRIBE_SECRET = "test-secret";
   process.env.NEXT_PUBLIC_SITE_URL = "https://app.example.com";
@@ -135,6 +144,7 @@ describe("POST /api/bookings/cancel (perform cancel)", () => {
     expect(html).toContain("https://app.example.com/book/org_1"); // rebook CTA
     expect(h.cancelled).toEqual(["bk_1"]);
     expect(h.ownerEmails.some((e) => e.to === "owner@acme.com" && /Booking cancelled/.test(e.subject))).toBe(true);
+    expect(h.webhooks).toContain("meeting.cancelled");
   });
 
   it("rejects a bad token (401) and doesn't cancel", async () => {
