@@ -8,19 +8,20 @@ const COLS: { heading: string; links: { label: string; href: string }[] }[] = [
   {
     heading: "Product",
     links: [
-      { label: "Revenue Recall", href: "#features" },
-      { label: "Power Dialer", href: "#features" },
-      { label: "Automations", href: "#features" },
-      { label: "Pricing", href: "#pricing" },
+      { label: "Revenue Recall", href: "/#features" },
+      { label: "Power Dialer", href: "/#features" },
+      { label: "Automations", href: "/#features" },
+      { label: "Pricing", href: "/#pricing" },
     ],
   },
   {
     heading: "Industries",
     links: [
-      { label: "Real Estate", href: "#industries" },
-      { label: "Mortgage & Lending", href: "#industries" },
-      { label: "Insurance", href: "#industries" },
-      { label: "SaaS & Agencies", href: "#industries" },
+      { label: "Real Estate", href: "/industries/real-estate" },
+      { label: "Mortgage & Lending", href: "/industries/mortgage" },
+      { label: "Insurance", href: "/industries/insurance" },
+      { label: "SaaS", href: "/industries/saas" },
+      { label: "All industries", href: "/industries" },
     ],
   },
   {
