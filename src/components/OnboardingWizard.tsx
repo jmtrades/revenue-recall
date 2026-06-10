@@ -147,9 +147,13 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
   }
 
   return (
-    <div className="relative mx-auto flex min-h-[100dvh] max-w-2xl flex-col px-6 py-12">
-      {/* ambient brand glow */}
-      <div className="hero-glow pointer-events-none absolute inset-x-0 top-0 h-72" aria-hidden />
+    // Full-bleed stage: the same layered material as the marketing/auth shells
+    // (blueprint grid + brand glow), so onboarding feels like the same product
+    // the landing page sold — not a bare form floating on a void.
+    <div className="relative min-h-[100dvh]">
+      <div className="surface-grid pointer-events-none absolute inset-0 opacity-40" aria-hidden />
+      <div className="hero-glow pointer-events-none absolute inset-x-0 top-0 h-80" aria-hidden />
+      <div className="relative mx-auto flex min-h-[100dvh] max-w-2xl flex-col px-6 py-12">
 
       <div className="relative mb-8 flex items-center gap-2.5">
         <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-brand text-[13px] font-bold tracking-tight text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)] ring-1 ring-inset ring-white/10">RR</span>
@@ -370,6 +374,7 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
         )}
       </div>
       <p className="relative mt-3 text-center text-[11px] text-muted">You can change any of this later in Settings.</p>
+      </div>
     </div>
   );
 }

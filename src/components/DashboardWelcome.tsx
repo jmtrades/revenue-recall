@@ -35,13 +35,16 @@ const STEPS: { icon: IconName; title: string; body: string; href: string; cta: s
 export function DashboardWelcome({ greeting }: { greeting: string }) {
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-border bg-gradient-to-br from-brand-soft/40 to-surface px-7 py-9">
-        <span className="eyebrow text-brand">Welcome</span>
-        <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight text-fg sm:text-3xl">{greeting} — let&rsquo;s get your pipeline working.</h1>
-        <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
-          Revenue Recall is ready. Bring in your deals and it starts surfacing the revenue you&rsquo;re losing, drafts
-          outreach in your voice, and works every deal around the clock. Pick a way to start:
-        </p>
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-brand-soft/40 to-surface px-7 py-9">
+        <div className="surface-grid absolute inset-0 opacity-30" aria-hidden />
+        <div className="relative">
+          <span className="eyebrow text-brand">Welcome</span>
+          <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight text-fg sm:text-3xl">{greeting} — let&rsquo;s get your pipeline working.</h1>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
+            Revenue Recall is ready. Bring in your deals and it starts surfacing the revenue you&rsquo;re losing, drafts
+            outreach in your voice, and works every deal around the clock. Pick a way to start:
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-5 md:grid-cols-3">
