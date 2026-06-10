@@ -257,6 +257,17 @@ export async function busyIntervals(fromIso: string, toIso: string): Promise<{ s
   return ((data as { starts_at: string; ends_at: string }[] | null) ?? []).map((r) => ({ start: r.starts_at, end: r.ends_at }));
 }
 
+/** One booking by id (org-scoped), or null. Never throws. */
+export async function getBooking(id: string): Promise<Booking | null> {
+  const client = getSupabase();
+  if (!client) return null;
+  const orgId = await resolveActiveOrgId().catch(() => null);
+  if (!orgId) return null;
+  const { data, error } = await client.from("bookings").select(BK_COLS).eq("org_id", orgId).eq("id", id).maybeSingle();
+  if (error || !data) return null;
+  return toBooking(data as BookingRow);
+}
+
 /** The org's bookings (soonest upcoming first by default). Never throws. */
 export async function listBookings(opts?: { upcomingOnly?: boolean; limit?: number }): Promise<Booking[]> {
   const client = getSupabase();

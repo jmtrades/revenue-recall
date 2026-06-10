@@ -536,6 +536,8 @@ export async function getInbox(): Promise<InboxThread[]> {
 
 export interface CalendarEvent {
   date: string;
+  /** End instant for events with real duration (booked meetings). */
+  end?: string;
   title: string;
   type: "close" | "task" | "meeting";
   dealId?: string;
@@ -556,6 +558,15 @@ export async function getCalendar(): Promise<{ events: CalendarEvent[] }> {
       const t = new Date(o.expectedCloseAt).getTime();
       if (t >= now && t <= horizon) events.push({ date: o.expectedCloseAt, title: `Target close · ${o.title}`, type: "close", dealId: o.id });
     }
+  }
+
+  // Booked meetings from the native booking page — real commitments, so they
+  // outrank derived events. Best-effort: without a DB there are simply none.
+  const bookings = await import("@/lib/meetings/store")
+    .then((m) => m.listBookings({ upcomingOnly: true, limit: 50 }))
+    .catch(() => []);
+  for (const b of bookings) {
+    events.push({ date: b.startsAt, end: b.endsAt, title: `Meeting · ${b.meetingName} — ${b.inviteeName}`, type: "meeting", dealId: b.dealId ?? undefined });
   }
 
   const recall = buildRecallQueue(opps, pipelines).slice(0, 12);

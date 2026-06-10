@@ -40,6 +40,9 @@ export function calendarFeedUrl(orgId: string): string | null {
 
 export interface FeedEvent {
   date: string;
+  /** Optional end instant — emitted as DTEND so booked meetings span their real
+   *  duration in the subscriber's calendar (derived events stay point events). */
+  end?: string;
   title: string;
   dealId?: string;
 }
@@ -67,8 +70,11 @@ export function toIcs(events: FeedEvent[]): string {
     if (!e.date) continue;
     const start = stamp(e.date);
     if (!start) continue; // skip an unparseable date instead of emitting an invalid VEVENT
+    const end = e.end ? stamp(e.end) : "";
     const uid = `${crypto.createHash("sha1").update(`${e.dealId ?? ""}|${e.date}|${e.title}`).digest("hex")}@recall-touch.com`;
-    lines.push("BEGIN:VEVENT", `UID:${uid}`, `DTSTAMP:${now}`, `DTSTART:${start}`, `SUMMARY:${esc(e.title)}`, "END:VEVENT");
+    lines.push("BEGIN:VEVENT", `UID:${uid}`, `DTSTAMP:${now}`, `DTSTART:${start}`);
+    if (end) lines.push(`DTEND:${end}`);
+    lines.push(`SUMMARY:${esc(e.title)}`, "END:VEVENT");
   }
   lines.push("END:VCALENDAR");
   return lines.join("\r\n");

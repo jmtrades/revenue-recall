@@ -30,7 +30,7 @@ export async function GET(req: Request) {
   try {
     // Scope every downstream read to this org (no session on a calendar poll).
     const { events: calEvents } = await runWithOrg(orgId, () => getCalendar());
-    events = calEvents.map((e) => ({ date: e.date, title: e.title, dealId: e.dealId }));
+    events = calEvents.map((e) => ({ date: e.date, end: e.end, title: e.title, dealId: e.dealId }));
   } catch {
     // A transient read failure should still return a valid (empty) calendar so
     // the subscribing app keeps the subscription instead of disabling it.
