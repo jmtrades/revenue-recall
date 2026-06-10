@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { fill, type ProspectStrings } from "@/lib/i18n/prospect";
 import type { BookableSlot } from "@/lib/meetings/types";
 
 interface MeetingOption {
@@ -18,11 +19,13 @@ interface Props {
   /** Other enabled meeting types, for switching (navigates to ?t=slug). */
   others: { slug: string; name: string }[];
   slots: BookableSlot[];
+  /** Prospect-facing strings in the org's selling language. */
+  s: ProspectStrings;
 }
 
 const field = "w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-fg outline-none focus:border-brand";
 
-export function BookingWidget({ org, token, brand, meeting, others, slots }: Props) {
+export function BookingWidget({ org, token, brand, meeting, others, slots, s }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +35,7 @@ export function BookingWidget({ org, token, brand, meeting, others, slots }: Pro
     try {
       return Intl.DateTimeFormat().resolvedOptions().timeZone;
     } catch {
-      return "your local time";
+      return "UTC";
     }
   }, []);
 
@@ -64,13 +67,13 @@ export function BookingWidget({ org, token, brand, meeting, others, slots }: Pro
       });
       const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !body.ok) {
-        setError(body.error || "We couldn't complete that booking. Please try again.");
+        setError(body.error || s.bookingFailed);
         setSubmitting(false);
         return;
       }
       setDone({ when: formatLong(selected) });
     } catch {
-      setError("Network error — please try again.");
+      setError(s.networkError);
       setSubmitting(false);
     }
   }
@@ -79,21 +82,19 @@ export function BookingWidget({ org, token, brand, meeting, others, slots }: Pro
     return (
       <div className="text-center">
         <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-success/15 text-2xl text-success">✓</div>
-        <h1 className="font-display text-lg font-semibold text-fg">You&apos;re booked</h1>
-        <p className="mt-2 text-sm text-muted">
-          {meeting.name} with {brand}
-        </p>
+        <h1 className="font-display text-lg font-semibold text-fg">{s.bookedTitle}</h1>
+        <p className="mt-2 text-sm text-muted">{fill(s.bookedWith, { meeting: meeting.name, brand })}</p>
         <p className="mt-1 text-sm font-medium text-fg">{done.when}</p>
-        <p className="mt-3 text-xs text-muted">A confirmation is on its way. You can close this window.</p>
+        <p className="mt-3 text-xs text-muted">{s.bookedFootnote}</p>
       </div>
     );
   }
 
   return (
     <div>
-      <h1 className="font-display text-xl font-semibold text-fg">Book a {meeting.name.toLowerCase()} with {brand}</h1>
+      <h1 className="font-display text-xl font-semibold text-fg">{fill(s.bookingHeading, { meeting: meeting.name, brand })}</h1>
       <p className="mt-1 text-sm text-muted">
-        {meeting.durationMinutes} min · {meeting.location} · times shown in {localTz}
+        {meeting.durationMinutes} {s.minutes} · {meeting.location} · {fill(s.timesIn, { tz: localTz })}
       </p>
 
       {others.length > 0 && (
@@ -110,9 +111,7 @@ export function BookingWidget({ org, token, brand, meeting, others, slots }: Pro
       )}
 
       {days.length === 0 ? (
-        <p className="mt-6 rounded-lg border border-border bg-surface-2 px-3 py-4 text-center text-sm text-muted">
-          No times are available right now. Please check back soon.
-        </p>
+        <p className="mt-6 rounded-lg border border-border bg-surface-2 px-3 py-4 text-center text-sm text-muted">{s.noTimes}</p>
       ) : !selected ? (
         <div className="mt-5 grid gap-4 sm:grid-cols-[160px_1fr]">
           {/* Days */}
@@ -131,14 +130,14 @@ export function BookingWidget({ org, token, brand, meeting, others, slots }: Pro
           </div>
           {/* Times */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {active?.slots.map((s) => (
+            {active?.slots.map((sl) => (
               <button
-                key={s.start}
+                key={sl.start}
                 type="button"
-                onClick={() => setSelected(s.start)}
+                onClick={() => setSelected(sl.start)}
                 className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-fg transition hover:border-brand hover:bg-brand/5"
               >
-                {formatTime(s.start)}
+                {formatTime(sl.start)}
               </button>
             ))}
           </div>
@@ -154,32 +153,32 @@ export function BookingWidget({ org, token, brand, meeting, others, slots }: Pro
           <div className="rounded-lg border border-brand/30 bg-brand/5 px-3 py-2 text-sm text-fg">
             {formatLong(selected)}
             <button type="button" onClick={() => setSelected(null)} className="ml-2 text-xs font-medium text-brand underline">
-              change
+              {s.change}
             </button>
           </div>
           {/* Honeypot */}
           <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" />
           <div>
-            <label className="mb-1 block text-xs text-muted">Name *</label>
+            <label className="mb-1 block text-xs text-muted">{s.labelName} *</label>
             <input name="name" required maxLength={200} className={field} />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted">Email</label>
+            <label className="mb-1 block text-xs text-muted">{s.labelEmail}</label>
             <input name="email" type="email" maxLength={200} className={field} />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted">Phone</label>
+            <label className="mb-1 block text-xs text-muted">{s.labelPhone}</label>
             <input name="phone" type="tel" maxLength={40} className={field} />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted">Anything we should know?</label>
+            <label className="mb-1 block text-xs text-muted">{s.labelNotes}</label>
             <textarea name="notes" rows={2} maxLength={2000} className={field} />
           </div>
           {error && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
           <button type="submit" disabled={submitting} className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-60">
-            {submitting ? "Booking…" : "Confirm booking"}
+            {submitting ? s.confirming : s.confirm}
           </button>
-          <p className="text-center text-[11px] text-muted">Provide an email or phone so we can confirm.</p>
+          <p className="text-center text-[11px] text-muted">{s.bookingFootnote}</p>
         </form>
       )}
     </div>

@@ -8,6 +8,8 @@ import { emitWebhook } from "@/lib/webhooks-out";
 import { getAvailability, getMeetingTypeBySlug, busyIntervals, insertBooking } from "@/lib/meetings/store";
 import { isSlotAvailable } from "@/lib/meetings/availability";
 import { DEFAULT_MEETING_TYPE, type MeetingType } from "@/lib/meetings/types";
+import { prospectStrings, fill, type ProspectStrings } from "@/lib/i18n/prospect";
+import { localeFor } from "@/lib/languages";
 
 /**
  * Book a meeting. Runs in the CURRENT org scope — the caller (the public booking
@@ -42,10 +44,11 @@ export interface BookMeetingResult {
 
 export class BookingError extends Error {}
 
-/** Human-friendly rendering of an instant in a timezone (UTC fallback). */
-function formatInZone(iso: string, tz: string): string {
+/** Human-friendly rendering of an instant in a timezone (UTC fallback), in the
+ *  given BCP-47 locale so a Spanish-selling org's prospect reads a Spanish date. */
+function formatInZone(iso: string, tz: string, locale = "en-US"): string {
   try {
-    return new Intl.DateTimeFormat("en-US", {
+    return new Intl.DateTimeFormat(locale, {
       timeZone: tz || "UTC",
       weekday: "short",
       month: "short",
@@ -130,7 +133,7 @@ export async function bookMeeting(input: BookMeetingInput): Promise<BookMeetingR
     notes: input.notes,
   });
 
-  await notify(type, name, email, when).catch(() => undefined);
+  await notify(type, name, email, startsAt, avail.timezone).catch(() => undefined);
   await emitWebhook("meeting.booked", {
     bookingId: booking.id,
     contactId: cap.contactId,
@@ -146,26 +149,29 @@ export async function bookMeeting(input: BookMeetingInput): Promise<BookMeetingR
   return { bookingId: booking.id, contactId: cap.contactId, dealId: cap.dealId, startsAt, endsAt, meetingName: type.name };
 }
 
-/** Confirmation to the invitee + an internal heads-up to the org's owners. */
-async function notify(type: MeetingType, name: string, email: string | undefined, when: string): Promise<void> {
+/** Confirmation to the invitee (in the org's SELLING language) + an internal
+ *  heads-up to the org's owners (English, like the rest of the app's mail). */
+async function notify(type: MeetingType, name: string, email: string | undefined, whenIso: string, tz: string): Promise<void> {
   const org = await getOrgSettings().catch(() => null);
   const brand = org?.name || "the team";
-  const loc = locationLine(type);
+  const s = prospectStrings(org?.language);
+  const when = formatInZone(whenIso, tz, localeFor(org?.language));
+  const loc = locationLine(type, s);
 
   if (email) {
     const body = [
-      `Hi ${name},`,
+      fill(s.emailGreeting, { name }),
       "",
-      `You're booked for a ${type.name} with ${brand}.`,
+      fill(s.emailBooked, { meeting: type.name, brand }),
       "",
-      `When: ${when}`,
-      loc ? `Where: ${loc}` : "",
+      fill(s.emailWhen, { when }),
+      loc ? fill(s.emailWhere, { where: loc }) : "",
       "",
-      "See you then. Reply to this email if you need to make a change.",
+      s.emailChange,
     ]
       .filter((l) => l !== "")
       .join("\n");
-    await sendEmail(email, `Confirmed: ${type.name} with ${brand}`, body, { internal: true }).catch(() => null);
+    await sendEmail(email, fill(s.emailSubject, { meeting: type.name, brand }), body, { internal: true }).catch(() => null);
   }
 
   const orgId = await resolveActiveOrgId().catch(() => null);
@@ -175,7 +181,7 @@ async function notify(type: MeetingType, name: string, email: string | undefined
   const internal = [
     `${name}${email ? ` (${email})` : ""} booked a ${type.name}.`,
     "",
-    `When: ${when}`,
+    `When: ${formatInZone(whenIso, tz)}`,
     "It's on the deal timeline in Revenue Recall.",
   ].join("\n");
   for (const addr of owners) {
@@ -183,15 +189,15 @@ async function notify(type: MeetingType, name: string, email: string | undefined
   }
 }
 
-function locationLine(type: MeetingType): string {
+function locationLine(type: MeetingType, s: ProspectStrings): string {
   if (type.locationDetail) return type.locationDetail;
   switch (type.locationKind) {
     case "phone":
-      return "Phone call — we'll call you.";
+      return s.locPhoneLong;
     case "video":
-      return "Video call — a link will follow.";
+      return s.locVideoLong;
     case "in_person":
-      return "In person.";
+      return s.locInPersonLong;
     default:
       return "";
   }
