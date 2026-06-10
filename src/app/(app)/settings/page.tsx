@@ -7,6 +7,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { channelStatus } from "@/lib/comms";
 import { sendingDomain, expectedRecords } from "@/lib/deliverability";
 import { DeliverabilitySettings } from "@/components/settings/DeliverabilitySettings";
+import { SuppressionList } from "@/components/settings/SuppressionList";
 import { listConnections } from "@/lib/connections/store";
 import { encryptionAvailable } from "@/lib/crypto";
 import { ConnectionsManager } from "@/components/ConnectionsManager";
@@ -371,7 +372,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
     : [];
 
   const sendDomain = sendingDomain();
-  const deliverabilityTab = <DeliverabilitySettings domain={sendDomain} provider={channels.email.provider} records={sendDomain ? expectedRecords(sendDomain, channels.email.provider) : []} />;
+  const canManageDeliverability = !isAuthRequired() || ["owner", "admin"].includes((await getSessionRole()) ?? "");
+  const deliverabilityTab = (
+    <div className="space-y-4">
+      <DeliverabilitySettings domain={sendDomain} provider={channels.email.provider} records={sendDomain ? expectedRecords(sendDomain, channels.email.provider) : []} />
+      <SuppressionList canManage={canManageDeliverability} />
+    </div>
+  );
   const channelsTab = (
     <>
       <Card>
