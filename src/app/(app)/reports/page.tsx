@@ -1,5 +1,5 @@
 import { getReports } from "@/lib/queries";
-import { clickStats } from "@/lib/tracking";
+import { clickStats, engagementStats } from "@/lib/tracking";
 import { bookingStats } from "@/lib/meetings/stats";
 import { compactMoney, money, pct } from "@/lib/format";
 import { PageHeader, Stat, Card, Avatar } from "@/components/ui";
@@ -8,7 +8,7 @@ import { Funnel, Donut, BarChart } from "@/components/charts";
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  const [r, clicks, meetings] = await Promise.all([getReports(), clickStats(), bookingStats()]);
+  const [r, clicks, meetings, engagement] = await Promise.all([getReports(), clickStats(), bookingStats(), engagementStats()]);
   const m = r.metrics;
 
   return (
@@ -113,6 +113,19 @@ export default async function ReportsPage() {
 
       <Card title="Lead sources">
         {r.sources.length === 0 ? <p className="text-sm text-muted">No source data.</p> : <Donut segments={r.sources} centerLabel={String(r.sources.reduce((s, x) => s + x.value, 0))} centerSub="total deals" />}
+      </Card>
+
+      <Card title="Outreach engagement · last 30 days">
+        {engagement.sent === 0 ? (
+          <p className="text-sm text-muted">No outbound sent in the last 30 days. Once the engine emails and texts your pipeline, the sent → replied funnel and your reply rate show up here.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <Stat label="Sent" value={String(engagement.sent)} hint="emails + texts" />
+            <Stat label="Replied" value={String(engagement.replied)} tone="success" hint={`${engagement.clicked} link clicks`} />
+            <Stat label="Reply rate" value={pct(engagement.replyRate)} tone={engagement.replyRate >= 0.05 ? "success" : undefined} hint="replies ÷ sent" />
+            <Stat label="Click rate" value={pct(engagement.clickRate)} hint="clicks ÷ sent" />
+          </div>
+        )}
       </Card>
 
       <Card title="Meetings booked">

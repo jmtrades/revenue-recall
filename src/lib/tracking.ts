@@ -94,6 +94,65 @@ export async function recordClick(p: ClickPayload): Promise<void> {
   }
 }
 
+/** Record an outbound 'sent' or inbound 'reply' engagement event. Best-effort —
+ *  a tracking hiccup must never affect the actual send/reply. The org is resolved
+ *  from the current scope (cadence/engine/inbound all run inside runWithOrg). */
+async function recordEvent(kind: "sent" | "reply", ctx: ClickContext): Promise<void> {
+  try {
+    const client = getSupabase();
+    if (!client) return;
+    const orgId = ctx.orgId ?? (await resolveActiveOrgId().catch(() => null));
+    if (!orgId) return;
+    await client.from("message_events").insert({ org_id: orgId, kind, channel: ctx.channel ?? null, contact_id: ctx.contactId ?? null, deal_id: ctx.dealId ?? null, url: null });
+  } catch {
+    /* best-effort */
+  }
+}
+
+/** An outbound email/SMS was sent. */
+export const recordSent = (ctx: ClickContext): Promise<void> => recordEvent("sent", ctx);
+/** A prospect replied (inbound matched to a contact). */
+export const recordReply = (ctx: ClickContext): Promise<void> => recordEvent("reply", ctx);
+
+export interface Engagement {
+  sent: number;
+  clicked: number;
+  replied: number;
+  /** replied / sent, 0..1. */
+  replyRate: number;
+  /** clicked / sent, 0..1. */
+  clickRate: number;
+}
+
+/** Roll up a list of event kinds into the engagement funnel. Pure + testable. */
+export function computeEngagement(kinds: string[]): Engagement {
+  let sent = 0;
+  let clicked = 0;
+  let replied = 0;
+  for (const k of kinds) {
+    if (k === "sent") sent++;
+    else if (k === "click") clicked++;
+    else if (k === "reply") replied++;
+  }
+  return { sent, clicked, replied, replyRate: sent > 0 ? replied / sent : 0, clickRate: sent > 0 ? clicked / sent : 0 };
+}
+
+/** The org's outreach engagement funnel over the last 30 days. Never throws. */
+export async function engagementStats(): Promise<Engagement> {
+  const empty = computeEngagement([]);
+  try {
+    if (!isSupabaseConfigured()) return empty;
+    const orgId = await resolveActiveOrgId();
+    if (!orgId) return empty;
+    const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    const { data, error } = await getSupabase()!.from("message_events").select("kind").eq("org_id", orgId).gte("created_at", since).limit(20000);
+    if (error) return empty;
+    return computeEngagement(((data as { kind: string }[] | null) ?? []).map((r) => r.kind));
+  } catch {
+    return empty;
+  }
+}
+
 export interface ClickStats {
   total30d: number;
   topUrls: { url: string; count: number }[];

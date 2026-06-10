@@ -14,7 +14,7 @@ import { isAiConfigured } from "@/lib/ai/client";
 import { enforcementOn, isEntitled } from "@/lib/billing/enforce";
 import { isWithinActionAllowance } from "@/lib/ai/usage";
 import { sendEmail, sendSms } from "@/lib/comms";
-import { trackLinks } from "@/lib/tracking";
+import { trackLinks, recordSent } from "@/lib/tracking";
 import { createOutboxItem } from "@/lib/agent/store";
 import { hasOptedOut, quietHoursNow } from "@/lib/agent/guardrails";
 import { batchActivities } from "@/lib/crm/activities";
@@ -469,6 +469,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
         });
         // Attribute the recall effort only on an ACTUAL send.
         if (seq.id === "recall") await recordRecallTouch({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, source: "cadence", occurredAt: now });
+        void recordSent({ orgId: org.id, contactId: e.contactId, dealId: deal?.id, channel: step.channel });
         result.sent += 1;
       } else {
         // Queued for human approval — don't attribute a touch yet. Tag it so the
