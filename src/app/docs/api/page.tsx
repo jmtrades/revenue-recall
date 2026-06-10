@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Footer } from "@/components/marketing/Footer";
+import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "API & integrations",
   description: "Push leads into Revenue Recall, sync your pipeline back out, embed a capture form, and receive signed webhook events.",
+  alternates: { canonical: `${SITE_URL}/docs/api` },
 };
 
 const BASE = (process.env.NEXT_PUBLIC_SITE_URL || "https://app.recall-touch.com").replace(/\/$/, "");
