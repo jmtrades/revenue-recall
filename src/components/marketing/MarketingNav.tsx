@@ -14,6 +14,17 @@ function ArrowRight({ className = "" }: { className?: string }) {
   );
 }
 
+// Landing in-page sections, in the order they appear down the page — so the
+// scroll-spy highlight moves smoothly top-to-bottom.
+const NAV_LINKS = [
+  { id: "features", label: "Features" },
+  { id: "how", label: "How it works" },
+  { id: "industries", label: "Industries" },
+  { id: "who", label: "Who it’s for" },
+  { id: "integrations", label: "Integrations" },
+  { id: "pricing", label: "Pricing" },
+] as const;
+
 export function MarketingNav() {
   // Scroll-aware chrome: airy and near-transparent over the hero, condensing to a
   // blurred, bordered bar with a soft shadow once the page scrolls — the premium
@@ -24,6 +35,26 @@ export function MarketingNav() {
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Scroll-spy: highlight whichever section is crossing the viewport's vertical
+  // centre. The -50%/-50% rootMargin collapses the observer root to a centre
+  // line, so exactly one section is "intersecting" at a time. No-op off the
+  // landing page (these section ids don't exist there).
+  const [activeId, setActiveId] = useState<string | null>(null);
+  useEffect(() => {
+    const sections = NAV_LINKS.map((l) => document.getElementById(l.id)).filter(
+      (el): el is HTMLElement => el !== null,
+    );
+    if (sections.length === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) if (entry.isIntersecting) setActiveId(entry.target.id);
+      },
+      { rootMargin: "-50% 0px -50% 0px", threshold: 0 },
+    );
+    sections.forEach((s) => observer.observe(s));
+    return () => observer.disconnect();
   }, []);
 
   return (
@@ -43,12 +74,23 @@ export function MarketingNav() {
           <span className="font-display text-[15px] font-semibold tracking-tight text-fg">Revenue Recall</span>
         </Link>
         <nav className="hidden items-center gap-7 text-sm font-medium text-muted lg:flex">
-          <a href="/#features" className="transition-colors hover:text-fg">Features</a>
-          <a href="/#how" className="transition-colors hover:text-fg">How it works</a>
-          <a href="/#industries" className="transition-colors hover:text-fg">Industries</a>
-          <a href="/#integrations" className="transition-colors hover:text-fg">Integrations</a>
-          <a href="/#who" className="transition-colors hover:text-fg">Who it&rsquo;s for</a>
-          <a href="/#pricing" className="transition-colors hover:text-fg">Pricing</a>
+          {NAV_LINKS.map((l) => {
+            const active = activeId === l.id;
+            return (
+              <a
+                key={l.id}
+                href={`/#${l.id}`}
+                aria-current={active ? "true" : undefined}
+                className={`relative transition-colors hover:text-fg ${active ? "text-fg" : ""}`}
+              >
+                {l.label}
+                <span
+                  aria-hidden="true"
+                  className={`absolute -bottom-1.5 left-0 h-px w-full origin-left bg-brand transition-transform duration-300 ease-out motion-reduce:transition-none ${active ? "scale-x-100" : "scale-x-0"}`}
+                />
+              </a>
+            );
+          })}
         </nav>
         <div className="flex items-center gap-1.5">
           <Link href="/login" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-fg sm:block">Sign in</Link>
