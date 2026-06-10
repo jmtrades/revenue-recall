@@ -16,10 +16,10 @@ export default async function ReportsPage() {
       <PageHeader title="Reports" subtitle="Pipeline health, conversion, sources, and team performance." />
 
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Closed Won" value={money(m.wonValue, m.currency)} hint={`${m.wonCount} deals`} tone="success" />
-        <Stat label="Avg Deal Size" value={money(m.avgDealSize, m.currency)} />
-        <Stat label="Win Rate" value={pct(m.winRate)} hint={`${m.lostCount} lost`} />
-        <Stat label="Open Pipeline" value={money(m.openValue, m.currency)} hint={`${m.openCount} deals`} />
+        <Stat label="Closed Won" value={money(m.wonValue, m.currency)} hint={`${m.wonCount} deals`} tone="success" countUp />
+        <Stat label="Avg Deal Size" value={money(m.avgDealSize, m.currency)} countUp />
+        <Stat label="Win Rate" value={pct(m.winRate)} hint={`${m.lostCount} lost`} countUp />
+        <Stat label="Open Pipeline" value={money(m.openValue, m.currency)} hint={`${m.openCount} deals`} countUp />
       </section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

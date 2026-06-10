@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Icon, type IconName } from "@/components/icons";
+import { CountUp } from "@/components/CountUp";
 
 const AVATAR_COLORS = ["#5b8cff", "#34d399", "#fbbf24", "#f87171", "#a78bfa", "#22d3ee", "#fb923c"];
 
@@ -140,6 +141,7 @@ export function Stat({
   tone,
   delta,
   icon,
+  countUp,
 }: {
   label: string;
   value: string;
@@ -148,6 +150,8 @@ export function Stat({
   /** Period-over-period change, e.g. +12 or -5 (rendered as a colored ↑/↓ chip). */
   delta?: number;
   icon?: IconName;
+  /** Animate the value counting up on mount (headline rows). Reduced-motion safe. */
+  countUp?: boolean;
 }) {
   const toneClass =
     tone === "success" ? "text-success" : tone === "warn" ? "text-warn" : tone === "danger" ? "text-danger" : "text-fg";
@@ -163,7 +167,7 @@ export function Stat({
         )}
       </div>
       <div className="mt-1 flex items-baseline gap-2">
-        <p className={`stat-value !mt-0 ${toneClass}`}>{value}</p>
+        <p className={`stat-value !mt-0 ${toneClass}`}>{countUp ? <CountUp value={value} /> : value}</p>
         {delta !== undefined && (
           <span className={`inline-flex items-center gap-0.5 text-xs font-semibold tabular-nums ${up ? "text-success" : "text-danger"}`}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
