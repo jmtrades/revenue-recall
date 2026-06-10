@@ -37,7 +37,7 @@ export function BookingsManager({ upcoming, past }: { upcoming: BookingRow[]; pa
 function Section({ title, rows, empty }: { title: string; rows: BookingRow[]; empty: string }) {
   return (
     <div>
-      <h2 className="mb-3 font-editorial text-xl font-semibold text-fg">{title}</h2>
+      <h2 className="mb-3 text-xl font-semibold text-fg">{title}</h2>
       {rows.length === 0 ? (
         <p className="rounded-xl border border-border bg-surface px-4 py-4 text-sm text-muted">{empty}</p>
       ) : (
