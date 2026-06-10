@@ -5,6 +5,7 @@ import { runDueSteps, collectDueBatches } from "@/lib/cadence";
 import { runCallRetries } from "@/lib/calls";
 import { runDigests } from "@/lib/digest";
 import { runBookingReminders } from "@/lib/meetings/reminders";
+import { runCustomIdleAutomations } from "@/lib/automations/run-custom";
 import { getSupabase } from "@/lib/supabase/client";
 import { runWithOrg } from "@/lib/supabase/org-context";
 import { autopilotLockKey, digestLockKey } from "@/lib/agent/lock";
@@ -97,6 +98,8 @@ async function runForCurrentOrg() {
   // Remind invitees before their booked meetings (self-dedups per booking; only
   // sends within the reminder window). Best-effort and never throws.
   const reminders = await runBookingReminders().catch((e) => ({ error: e instanceof Error ? e.message : "reminders failed" }));
+  // Scan-based custom automation rules (deal_idle): fire each once per idle deal.
+  const idleRules = await runCustomIdleAutomations().catch((e) => ({ error: e instanceof Error ? e.message : "idle rules failed" }));
   // Guard digests with a per-org lock: the per-day "already sent" check isn't
   // atomic, so two overlapping ticks could each pass it and email twice. The lock
   // closes the concurrent race; the existing dedup handles the sequential case.
@@ -112,10 +115,10 @@ async function runForCurrentOrg() {
   }
   // Surface engine errors to the operator — an autonomous tick that silently
   // errors every run would otherwise go unnoticed.
-  for (const [stage, result] of Object.entries({ cadence, batches, digests, callRetries, reminders })) {
+  for (const [stage, result] of Object.entries({ cadence, batches, digests, callRetries, reminders, idleRules })) {
     if (isErrored(result)) await sendAlert(`cron.${stage}`, { error: result.error });
   }
-  return { ran: results.length, results, autopilotLocked: !fence, cadence, batches, digests, callRetries, reminders };
+  return { ran: results.length, results, autopilotLocked: !fence, cadence, batches, digests, callRetries, reminders, idleRules };
 }
 
 /** Fan out: process every org in its own authenticated sub-request so each gets

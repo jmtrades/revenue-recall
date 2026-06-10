@@ -24,6 +24,7 @@ interface Draft {
   name: string;
   triggerKind: CustomTriggerKind;
   stageId: string;
+  idleDays: number;
   conditions: Condition[];
   actions: Action[];
 }
@@ -33,6 +34,7 @@ const TRIGGERS: { value: CustomTriggerKind; label: string }[] = [
   { value: "deal_won", label: "Deal is won" },
   { value: "deal_lost", label: "Deal is lost" },
   { value: "lead_created", label: "A new lead is created" },
+  { value: "deal_idle", label: "A deal goes idle" },
 ];
 
 const OPS_BY_FIELD: Record<ConditionField, ConditionOp[]> = {
@@ -42,7 +44,7 @@ const OPS_BY_FIELD: Record<ConditionField, ConditionOp[]> = {
 };
 const OP_LABEL: Record<ConditionOp, string> = { eq: "is", gt: ">", gte: "≥", lt: "<", lte: "≤", contains: "contains" };
 
-const emptyDraft = (): Draft => ({ name: "", triggerKind: "stage_changed", stageId: "", conditions: [], actions: [{ type: "create_task", title: "" }] });
+const emptyDraft = (): Draft => ({ name: "", triggerKind: "stage_changed", stageId: "", idleDays: 14, conditions: [], actions: [{ type: "create_task", title: "" }] });
 
 export function CustomAutomationsManager({ initial, stages, sequences, canManage }: Props) {
   const router = useRouter();
@@ -83,6 +85,7 @@ export function CustomAutomationsManager({ initial, stages, sequences, canManage
       name: form.name.trim(),
       triggerKind: form.triggerKind,
       stageId: form.triggerKind === "stage_changed" && form.stageId ? form.stageId : null,
+      idleDays: form.triggerKind === "deal_idle" ? form.idleDays : null,
       conditions: form.conditions,
       actions: form.actions,
     };
@@ -125,7 +128,7 @@ export function CustomAutomationsManager({ initial, stages, sequences, canManage
               <button onClick={() => mutate("PATCH", { id: r.id, enabled: !r.enabled })} disabled={busy} className="rounded-lg border border-border px-2.5 py-1 text-xs text-muted transition hover:text-fg disabled:opacity-50">
                 {r.enabled ? "Pause" : "Resume"}
               </button>
-              <button onClick={() => { setForm({ id: r.id, name: r.name, triggerKind: r.triggerKind, stageId: r.stageId ?? "", conditions: r.conditions, actions: r.actions.length ? r.actions : [{ type: "create_task", title: "" }] }); setError(null); }} className="rounded-lg border border-border px-2.5 py-1 text-xs text-muted transition hover:text-fg">
+              <button onClick={() => { setForm({ id: r.id, name: r.name, triggerKind: r.triggerKind, stageId: r.stageId ?? "", idleDays: r.idleDays ?? 14, conditions: r.conditions, actions: r.actions.length ? r.actions : [{ type: "create_task", title: "" }] }); setError(null); }} className="rounded-lg border border-border px-2.5 py-1 text-xs text-muted transition hover:text-fg">
                 Edit
               </button>
               <button onClick={() => { if (window.confirm(`Delete the "${r.name}" rule?`)) void mutate("DELETE", { id: r.id }); }} disabled={busy} className="rounded-lg border border-danger/40 px-2.5 py-1 text-xs text-danger transition hover:bg-danger/10 disabled:opacity-50">
@@ -181,6 +184,13 @@ function Builder({
               <option key={s.id} value={s.id}>{s.label}</option>
             ))}
           </select>
+        )}
+        {form.triggerKind === "deal_idle" && (
+          <span className="flex items-center gap-2 text-sm text-muted">
+            for
+            <input type="number" min={1} max={365} className={`${field} w-20`} value={form.idleDays} onChange={(e) => setForm({ ...form, idleDays: Math.min(365, Math.max(1, Number(e.target.value))) })} aria-label="Idle days" />
+            days
+          </span>
         )}
       </div>
 

@@ -13,11 +13,25 @@ const h = vi.hoisted(() => ({
   enrolls: [] as Array<{ seq: string; scope: string }>,
   emails: [] as Array<{ to: string; subject: string }>,
   failTask: false,
+  opps: [] as Array<Record<string, unknown>>,
+  firedKeys: [] as string[],
+  recorded: [] as string[],
 }));
 
 vi.mock("@/lib/automations/custom-store", async (orig) => ({
   ...(await orig<typeof import("@/lib/automations/custom-store")>()),
   listEnabledCustomAutomations: vi.fn(async () => h.rules),
+  listFiredKeys: vi.fn(async () => new Set(h.firedKeys)),
+  recordFired: vi.fn(async (ruleId: string, entityId: string) => {
+    h.recorded.push(`${ruleId}|${entityId}`);
+  }),
+}));
+vi.mock("@/lib/crm/registry", async (orig) => ({
+  ...(await orig<typeof import("@/lib/crm/registry")>()),
+  resolveProvider: vi.fn(async () => ({
+    listPipelines: async () => [{ id: "p", label: "P", stages: [{ id: "s1", label: "Open", probability: 0.3, type: "open" }] }],
+    listOpportunities: async () => h.opps,
+  })),
 }));
 vi.mock("@/lib/tasks/manual", async (orig) => ({
   ...(await orig<typeof import("@/lib/tasks/manual")>()),
@@ -50,7 +64,7 @@ vi.mock("@/lib/supabase/active-org", async (orig) => ({
   resolveActiveOrgId: vi.fn(async () => "org_1"),
 }));
 
-import { runCustomDealAutomations, runCustomLeadAutomations } from "@/lib/automations/run-custom";
+import { runCustomDealAutomations, runCustomLeadAutomations, runCustomIdleAutomations } from "@/lib/automations/run-custom";
 
 function opp(p: Partial<Opportunity> = {}): Opportunity {
   return { id: "o1", title: "Acme — 50 seats", pipelineId: "p1", stageId: "s1", value: 5000, currency: "USD", contactId: "c1", source: "Web form", createdAt: "", updatedAt: "", ...p };
@@ -69,6 +83,48 @@ beforeEach(() => {
   h.enrolls = [];
   h.emails = [];
   h.failTask = false;
+  h.opps = [];
+  h.firedKeys = [];
+  h.recorded = [];
+});
+
+function idleOpp(id: string, daysIdle: number, extra: Record<string, unknown> = {}) {
+  return { id, title: `Deal ${id}`, pipelineId: "p", stageId: "s1", value: 5000, currency: "USD", contactId: "c", source: "Web form", createdAt: "", updatedAt: "", lastActivityAt: new Date(Date.now() - daysIdle * 86_400_000).toISOString(), ...extra };
+}
+
+describe("runCustomIdleAutomations (deal_idle trigger)", () => {
+  it("fires once per idle deal past the threshold, recording the run for dedup", async () => {
+    h.rules = [rule({ id: "ri", triggerKind: "deal_idle", idleDays: 14, actions: [{ type: "create_task", title: "Re-engage" }] })];
+    h.opps = [idleOpp("o1", 20), idleOpp("o2", 3)]; // o1 idle enough, o2 not
+    const res = await runCustomIdleAutomations();
+    expect(res.fired).toBe(1);
+    expect(h.tasks).toHaveLength(1);
+    expect(h.tasks[0].title).toMatch(/Re-engage — Deal o1/);
+    expect(h.recorded).toEqual(["ri|o1"]);
+  });
+
+  it("doesn't re-fire a deal already recorded", async () => {
+    h.rules = [rule({ id: "ri", triggerKind: "deal_idle", idleDays: 14, actions: [{ type: "notify_owner" }] })];
+    h.opps = [idleOpp("o1", 30)];
+    h.firedKeys = ["ri|o1"]; // already acted on
+    const res = await runCustomIdleAutomations();
+    expect(res.fired).toBe(0);
+    expect(h.emails).toHaveLength(0);
+  });
+
+  it("respects conditions on idle deals", async () => {
+    h.rules = [rule({ id: "ri", triggerKind: "deal_idle", idleDays: 7, conditions: [{ field: "value", op: "gt", value: 9999 }], actions: [{ type: "notify_owner" }] })];
+    h.opps = [idleOpp("o1", 30, { value: 5000 })]; // idle but value too low
+    const res = await runCustomIdleAutomations();
+    expect(res.fired).toBe(0);
+  });
+
+  it("never throws", async () => {
+    h.failTask = true;
+    h.rules = [rule({ id: "ri", triggerKind: "deal_idle", idleDays: 1, actions: [{ type: "create_task", title: "X" }] })];
+    h.opps = [idleOpp("o1", 30)];
+    await expect(runCustomIdleAutomations()).resolves.toEqual({ fired: 1 });
+  });
 });
 
 describe("runCustomDealAutomations", () => {

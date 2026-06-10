@@ -5,8 +5,8 @@
  * lead_created / deal_idle can join later via the cron scan.
  */
 
-export type CustomTriggerKind = "stage_changed" | "deal_won" | "deal_lost" | "lead_created";
-export const CUSTOM_TRIGGER_KINDS: CustomTriggerKind[] = ["stage_changed", "deal_won", "deal_lost", "lead_created"];
+export type CustomTriggerKind = "stage_changed" | "deal_won" | "deal_lost" | "lead_created" | "deal_idle";
+export const CUSTOM_TRIGGER_KINDS: CustomTriggerKind[] = ["stage_changed", "deal_won", "deal_lost", "lead_created", "deal_idle"];
 
 export type ConditionField = "value" | "source" | "pipeline";
 export const CONDITION_FIELDS: ConditionField[] = ["value", "source", "pipeline"];
@@ -34,6 +34,9 @@ export interface CustomAutomation {
   triggerKind: CustomTriggerKind;
   /** Narrows stage_changed to a single stage; null/undefined = any open-stage move. */
   stageId?: string | null;
+  /** deal_idle threshold: fire once a deal has had no activity for this many days
+   *  (default 14 when unset). Only meaningful for the deal_idle trigger. */
+  idleDays?: number | null;
   conditions: Condition[];
   actions: Action[];
   enabled: boolean;

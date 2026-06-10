@@ -28,6 +28,11 @@ describe("summarizeRule", () => {
     expect(summarizeRule(rule({ triggerKind: "deal_lost", actions: [{ type: "notify_owner" }] }))).toBe("Deal lost → notify the owner");
   });
 
+  it("describes a deal_idle trigger with its threshold", () => {
+    expect(triggerLabel(rule({ triggerKind: "deal_idle", idleDays: 30 }))).toBe("Deal idle 30 days");
+    expect(triggerLabel(rule({ triggerKind: "deal_idle" }))).toBe("Deal idle 14 days"); // default
+  });
+
   it("describes a contains condition naturally", () => {
     const r = rule({ triggerKind: "deal_won", conditions: [{ field: "source", op: "contains", value: "web" }], actions: [{ type: "notify_owner" }] });
     expect(summarizeRule(r)).toBe('Deal won when source contains "web" → notify the owner');
