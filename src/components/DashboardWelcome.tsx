@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, Button } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
+import { SampleDataButton } from "@/components/SampleDataButton";
 
 /**
  * First-run experience. A brand-new workspace has no deals yet, so the metric
@@ -44,6 +45,12 @@ export function DashboardWelcome({ greeting }: { greeting: string }) {
             Revenue Recall is ready. Bring in your deals and it starts surfacing the revenue you&rsquo;re losing, drafts
             outreach in your voice, and works every deal around the clock. Pick a way to start:
           </p>
+          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <SampleDataButton />
+            <p className="max-w-xs text-xs leading-relaxed text-muted">
+              Fastest way to see it work — realistic deals, several already slipping, all editable and deletable.
+            </p>
+          </div>
         </div>
       </div>
 
