@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
+import { MobileMenu } from "@/components/marketing/MobileMenu";
 
 function ArrowRight({ className = "" }: { className?: string }) {
   return (
@@ -22,15 +23,15 @@ export function MarketingNav() {
           <span className="font-display text-[15px] font-semibold tracking-tight text-fg">Revenue Recall</span>
         </Link>
         <nav className="hidden items-center gap-7 text-sm font-medium text-muted lg:flex">
-          <a href="#features" className="transition-colors hover:text-fg">Features</a>
-          <a href="#how" className="transition-colors hover:text-fg">How it works</a>
-          <a href="#industries" className="transition-colors hover:text-fg">Industries</a>
-          <a href="#integrations" className="transition-colors hover:text-fg">Integrations</a>
-          <a href="#who" className="transition-colors hover:text-fg">Who it&rsquo;s for</a>
-          <a href="#pricing" className="transition-colors hover:text-fg">Pricing</a>
+          <a href="/#features" className="transition-colors hover:text-fg">Features</a>
+          <a href="/#how" className="transition-colors hover:text-fg">How it works</a>
+          <a href="/#industries" className="transition-colors hover:text-fg">Industries</a>
+          <a href="/#integrations" className="transition-colors hover:text-fg">Integrations</a>
+          <a href="/#who" className="transition-colors hover:text-fg">Who it&rsquo;s for</a>
+          <a href="/#pricing" className="transition-colors hover:text-fg">Pricing</a>
         </nav>
         <div className="flex items-center gap-1.5">
-          <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-fg">Sign in</Link>
+          <Link href="/login" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-fg sm:block">Sign in</Link>
           <Link
             href="/signup"
             className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-1.5 pl-4 pr-1.5 text-sm font-semibold text-white hover:bg-brand/90"
@@ -40,6 +41,7 @@ export function MarketingNav() {
               <ArrowRight />
             </span>
           </Link>
+          <MobileMenu />
         </div>
       </div>
     </header>
