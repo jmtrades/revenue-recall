@@ -5,6 +5,8 @@ import { listIntegrations, resolveProvider } from "@/lib/crm/registry";
 import { isAiConfigured } from "@/lib/ai/client";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { channelStatus } from "@/lib/comms";
+import { sendingDomain, expectedRecords } from "@/lib/deliverability";
+import { DeliverabilitySettings } from "@/components/settings/DeliverabilitySettings";
 import { listConnections } from "@/lib/connections/store";
 import { encryptionAvailable } from "@/lib/crypto";
 import { ConnectionsManager } from "@/components/ConnectionsManager";
@@ -368,6 +370,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
         .filter((u): u is InboundUrl => u !== null)
     : [];
 
+  const sendDomain = sendingDomain();
+  const deliverabilityTab = <DeliverabilitySettings domain={sendDomain} provider={channels.email.provider} records={sendDomain ? expectedRecords(sendDomain, channels.email.provider) : []} />;
   const channelsTab = (
     <>
       <Card>
@@ -614,6 +618,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
           { id: "pipeline", label: "Pipeline", content: pipelineTab },
           { id: "integrations", label: "Integrations", content: integrationsTab },
           { id: "channels", label: "Channels", content: channelsTab },
+          { id: "deliverability", label: "Deliverability", content: deliverabilityTab },
           { id: "numbers", label: "Numbers", content: numbersTab },
           { id: "team", label: "Team", content: teamTab },
           { id: "fields", label: "Fields", content: fieldsTab },
