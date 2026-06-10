@@ -7,6 +7,7 @@ import { getSessionRole } from "@/lib/authz";
 import { PageHeader } from "@/components/ui";
 import { TemplatesView } from "@/components/TemplatesView";
 
+export const metadata = { title: "Templates" };
 export const dynamic = "force-dynamic";
 
 export default async function TemplatesPage() {

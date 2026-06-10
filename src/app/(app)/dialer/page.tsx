@@ -4,6 +4,7 @@ import { localeFor } from "@/lib/languages";
 import { PageHeader } from "@/components/ui";
 import { DialerView } from "@/components/DialerView";
 
+export const metadata = { title: "Power Dialer" };
 export const dynamic = "force-dynamic";
 
 export default async function DialerPage() {

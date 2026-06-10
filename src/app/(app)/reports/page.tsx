@@ -5,6 +5,7 @@ import { compactMoney, money, pct } from "@/lib/format";
 import { PageHeader, Stat, Card, Avatar } from "@/components/ui";
 import { Funnel, Donut, BarChart } from "@/components/charts";
 
+export const metadata = { title: "Reports" };
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {

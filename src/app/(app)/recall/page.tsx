@@ -6,6 +6,7 @@ import { RecallQueue, type RecallRow } from "@/components/RecallQueue";
 import { RecallAutopilotUpsell } from "@/components/RecallAutopilotUpsell";
 import type { Contact } from "@/lib/crm/types";
 
+export const metadata = { title: "Recall queue" };
 export const dynamic = "force-dynamic";
 
 function primaryContact(c?: Contact): string {

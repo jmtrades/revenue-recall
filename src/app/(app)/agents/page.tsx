@@ -4,6 +4,7 @@ import { resolveProvider } from "@/lib/crm/registry";
 import { guardrailConfig } from "@/lib/agent/guardrails";
 import { getOrgSettings } from "@/lib/org";
 
+export const metadata = { title: "Autopilot" };
 export const dynamic = "force-dynamic";
 
 export default async function AgentsPage() {

@@ -13,6 +13,7 @@ import { Icon } from "@/components/icons";
 import { DashboardWelcome } from "@/components/DashboardWelcome";
 import { StartCheckoutWatcher } from "@/components/StartCheckoutWatcher";
 
+export const metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
 
 function timeAgo(iso: string): string {

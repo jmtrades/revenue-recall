@@ -5,6 +5,7 @@ import { allSequencesFor } from "@/lib/sequences-store";
 import { PageHeader } from "@/components/ui";
 import { LeadsTable } from "@/components/LeadsTable";
 
+export const metadata = { title: "Leads" };
 export const dynamic = "force-dynamic";
 
 export default async function LeadsPage() {

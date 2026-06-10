@@ -5,6 +5,7 @@ import { getSessionRole } from "@/lib/authz";
 import { PageHeader } from "@/components/ui";
 import { SequencesView } from "@/components/SequencesView";
 
+export const metadata = { title: "Sequences" };
 export const dynamic = "force-dynamic";
 
 export default async function SequencesPage() {

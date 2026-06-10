@@ -5,6 +5,7 @@ import { getActiveVoice } from "@/lib/voice";
 import { PageHeader } from "@/components/ui";
 import { InboxView } from "@/components/InboxView";
 
+export const metadata = { title: "Inbox" };
 export const dynamic = "force-dynamic";
 
 export default async function InboxPage() {

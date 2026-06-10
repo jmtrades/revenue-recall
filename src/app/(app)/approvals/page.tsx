@@ -3,6 +3,7 @@ import { ApprovalsView, type ApprovalRow } from "@/components/ApprovalsView";
 import { listOutbox } from "@/lib/agent/store";
 import { resolveProvider } from "@/lib/crm/registry";
 
+export const metadata = { title: "Approvals" };
 export const dynamic = "force-dynamic";
 
 export default async function ApprovalsPage() {
