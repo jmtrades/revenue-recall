@@ -536,26 +536,45 @@ export default function LandingPage() {
         </Stagger>
       </section>
 
-      {/* Final CTA */}
+      {/* Final CTA — the close: one objective, the whole promise in three beats */}
       <section className="mx-auto max-w-6xl px-5 pb-24">
-        <ScaleIn className="hero-glow bezel relative overflow-hidden rounded-3xl border border-border bg-surface px-8 py-20 text-center">
+        <ScaleIn className="hero-glow bezel relative overflow-hidden rounded-3xl border border-border bg-surface px-5 py-16 text-center sm:px-8 sm:py-20">
           <div className="surface-grid absolute inset-0 opacity-30" />
           <div className="relative mx-auto max-w-2xl">
-            <h2 className="text-3xl font-semibold tracking-tight text-fg sm:text-[2.75rem] sm:leading-[1.08]">Your pipeline is full of revenue you&apos;re not working.</h2>
-            <p className="mx-auto mt-5 max-w-xl text-lg text-muted">Turn on Revenue Recall in minutes — connect your CRM or start fresh — and let it go win it back.</p>
-            <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <Link href="/signup" className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-2 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand/90">
-                Start free
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20 transition-transform duration-200 ease-out group-hover:translate-x-0.5">
+            <span className="eyebrow">Your move</span>
+            <h2 className="mt-5 text-[2rem] font-semibold leading-[1.05] tracking-tight text-fg sm:text-[2.75rem] sm:leading-[1.08]">
+              Stop letting deals die in your CRM. <span className="gradient-text">Turn the engine on.</span>
+            </h2>
+            <p className="mx-auto mt-5 max-w-xl text-base text-muted sm:text-lg">
+              In two minutes it maps your pipeline, finds the revenue slipping away, and starts working it back — across email, SMS, and the phone, in your voice.
+            </p>
+
+            {/* the objective, made concrete */}
+            <div className="mx-auto mt-9 grid max-w-lg grid-cols-3 gap-2.5 text-left sm:gap-3">
+              {[
+                { n: "1", t: "Connect or start fresh", s: "Any CRM, or none" },
+                { n: "2", t: "It goes to work", s: "Autonomous · 24/7" },
+                { n: "3", t: "You collect the wins", s: "Revenue, recovered" },
+              ].map((s) => (
+                <div key={s.n} className="rounded-xl border border-border bg-surface-2/40 p-3">
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-soft font-display text-xs font-semibold text-brand ring-1 ring-inset ring-brand/20">{s.n}</span>
+                  <p className="mt-2.5 text-[13px] font-semibold leading-tight text-fg">{s.t}</p>
+                  <p className="mt-1 text-[11px] leading-tight text-muted">{s.s}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-9 flex flex-col items-center gap-3">
+              <Link href="/signup" className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-2.5 pl-6 pr-2.5 text-base font-semibold text-white hover:bg-brand/90">
+                Start free — live in 2 minutes
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-white/20 transition-transform duration-200 ease-out group-hover:translate-x-0.5">
                   <Arrow />
                 </span>
               </Link>
-              <Link href="/login" className="cta inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-5 py-2.5 text-sm font-semibold text-fg transition-colors hover:bg-surface-2">
-                Sign in
-                <Arrow className="text-muted" />
-              </Link>
+              <p className="text-xs text-muted">
+                No credit card · Cancel anytime · <Link href="/pricing" className="font-medium text-brand hover:underline">See pricing</Link>
+              </p>
             </div>
-            <p className="mt-4 text-xs text-muted">Free forever to start · No credit card · Cancel anytime</p>
           </div>
         </ScaleIn>
       </section>
