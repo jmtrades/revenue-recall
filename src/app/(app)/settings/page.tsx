@@ -51,6 +51,9 @@ import { LeadFormEmbed } from "@/components/LeadFormEmbed";
 import { WebhookSettings } from "@/components/WebhookSettings";
 import { InboundWebhooks, type InboundUrl } from "@/components/InboundWebhooks";
 import { hostedFormUrl, formEmbedSnippet } from "@/lib/forms";
+import { hostedBookingUrl, bookingEmbedSnippet } from "@/lib/meetings/token";
+import { listMeetingTypes, getAvailability } from "@/lib/meetings/store";
+import { SchedulingSettings } from "@/components/settings/SchedulingSettings";
 import { inboundWebhookUrl, type InboundKind } from "@/lib/inbound-routing";
 import { listInvites } from "@/lib/invites-server";
 import { listMembers } from "@/lib/members-server";
@@ -164,6 +167,20 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
         <CallVoicePicker initialVoiceId={org.voiceId ?? null} />
       </Card>
     </>
+  );
+
+  // Scheduling: anyone can view the booking link; only owner/admin manage it
+  // (the /api/meetings/* routes enforce the same rule).
+  const canManageScheduling = !isAuthRequired() || ["owner", "admin"].includes((await getSessionRole()) ?? "");
+  const [scheduleTypes, scheduleAvailability] = await Promise.all([listMeetingTypes(), getAvailability()]);
+  const schedulingTab = (
+    <SchedulingSettings
+      bookingUrl={org.id ? hostedBookingUrl(org.id) : null}
+      embed={org.id ? bookingEmbedSnippet(org.id) : null}
+      availability={scheduleAvailability}
+      meetingTypes={scheduleTypes}
+      canManage={canManageScheduling}
+    />
   );
   const integrations = listIntegrations();
   const { users, pipeline } = await getTeamAndPipeline();
@@ -592,6 +609,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
           { id: "general", label: "General", content: general },
           { id: "appearance", label: "Appearance", content: appearanceTab },
           { id: "voice", label: "Voice", content: voiceTab },
+          { id: "scheduling", label: "Scheduling", content: schedulingTab },
           { id: "industry", label: "Industry", content: industryTab },
           { id: "pipeline", label: "Pipeline", content: pipelineTab },
           { id: "integrations", label: "Integrations", content: integrationsTab },
