@@ -29,7 +29,20 @@ describe("middleware auth-gate allowlist (real isPublicRoute)", () => {
   });
 
   it("keeps auth screens, legal pages, and callbacks public", () => {
-    for (const p of ["/", "/login", "/signup", "/reset", "/privacy", "/terms", "/security", "/auth/callback", "/f/org_123", "/docs/api", "/api/social/whatsapp", "/api/oauth/x/callback"]) {
+    for (const p of ["/", "/login", "/signup", "/reset", "/pricing", "/privacy", "/terms", "/security", "/auth/callback", "/f/org_123", "/docs/api", "/api/social/whatsapp", "/api/oauth/x/callback"]) {
+      expect(isPublicRoute(p), `${p} must be public`).toBe(true);
+    }
+  });
+
+  it("keeps brand/SEO asset routes public (share-card scrapers can't log in)", () => {
+    for (const p of [
+      "/opengraph-image",
+      "/pricing/opengraph-image",
+      "/industries/real-estate/opengraph-image",
+      "/apple-icon",
+      "/icon",
+      "/.well-known/security.txt",
+    ]) {
       expect(isPublicRoute(p), `${p} must be public`).toBe(true);
     }
   });
