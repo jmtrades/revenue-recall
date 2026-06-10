@@ -73,6 +73,8 @@ export interface ProspectStrings {
   emailAddToCalendar: string;
   reminderSubject: string; // {meeting} {brand}
   reminderBody: string; // {meeting} {brand}
+  smsConfirm: string; // {meeting} {brand} {when}
+  smsReminder: string; // {meeting} {brand} {when}
   locPhoneLong: string;
   locVideoLong: string;
   locInPersonLong: string;
@@ -87,6 +89,8 @@ export interface ProspectStrings {
 }
 
 const en: ProspectStrings = {
+  smsConfirm: "{brand}: your {meeting} is confirmed for {when}.",
+  smsReminder: "{brand} reminder: {meeting} on {when}.",
   reminderSubject: "Reminder: {meeting} with {brand}",
   reminderBody: "A quick reminder about your {meeting} with {brand}.",
   emailManage: "Need to cancel or reschedule?",
@@ -151,6 +155,8 @@ const en: ProspectStrings = {
 };
 
 const es: Partial<ProspectStrings> = {
+  smsConfirm: "{brand}: tu {meeting} está confirmada para {when}.",
+  smsReminder: "Recordatorio de {brand}: {meeting} el {when}.",
   reminderSubject: "Recordatorio: {meeting} con {brand}",
   reminderBody: "Un recordatorio rápido sobre tu {meeting} con {brand}.",
   emailManage: "¿Necesitas cancelar o reprogramar?",
@@ -214,6 +220,8 @@ const es: Partial<ProspectStrings> = {
 };
 
 const fr: Partial<ProspectStrings> = {
+  smsConfirm: "{brand} : votre {meeting} est confirmé pour {when}.",
+  smsReminder: "Rappel {brand} : {meeting} le {when}.",
   reminderSubject: "Rappel : {meeting} avec {brand}",
   reminderBody: "Petit rappel concernant votre {meeting} avec {brand}.",
   emailManage: "Besoin d'annuler ou de reprogrammer ?",
@@ -277,6 +285,8 @@ const fr: Partial<ProspectStrings> = {
 };
 
 const de: Partial<ProspectStrings> = {
+  smsConfirm: "{brand}: Ihr {meeting} ist für {when} bestätigt.",
+  smsReminder: "{brand} Erinnerung: {meeting} am {when}.",
   reminderSubject: "Erinnerung: {meeting} mit {brand}",
   reminderBody: "Eine kurze Erinnerung an Ihren {meeting} mit {brand}.",
   emailManage: "Absagen oder verschieben?",
@@ -340,6 +350,8 @@ const de: Partial<ProspectStrings> = {
 };
 
 const pt: Partial<ProspectStrings> = {
+  smsConfirm: "{brand}: seu {meeting} está confirmado para {when}.",
+  smsReminder: "Lembrete {brand}: {meeting} em {when}.",
   reminderSubject: "Lembrete: {meeting} com {brand}",
   reminderBody: "Um lembrete rápido sobre o seu {meeting} com {brand}.",
   emailManage: "Precisa cancelar ou remarcar?",
@@ -403,6 +415,8 @@ const pt: Partial<ProspectStrings> = {
 };
 
 const it: Partial<ProspectStrings> = {
+  smsConfirm: "{brand}: il tuo {meeting} è confermato per {when}.",
+  smsReminder: "Promemoria {brand}: {meeting} il {when}.",
   reminderSubject: "Promemoria: {meeting} con {brand}",
   reminderBody: "Un breve promemoria per il tuo {meeting} con {brand}.",
   emailManage: "Devi annullare o riprogrammare?",
@@ -466,6 +480,8 @@ const it: Partial<ProspectStrings> = {
 };
 
 const nl: Partial<ProspectStrings> = {
+  smsConfirm: "{brand}: je {meeting} is bevestigd voor {when}.",
+  smsReminder: "{brand} herinnering: {meeting} op {when}.",
   reminderSubject: "Herinnering: {meeting} met {brand}",
   reminderBody: "Een korte herinnering aan je {meeting} met {brand}.",
   emailManage: "Annuleren of verzetten?",
@@ -529,6 +545,8 @@ const nl: Partial<ProspectStrings> = {
 };
 
 const pl: Partial<ProspectStrings> = {
+  smsConfirm: "{brand}: Twój {meeting} potwierdzony na {when}.",
+  smsReminder: "Przypomnienie {brand}: {meeting} dnia {when}.",
   reminderSubject: "Przypomnienie: {meeting} z {brand}",
   reminderBody: "Krótkie przypomnienie o Twoim spotkaniu ({meeting}) z {brand}.",
   emailManage: "Chcesz odwołać lub zmienić termin?",
@@ -592,6 +610,8 @@ const pl: Partial<ProspectStrings> = {
 };
 
 const ja: Partial<ProspectStrings> = {
+  smsConfirm: "{brand}: {meeting}が{when}に確定しました。",
+  smsReminder: "{brand}リマインダー: {meeting} {when}。",
   reminderSubject: "リマインダー: {brand}との{meeting}",
   reminderBody: "{brand}との{meeting}についてのリマインダーです。",
   emailManage: "キャンセルまたは再予約が必要ですか？",
@@ -655,6 +675,8 @@ const ja: Partial<ProspectStrings> = {
 };
 
 const zh: Partial<ProspectStrings> = {
+  smsConfirm: "{brand}：您的{meeting}已确认，时间为{when}。",
+  smsReminder: "{brand}提醒：{meeting}，{when}。",
   reminderSubject: "提醒：与{brand}的{meeting}",
   reminderBody: "温馨提醒您与{brand}的{meeting}。",
   emailManage: "需要取消或改期吗？",
@@ -718,6 +740,8 @@ const zh: Partial<ProspectStrings> = {
 };
 
 const ko: Partial<ProspectStrings> = {
+  smsConfirm: "{brand}: {meeting}이(가) {when}으로 확정되었습니다.",
+  smsReminder: "{brand} 리마인더: {meeting} {when}.",
   reminderSubject: "리마인더: {brand}와(과)의 {meeting}",
   reminderBody: "{brand}와(과)의 {meeting} 일정을 다시 안내드립니다.",
   emailManage: "취소 또는 일정 변경이 필요하신가요?",
@@ -781,6 +805,8 @@ const ko: Partial<ProspectStrings> = {
 };
 
 const ar: Partial<ProspectStrings> = {
+  smsConfirm: "{brand}: تم تأكيد {meeting} في {when}.",
+  smsReminder: "تذكير {brand}: {meeting} في {when}.",
   reminderSubject: "تذكير: {meeting} مع {brand}",
   reminderBody: "تذكير سريع بشأن {meeting} مع {brand}.",
   emailManage: "هل تحتاج إلى الإلغاء أو إعادة الجدولة؟",
@@ -845,6 +871,8 @@ const ar: Partial<ProspectStrings> = {
 };
 
 const hi: Partial<ProspectStrings> = {
+  smsConfirm: "{brand}: आपका {meeting} {when} के लिए पुष्टि हुआ।",
+  smsReminder: "{brand} रिमाइंडर: {meeting} {when}।",
   reminderSubject: "रिमाइंडर: {brand} के साथ {meeting}",
   reminderBody: "{brand} के साथ आपकी {meeting} की एक त्वरित याद।",
   emailManage: "रद्द या पुनर्निर्धारित करना है?",

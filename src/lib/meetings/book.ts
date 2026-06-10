@@ -1,7 +1,7 @@
 import { resolveProvider } from "@/lib/crm/registry";
 import { captureLead } from "@/lib/leads-capture";
 import { getOrgSettings } from "@/lib/org";
-import { sendEmail } from "@/lib/comms";
+import { sendEmail, sendSms, channelStatus } from "@/lib/comms";
 import { ownerEmailsForOrg } from "@/lib/billing/lifecycle";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { emitWebhook } from "@/lib/webhooks-out";
@@ -135,7 +135,7 @@ export async function bookMeeting(input: BookMeetingInput): Promise<BookMeetingR
     notes: input.notes,
   });
 
-  await notify(type, name, email, startsAt, avail.timezone, booking.id).catch(() => undefined);
+  await notify(type, name, email, phone, startsAt, avail.timezone, booking.id).catch(() => undefined);
   await emitWebhook("meeting.booked", {
     bookingId: booking.id,
     contactId: cap.contactId,
@@ -153,7 +153,7 @@ export async function bookMeeting(input: BookMeetingInput): Promise<BookMeetingR
 
 /** Confirmation to the invitee (in the org's SELLING language) + an internal
  *  heads-up to the org's owners (English, like the rest of the app's mail). */
-async function notify(type: MeetingType, name: string, email: string | undefined, whenIso: string, tz: string, bookingId: string): Promise<void> {
+async function notify(type: MeetingType, name: string, email: string | undefined, phone: string | undefined, whenIso: string, tz: string, bookingId: string): Promise<void> {
   const org = await getOrgSettings().catch(() => null);
   const orgId = await resolveActiveOrgId().catch(() => null);
   const brand = org?.name || "the team";
@@ -179,6 +179,12 @@ async function notify(type: MeetingType, name: string, email: string | undefined
       .filter((l) => l !== "")
       .join("\n");
     await sendEmail(email, fill(s.emailSubject, { meeting: type.name, brand }), body, { internal: true }).catch(() => null);
+  }
+
+  // A transactional SMS confirmation when the invitee gave a phone and SMS is
+  // live — the prospect requested this meeting, so it's not marketing. Best-effort.
+  if (phone && channelStatus().sms.live) {
+    await sendSms(phone, fill(s.smsConfirm, { meeting: type.name, brand, when }), { from: org?.callerId }).catch(() => null);
   }
 
   if (!orgId) return;
