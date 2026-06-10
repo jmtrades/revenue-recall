@@ -38,6 +38,22 @@ describe("pickVoice", () => {
     const voices = [voice("Plain One"), voice("Plain Two")];
     expect(pickVoice(voices, {})?.name).toBe("Plain One");
   });
+
+  it("prefers a neural/premium engine over a plain voice", () => {
+    const voices = [voice("Microsoft David Desktop"), voice("Microsoft Aria Online (Natural)"), voice("Plain")];
+    expect(pickVoice(voices, {})?.name).toBe("Microsoft Aria Online (Natural)");
+  });
+
+  it("avoids novelty/legacy voices even when they come first", () => {
+    const voices = [voice("Zarvox"), voice("Albert"), voice("Samantha")];
+    expect(pickVoice(voices, {})?.name).toBe("Samantha");
+  });
+
+  it("a premium marker outranks a legacy name penalty", () => {
+    const voices = [voice("Samantha"), voice("Mark (Enhanced)")];
+    // "Mark" is legacy, but "(Enhanced)" is a premium engine — it should win.
+    expect(pickVoice(voices, {})?.name).toBe("Mark (Enhanced)");
+  });
 });
 
 describe("humanizeChunks", () => {

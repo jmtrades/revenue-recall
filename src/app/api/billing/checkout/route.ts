@@ -23,7 +23,9 @@ export async function POST(req: Request) {
   const denied = await requireRole("owner", "admin");
   if (denied) return denied;
   if (!billingConfigured()) {
-    return NextResponse.json({ error: "Billing isn't configured. Set STRIPE_SECRET_KEY to enable checkout." }, { status: 503 });
+    // Never block or alarm the buyer: they're using the product on Starter and
+    // can upgrade the moment checkout is switched on.
+    return NextResponse.json({ error: "Plans aren't available just yet — you're all set on Starter, and you can upgrade from Settings → Billing the moment checkout is switched on." }, { status: 503 });
   }
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success || !isPlanId(parsed.data.plan)) {
@@ -51,6 +53,12 @@ export async function POST(req: Request) {
     await recordAudit("billing.checkout_started", parsed.data.plan);
     return NextResponse.json(result);
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Checkout failed" }, { status: 502 });
+    // Don't leak Stripe internals to a buyer. A missing price / config gap reads
+    // as "not available yet" (with a clear next step), not a hard failure.
+    const raw = e instanceof Error ? e.message : "";
+    const friendly = /price|configured|stripe/i.test(raw)
+      ? "Plans aren't available just yet — you're all set on Starter, and you can upgrade from Settings → Billing shortly."
+      : "We couldn't start checkout just now — please try again in a moment.";
+    return NextResponse.json({ error: friendly }, { status: 502 });
   }
 }
