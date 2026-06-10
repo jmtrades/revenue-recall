@@ -14,6 +14,7 @@
  */
 
 import { appendEmailCompliance, appendSmsCompliance, complianceConfig } from "@/lib/compliance";
+import { brandedEmailHtml } from "@/lib/email-brand";
 
 export type ChannelKind = "email" | "sms" | "voice";
 
@@ -30,7 +31,15 @@ export interface ChannelStatus {
   voice: { provider: string; live: boolean };
 }
 
-export interface EmailMessage { to: string; subject: string; body: string; from?: string }
+export interface EmailMessage {
+  to: string;
+  subject: string;
+  body: string;
+  from?: string;
+  /** Optional branded HTML alternative (product mail only). The plaintext
+   *  `body` is always sent too and remains the source of truth. */
+  html?: string;
+}
 export interface SmsMessage {
   to: string;
   body: string;
@@ -107,12 +116,12 @@ const resendEmail: EmailTransport = {
   // (it falls through to logging) rather than silently failing every send.
   id: "resend",
   available: () => Boolean(env("RESEND_API_KEY")) && Boolean(configuredEmailFrom()),
-  async send({ to, subject, body, from }) {
+  async send({ to, subject, body, from, html }) {
     try {
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${env("RESEND_API_KEY")}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: from ?? configuredEmailFrom(), to, subject, text: body }),
+        body: JSON.stringify({ from: from ?? configuredEmailFrom(), to, subject, text: body, ...(html ? { html } : {}) }),
       });
       const json = (await res.json().catch(() => ({}))) as { id?: string; message?: string };
       if (!res.ok) throw new Error(json.message ?? `Resend ${res.status}`);
@@ -126,12 +135,13 @@ const resendEmail: EmailTransport = {
 const sendgridEmail: EmailTransport = {
   id: "sendgrid",
   available: () => Boolean(env("SENDGRID_API_KEY")) && Boolean(configuredEmailFrom()),
-  async send({ to, subject, body, from }) {
+  async send({ to, subject, body, from, html }) {
     try {
       const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
         method: "POST",
         headers: { Authorization: `Bearer ${env("SENDGRID_API_KEY")}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ personalizations: [{ to: [{ email: to }] }], from: { email: from ?? configuredEmailFrom() }, subject, content: [{ type: "text/plain", value: body }] }),
+        // SendGrid requires text/plain before text/html in the content array.
+        body: JSON.stringify({ personalizations: [{ to: [{ email: to }] }], from: { email: from ?? configuredEmailFrom() }, subject, content: [{ type: "text/plain", value: body }, ...(html ? [{ type: "text/html", value: html }] : [])] }),
       });
       if (!res.ok) throw new Error(`SendGrid ${res.status}`);
       return { id: res.headers.get("x-message-id") ?? "sendgrid", status: "sent", provider: "sendgrid" };
@@ -144,9 +154,9 @@ const sendgridEmail: EmailTransport = {
 const webhookEmail: EmailTransport = {
   id: "webhook",
   available: () => Boolean(env("EMAIL_WEBHOOK_URL")),
-  async send({ to, subject, body, from }) {
+  async send({ to, subject, body, from, html }) {
     try {
-      const r = await postWebhook(env("EMAIL_WEBHOOK_URL")!, { channel: "email", to, subject, body, from: from ?? configuredEmailFrom() });
+      const r = await postWebhook(env("EMAIL_WEBHOOK_URL")!, { channel: "email", to, subject, body, from: from ?? configuredEmailFrom(), ...(html ? { html } : {}) });
       return { id: r.id ?? "webhook", status: "sent", provider: "webhook" };
     } catch (e) {
       return { id: "", status: "failed", provider: "webhook", detail: e instanceof Error ? e.message : "send failed" };
@@ -268,7 +278,11 @@ export async function sendEmail(
   // CAN-SPAM footer, and definitely not the prospect-facing 'Reply "unsubscribe"'
   // line, which on an internal digest is a reply that does nothing.
   const compliant = opts?.internal ? body : appendEmailCompliance(body, opts?.unsubscribeUrl, complianceConfig(opts?.compliance));
-  return t ? t.send({ to, subject, body: compliant }) : logResult();
+  // Product mail (internal) ships a branded HTML alternative alongside the
+  // text part. Prospect outreach stays plaintext-only on purpose: a personal
+  // email in the rep's voice must not look like a campaign.
+  const html = opts?.internal ? brandedEmailHtml({ subject, body: compliant }) : undefined;
+  return t ? t.send({ to, subject, body: compliant, html }) : logResult();
 }
 
 export async function sendSms(to: string, body: string, opts: { from?: string } = {}): Promise<SendResult> {
