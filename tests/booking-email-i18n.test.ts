@@ -57,6 +57,8 @@ function futureStart(days = 3): string {
 
 beforeEach(() => {
   h.emails = [];
+  process.env.UNSUBSCRIBE_SECRET = "test-secret";
+  process.env.NEXT_PUBLIC_SITE_URL = "https://app.example.com";
 });
 
 describe("booking confirmation language", () => {
@@ -69,6 +71,8 @@ describe("booking confirmation language", () => {
     expect(toInvitee!.subject).toMatch(/^Confirmado:/); // Spanish subject
     expect(toInvitee!.body).toContain("Hola Pat:");
     expect(toInvitee!.body).toContain("Cuándo:");
+    // Localized "Add to calendar" line with the signed .ics download.
+    expect(toInvitee!.body).toContain("Añadir al calendario: https://app.example.com/api/bookings/ics?");
 
     const toOwner = h.emails.find((e) => e.to === "owner@acme.com");
     expect(toOwner).toBeTruthy();

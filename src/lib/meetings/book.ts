@@ -10,6 +10,7 @@ import { isSlotAvailable } from "@/lib/meetings/availability";
 import { DEFAULT_MEETING_TYPE, type MeetingType } from "@/lib/meetings/types";
 import { prospectStrings, fill, type ProspectStrings } from "@/lib/i18n/prospect";
 import { localeFor } from "@/lib/languages";
+import { bookingIcsUrl } from "@/lib/meetings/ics";
 
 /**
  * Book a meeting. Runs in the CURRENT org scope — the caller (the public booking
@@ -133,7 +134,7 @@ export async function bookMeeting(input: BookMeetingInput): Promise<BookMeetingR
     notes: input.notes,
   });
 
-  await notify(type, name, email, startsAt, avail.timezone).catch(() => undefined);
+  await notify(type, name, email, startsAt, avail.timezone, booking.id).catch(() => undefined);
   await emitWebhook("meeting.booked", {
     bookingId: booking.id,
     contactId: cap.contactId,
@@ -151,14 +152,16 @@ export async function bookMeeting(input: BookMeetingInput): Promise<BookMeetingR
 
 /** Confirmation to the invitee (in the org's SELLING language) + an internal
  *  heads-up to the org's owners (English, like the rest of the app's mail). */
-async function notify(type: MeetingType, name: string, email: string | undefined, whenIso: string, tz: string): Promise<void> {
+async function notify(type: MeetingType, name: string, email: string | undefined, whenIso: string, tz: string, bookingId: string): Promise<void> {
   const org = await getOrgSettings().catch(() => null);
+  const orgId = await resolveActiveOrgId().catch(() => null);
   const brand = org?.name || "the team";
   const s = prospectStrings(org?.language);
   const when = formatInZone(whenIso, tz, localeFor(org?.language));
   const loc = locationLine(type, s);
 
   if (email) {
+    const icsUrl = orgId ? bookingIcsUrl(orgId, bookingId) : null;
     const body = [
       fill(s.emailGreeting, { name }),
       "",
@@ -166,6 +169,7 @@ async function notify(type: MeetingType, name: string, email: string | undefined
       "",
       fill(s.emailWhen, { when }),
       loc ? fill(s.emailWhere, { where: loc }) : "",
+      icsUrl ? `${s.emailAddToCalendar} ${icsUrl}` : "",
       "",
       s.emailChange,
     ]
@@ -174,7 +178,6 @@ async function notify(type: MeetingType, name: string, email: string | undefined
     await sendEmail(email, fill(s.emailSubject, { meeting: type.name, brand }), body, { internal: true }).catch(() => null);
   }
 
-  const orgId = await resolveActiveOrgId().catch(() => null);
   if (!orgId) return;
   const owners = await ownerEmailsForOrg(orgId).catch(() => []);
   if (!owners.length) return;
