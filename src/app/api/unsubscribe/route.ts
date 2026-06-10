@@ -3,12 +3,14 @@ import { resolveProvider } from "@/lib/crm/registry";
 import { verifyUnsubToken } from "@/lib/unsubscribe";
 import { markDoNotContact } from "@/lib/opt-out";
 import { runWithOrg } from "@/lib/supabase/org-context";
+import { getOrgSettings } from "@/lib/org";
+import { prospectStrings, type ProspectStrings } from "@/lib/i18n/prospect";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
-function page(title: string, message: string, status: number): Response {
-  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>
+function page(title: string, message: string, status: number, dir: "ltr" | "rtl" = "ltr"): Response {
+  const html = `<!doctype html><html dir="${dir}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>
 <style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0b0e14;color:#e7eaf0;display:grid;place-items:center;min-height:100vh;margin:0}
 .card{max-width:28rem;padding:2rem;text-align:center}h1{font-size:1.25rem;margin:0 0 .5rem}p{color:#8a93a6;line-height:1.5}</style></head>
 <body><div class="card"><h1>${title}</h1><p>${message}</p></div></body></html>`;
@@ -32,10 +34,13 @@ export async function GET(req: Request) {
   }
 
   try {
-    const optOut = async () => {
+    // The token verified, so the org binding is trusted — show the result in the
+    // org's SELLING language (the language the prospect was emailed in).
+    const optOut = async (): Promise<{ result: "ok" | "missing"; s: ProspectStrings }> => {
+      const s = prospectStrings((await getOrgSettings().catch(() => null))?.language);
       const provider = (await resolveProvider());
       const contact = await provider.getContact(contactId);
-      if (!contact) return "missing" as const;
+      if (!contact) return { result: "missing", s };
       await provider.logActivity({
         contactId,
         kind: "note",
@@ -47,12 +52,13 @@ export async function GET(req: Request) {
       // Persist a durable do-not-contact flag too, so the opt-out outlives the
       // recent-activity read window the guardrail scans.
       await markDoNotContact(provider, contact);
-      return "ok" as const;
+      return { result: "ok", s };
     };
-    const result = orgId ? await runWithOrg(orgId, optOut) : await optOut();
-    if (result === "missing") return page("Already removed", "We couldn't find that contact — you may already be unsubscribed.", 404);
-    return page("You're unsubscribed", "Done — you won't hear from us again. Sorry to see you go.", 200);
+    const { result, s } = orgId ? await runWithOrg(orgId, optOut) : await optOut();
+    if (result === "missing") return page(s.unsubAlreadyTitle, s.unsubAlreadyBody, 404, s.dir);
+    return page(s.unsubDoneTitle, s.unsubDoneBody, 200, s.dir);
   } catch {
-    return page("Something went wrong", "We couldn't process that right now. Reply with “unsubscribe” and we'll handle it.", 500);
+    const s = prospectStrings();
+    return page(s.unsubErrorTitle, s.unsubErrorBody, 500, s.dir);
   }
 }
