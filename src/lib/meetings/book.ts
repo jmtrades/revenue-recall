@@ -11,6 +11,7 @@ import { DEFAULT_MEETING_TYPE, type MeetingType } from "@/lib/meetings/types";
 import { prospectStrings, fill, type ProspectStrings } from "@/lib/i18n/prospect";
 import { localeFor } from "@/lib/languages";
 import { bookingIcsUrl } from "@/lib/meetings/ics";
+import { bookingCancelUrl } from "@/lib/meetings/manage";
 
 /**
  * Book a meeting. Runs in the CURRENT org scope — the caller (the public booking
@@ -162,6 +163,7 @@ async function notify(type: MeetingType, name: string, email: string | undefined
 
   if (email) {
     const icsUrl = orgId ? bookingIcsUrl(orgId, bookingId) : null;
+    const cancelUrl = orgId ? bookingCancelUrl(orgId, bookingId) : null;
     const body = [
       fill(s.emailGreeting, { name }),
       "",
@@ -172,6 +174,7 @@ async function notify(type: MeetingType, name: string, email: string | undefined
       icsUrl ? `${s.emailAddToCalendar} ${icsUrl}` : "",
       "",
       s.emailChange,
+      cancelUrl ? `${s.emailManage} ${cancelUrl}` : "",
     ]
       .filter((l) => l !== "")
       .join("\n");
