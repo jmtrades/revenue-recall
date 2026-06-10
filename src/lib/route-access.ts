@@ -30,6 +30,7 @@ export const PUBLIC_API = [
   "/api/calendar/feed", // subscribable .ics — self-authed by an HMAC feed token
   "/api/v1/", // public Lead Capture API — each route self-auths by API key
   "/api/forms/", // hosted/embeddable lead form submit — self-authed by an HMAC form token
+  "/api/bookings/", // public booking submit — self-authed by an HMAC booking token
   "/api/t", // tracked-link redirect — self-authed by an HMAC click token
   "/api/health",
 ];
@@ -39,6 +40,7 @@ export function isPublicRoute(path: string): boolean {
   if (PUBLIC_PAGES.has(path)) return true;
   if (path.startsWith("/auth/")) return true; // OAuth / email-confirm callback
   if (path.startsWith("/f/")) return true; // hosted lead-capture form (token-authed page)
+  if (path.startsWith("/book/")) return true; // hosted booking page (token-authed page)
   if (path === "/docs" || path.startsWith("/docs/")) return true; // public developer docs
   if (path === "/industries" || path.startsWith("/industries/")) return true; // public per-industry marketing pages
   // Social OAuth callback: the platform redirects here with no session; the
