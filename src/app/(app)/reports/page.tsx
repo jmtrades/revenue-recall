@@ -123,8 +123,8 @@ export default async function ReportsPage() {
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               <Stat label="Upcoming" value={String(meetings.upcoming)} hint="confirmed ahead" tone="success" />
               <Stat label="Booked" value={String(meetings.booked30d)} hint="last 30 days" />
-              <Stat label="Cancelled" value={String(meetings.cancelled30d)} hint="last 30 days" />
-              <Stat label="Cancel rate" value={pct(meetings.cancelRate)} hint="last 30 days" tone={meetings.cancelRate > 0.3 ? "warn" : undefined} />
+              <Stat label="Cancel rate" value={pct(meetings.cancelRate)} hint={`${meetings.cancelled30d} cancelled`} tone={meetings.cancelRate > 0.3 ? "warn" : undefined} />
+              <Stat label="No-show rate" value={pct(meetings.noShowRate)} hint={`${meetings.noShow30d} no-shows`} tone={meetings.noShowRate > 0.2 ? "warn" : undefined} />
             </div>
             {meetings.trend.some((w) => w.value > 0) && (
               <div>

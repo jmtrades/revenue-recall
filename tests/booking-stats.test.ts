@@ -36,6 +36,18 @@ describe("aggregateBookingStats", () => {
     expect(s.trend.map((w) => w.value)).toEqual([1, 0, 0, 0, 0, 3]);
   });
 
+  it("computes no-show rate over recently-occurred meetings", () => {
+    const rows: BookingStatRow[] = [
+      row({ status: "completed", startsAt: ago(2), createdAt: ago(5) }),
+      row({ status: "completed", startsAt: ago(4), createdAt: ago(6) }),
+      row({ status: "no_show", startsAt: ago(3), createdAt: ago(7) }),
+      row({ status: "no_show", startsAt: ago(40), createdAt: ago(45) }), // outside the 30d window → ignored
+    ];
+    const s = aggregateBookingStats(rows, NOW);
+    expect(s.noShow30d).toBe(1); // only the recent no-show
+    expect(s.noShowRate).toBeCloseTo(1 / 3, 5); // 1 no-show / (2 completed + 1 no-show)
+  });
+
   it("ignores malformed dates rather than throwing", () => {
     const s = aggregateBookingStats([row({ createdAt: "nope", startsAt: "nope" })], NOW);
     expect(s.any).toBe(true);
