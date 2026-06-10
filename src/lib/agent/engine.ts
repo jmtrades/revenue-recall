@@ -6,7 +6,7 @@ import { buildRecallQueue } from "@/lib/recall/engine";
 import { draftMessage } from "@/lib/ai/draft";
 import { isAiConfigured } from "@/lib/ai/client";
 import { sendEmail, sendSms, placeCall } from "@/lib/comms";
-import { trackLinks } from "@/lib/tracking";
+import { trackLinks, recordSent } from "@/lib/tracking";
 import { sendGate, dailySendCap, type SkipReason } from "@/lib/agent/guardrails";
 import { compactMoney } from "@/lib/format";
 import { createRun, createOutboxItem, touchTask } from "@/lib/agent/store";
@@ -222,6 +222,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
             });
             // Attribute autopilot work on an at-risk deal so won-back ROI counts it.
             if (t.reason) await recordRecallTouch({ dealId: t.opp.id, contactId: t.opp.contactId, channel, source: "autopilot" });
+            void recordSent({ orgId: org.id, contactId: t.opp.contactId, dealId: t.opp.id, channel });
           }
         }
       }

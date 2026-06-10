@@ -1,4 +1,5 @@
 import { resolveProvider } from "@/lib/crm/registry";
+import { recordReply } from "@/lib/tracking";
 import { getActiveVoice } from "@/lib/voice";
 import { getOrgSettings } from "@/lib/org";
 import { getIndustry } from "@/lib/industries";
@@ -124,6 +125,8 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     occurredAt: new Date().toISOString(),
   });
   await emitMessageReceived(channel, from, body, subject, contact.id, deal?.id, true);
+  // A real prospect reply — record it for the outreach engagement funnel.
+  void recordReply({ contactId: contact.id, dealId: deal?.id, channel });
 
   // They replied — stop any active cadence immediately. Whatever the reply
   // says (interested, busy, or STOP), the drip must not keep firing at someone
