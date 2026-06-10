@@ -3,6 +3,8 @@ import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
 import { isEntitled } from "@/lib/billing/enforce";
+import { listMeetingTypes } from "@/lib/meetings/store";
+import { hostedBookingUrl } from "@/lib/meetings/token";
 
 export interface Voice {
   senderName?: string;
@@ -30,8 +32,10 @@ function lines(raw?: string | null): string[] {
     .filter(Boolean);
 }
 
-/** The active writing voice for this org (drives how every message sounds). */
-export const getActiveVoice = cache(async (): Promise<Voice> => {
+/** The raw stored persona for this org, exactly as the rep saved it. Use this for
+ *  EDITING and data export — never apply derived defaults here, or the editor
+ *  would show (and re-save) a value the user didn't set. Request-cached. */
+export const getStoredVoice = cache(async (): Promise<Voice> => {
   if (!isSupabaseConfigured()) return {};
   const client = getSupabase()!;
   const orgId = await resolveActiveOrgId();
@@ -49,6 +53,31 @@ export const getActiveVoice = cache(async (): Promise<Voice> => {
     customReengage: lines(data.custom_reengage),
     bookingUrl: data.booking_url ?? undefined,
   };
+});
+
+/**
+ * Pick the booking link to OFFER in outreach. An explicit custom link (e.g. the
+ * rep's own Calendly) always wins; otherwise fall back to this org's native
+ * booking page, but only once they've turned scheduling on (≥1 enabled meeting
+ * type) — so the AI never starts offering a link an org didn't opt into.
+ */
+export function resolveBookingUrl(explicit: string | undefined, nativeUrl: string | null, bookingEnabled: boolean): string | undefined {
+  if (explicit) return explicit;
+  if (bookingEnabled && nativeUrl) return nativeUrl;
+  return undefined;
+}
+
+/** The EFFECTIVE writing voice that composes outreach (drives how every message
+ *  sounds). Same as the stored persona, except the booking link falls back to
+ *  the org's native booking page per resolveBookingUrl. Request-cached. */
+export const getActiveVoice = cache(async (): Promise<Voice> => {
+  const stored = await getStoredVoice();
+  if (!isSupabaseConfigured()) return stored;
+  const orgId = await resolveActiveOrgId().catch(() => null);
+  if (!orgId) return stored;
+  const bookingEnabled = (await listMeetingTypes({ enabledOnly: true }).catch(() => [])).length > 0;
+  const bookingUrl = resolveBookingUrl(stored.bookingUrl, hostedBookingUrl(orgId), bookingEnabled);
+  return { ...stored, bookingUrl };
 });
 
 const DISTILL_SYSTEM = `You analyze a salesperson's own words (a self-description and/or example messages) and produce a concise, actionable VOICE PROFILE another writer can follow to sound EXACTLY like this person — like a human, never like an AI.

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { recordAudit } from "@/lib/audit";
 import { getSessionUser } from "@/lib/auth";
 import { resolveProvider } from "@/lib/crm/registry";
-import { getActiveVoice } from "@/lib/voice";
+import { getStoredVoice } from "@/lib/voice";
 import { getSubscription } from "@/lib/billing/store";
 import { getOrgSettings } from "@/lib/org";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
@@ -28,7 +28,7 @@ export async function GET(req: Request) {
   try {
     const [org, voice, subscription, contacts, opportunities, activities, pipelines] = await Promise.all([
       getOrgSettings(),
-      getActiveVoice(),
+      getStoredVoice(),
       getSubscription(),
       provider.listContacts(),
       provider.listOpportunities(),
