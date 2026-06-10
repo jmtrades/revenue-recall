@@ -40,6 +40,7 @@ export function isPublicRoute(path: string): boolean {
   if (path.startsWith("/auth/")) return true; // OAuth / email-confirm callback
   if (path.startsWith("/f/")) return true; // hosted lead-capture form (token-authed page)
   if (path === "/docs" || path.startsWith("/docs/")) return true; // public developer docs
+  if (path === "/industries" || path.startsWith("/industries/")) return true; // public per-industry marketing pages
   // Social OAuth callback: the platform redirects here with no session; the
   // signed `state` authenticates the org binding. (The /start route stays gated.)
   if (path.startsWith("/api/oauth/") && path.endsWith("/callback")) return true;
