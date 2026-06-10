@@ -76,7 +76,10 @@ export interface Booking {
   startsAt: string;
   endsAt: string;
   timezone: string;
-  status: "confirmed" | "cancelled";
+  status: BookingStatus;
   notes?: string;
   createdAt: string;
 }
+
+export type BookingStatus = "confirmed" | "cancelled" | "completed" | "no_show";
+export const BOOKING_STATUSES: BookingStatus[] = ["confirmed", "cancelled", "completed", "no_show"];

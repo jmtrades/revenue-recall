@@ -22,6 +22,7 @@ export const NAV_GROUPS: { heading: string; items: { href: string; label: string
       { href: "/inbox", label: "Inbox", icon: "inbox" },
       { href: "/dialer", label: "Power Dialer", icon: "dialer" },
       { href: "/calendar", label: "Calendar", icon: "calendar" },
+      { href: "/meetings", label: "Meetings", icon: "approvals" },
     ],
   },
   {

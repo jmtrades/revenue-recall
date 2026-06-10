@@ -14,6 +14,10 @@ export interface BookingStats {
   cancelled30d: number;
   /** cancelled / (booked + cancelled) over the 30-day window, 0..1. */
   cancelRate: number;
+  /** Meetings marked no-show whose start was in the last 30 days. */
+  noShow30d: number;
+  /** no_show / (completed + no_show) over the last 30 days of past meetings, 0..1. */
+  noShowRate: number;
   /** Bookings created per week over the last 6 weeks (oldest → newest). */
   trend: { label: string; value: number }[];
   /** True when the org has any bookings at all (drives the empty state). */
@@ -33,6 +37,8 @@ export function aggregateBookingStats(rows: BookingStatRow[], now: Date = new Da
   let upcoming = 0;
   let booked30d = 0;
   let cancelled30d = 0;
+  let noShow30d = 0;
+  let completed30d = 0;
   const weeks = [0, 0, 0, 0, 0, 0]; // index 0 = this week … 5 = five weeks ago
 
   for (const r of rows) {
@@ -41,7 +47,12 @@ export function aggregateBookingStats(rows: BookingStatRow[], now: Date = new Da
     if (r.status === "confirmed" && Number.isFinite(start) && start >= nowMs) upcoming++;
     if (Number.isFinite(created) && nowMs - created <= 30 * DAY) {
       if (r.status === "cancelled") cancelled30d++;
-      else booked30d++;
+      else booked30d++; // confirmed / completed / no_show all began as a booking
+    }
+    // Outcome rates are measured over recently-occurred meetings, not booking date.
+    if (Number.isFinite(start) && nowMs - start <= 30 * DAY && start <= nowMs) {
+      if (r.status === "no_show") noShow30d++;
+      else if (r.status === "completed") completed30d++;
     }
     if (Number.isFinite(created)) {
       const wk = Math.floor((nowMs - created) / (7 * DAY));
@@ -50,6 +61,7 @@ export function aggregateBookingStats(rows: BookingStatRow[], now: Date = new Da
   }
 
   const totalReq = booked30d + cancelled30d;
+  const heldOrMissed = completed30d + noShow30d;
   const trend: { label: string; value: number }[] = [];
   for (let i = 5; i >= 0; i--) {
     const d = new Date(nowMs - i * 7 * DAY);
@@ -61,6 +73,8 @@ export function aggregateBookingStats(rows: BookingStatRow[], now: Date = new Da
     booked30d,
     cancelled30d,
     cancelRate: totalReq > 0 ? cancelled30d / totalReq : 0,
+    noShow30d,
+    noShowRate: heldOrMissed > 0 ? noShow30d / heldOrMissed : 0,
     trend,
     any: rows.length > 0,
   };

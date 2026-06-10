@@ -3,7 +3,7 @@ import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getSessionUser } from "@/lib/auth";
 import { getOrgSettings } from "@/lib/org";
 import { defaultAvailability } from "@/lib/meetings/availability";
-import type { Availability, Booking, DayWindow, MeetingLocationKind, MeetingType, WeeklyWindows } from "@/lib/meetings/types";
+import { BOOKING_STATUSES, type Availability, type Booking, type BookingStatus, type DayWindow, type MeetingLocationKind, type MeetingType, type WeeklyWindows } from "@/lib/meetings/types";
 
 /**
  * Org-scoped persistence for native meetings: meeting types, the weekly
@@ -230,7 +230,7 @@ function toBooking(r: BookingRow): Booking {
     startsAt: r.starts_at,
     endsAt: r.ends_at,
     timezone: r.timezone ?? "",
-    status: r.status === "cancelled" ? "cancelled" : "confirmed",
+    status: (BOOKING_STATUSES.includes(r.status as BookingStatus) ? r.status : "confirmed") as BookingStatus,
     notes: r.notes ?? undefined,
     createdAt: r.created_at,
   };
@@ -300,6 +300,26 @@ export async function cancelBooking(id: string): Promise<Booking | null> {
     await client.from("bookings").update({ status: "cancelled" }).eq("id", id).eq("org_id", orgId);
   }
   return booking;
+}
+
+/** Rep-set booking outcome (org-scoped). Requires a database. */
+export async function setBookingStatus(id: string, status: BookingStatus): Promise<void> {
+  const { client, orgId } = await ctx();
+  const { error } = await client.from("bookings").update({ status }).eq("id", id).eq("org_id", orgId);
+  if (error) throw new Error(error.message);
+}
+
+/** Bookings for the rep-facing management page: everything from the last 45 days
+ *  onward, soonest first. Never throws. */
+export async function listBookingsForManagement(): Promise<Booking[]> {
+  const client = getSupabase();
+  if (!client) return [];
+  const orgId = await resolveActiveOrgId().catch(() => null);
+  if (!orgId) return [];
+  const since = new Date(Date.now() - 45 * 86_400_000).toISOString();
+  const { data, error } = await client.from("bookings").select(BK_COLS).eq("org_id", orgId).gte("starts_at", since).order("starts_at", { ascending: true }).limit(300);
+  if (error) return [];
+  return ((data as BookingRow[] | null) ?? []).map(toBooking);
 }
 
 /** One booking by id (org-scoped), or null. Never throws. */
