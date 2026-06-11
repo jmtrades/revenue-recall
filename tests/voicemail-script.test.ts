@@ -34,6 +34,25 @@ describe("voicemailScript — the spoken message left on a machine", () => {
     expect(voicemailScript({})).not.toContain("undefined");
   });
 
+  it("reactivation borrows the vertical's re-engagement hooks — a concrete reason to call back", () => {
+    // Across seeds the mortgage hooks ("your rate quote…", "rates moved…")
+    // must surface; every variant stays a single spoken line that owns the gap.
+    let sawHook = false;
+    for (let i = 0; i < 14; i++) {
+      const vm = voicemailScript({
+        contactName: "Sam Patel",
+        repName: "Alex",
+        daysSinceContact: VOICEMAIL_REACTIVATION_GAP_DAYS + 3,
+        industryId: "mortgage",
+        seed: `deal-${i}`,
+      });
+      expect(vm).not.toContain("\n");
+      expect(vm.toLowerCase()).toMatch(/while|been a minute|pick things back up/);
+      if (/rate quote|rates moved|pre-approval/i.test(vm)) sawHook = true;
+    }
+    expect(sawHook, "no mortgage re-engagement hook surfaced across 14 seeds").toBe(true);
+  });
+
   it("is deterministic for a given seed and varies across seeds", () => {
     const a = voicemailScript({ contactName: "Sam", dealTitle: "X", seed: "fixed" });
     const b = voicemailScript({ contactName: "Sam", dealTitle: "X", seed: "fixed" });

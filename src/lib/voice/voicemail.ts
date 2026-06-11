@@ -1,4 +1,5 @@
-import { firstName, pick } from "@/lib/copy";
+import { firstName, pick, sentence } from "@/lib/copy";
+import { getPlaybook } from "@/lib/industries";
 
 /**
  * Voicemail script — the spoken message the dialer leaves when an outbound call
@@ -25,6 +26,9 @@ export interface VoicemailInput {
   dealTitle?: string;
   /** Days since the last touch; >= the gap threshold → a reactivation voicemail. */
   daysSinceContact?: number;
+  /** Org industry — reactivation voicemails borrow the vertical's re-engagement
+   *  hooks ("your rate quote is about to expire"), the concrete reason to call back. */
+  industryId?: string;
   /** Stable seed so the same call always yields the same line (no flip-flop across
    *  a retry or a preview). Defaults to the contact/deal/rep identity. */
   seed?: string;
@@ -44,11 +48,23 @@ export function voicemailScript(input: VoicemailInput): string {
   const seed = input.seed ?? `${input.contactName ?? ""}|${about}|${rep}`;
   const reactivation = (input.daysSinceContact ?? 0) >= VOICEMAIL_REACTIVATION_GAP_DAYS;
 
+  // The vertical's re-engagement hooks give the voicemail what generic lines
+  // can't: a CONCRETE reason to call back ("your rate quote from last month is
+  // about to expire"), spoken as its own sentence — so the hook variants skip
+  // the deal-title clause rather than referencing the subject twice.
+  const hooks = reactivation
+    ? getPlaybook(input.industryId ?? "generic").reengage.map((h) => {
+        const spoken = sentence(h.charAt(0).toUpperCase() + h.slice(1));
+        return `Hey ${first}, ${who} — been a while, I know. ${spoken} Ring me back when it's easy, no rush.`;
+      })
+    : [];
+
   const pool = reactivation
     ? [
         `Hey ${first}, ${who} — it's been a while, I know. No agenda, just wanted to reconnect${aboutClause}. Give me a ring back when it's easy, no rush at all.`,
         `Hi ${first}, ${who}. It's been a minute — thought I'd check in${aboutClause}. Buzz me back whenever you get a sec, I'll keep it short.`,
         `${first}, ${who} — I know it's been a while. Nothing urgent, just wanted to pick things back up${aboutClause}. Call me back when you've got a minute.`,
+        ...hooks,
       ]
     : [
         `Hey ${first}, ${who} — quick one${aboutClause}. Give me a ring back when you get a sec, no rush. Talk soon.`,

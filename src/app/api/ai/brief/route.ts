@@ -53,6 +53,7 @@ export const POST = withGuard(async (req: Request) => {
     repName: voice.senderName,
     dealTitle: detail.opp.title,
     daysSinceContact: gapDays,
+    industryId: org.industryId,
     seed: detail.opp.id,
   });
 

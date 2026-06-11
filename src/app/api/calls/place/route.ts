@@ -45,6 +45,10 @@ export const POST = withGuard(async (req: Request) => {
   }
 
   // Brief the in-house agent so it talks like it knows the prospect. Best-effort:
+  // This org's settings, fetched once: caller-ID + org id for the gateway echo
+  // below, and the industry that grounds the voicemail's call-back hook.
+  const org = await getOrgSettings().catch(() => null);
+
   // never let context-building block the call.
   let context: string | undefined;
   let opener: string | undefined;
@@ -95,6 +99,7 @@ export const POST = withGuard(async (req: Request) => {
       repName: rep,
       dealTitle: opp?.title,
       daysSinceContact: gapDays,
+      industryId: org?.industryId,
       seed: parsed.data.dealId || contactId || to,
     });
   } catch {
@@ -106,10 +111,9 @@ export const POST = withGuard(async (req: Request) => {
   const disclosure = recordingDisclosure();
   if (disclosure) opener = opener ? `${disclosure} ${opener}` : disclosure;
 
-  // This org's settings: its own caller-ID number, and its id — both echoed by
-  // the gateway back to /api/calls/log so the call dials from the right number
-  // AND the transcript lands on the right tenant's timeline (not the first org).
-  const org = await getOrgSettings().catch(() => null);
+  // Caller-ID + org id are echoed by the gateway back to /api/calls/log so the
+  // call dials from the right number AND the transcript lands on the right
+  // tenant's timeline (not the first org).
   const from = org?.callerId;
 
   // Tag the call so the gateway can echo it back to /api/calls/log and the
