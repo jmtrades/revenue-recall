@@ -1,8 +1,8 @@
-import { z } from "zod";
 import { withGuard } from "@/lib/api/guard";
 import { logError } from "@/lib/log";
 import { sendAlert } from "@/lib/alert";
 import { rateLimit } from "@/lib/ratelimit";
+import { parseClientError } from "@/lib/client-error-intake";
 
 export const dynamic = "force-dynamic";
 
@@ -11,24 +11,11 @@ export const dynamic = "force-dynamic";
  * pages (the landing voice demo especially) matter as much as in-app ones —
  * so every defense is on:
  * - per-IP rate limit, small body cap, strict schema with hard length clamps
+ *   (see lib/client-error-intake)
  * - always 204, valid or not: an error reporter that errors helps nobody, and
  *   a uniform response leaks nothing to probes
  * - alerts deduped per message so one widespread crash is one page, not a storm
  */
-const Body = z.object({
-  message: z.string().min(1).max(300),
-  stack: z.string().max(2000).optional(),
-  source: z.enum(["boundary", "window", "rejection"]).optional(),
-  digest: z.string().max(64).optional(),
-  url: z.string().max(200).optional(),
-});
-
-/** Validate + clamp an intake payload; null when it isn't a usable report. Exported for tests. */
-export function parseClientError(raw: unknown): z.infer<typeof Body> | null {
-  const parsed = Body.safeParse(raw);
-  return parsed.success ? parsed.data : null;
-}
-
 const done = () => new Response(null, { status: 204 });
 
 export const POST = withGuard(async (req: Request) => {

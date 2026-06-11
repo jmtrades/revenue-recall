@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { parseClientError, POST } from "@/app/api/client-error/route";
+import { parseClientError } from "@/lib/client-error-intake";
+import { POST } from "@/app/api/client-error/route";
 
 function post(body: unknown, ip = "203.0.113.9"): Promise<Response> {
   return Promise.resolve(
