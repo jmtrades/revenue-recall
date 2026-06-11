@@ -7,6 +7,8 @@ beforeEach(() => {
   delete process.env.NEXT_PUBLIC_SUPABASE_URL;
   delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  delete process.env.VERCEL_GIT_COMMIT_SHA;
+  delete process.env.GIT_COMMIT_SHA;
 });
 afterEach(() => {
   process.env = { ...SAVED };
@@ -82,5 +84,26 @@ describe("health launch-readiness verdict", () => {
     const body = await health();
     expect(body.status).toBe("ok");
     expect(Array.isArray(body.launch.warnings)).toBe(true);
+  });
+});
+
+describe("health release identification", () => {
+  // A failed deploy keeps serving the previous build while every other health
+  // field still reads green — the commit field is what makes that visible.
+  it("reports the short commit SHA when the host injects one", async () => {
+    process.env.VERCEL_GIT_COMMIT_SHA = "c8ecfe680a8ec2bb91f74886de8d09d04a012c94";
+    const body = await health();
+    expect(body.commit).toBe("c8ecfe6");
+  });
+
+  it("falls back to GIT_COMMIT_SHA for non-Vercel hosts", async () => {
+    process.env.GIT_COMMIT_SHA = "269c44d1234567890";
+    const body = await health();
+    expect(body.commit).toBe("269c44d");
+  });
+
+  it("reports 'dev' when no build SHA is available", async () => {
+    const body = await health();
+    expect(body.commit).toBe("dev");
   });
 });
