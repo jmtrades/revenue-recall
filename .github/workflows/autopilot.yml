@@ -1,9 +1,12 @@
 name: Autopilot tick
 
-# Free hourly autopilot for Vercel Hobby. Vercel's own cron (vercel.json) runs
-# once a day on Hobby; this optional workflow pings the same endpoint hourly so
-# sequence steps fire near their due time and the timezone-aware quiet hours
-# actually matter — without needing Vercel Pro.
+# Optional hourly fallback for deployments WITHOUT Vercel Pro. The shipped
+# vercel.json already runs /api/agent/cron hourly on Pro — if that's your
+# plan, leave this unconfigured: enabling both schedules the same tick twice
+# at the top of every hour. On Hobby (which rejects sub-daily Vercel cron at
+# deploy time), this workflow pings the same endpoint instead, so sequence
+# steps still fire near their due time and timezone-aware quiet hours matter.
+# (GitHub's scheduler is best-effort — expect drift/skips at busy times.)
 #
 # To enable: add two repository secrets
 #   AGENT_CRON_URL  = https://<your-domain>/api/agent/cron   (e.g. https://recall-touch.com/api/agent/cron)
