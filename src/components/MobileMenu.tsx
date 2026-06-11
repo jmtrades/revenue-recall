@@ -1,4 +1,5 @@
 "use client";
+import { LogoBadge } from "@/components/Logo";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -21,7 +22,7 @@ export function MobileMenu({ orgName }: { orgName: string }) {
           <aside ref={drawerRef} role="dialog" aria-modal="true" aria-label={`${orgName} menu`} className="relative flex w-64 flex-col border-r border-border bg-surface px-3 py-5 outline-none" onClick={(e) => e.stopPropagation()}>
             <Link href="/dashboard" onClick={() => setOpen(false)} className="px-3 pb-6">
               <div className="flex items-center gap-2.5">
-                <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-brand text-[13px] font-bold tracking-tight text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)] ring-1 ring-inset ring-white/10">RR</span>
+                <LogoBadge box={32} />
                 <span className="font-display text-[15px] font-semibold tracking-tight text-fg">Revenue Recall</span>
               </div>
               <p className="mt-3 truncate text-xs text-muted">{orgName}</p>

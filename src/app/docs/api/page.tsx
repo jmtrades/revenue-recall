@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LogoBadge } from "@/components/Logo";
 import Link from "next/link";
 import { Footer } from "@/components/marketing/Footer";
 import { SITE_URL } from "@/lib/site";
@@ -38,7 +39,7 @@ export default function ApiDocsPage() {
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-4">
           <Link href="/" className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-brand text-[13px] font-bold text-white">RR</span>
+            <LogoBadge box={32} />
             <span className="font-display text-[15px] font-semibold text-fg">Revenue Recall</span>
           </Link>
           <Link href="/signup" className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white transition hover:bg-brand/90">Start free</Link>

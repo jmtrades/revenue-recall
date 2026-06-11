@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
+import { LogoBadge } from "@/components/Logo";
 import { MobileMenu } from "@/components/marketing/MobileMenu";
 
 function ArrowRight({ className = "" }: { className?: string }) {
@@ -68,9 +69,7 @@ export function MarketingNav() {
       <ScrollProgress />
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
         <Link href="/" className="group flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-brand text-[13px] font-bold tracking-tight text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)] ring-1 ring-inset ring-white/10 transition-transform duration-200 ease-out group-hover:scale-105">
-            RR
-          </span>
+          <LogoBadge box={32} className="transition-transform duration-200 ease-out group-hover:scale-105" />
           <span className="font-display text-[15px] font-semibold tracking-tight text-fg">Revenue Recall</span>
         </Link>
         <nav className="hidden items-center gap-7 text-sm font-medium text-muted lg:flex">

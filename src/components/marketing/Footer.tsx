@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LogoBadge } from "@/components/Logo";
 
 // Support address — overridable per deploy; buyers expect a visible way to reach
 // a human before they'll trust (and pay for) the product.
@@ -51,7 +52,7 @@ export function Footer() {
         <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-5">
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2.5">
-              <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-brand text-[13px] font-bold tracking-tight text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)] ring-1 ring-inset ring-white/10">RR</span>
+              <LogoBadge box={32} />
               <span className="font-display text-[15px] font-semibold tracking-tight text-fg">Revenue Recall</span>
             </div>
             <p className="mt-3 max-w-xs text-sm text-muted">Autonomous outbound that recovers the revenue you&apos;re about to lose — for any CRM, any industry.</p>
