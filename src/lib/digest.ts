@@ -3,7 +3,7 @@ import { getOrgSettings } from "@/lib/org";
 import { sendEmail } from "@/lib/comms";
 import { computeMetrics } from "@/lib/analytics";
 import { buildRecallQueue, summarizeRecall } from "@/lib/recall/engine";
-import { getTasks, safePipeline } from "@/lib/queries";
+import { getTasks, getRecallOutcomes, safePipeline } from "@/lib/queries";
 import { money } from "@/lib/format";
 import { isSupabaseConfigured, getSupabase } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
@@ -75,9 +75,28 @@ async function broadcast(to: string[], subject: string, body: string): Promise<n
   return ok;
 }
 
-async function buildDailyDigest(orgName: string): Promise<{ subject: string; body: string }> {
+/** The realized-wins proof line ("Won back: $X across N deals recalled"), or
+ *  null when there's nothing won back yet — an empty brag reads as a miss.
+ *  Exported for tests. */
+export function wonBackLine(outcomes: { wonBack: number; recoveredValue: number; inProgress: number } | null, cur: string): string | null {
+  if (!outcomes || outcomes.wonBack <= 0) return null;
+  return (
+    `  Won back: ${money(outcomes.recoveredValue, cur)} across ${outcomes.wonBack} ${outcomes.wonBack === 1 ? "deal" : "deals"} recalled` +
+    (outcomes.inProgress > 0 ? ` — ${outcomes.inProgress} more in play` : "")
+  );
+}
+
+export async function buildDailyDigest(orgName: string): Promise<{ subject: string; body: string }> {
   const provider = (await resolveProvider());
-  const [pipelines, opps] = await Promise.all([provider.listPipelines(), provider.listOpportunities()]);
+  const [pipelines, opps, outcomes] = await Promise.all([
+    provider.listPipelines(),
+    provider.listOpportunities(),
+    // Realized wins attributed to recall (won on/after being recalled). The
+    // digest must carry the PROOF line, not just the potential — "recoverable"
+    // is a promise; "won back" is the reason to keep paying. Never let an
+    // outcomes hiccup kill the whole digest.
+    getRecallOutcomes().catch(() => null),
+  ]);
   const metrics = computeMetrics(opps, safePipeline(pipelines));
   const recall = buildRecallQueue(opps, pipelines);
   const summary = summarizeRecall(recall, metrics.currency);
@@ -94,6 +113,8 @@ async function buildDailyDigest(orgName: string): Promise<{ subject: string; bod
     "Revenue Recall",
     `  ${money(summary.totalRecoverable, cur)} recoverable across ${summary.itemCount} at-risk deals`,
   ];
+  const won = wonBackLine(outcomes, cur);
+  if (won) lines.push(won);
   const top = recall.slice(0, 3);
   if (top.length) {
     lines.push("", "Top 3 to work today:");
