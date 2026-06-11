@@ -6,16 +6,15 @@ import { TONES, DEFAULT_TONE, type ToneId } from "@/lib/tones";
 import {
   isSpeechSupported,
   isRecognitionSupported,
-  loadVoices,
-  pickVoice,
-  speak,
   listenOnce,
   listenContinuous,
   type SpeakHandle,
   type ListenHandle,
 } from "@/lib/voice/speech";
+import { getSynth } from "@/lib/voice/synth";
 import { loadVoicePrefs, toVoicePrefs } from "@/lib/voice/prefs";
-import { shouldBargeIn, wordCount } from "@/lib/voice/turntaking";
+import { shouldBargeIn, wordCount, pickAck, thinkingPauseMs } from "@/lib/voice/turntaking";
+import type { Sentiment } from "@/lib/voice/reactive";
 import { analyzeCall, type CallScore } from "@/lib/voice/scorecard";
 
 type Difficulty = "easy" | "medium" | "hard";
@@ -44,10 +43,10 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
   const [listening, setListening] = useState(false);
   const [live, setLive] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const speakHandleRef = useRef<SpeakHandle | null>(null);
   const speakingRef = useRef(false);
+  const cancelSpeakRef = useRef(false);
   const liveListenRef = useRef<ListenHandle | null>(null);
   const liveRef = useRef(false);
 
@@ -76,9 +75,9 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
     setCanListen(isRecognitionSupported());
   }, []);
 
-  useEffect(() => {
-    if (canSpeak) loadVoices().then((v) => (voiceRef.current = pickVoice(v, { ...toVoicePrefs(loadVoicePrefs()), lang: speechLang })));
-  }, [canSpeak, speechLang]);
+  // Speech routes through getSynth() — the neural composite (on-device Kokoro,
+  // streamed) with the browser engine as its own internal fallback — so the
+  // role-play prospect speaks in the same studio voice as the real product.
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -103,12 +102,28 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
       return;
     }
     speakingRef.current = true;
-    const h = speak(text, { ...toVoicePrefs(loadVoicePrefs()), emotion: emotion as never }, voiceRef.current);
-    speakHandleRef.current = h;
-    h.done.finally(() => {
-      speakingRef.current = false;
-      if (liveRef.current) startLiveListen(); // hand the floor back to the human
-    });
+    cancelSpeakRef.current = false;
+    void (async () => {
+      const h = await getSynth().speak(text, { ...toVoicePrefs(loadVoicePrefs()), lang: speechLang, emotion: emotion as never });
+      // Barge-in can land while the synth is still preparing — honor it.
+      if (cancelSpeakRef.current) {
+        h.stop();
+        speakingRef.current = false;
+        return;
+      }
+      speakHandleRef.current = h;
+      h.done.finally(() => {
+        speakingRef.current = false;
+        if (liveRef.current) startLiveListen(); // hand the floor back to the human
+      });
+    })();
+  }
+
+  /** Stop whatever is being said right now (including a synth still warming up). */
+  function stopSpeaking() {
+    cancelSpeakRef.current = true;
+    speakHandleRef.current?.stop();
+    speakingRef.current = false;
   }
 
   /**
@@ -122,17 +137,11 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
     liveListenRef.current = listenContinuous({
       lang: speechLang,
       onSpeechStart: () => {
-        if (shouldBargeIn(speakingRef.current, 2)) {
-          speakHandleRef.current?.stop();
-          speakingRef.current = false;
-        }
+        if (shouldBargeIn(speakingRef.current, 2)) stopSpeaking();
       },
       onInterim: (t) => {
         // A couple of real words while we're still talking = they took the floor.
-        if (speakingRef.current && wordCount(t) >= 2) {
-          speakHandleRef.current?.stop();
-          speakingRef.current = false;
-        }
+        if (speakingRef.current && wordCount(t) >= 2) stopSpeaking();
       },
       onFinal: (t) => {
         if (!liveRef.current) return;
@@ -174,10 +183,25 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
     setTurns(afterRep);
     setBusy(true);
     try {
+      // Dead-air killer: the prospect acknowledges INSTANTLY ("Hm." / "Right…")
+      // while the real reply generates — the human reflex that makes the
+      // exchange feel like a person thinking, not a bot buffering.
+      let ackDone: Promise<void> = Promise.resolve();
+      if (voiceOn && canSpeak) {
+        const ack = pickAck(said, `${dealTitle}:${afterRep.length}`, "prospect");
+        ackDone = getSynth()
+          .speak(ack.text, { ...toVoicePrefs(loadVoicePrefs()), lang: speechLang, emotion: ack.emotion })
+          .then((h) => h.done)
+          .catch(() => undefined);
+      }
       const p = await fetchTurn("prospect", afterRep);
       const next = [...afterRep, { speaker: "prospect" as const, text: p.text }];
       setTurns(next);
       setMood(p.sentiment ?? null);
+      // Let the ack finish, then take a small human "thinking" beat sized to
+      // the mood (frustrated buyers get more room, excited ones a quicker reply).
+      await ackDone;
+      await new Promise((r) => setTimeout(r, thinkingPauseMs((p.sentiment ?? "neutral") as Sentiment)));
       sayAloud(p.text, p.emotion);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't continue");

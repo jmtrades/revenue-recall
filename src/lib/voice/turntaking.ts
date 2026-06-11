@@ -1,4 +1,6 @@
 import type { Sentiment } from "@/lib/voice/reactive";
+import { detectIntent, OBJECTION_KINDS } from "@/lib/ai/intent";
+import type { Emotion } from "@/lib/voice/speech";
 
 /**
  * Turn-taking timing — the small human reflexes that make a spoken call feel
@@ -55,4 +57,86 @@ export function pickBackchannel(seed: string, turnIndex: number): string | null 
 /** Count words in a (possibly interim) transcript. */
 export function wordCount(text: string): number {
   return text.trim() ? text.trim().split(/\s+/).length : 0;
+}
+
+// ---- instant acknowledgments (the dead-air killer) ----
+// A human responds within ~200ms of you finishing — not with the answer, but
+// with a small "I heard you" that buys the thinking time: "Yeah, fair—".
+// These are spoken IMMEDIATELY while the real reply generates, so the
+// conversation never has the 1–3s of dead silence that screams "bot".
+// Intent-aware so the ack itself already lands right: an objection gets
+// empathy, good news gets energy, a brush-off gets grace.
+
+interface Ack {
+  text: string;
+  emotion: Emotion;
+}
+
+const REP_ACKS: Record<string, Ack[]> = {
+  price: [
+    { text: "Yeah — fair question.", emotion: "warm" },
+    { text: "Totally fair to ask.", emotion: "warm" },
+    { text: "Mm, good question.", emotion: "neutral" },
+  ],
+  timing: [
+    { text: "No, that makes sense.", emotion: "empathetic" },
+    { text: "Yeah, I hear you.", emotion: "empathetic" },
+    { text: "Totally understand.", emotion: "calm" },
+  ],
+  competitor: [
+    { text: "Okay — that's good to know.", emotion: "neutral" },
+    { text: "Right, makes sense.", emotion: "calm" },
+  ],
+  trust: [
+    { text: "Yeah — fair to be skeptical.", emotion: "empathetic" },
+    { text: "No, I get that.", emotion: "calm" },
+  ],
+  decline: [
+    { text: "Totally hear you.", emotion: "empathetic" },
+    { text: "No worries at all.", emotion: "calm" },
+  ],
+  positive: [
+    { text: "Love that.", emotion: "energetic" },
+    { text: "Great —", emotion: "energetic" },
+    { text: "Perfect.", emotion: "confident" },
+  ],
+  busy: [
+    { text: "Of course —", emotion: "calm" },
+    { text: "Sure, quickly then —", emotion: "confident" },
+  ],
+  hostile: [
+    { text: "Okay — fair enough.", emotion: "empathetic" },
+  ],
+  default: [
+    { text: "Mm-hm.", emotion: "neutral" },
+    { text: "Right.", emotion: "neutral" },
+    { text: "Yeah —", emotion: "warm" },
+    { text: "Got it.", emotion: "neutral" },
+  ],
+};
+
+// The simulated prospect just needs small human fillers while "thinking".
+const PROSPECT_ACKS: Ack[] = [
+  { text: "Hm.", emotion: "neutral" },
+  { text: "Right…", emotion: "neutral" },
+  { text: "Okay —", emotion: "neutral" },
+  { text: "Mm.", emotion: "calm" },
+];
+
+function fnv(seed: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return Math.abs(h);
+}
+
+/** The instant "I heard you" to speak while the real reply generates.
+ *  Deterministic on the seed so tests (and retries) are stable. */
+export function pickAck(incoming: string, seed: string, speaker: "rep" | "prospect" = "rep"): Ack {
+  if (speaker === "prospect") return PROSPECT_ACKS[fnv(`${seed}:p`) % PROSPECT_ACKS.length];
+  const intent = detectIntent(incoming);
+  const pool = REP_ACKS[intent] ?? (OBJECTION_KINDS.has(intent) ? REP_ACKS.trust : REP_ACKS.default);
+  return pool[fnv(`${seed}:${intent}`) % pool.length];
 }
