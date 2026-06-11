@@ -79,6 +79,9 @@ describe("objection replies are industry-tailored, human, and reframe-then-ask",
       ["can't afford it right now", "budget"],
       ["who is this?", "confused"],
       ["what's this about?", "confused"],
+      // A price ask phrased as a question must NOT be eaten by the confused
+      // rule's "what's this" prefix — it's the most common objection shape.
+      ["what's this going to cost?", "price"],
       ["she's not available right now", "gatekeeper"],
       ["can I take a message?", "gatekeeper"],
       ["who's calling?", "gatekeeper"],

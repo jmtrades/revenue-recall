@@ -45,7 +45,11 @@ export function detectIntent(incoming: string): Intent {
   if (/\b(can'?t (talk|chat)|in a meeting|i'?m driving|driving right now|catch me later|call me (back|later)|bad time to talk|at work right now|on my way|in the middle of|gimme a sec)\b/.test(t)) return "busy";
   if (/\b(not my (call|decision)|talk to my (boss|manager|partner|wife|husband|spouse|team)|run it by|check with (my|the|him|her|them)|needs? approval|loop in|someone else (handles|decides)|not the (decision|one who decides)|above my pay)\b/.test(t)) return "authority";
   if (/\b(no budget|do ?n'?t have (the |a )?budget|can'?t afford|out of (our )?budget|budget('?s| is)? (tight|frozen|gone|cut|maxed)|no money|spent (our|the) budget|nothing left in the budget)\b/.test(t)) return "budget";
-  if (/\b(who('?s| is) this|what('?s| is) this( about| regarding)?|do i know you|what company|never heard of|what is this in regards)\b/.test(t)) return "confused";
+  if (/\b(who('?s| is) this|do i know you|what company|never heard of|what is this in regards)\b/.test(t)) return "confused";
+  // "what's this (about)?" is confusion ONLY as a complete utterance — anchored
+  // so "what's this going to cost?" keeps flowing to the price rule below
+  // instead of getting "who are you?" handling on a live call.
+  if (/\bwhat('?s| is) this( about| regarding)?\s*[?!.]*$/.test(t)) return "confused";
   if (/\b(not interested|no thanks|no thank you|unsubscribe|please remove|take me off|already (sold|closed)|not for us|we'?ll pass|gonna pass|hard pass)\b/.test(t)) return "decline";
   if (/\b(went with|going with|already (have|using|bought|got)|we use|we'?ve got|signed with|chose|have a (vendor|provider|solution|agent|lender|broker|guy))\b/.test(t)) return "competitor";
   if (/\b(how much|price|pricing|cost|costs|expensive|too much|discount|quote|ballpark|rates?)\b/.test(t)) return "price";
