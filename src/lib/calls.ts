@@ -3,6 +3,7 @@ import { planCallRetry, isVoicemailOutcome, MAX_CALL_ATTEMPTS, type RetryPlan } 
 import { hasOptedOut, quietHoursNow } from "@/lib/agent/guardrails";
 import { listTasks } from "@/lib/agent/store";
 import { isEntitled } from "@/lib/billing/enforce";
+import { recordCallMinutes } from "@/lib/billing/voice-minutes";
 import { getOrgSettings } from "@/lib/org";
 import { placeCall } from "@/lib/comms";
 import { signCallMeta } from "@/lib/calls/meta-sig";
@@ -50,6 +51,11 @@ export async function logCallOutcome(input: CallLogInput): Promise<Activity | nu
   const provider = (await resolveProvider());
   if (!provider.info().capabilities.write) return null;
   if (!input.contactId && !input.dealId) return null;
+  // Meter the connected time (voice-minutes allowance + real COGS). Fire-and-
+  // forget: metering must never delay or break the timeline write.
+  if (typeof input.durationSec === "number" && input.durationSec > 0) {
+    void recordCallMinutes(input.durationSec).catch(() => {});
+  }
   try {
     return await provider.logActivity({
       contactId: input.contactId,

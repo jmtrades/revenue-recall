@@ -58,19 +58,36 @@ vendor, audio never leaves the machine. It downloads once in the background
 (~90 MB, cached; WebGPU when available) — until it's ready, or on devices that
 can't run it, the next engine down answers. **No configuration needed.**
 
-Optional fallbacks, in priority order after the on-device model:
+Hosted voices for PHONE calls, in priority order (quality-first):
 
 | Option | Vars | Notes |
 |---|---|---|
-| Cartesia Sonic (best for live calls) | `CARTESIA_API_KEY` + `CARTESIA_VOICE_ID` (optional `CARTESIA_VOICE_MAP`) | ~90 ms, priced per second — pennies per dial |
-| ElevenLabs | `ELEVENLABS_API_KEY` | richest delivery; per-character cost |
-| OpenAI TTS | `OPENAI_API_KEY` | solid + cheap |
+| **ElevenLabs (the best voice — default leader)** | `ELEVENLABS_API_KEY` | the most human delivery on the market; ~$0.08/min |
+| Cartesia Sonic | `CARTESIA_API_KEY` + `CARTESIA_VOICE_ID` (optional `CARTESIA_VOICE_MAP`) | ~90 ms latency, ~$0.04/min — pin it to trade a little polish for margin |
+| OpenAI TTS | `OPENAI_API_KEY` | solid + cheapest (~$0.015/min) |
 
 Pin one with `VOICE_TTS_PROVIDER=cartesia|elevenlabs|openai`; otherwise the
-best-configured wins. **Cost picture:** hosted audio is only ever spent on
-seconds of actual speech (call previews, dials) — never on page views — and the
-free on-device engine handles everything else, so "best in the world on calls"
-costs cents per conversation, covered many times over by the $299+/mo plans.
+best-configured wins (ElevenLabs > Cartesia > OpenAI).
+
+**Voice economics (the margin math, all knobs env-overridable —
+`VOICE_COST_*_PER_MIN`):** a connected minute costs telephony ($0.014) + STT
+($0.006) + LLM (~$0.005) + the voice tier — **≈ $0.105/min blended on
+ElevenLabs**, $0.065 Cartesia, $0.04 OpenAI. Plan allowances are priced on the
+premium path:
+
+| Plan | Included minutes | ≈ calls (3 min avg) | Voice COGS | % of price | Gross margin on voice |
+|---|---|---|---|---|---|
+| Starter (free) | 0 phone (unlimited on-device practice) | — | $0 | 0% | — |
+| Operator $299 | 500 / mo | ~165 | ~$52.50 | 17.6% | **~82%** |
+| Autopilot $899 | 1,500 pooled | ~500 | ~$157.50 | 17.5% | **~82%** |
+| Scale (custom) | unmetered | — | priced per deal | — | — |
+
+Minutes meter automatically from the call gateway's reported durations
+(feature `call_minutes` in the usage ledger — COGS lands in the operator's
+Settings → Billing breakdown). When billing enforcement is on and an org runs
+out, new calls pause with a friendly upgrade message; email, SMS, and
+on-device practice keep working. Hosted audio is only ever spent on seconds of
+actual speech — never on page views.
 
 House voices (Aria, Adam, …) are native Kokoro ids and auto-map on the hosted
 backends; delivery (warm / calm / energetic…) is shaped per line everywhere.

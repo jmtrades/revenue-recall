@@ -27,8 +27,11 @@ function cartesiaReady(): boolean {
 
 /** Which hosted provider answers. `VOICE_TTS_PROVIDER` pins one explicitly
  *  (honored only if that provider is actually configured); otherwise priority
- *  is quality-ladder order: Cartesia (best latency/naturalness class for voice
- *  agents) → ElevenLabs → OpenAI. */
+ *  is QUALITY-first: ElevenLabs (the most human voice on the market — the
+ *  make-or-break of a sales call, priced into every plan's minute allowance,
+ *  see billing/voice-minutes.ts) → Cartesia (excellent latency, ~half the
+ *  cost) → OpenAI. Pin VOICE_TTS_PROVIDER=cartesia to trade a little polish
+ *  for margin. */
 export function ttsProvider(): TtsProvider | null {
   const ready: Record<TtsProvider, boolean> = {
     cartesia: cartesiaReady(),
@@ -37,8 +40,8 @@ export function ttsProvider(): TtsProvider | null {
   };
   const pin = env("VOICE_TTS_PROVIDER") as TtsProvider | undefined;
   if (pin && ready[pin]) return pin;
-  if (ready.cartesia) return "cartesia";
   if (ready.elevenlabs) return "elevenlabs";
+  if (ready.cartesia) return "cartesia";
   if (ready.openai) return "openai";
   return null;
 }

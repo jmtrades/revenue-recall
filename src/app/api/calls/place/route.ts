@@ -9,6 +9,8 @@ import { getOrgSettings } from "@/lib/org";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { withGuard } from "@/lib/api/guard";
 import { hasOptedOut, recordingDisclosure } from "@/lib/agent/guardrails";
+import { enforcementOn } from "@/lib/billing/enforce";
+import { isWithinVoiceMinutes } from "@/lib/billing/voice-minutes";
 import { voicemailScript } from "@/lib/voice/voicemail";
 import type { Activity } from "@/lib/crm/types";
 
@@ -42,6 +44,16 @@ export const POST = withGuard(async (req: Request) => {
   }
   if (hasOptedOut(contact ?? undefined, opp ?? undefined, activities)) {
     return NextResponse.json({ error: "This contact has opted out or is marked do-not-contact." }, { status: 403 });
+  }
+
+  // Voice-minutes allowance: every connected minute has real COGS (telephony +
+  // STT + premium voice + the model), so when billing enforcement is on, calls
+  // gate on the plan's included minutes. Open demos / self-hosted stay unmetered.
+  if (enforcementOn() && !(await isWithinVoiceMinutes())) {
+    return NextResponse.json(
+      { error: "You've used this month's included AI call minutes. Upgrade your plan to keep the dialer running — email, SMS, and practice calls keep working." },
+      { status: 402 },
+    );
   }
 
   // Brief the in-house agent so it talks like it knows the prospect. Best-effort:
