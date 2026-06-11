@@ -24,7 +24,7 @@
  */
 
 import { speakable, type SpeakHandle } from "@/lib/voice/speech";
-import { type VoiceSynth, type SpeakOptions, setSynth } from "@/lib/voice/synth";
+import { type VoiceSynth, type SpeakOptions, setSynth, browserSynth } from "@/lib/voice/synth";
 
 const SAMPLE_RATE = 24_000; // 24 kHz web profile (docs §6)
 
@@ -146,11 +146,122 @@ export const neuralSynth: VoiceSynth = {
   },
 };
 
+// ---- hosted neural TTS (the "human voice today" path) ----
+// Until the in-house streaming model exists, /api/voice/tts synthesizes with a
+// hosted neural provider (ElevenLabs/OpenAI) when the operator has set a key.
+// We probe availability ONCE per page load; if the route says no (no key, free
+// plan, or logged out) the browser engine keeps doing its job untouched.
+
+let hostedState: "unknown" | "yes" | "no" = "unknown";
+
+function probeHosted(): void {
+  if (typeof window === "undefined" || hostedState !== "unknown") return;
+  fetch("/api/voice/tts")
+    .then((r) => (r.ok ? r.json() : { available: false }))
+    .then((j: { available?: boolean }) => {
+      hostedState = j?.available ? "yes" : "no";
+    })
+    .catch(() => {
+      hostedState = "no";
+    });
+}
+
+function hostedSpeak(text: string, opts: SpeakOptions): SpeakHandle {
+  const controller = new AbortController();
+  let audio: HTMLAudioElement | null = null;
+  let objectUrl: string | null = null;
+  let stopped = false;
+
+  const cleanup = () => {
+    if (objectUrl) {
+      try { URL.revokeObjectURL(objectUrl); } catch { /* gone */ }
+      objectUrl = null;
+    }
+  };
+
+  const done = (async () => {
+    try {
+      const res = await fetch("/api/voice/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          voiceId: opts.voiceId ?? opts.preferName,
+          emotion: opts.emotion ?? "neutral",
+          rate: opts.rate ?? 1,
+          lang: opts.lang,
+        }),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        // Key revoked / plan changed mid-session: remember, and still SPEAK —
+        // this call falls back to the browser engine so the user hears something.
+        hostedState = "no";
+        if (!stopped) await browserSynth.speak(text, opts).then((h) => h.done);
+        return;
+      }
+      const provider = res.headers.get("X-RR-TTS-Provider");
+      const blob = await res.blob();
+      if (stopped) return;
+      objectUrl = URL.createObjectURL(blob);
+      audio = new Audio(objectUrl);
+      // OpenAI applies `rate` server-side; ElevenLabs ignores it, so apply it
+      // at playback — never both, or the speed compounds.
+      if (provider === "elevenlabs" && opts.rate && opts.rate !== 1) {
+        audio.playbackRate = Math.min(1.5, Math.max(0.5, opts.rate));
+      }
+      await new Promise<void>((resolve) => {
+        if (!audio) return resolve();
+        audio.onended = () => resolve();
+        audio.onerror = () => resolve();
+        audio.play().catch(() => resolve());
+      });
+    } catch {
+      /* aborted or network failure — resolve quietly */
+    } finally {
+      cleanup();
+    }
+  })();
+
+  return {
+    done,
+    stop: () => {
+      stopped = true;
+      controller.abort();
+      try { audio?.pause(); } catch { /* already stopped */ }
+      cleanup();
+    },
+  };
+}
+
+export const hostedSynth: VoiceSynth = {
+  id: "rr-hosted-tts",
+  kind: "neural",
+  available: () => typeof window !== "undefined" && hostedState === "yes",
+  async speak(text, opts = {}) {
+    return hostedSpeak(text, opts);
+  },
+};
+
+/** One synth for getSynth(): the in-house streaming model when it exists,
+ *  else the hosted neural route, else (available()=false) the browser engine. */
+const compositeSynth: VoiceSynth = {
+  id: "rr-neural",
+  kind: "neural",
+  available: () => neuralSynth.available() || hostedSynth.available(),
+  async speak(text, opts = {}) {
+    if (neuralSynth.available()) return neuralSynth.speak(text, opts);
+    return hostedSynth.speak(text, opts);
+  },
+};
+
 /**
- * Register the neural backend so getSynth() prefers it when healthy. Safe to
- * call unconditionally: if NEXT_PUBLIC_NEURAL_VOICE_URL is unset, available()
- * returns false and getSynth() keeps returning the browser engine.
+ * Register the neural backend so getSynth() prefers it when healthy, and probe
+ * the hosted route once. Safe to call unconditionally: with no in-house URL and
+ * no hosted provider the composite reports available() === false and every
+ * caller keeps using the browser engine.
  */
 export function enableNeuralVoice(): void {
-  setSynth(neuralSynth);
+  setSynth(compositeSynth);
+  probeHosted();
 }
