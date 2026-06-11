@@ -30,6 +30,20 @@ function safePipelines(pipelines: Pipeline[]): Pipeline[] {
   return pipelines.length > 0 ? pipelines : [safePipeline(pipelines)];
 }
 
+/** Outbound calls logged so far in the local calendar day. The dial-pace pulse:
+ *  every dial is an outbound "call" activity (real calls AND one-tap no-connect
+ *  outcomes from the power dialer both log one), so this counts the rep's dials
+ *  today against the volume the plan sells. Exported for tests. */
+export function countDialsToday(activities: Activity[], now: Date = new Date()): number {
+  const today = now.toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
+  let n = 0;
+  for (const a of activities) {
+    if (a.kind !== "call" || a.direction !== "outbound" || !a.occurredAt) continue;
+    if (new Date(a.occurredAt).toLocaleDateString("en-CA") === today) n++;
+  }
+  return n;
+}
+
 /** Everything the dashboard needs in one round trip. */
 export interface Overview {
   orgName: string;
@@ -40,6 +54,8 @@ export interface Overview {
   metrics: PipelineMetrics;
   recall: RecallItem[];
   recallSummary: RecallSummary;
+  /** Outbound dials logged today (real + one-tap no-connects). */
+  dialsToday: number;
 }
 
 export async function getOverview(): Promise<Overview> {
@@ -47,7 +63,11 @@ export async function getOverview(): Promise<Overview> {
   const cfg = getConfig();
   const industry = getIndustry(cfg.industryId);
 
-  const [rawPipelines, opportunities] = await Promise.all([cachedPipelines(), cachedOpportunities()]);
+  const [rawPipelines, opportunities, recent] = await Promise.all([
+    cachedPipelines(),
+    cachedOpportunities(),
+    provider.listRecentActivities(250).catch(() => [] as Activity[]),
+  ]);
   const pipelines = safePipelines(rawPipelines);
   const pipeline = pipelines[0];
   const metrics = computeMetrics(opportunities, pipeline);
@@ -63,6 +83,7 @@ export async function getOverview(): Promise<Overview> {
     metrics,
     recall,
     recallSummary,
+    dialsToday: countDialsToday(recent),
   };
 }
 

@@ -16,6 +16,10 @@ import { StartCheckoutWatcher } from "@/components/StartCheckoutWatcher";
 export const metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
 
+// The dial-pace target — the Operator plan sells ~100 dials a day, so that's
+// the bar the pulse measures against. A motivational pace cue, not a gate.
+const DAILY_DIAL_GOAL = 100;
+
 function timeAgo(iso: string): string {
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
   return relativeDays(days);
@@ -75,6 +79,22 @@ export default async function DashboardPage() {
         subtitle={focusLine(o.recallSummary.itemCount, o.recallSummary.totalRecoverable, m.currency)}
         action={<Button href="/recall" variant="primary"><Icon name="recall" size={15} /> Work the recall queue</Button>}
       />
+
+      {o.dialsToday > 0 && (
+        <Link href="/dialer" className="group flex items-center gap-4 rounded-2xl border border-border bg-surface px-5 py-3.5 transition hover:border-brand/40">
+          <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-brand-soft text-brand"><Icon name="dialer" size={18} /></span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-2">
+              <span className="font-display text-lg font-semibold tabular-nums text-fg">{o.dialsToday}</span>
+              <span className="text-sm text-muted">dial{o.dialsToday === 1 ? "" : "s"} today{o.dialsToday >= DAILY_DIAL_GOAL ? " — goal hit 🎯" : ` of ${DAILY_DIAL_GOAL}`}</span>
+            </div>
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-2">
+              <div className="h-full rounded-full bg-brand transition-[width] duration-700" style={{ width: `${Math.min(100, Math.round((o.dialsToday / DAILY_DIAL_GOAL) * 100))}%` }} />
+            </div>
+          </div>
+          <span className="hidden shrink-0 text-sm font-medium text-brand group-hover:underline sm:block">Keep dialing →</span>
+        </Link>
+      )}
 
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Open Pipeline" value={money(m.openValue, m.currency)} hint={`${m.openCount} open ${o.terminology.opportunity.toLowerCase()}s`} icon="pipeline" countUp />
