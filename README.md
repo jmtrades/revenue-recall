@@ -1,10 +1,14 @@
 # Revenue Recall
 
-A **universal sales OS**: run your entire sales process — pipeline, leads, cadences,
-and forecasting — for *any* industry, backed by *any* CRM or none at all. Its
-flagship feature, the **Revenue Recall engine**, finds revenue that's slipping
+**Autonomous outbound that recovers the revenue you're about to lose** — for any
+CRM, any industry. Live at **[www.recall-touch.com](https://www.recall-touch.com)**.
+
+A universal sales OS: run your entire sales process — pipeline, leads, cadences,
+forecasting — while the **Revenue Recall engine** finds revenue that's slipping
 away (deals going cold, stalled mid-pipeline, or marked lost but winnable) and
-tells a rep the single best next action.
+either tells a rep the single best next action or works the deal itself:
+human-sounding email, SMS, and **voice calls with a real conversation engine** —
+end to end, under hard guardrails.
 
 ## Why it's universal
 
@@ -26,7 +30,9 @@ npm run dev
 
 Open http://localhost:3000. With no configuration it boots on the built-in CRM
 with realistic demo data for the **real estate** vertical. Copy `.env.example`
-to `.env.local` to change industry, org name, or connect a CRM.
+to `.env.local` to change industry, org name, or connect a CRM. The `predev`/
+`prebuild` hooks stage the on-device voice engine to `public/vendor/`
+automatically (`scripts/copy-kokoro.mjs`) — no manual step.
 
 ## Architecture
 
@@ -46,7 +52,11 @@ src/lib/sequences.ts        Multi-channel outreach cadence definitions (per indu
 src/lib/cadence.ts          Cadence runtime: enroll deals/contacts, advance steps on schedule
 src/lib/digest.ts           Scheduled email: daily pipeline digest + task reminders (cron, prefs-gated)
 src/lib/webhook.ts          Twilio request-signature verification (HMAC-SHA1)
-src/lib/ai/                 AI execution layer (Claude): draft + deal brief, template fallback
+src/lib/ai/                 AI execution layer (Claude): drafts, deal briefs, sequence builder, template fallback
+src/lib/voice/              Spoken-voice stack: on-device neural TTS (local) · hosted ladder (tts) ·
+                            engine seam (synth) · conversation policy + turn-taking · call scorecard
+src/lib/billing/            Plans, entitlements, Stripe checkout/portal/webhook, one-call provisioning
+src/components/marketing/   Public site: landing, pricing, industry landers, live voice demo
 src/lib/automations.ts      Trigger → action automation rules
 src/lib/templates.ts        Email & SMS template library (merge tokens)
 src/components/charts.tsx   Dependency-free SVG charts
@@ -71,7 +81,9 @@ supabase/migrations/        Org-scoped Postgres schema (RLS) for the built-in CR
 - **Leads** — searchable directory. **Tasks** — prioritized next actions.
 - **Power Dialer** — work the highest-value calls back-to-back: AI call prep (talk track), click-to-call, and AI post-call summary that sets the outcome/sentiment and auto-logs to the timeline.
 - **Inbox** — unified email/SMS/call threads with real send (logs to timeline until a provider is configured). **Calendar** — month grid + agenda.
-- **Sequences** — multi-step, multi-channel cadences per industry, with a real runtime: enroll the recall queue, all open deals, or a specific deal/contact, and the cron tick works each step on its scheduled day (drafts in-voice → Approvals, or auto-sends under `SEQUENCE_AUTOPILOT`). Closed-won deals drop out; closed-lost stay enrolled for re-engagement. **Templates**, **Automations** — engagement tooling per industry.
+- **Sequences** — describe a goal in plain English and **AI builds the cadence
+  for your business** (grounded in your industry's real objections and your voice
+  profile — never generic), or start from scratch. Multi-step, multi-channel, with a real runtime: enroll the recall queue, all open deals, or a specific deal/contact, and the cron tick works each step on its scheduled day (drafts in-voice → Approvals, or auto-sends under `SEQUENCE_AUTOPILOT`). Closed-won deals drop out; closed-lost stay enrolled for re-engagement. **Templates**, **Automations** — engagement tooling per industry.
 - **Reports** & **Forecast** — funnel, sources, leaderboard, commit/best-case/weighted.
 - **Settings** — general (incl. the **language** the workspace sells in — drives AI drafting + voice locale), **appearance** (per-org accent that re-themes the whole UI chrome, saved to the org), industry, pipeline, integrations, **team** (invite teammates by email; a matching pending invite joins them to your workspace as a member on first sign-in, instead of provisioning a new org), fields, notifications (saved per-org; the toggles gate the in-app "needs attention" feed — recall flags, new deals, stage moves — and the scheduled emails: daily pipeline digest and task reminders, sent once a day by the cron when an email provider is configured), CSV import (creates contacts + deals via the active provider), and **billing** — real Stripe Checkout + customer portal + a signature-verified webhook that syncs subscription state per org. Inactive (shows the current plan/seat summary) until `STRIPE_*` keys are set; then self-serve upgrades go live.
 - Global ⌘K search, quick-create, notifications, responsive mobile nav.
@@ -176,13 +188,23 @@ The voice layer goes well past "no clichés":
   the workspace default with their own `preferredLanguage` (set via CRM data or
   a `language` column on CSV import) — so outreach to them goes out in their
   language even in an otherwise-English org.
-- **Spoken voice, in-house** (`src/lib/voice/*`) — browser-native TTS + speech
-  recognition (no third-party provider, nothing leaves the device), with text
-  normalization, prosody, and **emotional delivery** that shifts speed/pitch/
-  pauses by mood. Live **role-play** in the dialer with **reactive tone**, real
-  turn-taking, natural pauses, and **barge-in** (talk over it and it stops).
-  A higher-fidelity neural voice drops in behind the same `setSynth()` seam
-  (`docs/neural-voice.md`).
+- **Spoken voice, in-house** (`src/lib/voice/*`) — a real **neural voice that
+  runs on-device** (Kokoro-82M via WebGPU, WASM fallback): a one-time ~90 MB
+  cached download, then every line is synthesized locally at **zero marginal
+  cost** — audio never leaves the device. Sentence-streamed, so speech starts
+  near-instantly instead of after a long silent wait. Premium hosted voices
+  (Cartesia → ElevenLabs → OpenAI, pinnable via `VOICE_TTS_PROVIDER`) drop in
+  behind the same `setSynth()` seam for phone calls, with browser-native TTS as
+  the universal fallback (`docs/neural-voice.md`). Emotional delivery shifts
+  speed/pitch/pauses by mood.
+- **Conversations like a person** (`src/lib/voice/turntaking.ts`,
+  `conversation.ts`) — instant intent-aware acknowledgments ("Yeah — fair
+  question.") cover the beat while the full reply is composed, thinking pauses
+  are timed to sentiment, turn-taking ends on natural silence, and **barge-in**
+  means you can talk over it and it stops. Live **role-play** in the dialer
+  works real objections with **reactive tone**. The landing page, industry
+  pages, onboarding, and Settings all let you **hear the voice** before you
+  trust it with a call.
 - **Post-call scorecard** (`src/lib/voice/scorecard.ts`) — grades talk ratio,
   questions, objection handling, sentiment arc, and whether a next step was
   booked, with coaching tips.
@@ -214,6 +236,21 @@ cost by model and **per feature**, shown in Settings → Billing. Set
 `AI_MONTHLY_BUDGET_USD` to cap spend per org — when hit, drafting transparently
 falls back to the free templates, so costs never run away.
 
+The voice economics follow the same principle: the default neural voice is
+on-device (zero per-character cost at any scale); hosted premium voices are an
+opt-in upgrade, never a silent bill.
+
+## Pricing & self-serve billing
+
+Four public plans (`src/components/marketing/pricing-data.ts`): **Starter**
+(free — the evaluation path), **Operator** ($299/mo), **Autopilot** ($899/mo),
+and **Scale** (custom), with annual billing ≈2 months free. Every feature gate
+flows from one entitlements map (`src/lib/billing/entitlements.ts`). Stripe
+Checkout, the customer portal, and a signature-verified webhook keep
+subscription state in sync per org — and `POST /api/billing/setup` (Bearer
+`ADMIN_TOKEN`) provisions the Stripe products, prices, and lookup keys in one
+call, no dashboard clicking.
+
 ## Going live with Supabase
 
 Three secrets are needed (none are derivable for you): the **anon key** and
@@ -243,8 +280,8 @@ no code changes. `db:bootstrap` is one-time per org.
 
 ## Authentication & multi-tenancy
 
-Auth is **off by default** (public demo on a shared org). To enable real
-multi-tenant mode, set `NEXT_PUBLIC_AUTH_REQUIRED=true`:
+Auth is **off by default** for local demos (public demo on a shared org).
+Production runs real multi-tenant mode — `NEXT_PUBLIC_AUTH_REQUIRED=true`:
 
 - Supabase Auth (email/password + Google OAuth) via `@supabase/ssr`; middleware
   refreshes sessions and gates app routes.
@@ -264,6 +301,11 @@ Deployable to Vercel as a standard Next.js app. Set the env vars from
 migrations in `supabase/migrations/` (see *Going live with Supabase*) and set
 the `SUPABASE_*` vars.
 
+`vercel.json` schedules the autopilot tick (`/api/agent/cron`) **hourly** —
+sub-daily cron requires a Vercel Pro plan; on Hobby, change the schedule to
+daily (e.g. `0 13 * * *`) or **every production deploy fails validation**. Full
+walkthrough in [SETUP.md](SETUP.md).
+
 ## Go-live checklist (selling to real customers)
 
 1. **Database** — `SUPABASE_*` set, migrations applied, an org bootstrapped;
@@ -278,7 +320,9 @@ the `SUPABASE_*` vars.
    footer, SMS carries "Reply STOP", and inbound STOP/UNSUBSCRIBE permanently
    suppresses the contact. Autonomy guardrails (opt-out, re-engagement cooldown,
    quiet hours, daily cap) are on in auto mode.
-5. **Billing** — `STRIPE_*` set if you're charging via self-serve checkout.
+5. **Billing** — set `STRIPE_SECRET_KEY` (+ publishable & webhook secrets),
+   then `POST /api/billing/setup` to auto-provision products/prices; self-serve
+   checkout, the customer portal, and plan gates go live.
 6. **Security** — HTTPS (HSTS + CSP ship by default), `CRON_SECRET` for the
    scheduler, secrets only in env (never in the repo — `npm run scan:secrets`).
 7. **Verify** — `npm run build && npm run smoke` (every route renders) and
