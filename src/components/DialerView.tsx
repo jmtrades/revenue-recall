@@ -7,6 +7,7 @@ import { Icon } from "@/components/icons";
 import { Avatar, ReasonBadge, ScoreDot, EmptyState } from "@/components/ui";
 import { RolePlay } from "@/components/RolePlay";
 import { SpeakButton } from "@/components/SpeakButton";
+import { nextPendingIndex, QUICK_OUTCOMES } from "@/lib/dialer-flow";
 
 interface Brief {
   summary: string;
@@ -88,15 +89,17 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
   // The rep's outcome pick ("" = let AI infer from the notes). Overrides the AI
   // guess so a voicemail never gets logged as "Connected".
   const [outcome, setOutcome] = useState("");
+  // Power Mode: after any logged outcome, jump straight to the next deal — the
+  // difference between grinding out 100 dials a day and clicking "Next" 100
+  // times. On by default; the rep can switch to one-at-a-time.
+  const [powerMode, setPowerMode] = useState(true);
+  const [quickBusy, setQuickBusy] = useState<string | null>(null);
 
   const active = queue[idx];
   const remaining = queue.filter((q) => !done[q.dealId]).length;
   // The next not-yet-completed call after the current one (−1 when none remain),
-  // so "Next call" skips deals already wrapped up instead of landing back on them.
-  const nextIdx = (() => {
-    for (let i = idx + 1; i < queue.length; i++) if (!done[queue[i].dealId]) return i;
-    return -1;
-  })();
+  // so advancing skips deals already wrapped up instead of landing back on them.
+  const nextIdx = nextPendingIndex(queue.length, (i) => Boolean(done[queue[i].dealId]), idx);
 
   function selectIndex(i: number) {
     setIdx(i);
@@ -144,6 +147,38 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
     }
   }
 
+  function advance() {
+    // After an outcome: in Power Mode hop to the next pending deal; otherwise
+    // stay put so the rep can review what they logged before moving on.
+    if (powerMode && nextIdx >= 0) selectIndex(nextIdx);
+  }
+
+  // One-tap no-connect outcome — the ~85% case. Logs the deterministic outcome
+  // directly (no AI summary, no minutes), marks the deal done, and advances.
+  async function quickLog(o: { id: string; label: string; line: string }) {
+    if (!active || quickBusy) return;
+    setQuickBusy(o.id);
+    setSummaryError(null);
+    try {
+      const res = await fetch(`/api/opportunities/${active.dealId}/activity`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "call", summary: o.line, direction: "outbound" }),
+      });
+      if (!res.ok) {
+        setSummaryError("Couldn't log the outcome — try again.");
+        return;
+      }
+      setDone((d) => ({ ...d, [active.dealId]: true }));
+      setCallStatus(`Logged: ${o.label}`);
+      advance();
+    } catch {
+      setSummaryError("Couldn't log the outcome — check your connection and try again.");
+    } finally {
+      setQuickBusy(null);
+    }
+  }
+
   async function endCall() {
     if (!active) return;
     // Require a note OR an explicit outcome — otherwise an empty call would log a
@@ -184,6 +219,9 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
       setSummary({ ...s, outcome: finalOutcome });
       setSaved(true);
       setDone((d) => ({ ...d, [active.dealId]: true }));
+      // A connected call is fully logged — in Power Mode roll to the next deal
+      // after a beat so the rep can glance at the summary that just saved.
+      if (powerMode && nextIdx >= 0) setTimeout(advance, 900);
     } catch {
       setSummaryError("Couldn't save the call. Check your connection and try again.");
     } finally {
@@ -209,6 +247,18 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
           <span>Call queue · {remaining} left</span>
           {voiceMinutes?.metered && <MinutesChip remainingMin={voiceMinutes.remainingMin} callsLeft={voiceMinutes.callsLeft} />}
         </div>
+        <label className="flex cursor-pointer items-center justify-between gap-2 border-b border-border/60 bg-surface-2/40 px-4 py-2 text-xs">
+          <span className="flex items-center gap-1.5 text-muted"><Icon name="autopilot" size={12} className="text-brand" /> Power Mode — auto-advance after each call</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={powerMode}
+            onClick={() => setPowerMode((v) => !v)}
+            className={`relative h-4 w-7 shrink-0 rounded-full transition ${powerMode ? "bg-brand" : "bg-border"}`}
+          >
+            <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${powerMode ? "left-3.5" : "left-0.5"}`} />
+          </button>
+        </label>
         <div className="max-h-[70vh] flex-1 overflow-y-auto">
           {queue.map((q, i) => (
             <button
@@ -246,9 +296,25 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
               </div>
               <ReasonBadge reason={active.reason} />
             </div>
-            <div className="mt-4 flex items-center gap-3">
+            <div className="mt-4 flex flex-wrap items-center gap-3">
               <button onClick={call} disabled={placing} className="inline-flex items-center gap-1.5 rounded-lg bg-success px-5 py-2.5 text-sm font-semibold text-white transition active:scale-[0.97] hover:bg-success/90 disabled:opacity-50 disabled:active:scale-100"><Icon name="dialer" size={15} /> {placing ? "Dialing…" : "Call"}</button>
               {callStatus && <span className="text-sm text-muted">{callStatus}</span>}
+            </div>
+            {/* One-tap no-connect logging — the bulk of any dial day. Each logs
+                the outcome, re-queues the deal, and (in Power Mode) jumps to the
+                next, so a missed call is a single click, not the full notes flow. */}
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+              <span className="text-xs text-muted">Didn&apos;t connect?</span>
+              {QUICK_OUTCOMES.map((o) => (
+                <button
+                  key={o.id}
+                  onClick={() => quickLog(o)}
+                  disabled={Boolean(quickBusy) || Boolean(done[active.dealId])}
+                  className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-fg transition hover:bg-surface-2 disabled:opacity-50"
+                >
+                  {quickBusy === o.id ? "Logging…" : o.label}
+                </button>
+              ))}
             </div>
           </div>
 
