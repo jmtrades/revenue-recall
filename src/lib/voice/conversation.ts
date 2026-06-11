@@ -1,8 +1,8 @@
 import { completeJson, isAiConfigured } from "@/lib/ai/client";
-import { getPlaybook } from "@/lib/industries";
+import { getPlaybook, type ObjectionKind } from "@/lib/industries";
 import { languageDirective } from "@/lib/languages";
 import { getTone, type ToneId } from "@/lib/tones";
-import { detectIntent, type Intent } from "@/lib/ai/intent";
+import { detectIntent, OBJECTION_KINDS, type Intent } from "@/lib/ai/intent";
 import { analyzeProgress, decideDirective, type CallDirective } from "@/lib/voice/objection";
 import { reactTo, reactToText, detectSentiment, sentimentToEmotion, type Sentiment } from "@/lib/voice/reactive";
 import { UNTRUSTED_DATA_RULE, fenceUntrusted, oneLineUntrusted } from "@/lib/ai/untrusted";
@@ -204,6 +204,21 @@ const SPOKEN: Partial<Record<Intent, (f: string) => string[]>> = {
   ],
 };
 
+/** Narrow an intent to the playbook's objection-angle keys. */
+function asObjectionKind(intent: Intent | null): ObjectionKind | null {
+  return intent && OBJECTION_KINDS.has(intent) ? (intent as ObjectionKind) : null;
+}
+
+// Spoken lead-ins that compose with a playbook objection angle (the angles are
+// lowercase-initial, end on a question, and are industry-true by construction —
+// TypeScript + tests enforce both). This is how the NO-KEY path handles "rates
+// are too high" like a mortgage rep instead of a generic salesperson.
+const ANGLE_LEADS: ((f: string) => string)[] = [
+  (f) => `Fair enough, ${f} — `,
+  () => `Yeah, I hear you — `,
+  (f) => `Totally get it, ${f}. Honest take: `,
+];
+
 const CLOSERS: ((f: string) => string)[] = [
   (f) => `Perfect, ${f} — I'll send a calendar invite for then. Anything you want me to have ready?`,
   (f) => `Done. I'll get that on the calendar — looking forward to it, ${f}.`,
@@ -246,8 +261,14 @@ function fallbackRepTurn(state: ConversationState): RepTurn {
   if (directive.action === "close") {
     return { ...base, text: pick(CLOSERS, seed, "close")(first), emotion: "energetic", done: true };
   }
-  const pool = (intent && SPOKEN[intent]) || SPOKEN.question!;
-  return { ...base, text: pick(pool(first), seed, intent ?? "discovery"), done };
+  // Industry-true handling: when the prospect raised a classic objection, the
+  // playbook's angle for THIS vertical joins the pool alongside the generic
+  // spoken lines — seeded pick keeps it deterministic and varied per deal.
+  const generic = ((intent && SPOKEN[intent]) || SPOKEN.question!)(first);
+  const kind = asObjectionKind(intent);
+  const angle = kind ? getPlaybook(state.industryId ?? "generic").objectionAngles[kind] : null;
+  const pool = angle ? [...generic, `${pick(ANGLE_LEADS, seed, "lead")(first)}${angle}`] : generic;
+  return { ...base, text: pick(pool, seed, intent ?? "discovery"), done };
 }
 
 /** Decide the rep's next spoken line given the call so far. */
@@ -264,14 +285,19 @@ export async function nextRepTurn(state: ConversationState): Promise<RepTurn> {
   const reaction = incoming ? reactToText(incoming) : { tone: "warm" as ToneId, emotion: "warm" as Emotion, note: "Open warm and curious." };
   // Adapt tone to the moment unless the rep pinned one.
   const tone = getTone(state.tone ?? reaction.tone);
+  // Industry-true objection handling: when they just raised a classic
+  // objection, hand the model THIS vertical's angle for it — the difference
+  // between "I understand budget is a concern" and a mortgage rep who leads
+  // with the monthly payment at today's rate.
+  const kind = asObjectionKind(incoming ? detectIntent(incoming) : null);
   const user = `You're on a live call.
 Read the room: the prospect sounds ${incoming ? detectSentiment(incoming) : "neutral"}. ${reaction.note}
 Tone: ${tone.label} — ${tone.directive}
-Industry: ${state.industryLabel ?? "sales"}
+Industry: ${state.industryLabel ?? "sales"} — speak its language naturally (${pb.vocabulary.slice(0, 8).join(", ")}), never like a generic script.
 Prospect: ${oneLineUntrusted(state.contactName)}${state.company ? ` at ${oneLineUntrusted(state.company)}` : ""}
 About: "${state.dealTitle}"
 Their likely natural next-steps: ${pb.nextSteps.call.join(" / ")}
-Phase: ${phase}
+${kind ? `Industry-true angle for what they just raised (use the idea in your own spoken words): ${pb.objectionAngles[kind]}\n` : ""}Phase: ${phase}
 What to do now: ${directiveGuidance(directive)}
 ${opening && (state.daysSinceContact ?? 0) >= REACTIVATION_GAP_DAYS ? `It's been ${state.daysSinceContact} days since you last spoke — open by warmly owning the gap ("it's been a while"), lightly, no guilt-trip.\n` : ""}${state.voice?.profile ? `Speak in this rep's voice:\n"""${state.voice.profile}"""\n` : ""}${languageDirective(state.language) ? `${languageDirective(state.language)}\n` : ""}TRANSCRIPT SO FAR:
 ${transcript(state.turns, "rep")}
@@ -310,9 +336,14 @@ const PROSPECT_LINES: Record<Difficulty, string[]> = {
 
 function fallbackProspectTurn(state: ConversationState, difficulty: Difficulty): ProspectTurn {
   const seed = `${state.dealTitle}|${state.turns.length}|${difficulty}`;
-  // First prospect turn: greet/react to the opener. Later: raise an objection.
+  // First prospect turn: greet/react to the opener. Later: raise an objection —
+  // including THIS industry's real ones (the playbook objections are written as
+  // first-person prospect speech), so practice sounds like the actual vertical:
+  // "rates are too high right now", not a generic brush-off.
   const repTurns = state.turns.filter((t) => t.speaker === "rep").length;
-  const pool = repTurns <= 1 && difficulty !== "hard" ? PROSPECT_LINES.easy : PROSPECT_LINES[difficulty];
+  const opening = repTurns <= 1 && difficulty !== "hard";
+  const industry = getPlaybook(state.industryId ?? "generic").objections;
+  const pool = opening ? PROSPECT_LINES.easy : [...PROSPECT_LINES[difficulty], ...industry];
   const text = pickVariant(pool, seeded(seed, "prospect"));
   const sentiment = detectSentiment(text);
   return { text, intent: detectIntent(text), sentiment, emotion: sentimentToEmotion(sentiment), source: "template" };
@@ -321,7 +352,10 @@ function fallbackProspectTurn(state: ConversationState, difficulty: Difficulty):
 /** Generate a realistic prospect line for live role-play practice. */
 export async function simulateProspect(state: ConversationState, difficulty: Difficulty = "medium"): Promise<ProspectTurn> {
   if (!isAiConfigured()) return fallbackProspectTurn(state, difficulty);
+  const pb = getPlaybook(state.industryId ?? "generic");
   const user = `Role-play a ${difficulty} prospect for "${state.dealTitle}" in ${state.industryLabel ?? "sales"}.
+You're a real buyer in this vertical — what you ultimately want: ${pb.buyerGoal}.
+Objections people in this industry actually voice (adapt naturally, don't quote): ${pb.objections.slice(0, 4).join(" | ")}
 ${languageDirective(state.language) ? `${languageDirective(state.language)}\n` : ""}TRANSCRIPT SO FAR:
 ${transcript(state.turns, "prospect")}
 
