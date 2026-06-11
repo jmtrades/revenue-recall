@@ -34,7 +34,42 @@ export function SequencesView({ sequences, customIds = [], canAuthor = false }: 
   const [draft, setDraft] = useState<SeqDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [genOpen, setGenOpen] = useState(false);
+  const [genGoal, setGenGoal] = useState("");
+  const [genBusy, setGenBusy] = useState(false);
   const customSet = new Set(customIds);
+
+  // "Build it for my business": the server grounds the plan in this org's
+  // industry playbook + what it sells, and the editor opens pre-filled for
+  // review — never a blank, generic form.
+  async function generate() {
+    setGenBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/ai/sequence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goal: genGoal.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.plan) {
+        setError(data.error ?? "Couldn't generate a sequence — try again.");
+        return;
+      }
+      const plan = data.plan as { name: string; goal: string; steps: { day: number; channel: SeqChannel; subject?: string; body: string }[] };
+      setDraft({
+        name: plan.name,
+        goal: plan.goal,
+        steps: plan.steps.map((s) => ({ day: String(s.day), channel: s.channel, subject: s.subject ?? "", body: s.body })),
+      });
+      setGenOpen(false);
+      setGenGoal("");
+    } catch {
+      setError("Couldn't generate a sequence — check your connection.");
+    } finally {
+      setGenBusy(false);
+    }
+  }
 
   function startEdit(seq: Sequence) {
     setDraft({
@@ -97,9 +132,33 @@ export function SequencesView({ sequences, customIds = [], canAuthor = false }: 
     <div>
       {canAuthor && !draft && (
         <div className="mb-5">
-          <button onClick={() => { setDraft({ ...EMPTY, steps: [{ ...NEW_STEP }] }); setError(null); }} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90">
-            New sequence
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => { setGenOpen((v) => !v); setError(null); }} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90">
+              Build it for my business
+            </button>
+            <button onClick={() => { setDraft({ ...EMPTY, steps: [{ ...NEW_STEP }] }); setGenOpen(false); setError(null); }} className="rounded-lg border border-border px-4 py-2 text-sm text-muted transition hover:text-fg">
+              Start from scratch
+            </button>
+          </div>
+          {genOpen && (
+            <div className="mt-3 rounded-xl border border-brand/30 bg-brand-soft/10 p-4">
+              <label className="text-sm font-medium text-fg" htmlFor="seq-goal">What should this cadence accomplish?</label>
+              <p className="mt-0.5 text-xs text-muted">It designs the steps around your industry&rsquo;s real objections and what your business sells — you review and edit before saving.</p>
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                <input
+                  id="seq-goal"
+                  className={`${input} max-w-md flex-1`}
+                  placeholder="e.g. Win back past clients before their renewal"
+                  value={genGoal}
+                  onChange={(e) => setGenGoal(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !genBusy) void generate(); }}
+                />
+                <button onClick={generate} disabled={genBusy} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-60">
+                  {genBusy ? "Designing…" : "Generate"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
