@@ -6,6 +6,7 @@ import { getIndustry } from "@/lib/industries";
 import { getActiveVoice } from "@/lib/voice";
 import { isToneId } from "@/lib/tones";
 import { nextRepTurn, simulateProspect, type ConversationState, type Difficulty } from "@/lib/voice/conversation";
+import { pickAck } from "@/lib/voice/turntaking";
 import { aiRateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
@@ -46,5 +47,11 @@ export const POST = withGuard(async (req: Request) => {
     return NextResponse.json(out);
   }
   const out = await nextRepTurn(state);
-  return NextResponse.json(out);
+  // Dead-air killer for live calls: an instant, intent-aware acknowledgment
+  // ("Yeah — fair question.") the gateway speaks the moment the caller stops
+  // talking, while this turn's full reply is synthesized. Additive — clients
+  // that ignore it lose nothing.
+  const lastProspect = [...parsed.data.turns].reverse().find((t) => t.speaker === "prospect");
+  const ack = lastProspect ? pickAck(lastProspect.text, `${parsed.data.dealTitle}:${parsed.data.turns.length}`, "rep") : null;
+  return NextResponse.json({ ...out, ack });
 });
