@@ -55,13 +55,14 @@ export function Footer() {
               <span className="font-display text-[15px] font-semibold tracking-tight text-fg">Revenue Recall</span>
             </div>
             <p className="mt-3 max-w-xs text-sm text-muted">Autonomous outbound that recovers the revenue you&apos;re about to lose — for any CRM, any industry.</p>
-            <span className="mt-4 inline-flex items-center gap-2 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-medium text-muted">
+            {/* Links to /status, which renders live system state — the claim is checkable, not decorative. */}
+            <Link href="/status" className="mt-4 inline-flex items-center gap-2 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-medium text-muted transition hover:text-fg">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand/70" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
               </span>
               All systems operational
-            </span>
+            </Link>
           </div>
           {COLS.map((col) => (
             <div key={col.heading}>

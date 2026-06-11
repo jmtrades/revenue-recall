@@ -18,6 +18,8 @@ const ROUTES = [
   "/",
   "/login",
   "/signup",
+  "/pricing",
+  "/status",
   "/onboarding",
   "/dashboard",
   "/pipeline",
@@ -52,9 +54,14 @@ async function waitForReady(timeoutMs = 30000) {
   throw new Error("Server did not become ready in time");
 }
 
+// `detached` puts the server in its own process group so the cleanup kill can
+// target the WHOLE group (-pid): killing just the spawned pid only terminates
+// the npx wrapper, orphaning the real next-server — which keeps the port (and
+// any pipe holding our stdout) open and hangs CI after a passing run.
 const server = spawn("npx", ["next", "start", "-p", PORT], {
   stdio: ["ignore", "inherit", "inherit"],
   env: process.env,
+  detached: true,
 });
 
 let failed = false;
@@ -70,7 +77,13 @@ try {
   console.error("smoke error:", e instanceof Error ? e.message : e);
   failed = true;
 } finally {
-  server.kill("SIGTERM");
+  // Kill the whole group (npx wrapper + next-server). Fall back to the single
+  // pid if the group is already gone.
+  try {
+    process.kill(-server.pid, "SIGTERM");
+  } catch {
+    try { server.kill("SIGTERM"); } catch { /* already exited */ }
+  }
 }
 
 if (failed) {
