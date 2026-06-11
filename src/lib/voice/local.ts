@@ -22,6 +22,12 @@ interface KokoroLike {
 
 let state: "idle" | "loading" | "ready" | "failed" = "idle";
 let tts: KokoroLike | null = null;
+let progress = 0; // 0..1 download progress, for a friendly "warming up" UI
+const readyWaiters: ((ok: boolean) => void)[] = [];
+
+function settle(ok: boolean): void {
+  while (readyWaiters.length) readyWaiters.shift()!(ok);
+}
 
 /** Resolve any voice id to one Kokoro can speak: known house ids pass through;
  *  clone:<id> (the gateway's job) and unknowns use the default. Exported for tests. */
@@ -42,6 +48,23 @@ export function localVoiceState(): typeof state {
   return state;
 }
 
+/** Download progress, 0..1, while the model loads. Approximate (the engine
+ *  reports per-file), but smooth enough for a "warming up the voice" bar. */
+export function localVoiceProgress(): number {
+  return progress;
+}
+
+/** Trigger loading (if needed) and resolve when the on-device voice is usable
+ *  (true) or definitively can't run here (false). The landing demo awaits this
+ *  on first click instead of polling. */
+export function ensureLocalVoice(): Promise<boolean> {
+  if (typeof window === "undefined") return Promise.resolve(false); // SSR — can't run
+  if (state === "ready") return Promise.resolve(true);
+  if (state === "failed") return Promise.resolve(false);
+  preloadLocalVoice();
+  return new Promise<boolean>((resolve) => readyWaiters.push(resolve));
+}
+
 /** Begin loading the model in the background (no-op on the server, when
  *  already started, or after a failure). Safe to call repeatedly. */
 export function preloadLocalVoice(): void {
@@ -54,15 +77,23 @@ export function preloadLocalVoice(): void {
     // break webpack); the browser fetches the ESM directly — same-origin, so
     // CSP stays at script-src 'self'.
     const { KokoroTTS } = (await import(/* webpackIgnore: true */ "/vendor/kokoro.web.js" as string)) as {
-      KokoroTTS: { from_pretrained(model: string, opts: { device: string; dtype: string }): Promise<unknown> };
+      KokoroTTS: { from_pretrained(model: string, opts: { device: string; dtype: string; progress_callback?: (p: { progress?: number }) => void }): Promise<unknown> };
     };
     const hasWebGpu = "gpu" in navigator;
     // WebGPU runs fp32 fast; WASM needs the q8 quant to stay responsive.
-    const loaded = (await KokoroTTS.from_pretrained(MODEL_ID, hasWebGpu ? { device: "webgpu", dtype: "fp32" } : { device: "wasm", dtype: "q8" })) as unknown as KokoroLike;
+    const loaded = (await KokoroTTS.from_pretrained(MODEL_ID, {
+      ...(hasWebGpu ? { device: "webgpu", dtype: "fp32" } : { device: "wasm", dtype: "q8" }),
+      progress_callback: (p) => {
+        if (typeof p?.progress === "number") progress = Math.max(progress, Math.min(0.99, p.progress / 100));
+      },
+    })) as unknown as KokoroLike;
     tts = loaded;
+    progress = 1;
     state = "ready";
+    settle(true);
   })().catch(() => {
     state = "failed"; // old browser / blocked download — the next engine takes over
+    settle(false);
   });
 }
 

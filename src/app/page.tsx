@@ -5,6 +5,7 @@ import { Hero3D } from "@/components/marketing/Hero3D";
 import { StickyCTA } from "@/components/marketing/StickyCTA";
 import { PricingPlans } from "@/components/marketing/PricingPlans";
 import { BrandLogos } from "@/components/marketing/BrandLogos";
+import { VoiceDemo } from "@/components/marketing/VoiceDemo";
 import { Icon, type IconName } from "@/components/icons";
 import { Reveal, Stagger, StaggerItem, ScaleIn } from "@/components/motion/Motion";
 import { INDUSTRIES } from "@/lib/industries";
@@ -228,6 +229,25 @@ export default function LandingPage() {
           <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Runs on the stack you already use — or none of it</p>
           <BrandLogos />
         </Reveal>
+      </section>
+
+      {/* Hear the voice — live, on-device, no signup */}
+      <section className="border-b border-border bg-surface/30">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-14 sm:py-20 lg:grid-cols-2">
+          <Reveal>
+            <span className="eyebrow">The voice</span>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">
+              It calls like a real person. <span className="gradient-text">Hear it now.</span>
+            </h2>
+            <p className="mt-4 max-w-md text-lg leading-relaxed text-muted">
+              Not a robotic phone tree — a natural voice that opens, handles the objection, and asks for the next step. Tap any rep and it speaks the line live, generated on your own device. No signup, nothing uploaded.
+            </p>
+            <p className="mt-4 text-sm text-muted">The same voice works your power-dialer calls and voicemails, in your rep&apos;s tone.</p>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <VoiceDemo />
+          </Reveal>
+        </div>
       </section>
 
       {/* Objection killer: not a drafting tool */}
