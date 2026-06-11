@@ -203,12 +203,17 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
     remaining: Number.isFinite(meter.remaining) ? meter.remaining : 0,
     fraction: meter.fraction,
   };
-  const topupPacks = TOPUP_PACKS.map((p, i) => ({ id: p.id, label: p.label, actions: p.actions, suggestedUsd: p.suggestedUsd, blurb: p.blurb, featured: Boolean(p.featured), purchasable: Boolean(topupResolved[i]) }));
+  // Message packs feed the AI-action meter; minute packs feed the voice meter.
+  const allPacks = TOPUP_PACKS.map((p, i) => ({ id: p.id, unit: p.unit, label: p.label, actions: p.actions, suggestedUsd: p.suggestedUsd, blurb: p.blurb, featured: Boolean(p.featured), purchasable: Boolean(topupResolved[i]) }));
+  const topupPacks = allPacks.filter((p) => p.unit === "messages");
+  const minutePacks = allPacks.filter((p) => p.unit === "minutes");
   // Customer-facing voice-minute meter (sanitize Infinity for the client).
   const vMeter = await voiceMinutesMeter();
   const voiceMinutesProps = {
     usedMin: vMeter.usedMin,
     includedMin: Number.isFinite(vMeter.includedMin) ? vMeter.includedMin : 0,
+    creditsMin: vMeter.creditsMin,
+    limitMin: Number.isFinite(vMeter.limitMin) ? vMeter.limitMin : 0,
     remainingMin: Number.isFinite(vMeter.remainingMin) ? vMeter.remainingMin : 0,
     fraction: vMeter.fraction,
     unlimited: vMeter.unlimited,
@@ -491,7 +496,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
         <UsageMeter meter={usageProps} topups={topupPacks} billingConfigured={billingConfigured()} planName={getPlan(subscription.plan).name} />
       </div>
       <div className="mt-4">
-        <VoiceMinutesMeter meter={voiceMinutesProps} planName={getPlan(subscription.plan).name} callsLeft={callsLeft} />
+        <VoiceMinutesMeter meter={voiceMinutesProps} planName={getPlan(subscription.plan).name} callsLeft={callsLeft} packs={minutePacks} billingConfigured={billingConfigured()} />
       </div>
       <InvoiceHistory />
       <div className="mt-4 rounded-lg border border-border p-4">

@@ -10,10 +10,10 @@ export const dynamic = "force-dynamic";
 
 export default async function DialerPage() {
   const [queue, org, vMeter] = await Promise.all([getCallQueue(), getOrgSettings(), voiceMinutesMeter()]);
-  // Only count down when there's a real balance: unlimited plans and orgs with
-  // no included phone minutes don't get a chip (sanitize Infinity for the client).
+  // Only count down when there's a real balance (plan minutes + top-ups):
+  // unlimited plans and zero-minute orgs get no chip (Infinity sanitized).
   const voiceMinutes: DialerVoiceMinutes = {
-    metered: !vMeter.unlimited && vMeter.includedMin > 0,
+    metered: !vMeter.unlimited && vMeter.limitMin > 0,
     remainingMin: Number.isFinite(vMeter.remainingMin) ? vMeter.remainingMin : 0,
     callsLeft: Number.isFinite(vMeter.remainingMin) ? estimatedCallsForMinutes(vMeter.remainingMin) : 0,
   };

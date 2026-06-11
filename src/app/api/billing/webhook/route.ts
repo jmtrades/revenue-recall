@@ -48,13 +48,17 @@ export async function POST(req: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const meta = (obj.metadata as Record<string, unknown>) ?? {};
-        // One-time usage top-up → credit actions for the current month, not a
-        // plan change. Idempotent on the session id (webhook retries are safe).
+        // One-time usage top-up → credit units for the current month, not a
+        // plan change. The unit decides which pool: AI messages (source
+        // "topup") or talk minutes (source "voice_topup" — the meters filter
+        // by source so the pools never bleed into each other). Idempotent on
+        // the session id (webhook retries are safe).
         if (obj.mode === "payment" && meta.kind === "topup") {
           const topupOrg = (obj.client_reference_id as string) || (meta.org_id as string);
           const actions = Number(meta.topup_actions);
           if (topupOrg && Number.isFinite(actions) && actions > 0) {
-            await addUsageCredits({ orgId: topupOrg, actions, source: "topup", ref: obj.id as string });
+            const source = meta.topup_unit === "minutes" ? "voice_topup" : "topup";
+            await addUsageCredits({ orgId: topupOrg, actions, source, ref: obj.id as string });
           } else {
             // A customer paid but we can't credit it — never swallow this silently.
             logError("billing.topup.uncreditable", { session: obj.id as string, hasOrg: Boolean(topupOrg), actions: meta.topup_actions });

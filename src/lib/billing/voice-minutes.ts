@@ -1,6 +1,6 @@
 import { entitlements, effectivePlan } from "@/lib/billing/entitlements";
 import { getSubscription } from "@/lib/billing/store";
-import { recordUsage, featureUnitsThisMonth } from "@/lib/ai/usage";
+import { recordUsage, featureUnitsThisMonth, voiceMinuteCreditsThisPeriod } from "@/lib/ai/usage";
 import { ttsProvider, type TtsProvider } from "@/lib/voice/tts";
 
 /**
@@ -127,29 +127,40 @@ export interface VoiceMinutesMeter {
   usedMin: number;
   /** Plan's included monthly minutes (Infinity = unmetered). */
   includedMin: number;
-  /** max(0, included − used). */
+  /** Purchased top-up minutes active this month. */
+  creditsMin: number;
+  /** included + credits (Infinity = unmetered). */
+  limitMin: number;
+  /** max(0, limit − used). */
   remainingMin: number;
-  /** used / included, clamped 0–1 (0 when unmetered). */
+  /** used / limit, clamped 0–1 (0 when unmetered). */
   fraction: number;
   unlimited: boolean;
 }
 
 /** The current org's voice meter — included minutes come from the EFFECTIVE
- *  plan (past_due/canceled → free), consistent with every other gate. */
+ *  plan (past_due/canceled → free), consistent with every other gate; minute
+ *  top-ups stack onto the month exactly like message top-ups do. */
 export async function voiceMinutesMeter(now: Date = new Date()): Promise<VoiceMinutesMeter> {
-  const [seconds, sub] = await Promise.all([featureUnitsThisMonth(CALL_MINUTES_FEATURE, now), getSubscription()]);
+  const [seconds, credits, sub] = await Promise.all([
+    featureUnitsThisMonth(CALL_MINUTES_FEATURE, now),
+    voiceMinuteCreditsThisPeriod(now),
+    getSubscription(),
+  ]);
   const includedMin = entitlements(effectivePlan(sub.plan, sub.status)).voiceMinutesPerMonth;
   const unlimited = !Number.isFinite(includedMin);
   const usedMin = Number((seconds / 60).toFixed(1));
-  const remainingMin = unlimited ? Infinity : Math.max(0, Number((includedMin - usedMin).toFixed(1)));
-  const fraction = unlimited || includedMin <= 0 ? (unlimited ? 0 : 1) : Math.min(1, usedMin / includedMin);
-  return { usedMin, includedMin, remainingMin, fraction, unlimited };
+  const creditsMin = unlimited ? 0 : credits;
+  const limitMin = unlimited ? Infinity : includedMin + creditsMin;
+  const remainingMin = unlimited ? Infinity : Math.max(0, Number((limitMin - usedMin).toFixed(1)));
+  const fraction = unlimited || limitMin <= 0 ? (unlimited ? 0 : 1) : Math.min(1, usedMin / limitMin);
+  return { usedMin, includedMin, creditsMin, limitMin, remainingMin, fraction, unlimited };
 }
 
-/** True while the org still has included call minutes this month (or is
- *  unmetered). Callers gate with this only when billing enforcement is on —
- *  open demos and self-hosted deploys stay unmetered. */
+/** True while the org still has call minutes this month — plan allowance plus
+ *  purchased top-ups (or is unmetered). Callers gate with this only when
+ *  billing enforcement is on — open demos and self-hosted stay unmetered. */
 export async function isWithinVoiceMinutes(now: Date = new Date()): Promise<boolean> {
   const m = await voiceMinutesMeter(now);
-  return m.unlimited || (m.includedMin > 0 && m.usedMin < m.includedMin);
+  return m.unlimited || (m.limitMin > 0 && m.usedMin < m.limitMin);
 }
