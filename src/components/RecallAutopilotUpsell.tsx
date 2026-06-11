@@ -48,7 +48,7 @@ export async function RecallAutopilotUpsell({
           >
             Turn on Autopilot
           </Link>
-          <span className="text-center text-[11px] text-muted sm:text-right">From $299/mo · cancel anytime</span>
+          <span className="text-center text-[11px] text-muted sm:text-right">From $399/mo · cancel anytime</span>
         </div>
       </div>
     </section>

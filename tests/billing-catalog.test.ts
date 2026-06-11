@@ -8,9 +8,9 @@ beforeEach(() => {
 
 describe("billing catalog", () => {
   it("matches the public prices and covers monthly + annual + every top-up", () => {
-    expect(catalogForPlan("growth", "monthly")?.unitAmountCents).toBe(29_900); // $299
+    expect(catalogForPlan("growth", "monthly")?.unitAmountCents).toBe(39_900); // $399
     expect(catalogForPlan("team", "monthly")?.unitAmountCents).toBe(89_900); // $899
-    expect(catalogForPlan("growth", "annual")?.unitAmountCents).toBe(299_000); // 10x
+    expect(catalogForPlan("growth", "annual")?.unitAmountCents).toBe(399_000); // 10x
     expect(catalogForPlan("team", "annual")?.unitAmountCents).toBe(899_000);
     expect(catalogForTopup("5k")?.unitAmountCents).toBe(9_900); // $99
   });

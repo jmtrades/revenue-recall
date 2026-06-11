@@ -10,17 +10,27 @@ import { ttsProvider, type TtsProvider } from "@/lib/voice/tts";
  * turn); this module is the one place that math lives, so plan pricing, the
  * in-product meter, and the operator's margin view can never drift apart.
  *
+ * THE UNIT IS A CONNECTED TALK MINUTE, NOT A DIAL. Most dials cost ~nothing:
+ * a no-answer is free (telephony bills answered calls) and a voicemail drop is
+ * ~30 s — so "rep-scale dialing" (100+ dials/day) consumes far fewer paid
+ * minutes than it sounds: 100 dials ≈ 15 connects × 3 min + 38 voicemails ×
+ * 0.5 min ≈ 64 talk min. That's what lets the plans sell daily-dial volume
+ * a real rep recognizes while voice COGS stays ≤ ~35% of price at FULL
+ * consumption (typical utilization runs well under full).
+ *
  * Planning rates (USD per connected minute, list-price assumptions — override
  * any of them via env when your negotiated rates differ):
- *   telephony  $0.014   (US outbound)
+ *   telephony  $0.014   (US outbound, answered time only)
  *   STT        $0.006   (streaming transcription)
  *   LLM        $0.005   (~2 turns/min on a fast model)
- *   TTS        $0.080 ElevenLabs · $0.040 Cartesia · $0.015 OpenAI · $0 browser/none
+ *   TTS        $0.060 ElevenLabs Flash (the shipped call default — see tts.ts)
+ *              $0.040 Cartesia · $0.015 OpenAI · $0 browser/none
  *
- * Blended: ~$0.105/min on ElevenLabs (the "best voice" path), ~$0.065 Cartesia,
- * ~$0.040 OpenAI. At the shipped allowances that prices voice COGS at ~18% of
- * plan revenue on the premium path (≈82% gross margin on voice) — see
- * voiceGrossMarginPct for the live math.
+ * Blended: ~$0.085/min on ElevenLabs Flash, ~$0.065 Cartesia, ~$0.040 OpenAI.
+ * Worst-case (full-allowance) voice margins at the shipped prices — floors
+ * enforced by tests, expected margins higher at real utilization:
+ *   Operator $399 / 1,500 min → COGS $127.50 = 32% of price → ~68% margin
+ *   Autopilot $899 / 4,000 min → COGS $340 = 38% of price → ~62% margin
  */
 
 const num = (name: string, fallback: number): number => {
@@ -40,7 +50,9 @@ export function llmUsdPerMin(): number {
 export function ttsUsdPerMin(provider: TtsProvider | null): number {
   switch (provider) {
     case "elevenlabs":
-      return num("VOICE_COST_TTS_ELEVENLABS_PER_MIN", 0.08);
+      // Flash v2.5 (the shipped call default in voice/tts.ts) — pinning
+      // ELEVENLABS_MODEL to turbo? Set this to ~0.12 to keep the math honest.
+      return num("VOICE_COST_TTS_ELEVENLABS_PER_MIN", 0.06);
     case "cartesia":
       return num("VOICE_COST_TTS_CARTESIA_PER_MIN", 0.04);
     case "openai":
@@ -69,6 +81,24 @@ export const AVG_CALL_MINUTES = 3;
 
 export function estimatedCallsForMinutes(minutes: number): number {
   return Number.isFinite(minutes) ? Math.floor(minutes / AVG_CALL_MINUTES) : Infinity;
+}
+
+// ---- dial-mix model: what a DIAL costs in talk minutes -----------------------
+// Real outbound mix at rep scale. These feed the marketing claims ("covers
+// ~100 dials a day") so the copy is derived from the same model the margins
+// are — change the mix here and the tests force the claims to follow.
+export const DIAL_CONNECT_RATE = 0.15; // answered, becomes a conversation
+export const DIAL_VOICEMAIL_RATE = 0.38; // answered by machine, ~30 s drop
+export const VOICEMAIL_MINUTES = 0.5;
+
+/** Average talk minutes one dial consumes (no-answers are free). */
+export function talkMinutesPerDial(): number {
+  return Number((DIAL_CONNECT_RATE * AVG_CALL_MINUTES + DIAL_VOICEMAIL_RATE * VOICEMAIL_MINUTES).toFixed(3));
+}
+
+/** How many dials a minute allowance realistically covers. */
+export function estimatedDialsForMinutes(minutes: number): number {
+  return Number.isFinite(minutes) ? Math.floor(minutes / talkMinutesPerDial()) : Infinity;
 }
 
 // ---------------------------------------------------------------------------

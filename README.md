@@ -243,7 +243,7 @@ opt-in upgrade, never a silent bill.
 ## Pricing & self-serve billing
 
 Four public plans (`src/components/marketing/pricing-data.ts`): **Starter**
-(free — the evaluation path), **Operator** ($299/mo), **Autopilot** ($899/mo),
+(free — the evaluation path), **Operator** ($399/mo), **Autopilot** ($899/mo),
 and **Scale** (custom), with annual billing ≈2 months free. Every feature gate
 flows from one entitlements map (`src/lib/billing/entitlements.ts`). Stripe
 Checkout, the customer portal, and a signature-verified webhook keep

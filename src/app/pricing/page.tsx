@@ -18,7 +18,7 @@ export const dynamic = "force-static";
  */
 
 const DESCRIPTION =
-  "Simple pricing for an autonomous AI sales force: free to start, $299/mo for a rep that never clocks out, $899/mo for the whole desk. No contracts, cancel anytime.";
+  "Simple pricing for an autonomous AI sales force: free to start, $399/mo for a rep that does real rep volume — ~100 dials a day, $899/mo for the whole desk. No contracts, cancel anytime.";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -34,7 +34,7 @@ const BILLING_FAQ = [
   { q: "Do I need a credit card to start?", a: "No. The Starter plan is free forever with no card — you get the built-in CRM, the Revenue Recall engine ranking your at-risk deals by recoverable dollars, and template-AI outreach. Upgrade only when you want the live AI working your pipeline autonomously." },
   { q: "What counts as an AI message?", a: "Every email, text, or call script the live AI writes for you — Operator includes about 1,500 a month per rep, Autopilot pools about 10,000 across the team. Replies it drafts count; messages you write yourself never do." },
   { q: "What happens if I use up my monthly pool?", a: "You're never blocked mid-campaign. The system degrades gracefully to template-based drafting, and you can top up instantly from $29 (as low as 1.6¢ a message) to put the live AI back on the queue." },
-  { q: "What's an AI call minute?", a: "Connected talk time when the AI is on a real phone call for you — speaking in a premium human voice, listening, and handling the conversation live. Operator includes 500 minutes a month (about 165 worked calls); Autopilot pools 1,500 across the team (about 500 calls). Practice and role-play calls run on-device and are free on every plan, forever. If the month's minutes run out, phone calling pauses until the next month or an upgrade — email, SMS, and practice never stop." },
+  { q: "How do call minutes work — and how many dials is that really?", a: "Only connected talk time counts, billed per second. A no-answer costs you nothing, and a voicemail drop is about 30 seconds — so minutes go much further than they sound. Operator's 1,500 talk minutes cover roughly 100 dials every business day at real-world connect rates; Autopilot pools 4,000 minutes — about 6,000 dials a month across the desk. Practice and role-play calls run on-device and are free on every plan, forever. If a hot streak burns through the pool, calling pauses until the 1st or an upgrade — email, SMS, and practice never stop." },
   { q: "Can I change or cancel my plan anytime?", a: "Yes. Upgrade, downgrade, or cancel anytime — monthly plans have no contract, and annual billing simply gives you about two months free. Your data stays yours either way." },
 ];
 
@@ -118,7 +118,7 @@ export default function PricingPage() {
         <div className="mx-auto max-w-3xl px-5 py-12 text-center">
           <p className="text-lg text-body">
             An SDR runs <span className="font-semibold text-fg">$5,000+/mo</span> for eight hours a day. Revenue Recall starts at{" "}
-            <span className="font-semibold text-brand">$299/mo</span> and never clocks out — reactivate one mid-size deal and it&apos;s paid for the year.
+            <span className="font-semibold text-brand">$399/mo</span> and never clocks out — reactivate one mid-size deal and it&apos;s paid for the year.
           </p>
         </div>
       </section>
