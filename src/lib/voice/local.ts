@@ -67,14 +67,24 @@ export function ensureLocalVoice(): Promise<boolean> {
   if (typeof window === "undefined") return Promise.resolve(false); // SSR — can't run
   if (state === "ready") return Promise.resolve(true);
   if (state === "failed") return Promise.resolve(false);
-  preloadLocalVoice();
+  // An explicit user action (tapping play) is consent — load even on Data Saver.
+  preloadLocalVoice(true);
   return new Promise<boolean>((resolve) => readyWaiters.push(resolve));
 }
 
+/** True when the user asked the browser to conserve data — don't pull ~90 MB
+ *  in the background on their behalf. An explicit tap still can (`force`). */
+function saveDataOn(): boolean {
+  const conn = (navigator as { connection?: { saveData?: boolean } }).connection;
+  return Boolean(conn?.saveData);
+}
+
 /** Begin loading the model in the background (no-op on the server, when
- *  already started, or after a failure). Safe to call repeatedly. */
-export function preloadLocalVoice(): void {
+ *  already started, after a failure, or — unless forced by an explicit user
+ *  action — when Data Saver is on). Safe to call repeatedly. */
+export function preloadLocalVoice(force = false): void {
   if (typeof window === "undefined" || state !== "idle") return;
+  if (!force && saveDataOn()) return; // respectful: wait for an explicit tap
   state = "loading";
   (async () => {
     // Load the prebuilt, self-contained browser bundle staged at /vendor by
