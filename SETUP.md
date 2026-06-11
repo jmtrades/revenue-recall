@@ -62,8 +62,15 @@ Optional fallbacks, in priority order after the on-device model:
 
 | Option | Vars | Notes |
 |---|---|---|
-| ElevenLabs | `ELEVENLABS_API_KEY` | hosted fallback; per-character cost |
-| OpenAI TTS | `OPENAI_API_KEY` | hosted fallback; cheaper than ElevenLabs |
+| Cartesia Sonic (best for live calls) | `CARTESIA_API_KEY` + `CARTESIA_VOICE_ID` (optional `CARTESIA_VOICE_MAP`) | ~90 ms, priced per second — pennies per dial |
+| ElevenLabs | `ELEVENLABS_API_KEY` | richest delivery; per-character cost |
+| OpenAI TTS | `OPENAI_API_KEY` | solid + cheap |
+
+Pin one with `VOICE_TTS_PROVIDER=cartesia|elevenlabs|openai`; otherwise the
+best-configured wins. **Cost picture:** hosted audio is only ever spent on
+seconds of actual speech (call previews, dials) — never on page views — and the
+free on-device engine handles everything else, so "best in the world on calls"
+costs cents per conversation, covered many times over by the $299+/mo plans.
 
 House voices (Aria, Adam, …) are native Kokoro ids and auto-map on the hosted
 backends; delivery (warm / calm / energetic…) is shaped per line everywhere.
