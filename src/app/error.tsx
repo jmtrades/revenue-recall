@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
+import { reportClientError } from "@/lib/client-error";
 
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
-    // In production this is where you'd report to your error tracker.
     console.error(error);
+    reportClientError({ message: error.message, stack: error.stack, digest: error.digest, source: "boundary" });
   }, [error]);
 
   return (
