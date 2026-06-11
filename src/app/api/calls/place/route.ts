@@ -51,7 +51,7 @@ export const POST = withGuard(async (req: Request) => {
   // gate on the plan's included minutes. Open demos / self-hosted stay unmetered.
   if (enforcementOn() && !(await isWithinVoiceMinutes())) {
     return NextResponse.json(
-      { error: "You've used this month's included AI call minutes. Upgrade your plan to keep the dialer running — email, SMS, and practice calls keep working." },
+      { error: "You're out of talk minutes for this month. Grab a minute top-up in Settings → Billing to keep dialing right now — email, SMS, and practice calls keep working either way." },
       { status: 402 },
     );
   }

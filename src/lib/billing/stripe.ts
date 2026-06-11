@@ -230,6 +230,7 @@ export async function createTopupCheckout(input: TopupCheckoutInput): Promise<Ch
     "metadata[kind]": "topup",
     "metadata[org_id]": input.orgId,
     "metadata[topup_actions]": String(pack.actions),
+    "metadata[topup_unit]": pack.unit,
     "payment_intent_data[metadata][org_id]": input.orgId,
     allow_promotion_codes: "true",
   };

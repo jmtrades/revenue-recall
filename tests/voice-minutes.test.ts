@@ -71,6 +71,32 @@ describe("plan minute allowances", () => {
   });
 });
 
+describe("minute top-up packs", () => {
+  it("every minute pack clears ≥45% margin even at full premium-voice burn", async () => {
+    const { topupPacksFor } = await import("@/lib/billing/topups");
+    const packs = topupPacksFor("minutes");
+    expect(packs.length).toBeGreaterThanOrEqual(3);
+    const cogs = voiceCostPerMinuteUsd("elevenlabs"); // worst case: all premium
+    for (const p of packs) {
+      const perMin = p.suggestedUsd / p.actions;
+      const margin = 1 - cogs / perMin;
+      expect(margin, `${p.id} margin`).toBeGreaterThan(0.45);
+    }
+  });
+
+  it("message and minute packs stay separate pools (unit discriminator)", async () => {
+    const { TOPUP_PACKS, topupPacksFor } = await import("@/lib/billing/topups");
+    expect(topupPacksFor("messages").length + topupPacksFor("minutes").length).toBe(TOPUP_PACKS.length);
+    for (const p of topupPacksFor("minutes")) expect(p.id.startsWith("m")).toBe(true);
+  });
+
+  it("meter exposes the credit-stacked limit (in-memory: no credits → limit = included)", async () => {
+    const m = await voiceMinutesMeter();
+    expect(m.creditsMin).toBe(0);
+    expect(m.limitMin).toBe(m.includedMin);
+  });
+});
+
 describe("minutes metering (in-memory ledger path)", () => {
   it("records seconds + real COGS, and sums into the monthly meter", async () => {
     await recordCallMinutes(120, "elevenlabs"); // 2 min

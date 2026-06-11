@@ -44,7 +44,7 @@ export const CATALOG: CatalogPrice[] = [
     lookupKey: `rr_topup_${p.id}`,
     productKey: `rr_topup_${p.id}`,
     productName: `${p.label} top-up`,
-    description: `${p.actions.toLocaleString()} extra AI messages (one-time)`,
+    description: p.unit === "minutes" ? `${p.actions.toLocaleString()} extra AI talk minutes (one-time)` : `${p.actions.toLocaleString()} extra AI messages (one-time)`,
     unitAmountCents: Math.round(p.suggestedUsd * 100),
     currency: USD,
     envVar: p.priceEnv,

@@ -164,21 +164,32 @@ function periodKey(now: Date = new Date()): string {
   return now.toISOString().slice(0, 7); // YYYY-MM
 }
 
-/** Extra AI actions purchased for the current billing month (top-ups). */
-export async function creditsThisPeriod(now: Date = new Date()): Promise<number> {
+/** Sum purchased credits for the current month, filtered by pool. The
+ *  usage_credits table holds BOTH AI-message packs (source "topup") and talk-
+ *  minute packs (source "voice_topup") — the source keeps the pools separate,
+ *  so a minute purchase can never inflate the message meter or vice versa. */
+async function creditsBySource(now: Date, voice: boolean): Promise<number> {
   try {
     if (!isSupabaseConfigured()) return 0;
     const id = await orgId();
     if (!id) return 0;
-    const { data } = await getSupabase()!
-      .from("usage_credits")
-      .select("actions")
-      .eq("org_id", id)
-      .eq("period", periodKey(now));
+    let q = getSupabase()!.from("usage_credits").select("actions,source").eq("org_id", id).eq("period", periodKey(now));
+    q = voice ? q.eq("source", "voice_topup") : q.neq("source", "voice_topup");
+    const { data } = await q;
     return (data ?? []).reduce((s, r) => s + Number(r.actions ?? 0), 0);
   } catch {
     return 0;
   }
+}
+
+/** Extra AI MESSAGE actions purchased for the current billing month. */
+export async function creditsThisPeriod(now: Date = new Date()): Promise<number> {
+  return creditsBySource(now, false);
+}
+
+/** Extra TALK MINUTES purchased for the current billing month. */
+export async function voiceMinuteCreditsThisPeriod(now: Date = new Date()): Promise<number> {
+  return creditsBySource(now, true);
 }
 
 export interface UsageMeter {
