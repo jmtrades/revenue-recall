@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LANGUAGES } from "@/lib/languages";
 import { Icon, type IconName } from "@/components/icons";
+import { ensureLocalVoice, localSynth } from "@/lib/voice/local";
+import { browserSynth } from "@/lib/voice/synth";
+import type { SpeakHandle } from "@/lib/voice/speech";
 
 interface IndustryOption { id: string; label: string; blurb: string }
 
@@ -50,6 +53,39 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
   const [describe, setDescribe] = useState("");
   const [thinking, setThinking] = useState(false);
   const [personalized, setPersonalized] = useState<{ industryLabel: string; sells: string; ai: boolean } | null>(null);
+
+  // "Hear how your calls will sound" — the setup-time payoff. Speaks a real
+  // opener (with their own name and company woven in) in the actual on-device
+  // call voice; the browser engine answers only if the model can't run here.
+  const [hearState, setHearState] = useState<"idle" | "warming" | "playing">("idle");
+  const hearRef = useRef<SpeakHandle | null>(null);
+  useEffect(() => () => hearRef.current?.stop(), []);
+
+  async function hearVoice() {
+    if (hearState === "playing") {
+      hearRef.current?.stop();
+      hearRef.current = null;
+      setHearState("idle");
+      return;
+    }
+    setHearState("warming");
+    const ok = await ensureLocalVoice();
+    const synth = ok && localSynth.available() ? localSynth : browserSynth;
+    const first = yourName.trim().split(/\s+/)[0] || "Aria";
+    const from = org.trim() || "your company";
+    setHearState("playing");
+    const handle = await synth.speak(
+      `Hi, it's ${first} calling from ${from} — I know it's out of the blue, but I've got something worth thirty seconds. Is now okay?`,
+      { emotion: "warm" },
+    );
+    hearRef.current = handle;
+    handle.done.then(() => {
+      if (hearRef.current === handle) {
+        hearRef.current = null;
+        setHearState("idle");
+      }
+    });
+  }
 
   const steps = ["Describe", "Industry", "Workspace", "Your voice", "Team"];
   const input = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-fg outline-none transition-colors focus:border-brand";
@@ -323,6 +359,28 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
                       placeholder={"Describe your style, or paste a few of your real messages. e.g.\n“Hey Jordan — saw your trial wrapped. Worth 15 min Thursday to show you the part teams actually stick with?”"}
                     />
                     <p className="mt-1 text-xs text-muted">Optional, but it&apos;s what makes the AI write like you. Paste 2–3 real messages for the best match.</p>
+                  </div>
+                  {/* The payoff moment: HEAR the call voice during setup. */}
+                  <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface-2/40 px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={hearVoice}
+                      className="cta inline-flex items-center gap-2 rounded-full border border-brand/40 bg-brand-soft/30 px-4 py-2 text-sm font-medium text-fg transition hover:bg-brand-soft/50"
+                    >
+                      <span className="grid h-5 w-5 place-items-center text-brand">
+                        {hearState === "warming" ? (
+                          <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden><path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round" /></svg>
+                        ) : hearState === "playing" ? (
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden><rect x="6" y="6" width="12" height="12" rx="1.5" /></svg>
+                        ) : (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M8 5v14l11-7z" /></svg>
+                        )}
+                      </span>
+                      {hearState === "playing" ? "Stop" : "Hear how your calls will sound"}
+                    </button>
+                    <p className="min-w-0 flex-1 text-xs text-muted">
+                      {hearState === "warming" ? "Warming up the voice — a few seconds the first time…" : "The actual voice your AI uses on the phone. Pick a different one anytime in Settings."}
+                    </p>
                   </div>
                 </div>
               </div>

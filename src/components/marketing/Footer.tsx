@@ -29,7 +29,7 @@ const COLS: { heading: string; links: { label: string; href: string }[] }[] = [
     links: [
       { label: "Sign in", href: "/login" },
       { label: "Start free", href: "/signup" },
-      { label: "Live demo", href: "/dashboard" },
+      { label: "Try it free", href: "/signup" },
       { label: "Contact support", href: `mailto:${SUPPORT_EMAIL}` },
     ],
   },
