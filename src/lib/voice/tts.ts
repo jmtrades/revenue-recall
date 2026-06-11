@@ -207,7 +207,12 @@ export async function synthesizeSpeech(input: SynthesizeInput): Promise<Synthesi
       headers: { "xi-api-key": env("ELEVENLABS_API_KEY")!, "Content-Type": "application/json" },
       body: JSON.stringify({
         text,
-        model_id: env("ELEVENLABS_MODEL") ?? "eleven_turbo_v2_5",
+        // Flash v2.5 is the conversational-agent standard: ~75 ms latency, the
+        // same voice library, ~half the per-minute cost of turbo — which is
+        // what makes rep-scale minute allowances profitable (the constant in
+        // billing/voice-minutes.ts assumes it). Pin ELEVENLABS_MODEL to
+        // eleven_turbo_v2_5 if you'd rather spend margin on the last 5% polish.
+        model_id: env("ELEVENLABS_MODEL") ?? "eleven_flash_v2_5",
         voice_settings: elevenSettings(input.emotion),
       }),
     });

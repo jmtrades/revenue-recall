@@ -3,6 +3,8 @@ import {
   voiceCostPerMinuteUsd,
   voiceGrossMarginPct,
   estimatedCallsForMinutes,
+  estimatedDialsForMinutes,
+  talkMinutesPerDial,
   recordCallMinutes,
   voiceMinutesMeter,
   isWithinVoiceMinutes,
@@ -21,40 +23,50 @@ afterEach(() => {
 });
 
 describe("voice cost model — the margin math plans are priced on", () => {
-  it("blends telephony + STT + LLM + the voice tier", () => {
-    expect(voiceCostPerMinuteUsd("elevenlabs")).toBeCloseTo(0.105, 3);
+  it("blends telephony + STT + LLM + the voice tier (Flash-led premium path)", () => {
+    expect(voiceCostPerMinuteUsd("elevenlabs")).toBeCloseTo(0.085, 3);
     expect(voiceCostPerMinuteUsd("cartesia")).toBeCloseTo(0.065, 3);
     expect(voiceCostPerMinuteUsd("openai")).toBeCloseTo(0.04, 3);
     expect(voiceCostPerMinuteUsd(null)).toBeCloseTo(0.025, 3); // no vendor voice bill
   });
 
   it("env overrides reprice a component without a deploy", () => {
-    process.env.VOICE_COST_TTS_ELEVENLABS_PER_MIN = "0.06"; // negotiated rate
-    expect(voiceCostPerMinuteUsd("elevenlabs")).toBeCloseTo(0.085, 3);
+    process.env.VOICE_COST_TTS_ELEVENLABS_PER_MIN = "0.12"; // pinned turbo instead of flash
+    expect(voiceCostPerMinuteUsd("elevenlabs")).toBeCloseTo(0.145, 3);
   });
 
-  it("plan allowances keep voice COGS ≤ ~20% of price on the premium path", () => {
-    // Operator: $299 / 500 min → ~82% gross margin on voice.
-    expect(voiceGrossMarginPct(299, 500, "elevenlabs")).toBeGreaterThan(0.8);
-    // Autopilot: $899 / 1,500 min → ~82.5%.
-    expect(voiceGrossMarginPct(899, 1500, "elevenlabs")).toBeGreaterThan(0.8);
-    // Cartesia path widens both past 89%.
-    expect(voiceGrossMarginPct(299, 500, "cartesia")).toBeGreaterThan(0.89);
+  it("WORST-CASE margin floors hold at FULL allowance consumption", () => {
+    // Operator: $399 / 1,500 min → COGS $127.50 (32%) → ≥65% floor (~68%).
+    expect(voiceGrossMarginPct(399, 1500, "elevenlabs")).toBeGreaterThan(0.65);
+    // Autopilot: $899 / 4,000 min → COGS $340 (38%) → ≥60% floor (~62%).
+    expect(voiceGrossMarginPct(899, 4000, "elevenlabs")).toBeGreaterThan(0.6);
+    // Cartesia path widens both.
+    expect(voiceGrossMarginPct(399, 1500, "cartesia")).toBeGreaterThan(0.74);
+    expect(voiceGrossMarginPct(899, 4000, "cartesia")).toBeGreaterThan(0.7);
   });
 
   it("turns minutes into honest call-count copy", () => {
     expect(AVG_CALL_MINUTES).toBe(3);
-    expect(estimatedCallsForMinutes(500)).toBe(166);
     expect(estimatedCallsForMinutes(1500)).toBe(500);
     expect(estimatedCallsForMinutes(Infinity)).toBe(Infinity);
+  });
+
+  it("dial-mix model grounds the marketing claims in the priced math", () => {
+    // 15% connects × 3 min + 38% voicemails × 0.5 min = 0.64 talk min / dial.
+    expect(talkMinutesPerDial()).toBeCloseTo(0.64, 2);
+    // Operator 1,500 min ≈ 2,300+ dials/mo — "covers ~100 dials a day".
+    expect(estimatedDialsForMinutes(1500)).toBeGreaterThanOrEqual(2200);
+    // Autopilot 4,000 min ≈ 6,000+ dials a month pooled.
+    expect(estimatedDialsForMinutes(4000)).toBeGreaterThanOrEqual(6000);
+    expect(estimatedDialsForMinutes(Infinity)).toBe(Infinity);
   });
 });
 
 describe("plan minute allowances", () => {
-  it("free has no phone minutes; paid tiers scale; enterprise unmetered", () => {
+  it("free has no phone minutes; paid tiers carry rep-scale volume; enterprise unmetered", () => {
     expect(entitlements("free").voiceMinutesPerMonth).toBe(0);
-    expect(entitlements("growth").voiceMinutesPerMonth).toBe(500);
-    expect(entitlements("team").voiceMinutesPerMonth).toBe(1500);
+    expect(entitlements("growth").voiceMinutesPerMonth).toBe(1500);
+    expect(entitlements("team").voiceMinutesPerMonth).toBe(4000);
     expect(entitlements("scale").voiceMinutesPerMonth).toBe(Infinity);
   });
 });

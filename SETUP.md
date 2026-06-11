@@ -62,7 +62,7 @@ Hosted voices for PHONE calls, in priority order (quality-first):
 
 | Option | Vars | Notes |
 |---|---|---|
-| **ElevenLabs (the best voice — default leader)** | `ELEVENLABS_API_KEY` | the most human delivery on the market; ~$0.08/min |
+| **ElevenLabs (the best voice — default leader)** | `ELEVENLABS_API_KEY` | the most human delivery on the market; ~$0.06/min on Flash (the shipped call default) |
 | Cartesia Sonic | `CARTESIA_API_KEY` + `CARTESIA_VOICE_ID` (optional `CARTESIA_VOICE_MAP`) | ~90 ms latency, ~$0.04/min — pin it to trade a little polish for margin |
 | OpenAI TTS | `OPENAI_API_KEY` | solid + cheapest (~$0.015/min) |
 
@@ -70,17 +70,25 @@ Pin one with `VOICE_TTS_PROVIDER=cartesia|elevenlabs|openai`; otherwise the
 best-configured wins (ElevenLabs > Cartesia > OpenAI).
 
 **Voice economics (the margin math, all knobs env-overridable —
-`VOICE_COST_*_PER_MIN`):** a connected minute costs telephony ($0.014) + STT
-($0.006) + LLM (~$0.005) + the voice tier — **≈ $0.105/min blended on
-ElevenLabs**, $0.065 Cartesia, $0.04 OpenAI. Plan allowances are priced on the
-premium path:
+`VOICE_COST_*_PER_MIN`):** the unit is a CONNECTED TALK MINUTE, not a dial — a
+no-answer is free and a voicemail drop is ~30 s, so 100 dials/day consumes
+only ~64 talk min (15% connect × 3 min + 38% voicemail × 0.5 min). A connected
+minute costs telephony ($0.014) + STT ($0.006) + LLM (~$0.005) + the voice —
+**≈ $0.085/min on ElevenLabs Flash (the shipped call default)**, $0.065
+Cartesia, $0.04 OpenAI. Allowances sell rep-scale dial volume; margins below
+are the WORST CASE (full allowance consumed — real utilization runs lower):
 
-| Plan | Included minutes | ≈ calls (3 min avg) | Voice COGS | % of price | Gross margin on voice |
+| Plan | Talk minutes | ≈ dials it covers | Voice COGS (full) | % of price | Worst-case margin |
 |---|---|---|---|---|---|
 | Starter (free) | 0 phone (unlimited on-device practice) | — | $0 | 0% | — |
-| Operator $299 | 500 / mo | ~165 | ~$52.50 | 17.6% | **~82%** |
-| Autopilot $899 | 1,500 pooled | ~500 | ~$157.50 | 17.5% | **~82%** |
+| Operator $399 | 1,500 / mo | ~2,300/mo (≈100/day) | ~$127.50 | 32% | **~68%** |
+| Autopilot $899 | 4,000 pooled | ~6,000/mo across the desk | ~$340 | 38% | **~62%** |
 | Scale (custom) | unmetered | — | priced per deal | — | — |
+
+(Pin `VOICE_TTS_PROVIDER=cartesia` and those floors rise to ~76% / ~71%.
+Repricing: amounts changed in `billing/catalog.ts` take effect by re-running
+`POST /api/billing/setup` — provisioning detects the drift, mints a new Stripe
+price, and transfers the lookup key; existing subscribers stay grandfathered.)
 
 Minutes meter automatically from the call gateway's reported durations
 (feature `call_minutes` in the usage ledger — COGS lands in the operator's
@@ -119,8 +127,8 @@ point a webhook at `…/api/billing/webhook`.
 |---|---|
 | `STRIPE_SECRET_KEY` | API key (Stripe → Developers → API keys) |
 | `STRIPE_WEBHOOK_SECRET` | from the `…/api/billing/webhook` endpoint |
-| `STRIPE_PRICE_GROWTH` (Operator, $299 **per unit**) / `STRIPE_PRICE_TEAM` (Autopilot, $899 flat) | monthly price IDs |
-| `STRIPE_PRICE_GROWTH_ANNUAL` ($2,990/yr per unit) / `STRIPE_PRICE_TEAM_ANNUAL` ($8,990/yr) | optional annual price IDs (~2 months free) |
+| `STRIPE_PRICE_GROWTH` (Operator, $399 **per unit**) / `STRIPE_PRICE_TEAM` (Autopilot, $899 flat) | monthly price IDs |
+| `STRIPE_PRICE_GROWTH_ANNUAL` ($3,990/yr per unit) / `STRIPE_PRICE_TEAM_ANNUAL` ($8,990/yr) | optional annual price IDs (~2 months free) |
 | `BILLING_ENFORCE=true` | enforce plan limits + action allowances (off = unrestricted) |
 
 **No trials:** paid checkouts charge immediately — a completed checkout is an `active` subscription. Starter stays free with no card. The pricing CTAs flow straight through: choose a paid plan → sign up → the dashboard auto-opens checkout.

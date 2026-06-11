@@ -51,7 +51,7 @@ export const PLANS: Plan[] = [
   },
   {
     name: "Operator",
-    monthly: 299,
+    monthly: 399,
     unit: "/rep/mo",
     tagline: "One autonomous AI rep, working 24/7.",
     cta: "Get started",
@@ -61,7 +61,8 @@ export const PLANS: Plan[] = [
     features: [
       "Everything in Starter",
       "Live AI across email, SMS & the phone",
-      "500 AI call minutes / mo — premium human voice (~165 calls)",
+      "~100 dials a day — 1,500 talk minutes/mo in a premium human voice",
+      "No-answers are free · per-second billing · voicemail drops ~30s",
       "Autopilot sequences — it works the pipeline",
       "~1,500 AI messages / mo (emails, texts & calls it writes)",
       "Connect any CRM · unlimited pipelines",
@@ -79,7 +80,7 @@ export const PLANS: Plan[] = [
     features: [
       "Everything in Operator",
       "Up to 5 reps · ~10,000 AI messages / mo pooled",
-      "1,500 AI call minutes / mo pooled (~500 calls)",
+      "~6,000 dials a month — 4,000 talk minutes pooled across the desk",
       "Batch engine — more volume, lower cost",
       "Recovered-revenue reporting & team analytics",
       "Priority queue + advanced automations",

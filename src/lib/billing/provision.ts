@@ -15,9 +15,10 @@ export interface ProvisionResult {
   error?: string;
 }
 
-async function findPriceIdByLookupKey(lookupKey: string): Promise<string | undefined> {
+async function findPriceByLookupKey(lookupKey: string): Promise<{ id: string; unit_amount: number | null } | undefined> {
   const res = await stripeGet(`prices?lookup_keys[]=${encodeURIComponent(lookupKey)}&active=true&limit=1`);
-  return (res.data as { id?: string }[] | undefined)?.[0]?.id ?? undefined;
+  const p = (res.data as { id?: string; unit_amount?: number | null }[] | undefined)?.[0];
+  return p?.id ? { id: p.id, unit_amount: p.unit_amount ?? null } : undefined;
 }
 
 async function findOrCreateProduct(item: CatalogPrice, cache: Map<string, string>): Promise<string> {
@@ -52,10 +53,14 @@ export async function provisionStripeCatalog(): Promise<ProvisionResult> {
   const productCache = new Map<string, string>();
   try {
     for (const item of CATALOG) {
-      const existing = await findPriceIdByLookupKey(item.lookupKey);
-      if (existing) {
+      const existing = await findPriceByLookupKey(item.lookupKey);
+      // Same amount → reuse. A DIFFERENT amount means the catalog was repriced:
+      // fall through and mint a new price — `transfer_lookup_key` moves the key
+      // to it, Stripe keeps the old price alive for existing subscribers
+      // (grandfathered), and every new checkout resolves to the new amount.
+      if (existing && existing.unit_amount === item.unitAmountCents) {
         reused.push(item.lookupKey);
-        prices[item.lookupKey] = existing;
+        prices[item.lookupKey] = existing.id;
         continue;
       }
       const productId = await findOrCreateProduct(item, productCache);
@@ -69,7 +74,7 @@ export async function provisionStripeCatalog(): Promise<ProvisionResult> {
       };
       if (item.recurring) form["recurring[interval]"] = item.recurring.interval;
       const price = await stripePost("prices", form);
-      created.push(item.lookupKey);
+      created.push(existing ? `${item.lookupKey} (repriced)` : item.lookupKey);
       prices[item.lookupKey] = price.id as string;
     }
     clearPriceCache(); // newly-created prices should resolve immediately
