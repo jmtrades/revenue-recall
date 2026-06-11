@@ -25,3 +25,8 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      # Boots the built server and asserts every key route renders without a
+      # 5xx — the failure class `next build` can't catch (a bad data call or
+      # server-only crash on a force-dynamic page surfaces only on request).
+      - name: Smoke (every route renders)
+        run: npm run smoke
