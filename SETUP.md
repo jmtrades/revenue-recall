@@ -175,7 +175,7 @@ client id/secret — then Settings shows an OAuth button.
 |---|---|
 | `CRON_SECRET` | protects `…/api/agent/cron` (Vercel Cron is auto-trusted; schedule in `vercel.json`) |
 
-> **Cron cadence:** `vercel.json` ships a **daily** schedule because Vercel's Hobby plan rejects anything more frequent (an hourly cron makes every production deploy fail). For hourly autopilot either upgrade Vercel to Pro and set the schedule back to `0 * * * *`, or point any external scheduler (cron-job.org, GitHub Actions, your own box) at `GET /api/agent/cron` with `Authorization: Bearer $CRON_SECRET` — the endpoint is built for it.
+> **Cron cadence:** `vercel.json` ships the **hourly** schedule (`0 * * * *`) — this requires Vercel **Pro** (Hobby rejects anything more frequent than daily, which makes every production deploy fail). On Hobby, change it to a daily expression, or point any external scheduler (cron-job.org, GitHub Actions, your own box) at `GET /api/agent/cron` with `Authorization: Bearer $CRON_SECRET` — the endpoint is built for it.
 | `SEQUENCE_AUTOPILOT=true` | auto-send due sequence steps (else queue to Approvals) |
 | `REPLY_AUTOPILOT=true` | auto-send AI replies |
 | `AGENT_COOLDOWN_DAYS` / `AGENT_DECLINE_COOLDOWN_DAYS` | re-touch spacing |
