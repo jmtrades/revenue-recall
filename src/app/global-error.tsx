@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { reportClientError } from "@/lib/client-error";
 
 /**
  * Last-resort error boundary. Next's per-route error.tsx can't catch an error
@@ -11,6 +12,7 @@ import { useEffect } from "react";
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     console.error(error);
+    reportClientError({ message: error.message, stack: error.stack, digest: error.digest, source: "boundary" });
   }, [error]);
 
   return (
