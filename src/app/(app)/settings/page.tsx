@@ -44,7 +44,9 @@ import { isAuthRequired } from "@/lib/config";
 import { getPlan } from "@/lib/billing/plans";
 import { TOPUP_PACKS } from "@/lib/billing/topups";
 import { usageSummary, monthlyBudgetUsd, usageMeter } from "@/lib/ai/usage";
+import { voiceMinutesMeter, estimatedCallsForMinutes } from "@/lib/billing/voice-minutes";
 import { UsageMeter } from "@/components/UsageMeter";
+import { VoiceMinutesMeter } from "@/components/VoiceMinutesMeter";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { ImportCsv } from "@/components/ImportCsv";
 import { TeamInvites } from "@/components/TeamInvites";
@@ -202,6 +204,16 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
     fraction: meter.fraction,
   };
   const topupPacks = TOPUP_PACKS.map((p, i) => ({ id: p.id, label: p.label, actions: p.actions, suggestedUsd: p.suggestedUsd, blurb: p.blurb, featured: Boolean(p.featured), purchasable: Boolean(topupResolved[i]) }));
+  // Customer-facing voice-minute meter (sanitize Infinity for the client).
+  const vMeter = await voiceMinutesMeter();
+  const voiceMinutesProps = {
+    usedMin: vMeter.usedMin,
+    includedMin: Number.isFinite(vMeter.includedMin) ? vMeter.includedMin : 0,
+    remainingMin: Number.isFinite(vMeter.remainingMin) ? vMeter.remainingMin : 0,
+    fraction: vMeter.fraction,
+    unlimited: vMeter.unlimited,
+  };
+  const callsLeft = Number.isFinite(vMeter.remainingMin) ? estimatedCallsForMinutes(vMeter.remainingMin) : 0;
   const aiBudget = monthlyBudgetUsd();
 
   const general = (
@@ -477,6 +489,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       />
       <div className="mt-4">
         <UsageMeter meter={usageProps} topups={topupPacks} billingConfigured={billingConfigured()} planName={getPlan(subscription.plan).name} />
+      </div>
+      <div className="mt-4">
+        <VoiceMinutesMeter meter={voiceMinutesProps} planName={getPlan(subscription.plan).name} callsLeft={callsLeft} />
       </div>
       <InvoiceHistory />
       <div className="mt-4 rounded-lg border border-border p-4">
