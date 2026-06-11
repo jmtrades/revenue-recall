@@ -51,6 +51,21 @@ reset, and outreach** emails.
 | Twilio | `TWILIO_*` above + optional `CALL_TWIML_URL` |
 | Any provider (webhook) | `VOICE_WEBHOOK_URL` |
 
+### Make the spoken voice sound human (one key)
+The browser's built-in voice is the zero-config fallback — it works, but it's
+not human. Set **one** key and every spoken surface (read-aloud, call prep,
+role-play) upgrades to a real neural voice automatically:
+
+| Option | Vars | Notes |
+|---|---|---|
+| ElevenLabs (most human) | `ELEVENLABS_API_KEY` | optional `ELEVENLABS_VOICE_ID`, `ELEVENLABS_MODEL` |
+| OpenAI TTS | `OPENAI_API_KEY` | optional `OPENAI_TTS_VOICE`, `OPENAI_TTS_MODEL` |
+
+House voices (Aria, Adam, …) auto-map to each provider's closest equivalent,
+and delivery (warm / calm / energetic…) is shaped per line. No key → browser
+voice keeps working. (`NEXT_PUBLIC_NEURAL_VOICE_URL` — the self-hosted model —
+still takes priority over both when set.)
+
 ### Phone numbers
 - Bring your own caller ID: `OUTBOUND_FROM_NUMBER`
 - Search/buy in-app via any provider: `NUMBERS_WEBHOOK_URL`, `NUMBERS_WEBHOOK_TOKEN`
