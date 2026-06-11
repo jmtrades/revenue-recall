@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { Footer } from "@/components/marketing/Footer";
 import { StickyCTA } from "@/components/marketing/StickyCTA";
+import { VoiceDemo } from "@/components/marketing/VoiceDemo";
 import { Icon } from "@/components/icons";
 import { Reveal, Stagger, StaggerItem, ScaleIn } from "@/components/motion/Motion";
 import { INDUSTRIES, getIndustry } from "@/lib/industries";
@@ -169,6 +170,18 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
             </Stagger>
           </section>
         )}
+
+        {/* Hear the voice — the same live, on-device demo as the homepage,
+            opened on the line closest to how this vertical sells. */}
+        <section className="mt-10 sm:mt-16">
+          <Reveal>
+            <h2 className="text-2xl font-semibold text-fg">Hear it work a {ind.label.toLowerCase()} deal</h2>
+            <p className="mt-2 max-w-xl text-muted">Tap a rep — the line is generated live on your device by the same voice that makes the calls. No signup, nothing uploaded.</p>
+          </Reveal>
+          <Reveal delay={0.08} className="mt-6">
+            <VoiceDemo industryId={ind.id} />
+          </Reveal>
+        </section>
 
         {/* CTA */}
         <ScaleIn className="mt-20 rounded-3xl border border-brand/30 bg-brand-soft/20 p-10 text-center">

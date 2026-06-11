@@ -42,6 +42,19 @@ const LINES: { voiceId: string; name: string; tone: string; emotion: Emotion; te
 
 type Status = "idle" | "warming" | "speaking";
 
+// Which demo line leads on a per-industry lander — the scenario closest to how
+// that vertical actually sells (Aria=listing recall, Adam=rate callback,
+// Nova=quote-expiry save, George=gracious project win-back).
+const INDUSTRY_LINE: Record<string, number> = {
+  real_estate: 0,
+  mortgage: 1,
+  insurance: 2,
+  auto: 2,
+  agency: 3,
+  saas: 3,
+  home_services: 3,
+};
+
 /**
  * Landing "hear it" demo. Synthesizes a real sales line with the SAME on-device
  * neural voice the product uses — live, in the visitor's browser, free, no
@@ -49,8 +62,8 @@ type Status = "idle" | "warming" | "speaking";
  * that every line is instant. Honest fallback: if the device can't run it, we
  * say so rather than play a worse voice and pretend.
  */
-export function VoiceDemo() {
-  const [active, setActive] = useState(0);
+export function VoiceDemo({ industryId }: { industryId?: string }) {
+  const [active, setActive] = useState(industryId ? INDUSTRY_LINE[industryId] ?? 0 : 0);
   const [status, setStatus] = useState<Status>("idle");
   const [pct, setPct] = useState(0);
   const [unsupported, setUnsupported] = useState(false);
@@ -175,7 +188,7 @@ export function VoiceDemo() {
         {/* status line */}
         <p className="mt-4 h-4 text-xs text-muted" aria-live="polite">
           {status === "warming"
-            ? `Warming up the voice… ${pct > 0 ? `${pct}%` : ""} (one-time, then it's instant)`
+            ? `Warming up the voice… ${pct > 0 ? `${pct}%` : ""} (≈90 MB once, then it's instant)`
             : status === "speaking"
               ? "Speaking — this is the exact voice it uses on calls."
               : unsupported
