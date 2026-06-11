@@ -106,6 +106,10 @@ describe("emotion shaping", () => {
   it("expressive emotions lower ElevenLabs stability; calm raises it", () => {
     expect(elevenSettings("energetic").stability).toBeLessThan(elevenSettings("neutral").stability);
     expect(elevenSettings("calm").stability).toBeGreaterThan(elevenSettings("neutral").stability);
+    // Speaker boost stays on across every emotion — the fidelity floor.
+    for (const e of ["energetic", "warm", "empathetic", "calm", "confident", "neutral"] as const) {
+      expect(elevenSettings(e).use_speaker_boost).toBe(true);
+    }
   });
 
   it("OpenAI instructions always demand a natural human delivery and reflect the emotion", () => {

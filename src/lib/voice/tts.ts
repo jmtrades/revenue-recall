@@ -116,21 +116,25 @@ export function providerVoice(provider: TtsProvider, voiceId?: string | null): s
     : OPENAI_VOICES[id] ?? OPENAI_VOICES[DEFAULT_HOUSE_VOICE];
 }
 
-/** ElevenLabs delivery settings per emotion. Lower stability = more expressive. */
-export function elevenSettings(emotion?: Emotion): { stability: number; similarity_boost: number; style: number } {
+/** ElevenLabs delivery settings per emotion. Lower stability = more expressive;
+ *  `use_speaker_boost` is on everywhere — it tightens fidelity to the reference
+ *  voice (the difference that reads as "a real person", which is the make-or-
+ *  break on a sales call) for a negligible latency cost on the turbo model. */
+export function elevenSettings(emotion?: Emotion): { stability: number; similarity_boost: number; style: number; use_speaker_boost: boolean } {
+  const boost = { use_speaker_boost: true };
   switch (emotion) {
     case "energetic":
-      return { stability: 0.35, similarity_boost: 0.75, style: 0.45 };
+      return { stability: 0.35, similarity_boost: 0.75, style: 0.45, ...boost };
     case "warm":
-      return { stability: 0.45, similarity_boost: 0.8, style: 0.3 };
+      return { stability: 0.45, similarity_boost: 0.8, style: 0.3, ...boost };
     case "empathetic":
-      return { stability: 0.55, similarity_boost: 0.8, style: 0.25 };
+      return { stability: 0.55, similarity_boost: 0.8, style: 0.25, ...boost };
     case "calm":
-      return { stability: 0.65, similarity_boost: 0.8, style: 0.1 };
+      return { stability: 0.65, similarity_boost: 0.8, style: 0.1, ...boost };
     case "confident":
-      return { stability: 0.5, similarity_boost: 0.75, style: 0.3 };
+      return { stability: 0.5, similarity_boost: 0.75, style: 0.3, ...boost };
     default:
-      return { stability: 0.5, similarity_boost: 0.75, style: 0.2 };
+      return { stability: 0.5, similarity_boost: 0.75, style: 0.2, ...boost };
   }
 }
 
