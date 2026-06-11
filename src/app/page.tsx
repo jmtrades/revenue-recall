@@ -501,6 +501,37 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Trust — concrete mechanisms, not vague "enterprise-grade" */}
+      <section className="border-y border-border bg-surface/30">
+        <div className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
+          <Reveal className="mx-auto max-w-2xl text-center">
+            <span className="eyebrow">Built to be trusted</span>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Your data, your rules — and an off switch on everything.</h2>
+          </Reveal>
+          <Stagger className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { icon: "shield" as IconName, title: "Your data is yours", body: "Export everything or permanently delete your account yourself, anytime — no email, no waiting. Leave with your data intact." },
+              { icon: "database" as IconName, title: "Encrypted & isolated", body: "Every workspace is row-level isolated, and the keys you connect (CRM, channels, numbers) are encrypted per org. Your pipeline never mixes with anyone's." },
+              { icon: "approvals" as IconName, title: "Compliance, on by default", body: "CAN-SPAM footer and one-tap unsubscribe on email, “Reply STOP” on SMS, plus quiet hours, opt-out lists, and daily caps the AI can't cross." },
+              { icon: "autopilot" as IconName, title: "You hold the leash", body: "Run it in review mode and approve every send, or hand it the wheel — and pull it back to manual in one click whenever you want." },
+            ].map((t) => (
+              <StaggerItem key={t.title} className="rounded-2xl border border-border bg-surface p-6">
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20">
+                  <Icon name={t.icon} size={18} />
+                </span>
+                <h3 className="mt-4 font-semibold text-fg">{t.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted">{t.body}</p>
+              </StaggerItem>
+            ))}
+          </Stagger>
+          <p className="mt-8 text-center text-sm text-muted">
+            More on how we handle data:{" "}
+            <Link href="/security" className="font-medium text-brand hover:underline">Security</Link>{" · "}
+            <Link href="/privacy" className="font-medium text-brand hover:underline">Privacy</Link>
+          </p>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section id="faq" className="mx-auto max-w-3xl px-5 py-14 sm:py-20">
         <Reveal className="flex flex-col items-center text-center">
