@@ -40,7 +40,35 @@ const SENTIMENT: Record<string, string> = {
   negative: "bg-danger/15 text-danger",
 };
 
-export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?: string }) {
+/** Minutes-left chip for the dialer header — green normally, amber under ~30
+ *  min (≈10 calls), red and linking to billing at zero. The rep working calls
+ *  back-to-back sees the balance fall in real-ish time (it refreshes on nav). */
+function MinutesChip({ remainingMin, callsLeft }: { remainingMin: number; callsLeft: number }) {
+  const out = remainingMin <= 0;
+  const low = !out && remainingMin < 30;
+  const cls = out ? "bg-danger/15 text-danger" : low ? "bg-warn/15 text-warn" : "bg-surface-2 text-muted";
+  const label = out ? "0 call min" : `${Math.round(remainingMin)} call min · ~${callsLeft} calls`;
+  const chip = (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
+      <Icon name="dialer" size={12} />
+      {label}
+    </span>
+  );
+  // When out, the chip becomes the upgrade path — the rep can't dial, so point
+  // them straight at billing instead of a dead status.
+  return out ? <Link href="/settings?tab=billing" title="Out of call minutes — upgrade to keep dialing">{chip}</Link> : chip;
+}
+
+/** Compact voice-minutes state for the dialer header (sanitized server-side).
+ *  `metered` is false for unlimited plans and for orgs with no phone minutes
+ *  (the chip only shows when there's a real balance to count down). */
+export interface DialerVoiceMinutes {
+  remainingMin: number;
+  metered: boolean;
+  callsLeft: number;
+}
+
+export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueItem[]; locale?: string; voiceMinutes?: DialerVoiceMinutes }) {
   const [idx, setIdx] = useState(0);
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [brief, setBrief] = useState<Brief | null>(null);
@@ -177,7 +205,10 @@ export function DialerView({ queue, locale }: { queue: CallQueueItem[]; locale?:
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
       <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface">
-        <div className="border-b border-border px-4 py-2.5 text-sm font-medium text-fg">Call queue · {remaining} left</div>
+        <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5 text-sm font-medium text-fg">
+          <span>Call queue · {remaining} left</span>
+          {voiceMinutes?.metered && <MinutesChip remainingMin={voiceMinutes.remainingMin} callsLeft={voiceMinutes.callsLeft} />}
+        </div>
         <div className="max-h-[70vh] flex-1 overflow-y-auto">
           {queue.map((q, i) => (
             <button
