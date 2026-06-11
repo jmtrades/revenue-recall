@@ -64,6 +64,39 @@ export const SEQUENCES: Sequence[] = [
     ],
   },
   {
+    // The classic listing-side prospecting motion: a listing just expired and
+    // the seller is getting hammered by 20 identical agent calls. The cadence
+    // wins by being the one that DOESN'T pitch first — empathy, then a real
+    // diagnosis, then one concrete offer.
+    id: "expired_listing",
+    name: "Expired Listing Revival",
+    goal: "Win the relisting of a home whose listing just expired.",
+    industries: ["real_estate"],
+    steps: [
+      { day: 0, channel: "call", subject: "Day-one call", body: "They're frustrated and fielding agent calls all day — don't pitch. Acknowledge how that feels, ask what THEY think kept it from selling, and listen. Earn the right to a second conversation." },
+      { day: 0, channel: "sms", subject: "After the call", body: "One short text: no pitch, just 'good talking — I'll take a real look at the listing history and send you my honest read tomorrow.'" },
+      { day: 1, channel: "email", subject: "why it didn't sell — honest read", body: "A specific diagnosis, not flattery: price vs. comps, days on market, photos/staging, where it was marketed. End with one ask — fifteen minutes to walk the plan that's different." },
+      { day: 4, channel: "call", subject: "The plan call", body: "Walk the relaunch plan: the price story, what changes in week one, how showings get feedback. Ask for the listing appointment with a specific day." },
+      { day: 9, channel: "email", subject: "whatever you decide", body: "Gracious last touch: if they relist with their previous agent or pause, that can be the right call. Leave the comps offer open — no pressure, door open.", scenario: "breakup" },
+    ],
+  },
+  {
+    // FSBO: they chose to sell WITHOUT an agent — calling to argue with that
+    // choice loses instantly. The motion that converts is being genuinely
+    // useful for free until the 'if it doesn't move' moment arrives.
+    id: "fsbo_convert",
+    name: "FSBO Conversion",
+    goal: "Become the agent a for-sale-by-owner seller calls when they want help.",
+    industries: ["real_estate"],
+    steps: [
+      { day: 0, channel: "call", subject: "Respect-the-choice call", body: "Open with 'not calling to talk you out of it.' Ask how showings are going and offer one genuinely free thing — a buyer-side net sheet or feedback script for their open house." },
+      { day: 1, channel: "sms", subject: "The useful thing", body: "Send the one thing you promised, no strings. Useful and short beats clever." },
+      { day: 4, channel: "email", subject: "your net number, both ways", body: "The honest math: their likely net selling solo vs. listed (price lift vs. commission), using real comps. Offer to walk it in ten minutes — their call." },
+      { day: 10, channel: "call", subject: "Check-in call", body: "How's traffic? What are buyers saying? Coach one fix for free. Plant the seed: 'if it's still sitting in a few weeks, I've got a plan ready.'" },
+      { day: 18, channel: "email", subject: "rooting for you either way", body: "Low-pressure close: genuinely hope it sells. If the calls slow down, the relaunch plan is ready — one line to say 'show me'.", scenario: "breakup" },
+    ],
+  },
+  {
     id: "mortgage_engage",
     name: "Rate & Pre-Approval",
     goal: "Move a borrower from inquiry to a locked, fundable loan.",

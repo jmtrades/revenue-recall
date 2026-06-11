@@ -5,6 +5,7 @@ import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { Footer } from "@/components/marketing/Footer";
 import { StickyCTA } from "@/components/marketing/StickyCTA";
 import { VoiceDemo } from "@/components/marketing/VoiceDemo";
+import { SEQUENCES } from "@/lib/sequences";
 import { Icon } from "@/components/icons";
 import { Reveal, Stagger, StaggerItem, ScaleIn } from "@/components/motion/Motion";
 import { INDUSTRIES, getIndustry } from "@/lib/industries";
@@ -53,6 +54,10 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
   const objectionAngles = full.playbook.objectionAngles;
   const sampleVoice = full.playbook.sampleVoice.slice(0, 2);
   const term = full.terminology;
+  // The vertical's NAMED prospecting motions (e.g. real estate's Expired
+  // Listing Revival / FSBO Conversion) — pulled from the same sequence library
+  // the product runs, so the marketing claim is the shipped behavior.
+  const plays = SEQUENCES.filter((s) => s.industries.includes(ind.id));
 
   // JSON-LD so the page is rich-result eligible: the product itself + a
   // breadcrumb trail (Industries → this industry) for breadcrumb rich results.
@@ -167,6 +172,33 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
                   <blockquote className="h-full rounded-2xl border border-border bg-surface-2 p-5 text-sm italic leading-relaxed text-fg">&ldquo;{v}&rdquo;</blockquote>
                 </StaggerItem>
               ))}
+            </Stagger>
+          </section>
+        )}
+
+        {/* Done-for-you prospecting motions, straight from the sequence library. */}
+        {plays.length > 0 && (
+          <section className="mt-10 sm:mt-16">
+            <Reveal>
+              <h2 className="text-2xl font-semibold text-fg">Done-for-you {ind.label.toLowerCase()} playbooks</h2>
+              <p className="mt-2 max-w-xl text-muted">
+                Named cadences built for how this vertical actually prospects — enroll a {term.opportunity.toLowerCase()} and the steps work themselves, in your voice.
+              </p>
+            </Reveal>
+            <Stagger className="mt-6 grid gap-4 sm:grid-cols-2">
+              {plays.map((p) => {
+                const channels = [...new Set(p.steps.map((s) => s.channel))].join(" · ");
+                const span = p.steps[p.steps.length - 1]?.day ?? 0;
+                return (
+                  <StaggerItem key={p.id} className="rounded-2xl border border-border bg-surface p-5">
+                    <h3 className="font-semibold text-fg">{p.name}</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-muted">{p.goal}</p>
+                    <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted/70">
+                      {p.steps.length} steps · {channels}{span > 0 ? ` · ${span} days` : ""}
+                    </p>
+                  </StaggerItem>
+                );
+              })}
             </Stagger>
           </section>
         )}

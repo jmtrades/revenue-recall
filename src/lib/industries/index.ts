@@ -109,18 +109,18 @@ export const INDUSTRIES: IndustryTemplate[] = [
     playbook: {
       buyerGoal: "find or sell the right home on the right timeline — without overpaying or missing out",
       repRole: "their agent, who lines up showings, runs the numbers, and gets them to a clean close",
-      objections: ["still just looking", "waiting for rates to come down", "want to see what else hits the market", "not sure it's the right time to sell", "the offer felt low"],
+      objections: ["still just looking", "waiting for rates to come down", "want to see what else hits the market", "not sure it's the right time to sell", "the offer felt low", "we're going to relist with our old agent", "we're selling it ourselves — we don't want to pay a commission"],
       nextSteps: {
         email: ["want me to line up a few showings this weekend?", "happy to pull fresh comps for your place — want me to?", "should I send over the three that just came on near you?"],
         sms: ["want me to grab you a showing this weekend?", "free for a quick look this week?", "want the numbers on it before someone else jumps?"],
         call: ["Ask what's changed — timeline, budget, must-haves.", "Mention one or two specific listings that fit.", "Offer to line up showings for the weekend."],
       },
-      reengage: ["saw a couple new listings near you and thought of you", "your search has been quiet lately — still looking, or did you land something?", "that place you liked came back on the market"],
+      reengage: ["saw a couple new listings near you and thought of you", "your search has been quiet lately — still looking, or did you land something?", "that place you liked came back on the market", "noticed your listing expired — happy to share my honest read on why it didn't move", "how are the showings going on your place? I've got a free buyer-net sheet if it's useful"],
       sampleVoice: [
         "hey jess — that 3br on maple came back on. want me to grab you a showing this weekend?",
         "morning! pulled fresh comps for your place and you've got more equity than you'd think. coffee this week to talk strategy?",
       ],
-      vocabulary: ["showing", "listing", "comps", "offer", "closing", "pre-approval", "walkthrough", "under contract"],
+      vocabulary: ["showing", "listing", "comps", "offer", "closing", "pre-approval", "walkthrough", "under contract", "expired listing", "FSBO", "days on market", "net sheet", "open house", "relist"],
       objectionAngles: {
         price: "what a place actually sells for tracks the market more than the asking number, so what's the ceiling you don't want to cross?",
         timing: "the right home shows up when it's ready, not on a schedule, want me to keep an eye out and ping you the moment something real lands?",
