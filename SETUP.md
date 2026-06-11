@@ -51,20 +51,24 @@ reset, and outreach** emails.
 | Twilio | `TWILIO_*` above + optional `CALL_TWIML_URL` |
 | Any provider (webhook) | `VOICE_WEBHOOK_URL` |
 
-### Make the spoken voice sound human (one key)
-The browser's built-in voice is the zero-config fallback — it works, but it's
-not human. Set **one** key and every spoken surface (read-aloud, call prep,
-role-play) upgrades to a real neural voice automatically:
+### The spoken voice is studio-grade by default — and free
+Every spoken surface (read-aloud, call prep, role-play) uses **Kokoro, a
+neural voice model running on-device in the browser**: zero per-use cost, no
+vendor, audio never leaves the machine. It downloads once in the background
+(~90 MB, cached; WebGPU when available) — until it's ready, or on devices that
+can't run it, the next engine down answers. **No configuration needed.**
+
+Optional fallbacks, in priority order after the on-device model:
 
 | Option | Vars | Notes |
 |---|---|---|
-| ElevenLabs (most human) | `ELEVENLABS_API_KEY` | optional `ELEVENLABS_VOICE_ID`, `ELEVENLABS_MODEL` |
-| OpenAI TTS | `OPENAI_API_KEY` | optional `OPENAI_TTS_VOICE`, `OPENAI_TTS_MODEL` |
+| ElevenLabs | `ELEVENLABS_API_KEY` | hosted fallback; per-character cost |
+| OpenAI TTS | `OPENAI_API_KEY` | hosted fallback; cheaper than ElevenLabs |
 
-House voices (Aria, Adam, …) auto-map to each provider's closest equivalent,
-and delivery (warm / calm / energetic…) is shaped per line. No key → browser
-voice keeps working. (`NEXT_PUBLIC_NEURAL_VOICE_URL` — the self-hosted model —
-still takes priority over both when set.)
+House voices (Aria, Adam, …) are native Kokoro ids and auto-map on the hosted
+backends; delivery (warm / calm / energetic…) is shaped per line everywhere.
+(`NEXT_PUBLIC_NEURAL_VOICE_URL` — the self-hosted GPU service — takes priority
+over everything when set.)
 
 ### Phone numbers
 - Bring your own caller ID: `OUTBOUND_FROM_NUMBER`

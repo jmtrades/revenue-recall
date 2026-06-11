@@ -2,7 +2,7 @@
   "name": "revenue-recall",
   "version": "0.1.0",
   "private": true,
-  "description": "Revenue Recall — a universal sales OS that works with any CRM (or none) and adapts to any industry.",
+  "description": "Revenue Recall \u2014 a universal sales OS that works with any CRM (or none) and adapts to any industry.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -15,7 +15,9 @@
     "smoke:ai": "AI_LIVE_SMOKE=1 vitest run tests/live/ai.live.test.ts",
     "scan:secrets": "bash scripts/scan-secrets.sh",
     "db:migrate": "bash scripts/db-migrate.sh",
-    "db:bootstrap": "bash scripts/db-bootstrap.sh"
+    "db:bootstrap": "bash scripts/db-bootstrap.sh",
+    "predev": "node scripts/copy-kokoro.mjs",
+    "prebuild": "node scripts/copy-kokoro.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.97.1",
@@ -23,6 +25,7 @@
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.45.4",
     "@types/three": "^0.184.1",
+    "kokoro-js": "^1.2.1",
     "motion": "^12.40.0",
     "next": "14.2.35",
     "react": "18.3.1",

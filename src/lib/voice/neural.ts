@@ -25,6 +25,7 @@
 
 import { speakable, type SpeakHandle } from "@/lib/voice/speech";
 import { type VoiceSynth, type SpeakOptions, setSynth, browserSynth } from "@/lib/voice/synth";
+import { localSynth, preloadLocalVoice } from "@/lib/voice/local";
 
 const SAMPLE_RATE = 24_000; // 24 kHz web profile (docs §6)
 
@@ -243,25 +244,29 @@ export const hostedSynth: VoiceSynth = {
   },
 };
 
-/** One synth for getSynth(): the in-house streaming model when it exists,
- *  else the hosted neural route, else (available()=false) the browser engine. */
+/** One synth for getSynth(), in cost-and-quality order: the in-house streaming
+ *  service when it exists, else the FREE on-device Kokoro model, else a hosted
+ *  provider key, else (available()=false) the browser engine. */
 const compositeSynth: VoiceSynth = {
   id: "rr-neural",
   kind: "neural",
-  available: () => neuralSynth.available() || hostedSynth.available(),
+  available: () => neuralSynth.available() || localSynth.available() || hostedSynth.available(),
   async speak(text, opts = {}) {
     if (neuralSynth.available()) return neuralSynth.speak(text, opts);
+    if (localSynth.available()) return localSynth.speak(text, opts);
     return hostedSynth.speak(text, opts);
   },
 };
 
 /**
- * Register the neural backend so getSynth() prefers it when healthy, and probe
- * the hosted route once. Safe to call unconditionally: with no in-house URL and
- * no hosted provider the composite reports available() === false and every
- * caller keeps using the browser engine.
+ * Register the neural backend so getSynth() prefers it when healthy, start the
+ * on-device model loading in the background, and probe the hosted route once.
+ * Safe to call unconditionally: with nothing configured and the local model
+ * still loading (or unable to run), the composite reports available() === false
+ * and every caller keeps using the browser engine.
  */
 export function enableNeuralVoice(): void {
   setSynth(compositeSynth);
+  preloadLocalVoice();
   probeHosted();
 }

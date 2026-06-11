@@ -37,3 +37,6 @@ next-env.d.ts
 # local visual-QA tooling (headless screenshots; not part of the app)
 /.shot.mjs
 /shot-*.png
+
+# Staged on-device voice bundle (recreated from node_modules at build time)
+public/vendor/
