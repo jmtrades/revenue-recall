@@ -37,10 +37,18 @@ describe("hosted TTS provider chain", () => {
     await expect(synthesizeSpeech({ text: "hi" })).rejects.toThrow(/No hosted TTS provider/);
   });
 
-  it("Cartesia tops the ladder, but only with BOTH key and voice id", () => {
+  it("ElevenLabs tops the ladder — the best voice wins when configured", () => {
+    process.env.CARTESIA_API_KEY = "ca-x";
+    process.env.CARTESIA_VOICE_ID = "uuid-1";
+    expect(ttsProvider()).toBe("cartesia"); // fully-configured Cartesia answers…
     process.env.ELEVENLABS_API_KEY = "el-x";
+    expect(ttsProvider()).toBe("elevenlabs"); // …until the premium voice exists
+  });
+
+  it("Cartesia needs BOTH key and voice id to be usable", () => {
     process.env.CARTESIA_API_KEY = "ca-x"; // key alone is not usable
-    expect(ttsProvider()).toBe("elevenlabs");
+    process.env.OPENAI_API_KEY = "sk-x";
+    expect(ttsProvider()).toBe("openai");
     process.env.CARTESIA_VOICE_ID = "uuid-1";
     expect(ttsProvider()).toBe("cartesia");
   });

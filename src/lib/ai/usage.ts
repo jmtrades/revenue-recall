@@ -37,9 +37,11 @@ export interface UsageSummary {
   byFeature: Record<string, number>;
 }
 
-/** Internal model calls that must not burn the customer's action allowance. */
+/** Entries that must not burn the customer's ACTION allowance: internal model
+ *  passes (refine/health), and call-minute rows — phone time is metered on its
+ *  own voice-minutes meter, not the AI-message pool. */
 function isInternalFeature(feature?: string): boolean {
-  return !!feature && (feature === "refine" || feature.endsWith(".refine") || feature === "health");
+  return !!feature && (feature === "refine" || feature.endsWith(".refine") || feature === "health" || feature === "call_minutes");
 }
 
 const mem: (UsageEntry & { orgId?: string })[] = [];
@@ -110,6 +112,29 @@ export async function usageSummary(now: Date = new Date()): Promise<UsageSummary
     return (data ?? []).reduce((s, r) => add(s, Number(r.cost_usd ?? 0), Number(r.input_tokens ?? 0), Number(r.output_tokens ?? 0), (r.feature as string) ?? undefined), blank());
   } catch {
     return blank();
+  }
+}
+
+/**
+ * Sum of `input_tokens` for one feature label this month. The ledger's unit
+ * columns are feature-defined: AI completions store tokens; `call_minutes`
+ * rows store SECONDS of connected call time (cost_usd stays real money in
+ * both). This is what lets voice minutes meter through the existing table —
+ * no new migration, same org scoping, same month windows.
+ */
+export async function featureUnitsThisMonth(feature: string, now: Date = new Date()): Promise<number> {
+  const mk = now.toISOString().slice(0, 7);
+  try {
+    if (!isSupabaseConfigured()) {
+      return mem.filter((r) => r.feature === feature && monthKey(r.at) === mk).reduce((s, r) => s + r.inputTokens, 0);
+    }
+    const id = await orgId();
+    if (!id) return 0;
+    const from = `${mk}-01T00:00:00.000Z`;
+    const { data } = await getSupabase()!.from("ai_usage").select("input_tokens").eq("org_id", id).eq("feature", feature).gte("created_at", from);
+    return (data ?? []).reduce((s, r) => s + Number(r.input_tokens ?? 0), 0);
+  } catch {
+    return 0;
   }
 }
 

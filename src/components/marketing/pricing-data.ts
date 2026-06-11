@@ -45,6 +45,7 @@ export const PLANS: Plan[] = [
       "Built-in CRM — or connect your own",
       "Revenue Recall engine: deals ranked by $ recoverable",
       "Outreach in your voice (template AI)",
+      "Unlimited practice calls — on-device AI voice, free forever",
       "1 seat · 1 pipeline",
     ],
   },
@@ -60,6 +61,7 @@ export const PLANS: Plan[] = [
     features: [
       "Everything in Starter",
       "Live AI across email, SMS & the phone",
+      "500 AI call minutes / mo — premium human voice (~165 calls)",
       "Autopilot sequences — it works the pipeline",
       "~1,500 AI messages / mo (emails, texts & calls it writes)",
       "Connect any CRM · unlimited pipelines",
@@ -77,6 +79,7 @@ export const PLANS: Plan[] = [
     features: [
       "Everything in Operator",
       "Up to 5 reps · ~10,000 AI messages / mo pooled",
+      "1,500 AI call minutes / mo pooled (~500 calls)",
       "Batch engine — more volume, lower cost",
       "Recovered-revenue reporting & team analytics",
       "Priority queue + advanced automations",
@@ -94,7 +97,7 @@ export const PLANS: Plan[] = [
     anchor: "Replace a whole SDR team — at a fraction of the headcount cost.",
     features: [
       "Everything in Autopilot",
-      "Unlimited reps & volume",
+      "Unlimited reps, volume & call minutes",
       "SSO & RBAC · security review · SLA",
       "Dedicated success + done-for-you playbooks",
       "Custom model routing & integrations",

@@ -21,13 +21,18 @@ export interface Entitlements {
   integrations: boolean;
   /** Live AI actions included per month before top-ups are needed (Infinity = unmetered). */
   actionsPerMonth: number;
+  /** Connected AI call minutes included per month (0 = no phone calling on
+   *  this plan — on-device practice voice stays free; Infinity = unmetered).
+   *  Allowances are set so voice COGS stays ≤ ~20% of plan price on the
+   *  premium ElevenLabs path (see billing/voice-minutes.ts for the math). */
+  voiceMinutesPerMonth: number;
 }
 
 export const PLAN_LIMITS: Record<PlanId, Entitlements> = {
-  free: { seats: 1, pipelines: 1, aiLive: false, autopilot: false, integrations: false, actionsPerMonth: 50 },
-  growth: { seats: 1, pipelines: Infinity, aiLive: true, autopilot: true, integrations: true, actionsPerMonth: 1500 },
-  team: { seats: 5, pipelines: Infinity, aiLive: true, autopilot: true, integrations: true, actionsPerMonth: 10000 },
-  scale: { seats: Infinity, pipelines: Infinity, aiLive: true, autopilot: true, integrations: true, actionsPerMonth: Infinity },
+  free: { seats: 1, pipelines: 1, aiLive: false, autopilot: false, integrations: false, actionsPerMonth: 50, voiceMinutesPerMonth: 0 },
+  growth: { seats: 1, pipelines: Infinity, aiLive: true, autopilot: true, integrations: true, actionsPerMonth: 1500, voiceMinutesPerMonth: 500 },
+  team: { seats: 5, pipelines: Infinity, aiLive: true, autopilot: true, integrations: true, actionsPerMonth: 10000, voiceMinutesPerMonth: 1500 },
+  scale: { seats: Infinity, pipelines: Infinity, aiLive: true, autopilot: true, integrations: true, actionsPerMonth: Infinity, voiceMinutesPerMonth: Infinity },
 };
 
 export function entitlements(plan: PlanId): Entitlements {
