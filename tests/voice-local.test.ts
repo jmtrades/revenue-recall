@@ -30,3 +30,11 @@ describe("availability in a non-browser environment", () => {
     expect(localSynth.available()).toBe(false);
   });
 });
+
+describe("ensureLocalVoice / progress in a non-browser env", () => {
+  it("resolves false (can't run) without throwing, and progress stays 0", async () => {
+    const { ensureLocalVoice, localVoiceProgress } = await import("@/lib/voice/local");
+    await expect(ensureLocalVoice()).resolves.toBe(false);
+    expect(localVoiceProgress()).toBe(0);
+  });
+});

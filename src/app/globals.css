@@ -295,13 +295,20 @@ textarea:focus-visible {
   animation: rr-float 6s ease-in-out infinite;
 }
 
+/* Voice-demo equalizer bars — scale on the y so the bars "pulse" while speaking. */
+@keyframes rr-eq {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+
 /* Section scroll-reveals are JS-driven (components/motion/Motion.tsx) so the
    choreography runs in EVERY browser — the old CSS animation-timeline approach
    was Chromium-only and left Safari/Firefox static. */
 
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
-  .animate-float {
+  .animate-float,
+  [class*="rr-eq"] {
     animation: none;
   }
   .lift:hover {
