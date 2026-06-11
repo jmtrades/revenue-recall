@@ -35,9 +35,17 @@ export async function GET() {
   if (!isAiConfigured()) warnings.push("AI is in template mode (set ANTHROPIC_API_KEY for live drafting).");
   if (!ch.email.live) warnings.push("Email sending is off (signup/invite/outreach emails only log).");
 
+  // Which build is actually serving. Vercel injects the commit SHA at build
+  // time (GIT_COMMIT_SHA covers other hosts), so an outside probe can prove a
+  // deploy shipped — a failed deploy keeps serving the previous build while
+  // looking perfectly healthy on every other field (exactly how the Hobby-plan
+  // cron rejection hid for days).
+  const sha = process.env.VERCEL_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || "";
+
   return NextResponse.json({
     status: "ok",
     time: new Date().toISOString(),
+    commit: sha ? sha.slice(0, 7) : "dev",
     industry: cfg.industryId,
     capabilities,
     launch: {
