@@ -42,6 +42,7 @@ describe("middleware auth-gate allowlist (real isPublicRoute)", () => {
       "/apple-icon",
       "/icon",
       "/.well-known/security.txt",
+      "/vendor/kokoro.web.js", // the landing voice demo loads this logged-out
     ]) {
       expect(isPublicRoute(p), `${p} must be public`).toBe(true);
     }
