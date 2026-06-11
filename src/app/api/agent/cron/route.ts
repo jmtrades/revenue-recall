@@ -11,6 +11,7 @@ import { runWithOrg } from "@/lib/supabase/org-context";
 import { autopilotLockKey, digestLockKey } from "@/lib/agent/lock";
 import { sendAlert, isErrored } from "@/lib/alert";
 import { cleanupRateLimits } from "@/lib/ratelimit";
+import { ensureStripeCatalogCurrent } from "@/lib/billing/provision";
 import { acquireCronLock, releaseCronLock } from "@/lib/cron-lock";
 import { mapWithConcurrency } from "@/lib/async";
 import { safeEqual } from "@/lib/safe-compare";
@@ -135,6 +136,17 @@ async function run(req: Request) {
   // Top-level tick only (not the per-org sub-requests): housekeep the shared
   // rate-limit counters so the table doesn't grow unbounded. Best-effort.
   await cleanupRateLimits();
+
+  // Self-healing Stripe catalog: a reprice merged in code used to wait on a
+  // human re-running /api/billing/setup; the platform now notices drift on its
+  // hourly tick and provisions the new prices itself (idempotent; existing
+  // subscribers grandfathered via transfer_lookup_key). Best-effort — pricing
+  // upkeep must never block tenant work — but a heal/failure is alerted so
+  // it's loud, not silent.
+  const catalog = await ensureStripeCatalogCurrent().catch(() => "failed" as const);
+  if (catalog === "healed" || catalog === "failed") {
+    void sendAlert("billing.catalog.selfheal", { outcome: catalog });
+  }
 
   const secret = process.env.CRON_SECRET;
   const ids = await allOrgIds();

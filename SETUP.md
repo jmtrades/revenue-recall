@@ -86,9 +86,12 @@ are the WORST CASE (full allowance consumed — real utilization runs lower):
 | Scale (custom) | unmetered | — | priced per deal | — | — |
 
 (Pin `VOICE_TTS_PROVIDER=cartesia` and those floors rise to ~76% / ~71%.
-Repricing: amounts changed in `billing/catalog.ts` take effect by re-running
-`POST /api/billing/setup` — provisioning detects the drift, mints a new Stripe
-price, and transfers the lookup key; existing subscribers stay grandfathered.)
+Repricing is **self-healing**: amounts changed in `billing/catalog.ts` are
+noticed by the hourly platform tick, which mints the new Stripe prices itself
+— `transfer_lookup_key` keeps existing subscribers grandfathered. Re-running
+`POST /api/billing/setup` does the same thing immediately if you don't want
+to wait for the next tick. Either way a `billing.catalog.selfheal` alert
+records that it happened.)
 
 Minutes meter automatically from the call gateway's reported durations
 (feature `call_minutes` in the usage ledger — COGS lands in the operator's
