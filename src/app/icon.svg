@@ -1,7 +1,13 @@
 <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect width="64" height="64" rx="14" fill="#059669"/>
   <rect width="64" height="64" rx="14" fill="url(#g)" fill-opacity="0.18"/>
-  <text x="32" y="43" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="30" font-weight="700" fill="#ffffff" text-anchor="middle">RR</text>
+  <!-- The recall loop: an arrow sweeping back around a solid core (revenue,
+       pulled back to center). Same mark as components/Logo.tsx, scaled. -->
+  <g transform="translate(12 12) scale(1.6667)" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M3.5 12a8.5 8.5 0 1 0 8.5-8.5 9.2 9.2 0 0 0-6.4 2.6L3.5 8.2"/>
+    <path d="M3.5 3.5v4.7h4.7"/>
+    <circle cx="12" cy="12" r="2.5" fill="#ffffff" stroke="none"/>
+  </g>
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
       <stop stop-color="#ffffff"/>

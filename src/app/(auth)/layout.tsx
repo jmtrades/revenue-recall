@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LogoBadge } from "@/components/Logo";
 import { Icon } from "@/components/icons";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -8,7 +9,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         {/* Blueprint texture + glow so the brand panel reads as crafted, not flat. */}
         <div className="surface-grid absolute inset-0 opacity-40" aria-hidden />
         <Link href="/" className="relative flex items-center gap-2.5 animate-fade-up">
-          <span className="grid h-9 w-9 place-items-center rounded-[11px] bg-brand text-sm font-bold tracking-tight text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)] ring-1 ring-inset ring-white/10">RR</span>
+          <LogoBadge box={36} />
           <span className="font-display text-[15px] font-semibold tracking-tight text-fg">Revenue Recall</span>
         </Link>
         <div className="relative">
@@ -45,7 +46,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="hero-glow pointer-events-none absolute inset-x-0 top-0 h-64 lg:hidden" aria-hidden />
         {/* Mobile-only brand mark (the left panel is hidden under lg). */}
         <Link href="/" className="relative mb-9 flex items-center gap-2.5 lg:hidden">
-          <span className="grid h-9 w-9 place-items-center rounded-[11px] bg-brand text-sm font-bold tracking-tight text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)] ring-1 ring-inset ring-white/10">RR</span>
+          <LogoBadge box={36} />
           <span className="font-display text-[15px] font-semibold tracking-tight text-fg">Revenue Recall</span>
         </Link>
         <div className="relative mx-auto w-full max-w-sm animate-fade-up [animation-delay:120ms]">{children}</div>
