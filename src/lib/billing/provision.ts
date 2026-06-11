@@ -83,3 +83,47 @@ export async function provisionStripeCatalog(): Promise<ProvisionResult> {
     return { ok: false, created, reused, prices, error: e instanceof Error ? e.message : "Provisioning failed" };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Self-healing: the platform keeps its own Stripe catalog current. A reprice
+// merged in code used to wait on a human re-running /api/billing/setup with
+// the admin token; now the hourly platform tick notices the drift and runs
+// provisioning itself, server-side, with the credentials it already has.
+// ---------------------------------------------------------------------------
+
+/** Cheap drift probe: does Stripe's price for the SENTINEL catalog entry (the
+ *  Operator monthly price — the one every checkout depends on) match the
+ *  catalog amount? Missing entirely (fresh account) also counts as drift, so
+ *  a brand-new deploy provisions itself on its first tick. Never throws. */
+export async function catalogDrift(): Promise<boolean> {
+  if (!billingConfigured()) return false;
+  const sentinel = CATALOG.find((c) => c.lookupKey === "rr_operator_monthly");
+  if (!sentinel) return false;
+  try {
+    const existing = await findPriceByLookupKey(sentinel.lookupKey);
+    return !existing || existing.unit_amount !== sentinel.unitAmountCents;
+  } catch {
+    return false; // can't reach Stripe — don't trigger work we can't do
+  }
+}
+
+let lastHealAttempt = 0;
+const HEAL_MIN_INTERVAL_MS = 6 * 60 * 60 * 1000; // per-instance backstop
+
+/** Detect-and-heal, built for the cron tick: cheap when current (one Stripe
+ *  read), full provisioning only on drift, at most once per 6 h per instance
+ *  (provisioning is idempotent, so overlapping instances are merely wasteful,
+ *  never harmful). Returns what happened for the tick's result ledger. */
+export async function ensureStripeCatalogCurrent(now: number = Date.now()): Promise<"n/a" | "current" | "healed" | "failed" | "skipped"> {
+  if (!billingConfigured()) return "n/a";
+  if (now - lastHealAttempt < HEAL_MIN_INTERVAL_MS) return "skipped";
+  if (!(await catalogDrift())) return "current";
+  lastHealAttempt = now;
+  const result = await provisionStripeCatalog();
+  return result.ok ? "healed" : "failed";
+}
+
+/** Test-only reset of the heal backstop. */
+export function _resetHealBackstop(): void {
+  lastHealAttempt = 0;
+}
