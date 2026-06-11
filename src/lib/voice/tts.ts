@@ -12,17 +12,34 @@
 import { speakable, type Emotion } from "@/lib/voice/speech";
 import { DEFAULT_HOUSE_VOICE } from "@/lib/voice/house";
 
-export type TtsProvider = "elevenlabs" | "openai";
+export type TtsProvider = "cartesia" | "elevenlabs" | "openai";
 
 function env(name: string): string | undefined {
   const v = process.env[name];
   return v && v.length > 0 ? v : undefined;
 }
 
-/** Which hosted provider is configured (priority order), if any. */
+function cartesiaReady(): boolean {
+  // Cartesia addresses voices by UUID (no stable public catalog to hand-map),
+  // so it needs BOTH the key and a default voice id to be usable.
+  return Boolean(env("CARTESIA_API_KEY") && env("CARTESIA_VOICE_ID"));
+}
+
+/** Which hosted provider answers. `VOICE_TTS_PROVIDER` pins one explicitly
+ *  (honored only if that provider is actually configured); otherwise priority
+ *  is quality-ladder order: Cartesia (best latency/naturalness class for voice
+ *  agents) → ElevenLabs → OpenAI. */
 export function ttsProvider(): TtsProvider | null {
-  if (env("ELEVENLABS_API_KEY")) return "elevenlabs";
-  if (env("OPENAI_API_KEY") || env("OPENAI_TTS_API_KEY")) return "openai";
+  const ready: Record<TtsProvider, boolean> = {
+    cartesia: cartesiaReady(),
+    elevenlabs: Boolean(env("ELEVENLABS_API_KEY")),
+    openai: Boolean(env("OPENAI_API_KEY") || env("OPENAI_TTS_API_KEY")),
+  };
+  const pin = env("VOICE_TTS_PROVIDER") as TtsProvider | undefined;
+  if (pin && ready[pin]) return pin;
+  if (ready.cartesia) return "cartesia";
+  if (ready.elevenlabs) return "elevenlabs";
+  if (ready.openai) return "openai";
   return null;
 }
 
@@ -61,10 +78,31 @@ export const OPENAI_VOICES: Record<string, string> = {
   bm_george: "fable",
 };
 
+/** Optional per-house-voice override map for Cartesia (JSON env), since its
+ *  voices are account-scoped UUIDs: CARTESIA_VOICE_MAP='{"af_heart":"<uuid>",…}'.
+ *  Anything unmapped uses CARTESIA_VOICE_ID. Exported for tests. */
+export function cartesiaVoice(voiceId?: string | null): string {
+  const fallback = env("CARTESIA_VOICE_ID") ?? "";
+  // Clones are the in-house model's job and unknown ids have no mapping —
+  // both use the account default, never another voice's premium mapping.
+  if (!voiceId || voiceId.startsWith("clone:")) return fallback;
+  const raw = env("CARTESIA_VOICE_MAP");
+  if (raw) {
+    try {
+      const map = JSON.parse(raw) as Record<string, string>;
+      if (typeof map[voiceId] === "string" && map[voiceId]) return map[voiceId];
+    } catch {
+      /* malformed map — fall through to the default voice */
+    }
+  }
+  return fallback;
+}
+
 /** Resolve a house/clone voice id to the provider's voice. Unknown ids and
  *  clone:<id> voices (cloning is the in-house model's job) use the default. */
 export function providerVoice(provider: TtsProvider, voiceId?: string | null): string {
   const id = voiceId && !voiceId.startsWith("clone:") ? voiceId : DEFAULT_HOUSE_VOICE;
+  if (provider === "cartesia") return cartesiaVoice(voiceId);
   if (provider === "elevenlabs") {
     return env("ELEVENLABS_VOICE_ID") && id === DEFAULT_HOUSE_VOICE
       ? env("ELEVENLABS_VOICE_ID")!
@@ -134,6 +172,26 @@ export async function synthesizeSpeech(input: SynthesizeInput): Promise<Synthesi
   const provider = ttsProvider();
   if (!provider) throw new Error("No hosted TTS provider configured");
   const text = speakable(input.text).slice(0, 1500);
+
+  if (provider === "cartesia") {
+    const res = await fetch("https://api.cartesia.ai/tts/bytes", {
+      method: "POST",
+      headers: {
+        "X-API-Key": env("CARTESIA_API_KEY")!,
+        "Cartesia-Version": env("CARTESIA_VERSION") ?? "2024-06-10",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model_id: env("CARTESIA_MODEL") ?? "sonic-2",
+        transcript: text,
+        voice: { mode: "id", id: providerVoice("cartesia", input.voiceId) },
+        output_format: { container: "mp3", bit_rate: 128000, sample_rate: 44100 },
+        ...(input.lang ? { language: input.lang.slice(0, 2) } : {}),
+      }),
+    });
+    if (!res.ok) throw new Error(`Cartesia ${res.status}`);
+    return { audio: await res.arrayBuffer(), mime: "audio/mpeg", provider };
+  }
 
   if (provider === "elevenlabs") {
     const voice = providerVoice("elevenlabs", input.voiceId);

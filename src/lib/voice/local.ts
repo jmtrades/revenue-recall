@@ -16,8 +16,14 @@ import { HOUSE_VOICES, DEFAULT_HOUSE_VOICE } from "@/lib/voice/house";
 
 const MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
 
+interface RawAudioLike {
+  audio: Float32Array;
+  sampling_rate: number;
+}
 interface KokoroLike {
-  generate(text: string, opts: { voice: string; speed: number }): Promise<{ audio: Float32Array; sampling_rate: number }>;
+  generate(text: string, opts: { voice: string; speed: number }): Promise<RawAudioLike>;
+  /** Sentence-streamed synthesis — yields audio per phrase as it's generated. */
+  stream?(text: string, opts: { voice: string; speed: number }): AsyncGenerator<{ text: string; audio: RawAudioLike }>;
 }
 
 let state: "idle" | "loading" | "ready" | "failed" = "idle";
@@ -76,7 +82,10 @@ export function preloadLocalVoice(): void {
     // parsing the transformers/onnx stack (its import.meta + native bindings
     // break webpack); the browser fetches the ESM directly — same-origin, so
     // CSP stays at script-src 'self'.
-    const { KokoroTTS } = (await import(/* webpackIgnore: true */ "/vendor/kokoro.web.js" as string)) as {
+    // Both magic comments matter: webpackIgnore for the Next build, vite-ignore
+    // for vitest — each tells its bundler "this is a runtime URL, hands off".
+    const kokoroUrl = "/vendor/kokoro.web.js";
+    const { KokoroTTS } = (await import(/* webpackIgnore: true */ /* @vite-ignore */ kokoroUrl)) as {
       KokoroTTS: { from_pretrained(model: string, opts: { device: string; dtype: string; progress_callback?: (p: { progress?: number }) => void }): Promise<unknown> };
     };
     const hasWebGpu = "gpu" in navigator;
@@ -100,27 +109,64 @@ export function preloadLocalVoice(): void {
 function localSpeak(text: string, opts: SpeakOptions): SpeakHandle {
   let stopped = false;
   let ctx: AudioContext | null = null;
-  let source: AudioBufferSourceNode | null = null;
+  const sources: AudioBufferSourceNode[] = [];
+
+  const makeCtx = () => {
+    const AC: typeof AudioContext =
+      (window as unknown as { AudioContext: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    return new AC();
+  };
 
   const done = (async () => {
     if (!tts) return;
+    const voice = resolveLocalVoice(opts.voiceId ?? opts.preferName);
+    const speed = localSpeed(opts.rate, opts.emotion);
+    const line = speakable(text);
     try {
-      const out = await tts.generate(speakable(text), {
-        voice: resolveLocalVoice(opts.voiceId ?? opts.preferName),
-        speed: localSpeed(opts.rate, opts.emotion),
-      });
+      // Sentence-streamed synthesis: the first phrase starts PLAYING while the
+      // rest is still generating — speech begins near-instantly and flows like
+      // a person talking, instead of a long silent wait then a monologue.
+      // Chunks are scheduled gaplessly on one WebAudio clock.
+      if (typeof tts.stream === "function") {
+        ctx = makeCtx();
+        let playhead = ctx.currentTime + 0.04;
+        let lastEnd = playhead;
+        for await (const chunk of tts.stream(line, { voice, speed })) {
+          if (stopped) break;
+          const a = chunk?.audio;
+          if (!a?.audio?.length || !ctx) continue;
+          const buf = ctx.createBuffer(1, a.audio.length, a.sampling_rate);
+          buf.copyToChannel(a.audio as never, 0);
+          const src = ctx.createBufferSource();
+          src.buffer = buf;
+          src.connect(ctx.destination);
+          const startAt = Math.max(playhead, ctx.currentTime + 0.02);
+          src.start(startAt);
+          playhead = startAt + buf.duration;
+          lastEnd = playhead;
+          sources.push(src);
+        }
+        if (!stopped && ctx) {
+          // Let the tail of the scheduled audio finish.
+          const remaining = Math.max(0, lastEnd - ctx.currentTime);
+          await new Promise<void>((resolve) => setTimeout(resolve, Math.ceil(remaining * 1000) + 50));
+        }
+        return;
+      }
+
+      // One-shot fallback (no stream support in the loaded bundle).
+      const out = await tts.generate(line, { voice, speed });
       if (stopped || !out?.audio?.length) return;
-      const AC: typeof AudioContext =
-        (window as unknown as { AudioContext: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      ctx = new AC();
+      ctx = makeCtx();
       const buf = ctx.createBuffer(1, out.audio.length, out.sampling_rate);
       buf.copyToChannel(out.audio as never, 0);
-      source = ctx.createBufferSource();
+      const source = ctx.createBufferSource();
       source.buffer = buf;
       source.connect(ctx.destination);
+      sources.push(source);
       await new Promise<void>((resolve) => {
-        if (!source || stopped) return resolve();
+        if (stopped) return resolve();
         source.onended = () => resolve();
         source.start();
       });
@@ -135,7 +181,9 @@ function localSpeak(text: string, opts: SpeakOptions): SpeakHandle {
     done,
     stop: () => {
       stopped = true;
-      try { source?.stop(); } catch { /* not started */ }
+      for (const s of sources) {
+        try { s.stop(); } catch { /* not started */ }
+      }
       try { ctx?.close(); } catch { /* already closed */ }
     },
   };
