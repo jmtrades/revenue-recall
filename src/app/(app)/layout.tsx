@@ -23,11 +23,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     >
       {mode === "system" && <SystemTheme />}
       <NeuralVoice />
+      {/* Skip-to-content: keyboard/screen-reader users jump past the sidebar and
+          top bar straight to the page (WCAG 2.4.1). Hidden until focused. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-brand focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
+      >
+        Skip to content
+      </a>
       <Sidebar orgName={org.name} industryLabel={industry.label} />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar userName={user?.name ?? "You"} userEmail={user?.email} signedIn={Boolean(user)} orgName={org.name} />
         <BillingBanner />
-        <main className="flex-1 overflow-x-hidden px-4 py-6 sm:px-8 sm:py-7">{children}</main>
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-x-hidden px-4 py-6 sm:px-8 sm:py-7">{children}</main>
       </div>
     </div>
   );

@@ -122,12 +122,13 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
 
   return (
     <form action={formAction} className="mt-6 space-y-3">
-      {mode === "signup" && <input name="name" className={input} placeholder="Full name" autoComplete="name" autoFocus required />}
-      <input name="email" type="email" className={input} placeholder="Work email" autoComplete="email" autoFocus={mode === "login"} required />
+      {mode === "signup" && <input name="name" aria-label="Full name" className={input} placeholder="Full name" autoComplete="name" autoFocus required />}
+      <input name="email" type="email" aria-label="Work email" className={input} placeholder="Work email" autoComplete="email" autoFocus={mode === "login"} required />
       <div className="relative">
         <input
           name="password"
           type={showPw ? "text" : "password"}
+          aria-label="Password"
           className={`${input} pr-10`}
           placeholder="Password"
           autoComplete={mode === "signup" ? "new-password" : "current-password"}

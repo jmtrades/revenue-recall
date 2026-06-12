@@ -65,24 +65,24 @@ export default async function HostedLeadForm({ params, searchParams }: Props) {
                 className="absolute left-[-9999px] h-0 w-0 opacity-0"
               />
               <div>
-                <label className="mb-1 block text-xs text-muted">{s.labelName} *</label>
-                <input name="name" required maxLength={200} className={field} />
+                <label htmlFor="lf-name" className="mb-1 block text-xs text-muted">{s.labelName} *</label>
+                <input id="lf-name" name="name" required maxLength={200} className={field} />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-muted">{s.labelEmail}</label>
-                <input name="email" type="email" maxLength={200} className={field} />
+                <label htmlFor="lf-email" className="mb-1 block text-xs text-muted">{s.labelEmail}</label>
+                <input id="lf-email" name="email" type="email" maxLength={200} className={field} />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-muted">{s.labelPhone}</label>
-                <input name="phone" type="tel" maxLength={40} className={field} />
+                <label htmlFor="lf-phone" className="mb-1 block text-xs text-muted">{s.labelPhone}</label>
+                <input id="lf-phone" name="phone" type="tel" maxLength={40} className={field} />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-muted">{s.labelCompany}</label>
-                <input name="company" maxLength={200} className={field} />
+                <label htmlFor="lf-company" className="mb-1 block text-xs text-muted">{s.labelCompany}</label>
+                <input id="lf-company" name="company" maxLength={200} className={field} />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-muted">{s.labelMessage}</label>
-                <textarea name="message" rows={3} maxLength={2000} className={field} />
+                <label htmlFor="lf-message" className="mb-1 block text-xs text-muted">{s.labelMessage}</label>
+                <textarea id="lf-message" name="message" rows={3} maxLength={2000} className={field} />
               </div>
               <button type="submit" className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand/90">
                 {s.send}
