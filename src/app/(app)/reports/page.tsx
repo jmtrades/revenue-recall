@@ -1,7 +1,8 @@
 import { getReports } from "@/lib/queries";
 import { clickStats, engagementStats } from "@/lib/tracking";
 import { bookingStats } from "@/lib/meetings/stats";
-import { callStats } from "@/lib/calls/analytics";
+import { callStats, bestCallWindow, windowLabel } from "@/lib/calls/analytics";
+import { getOrgSettings } from "@/lib/org";
 import { resolveProvider } from "@/lib/crm/registry";
 import { compactMoney, money, pct } from "@/lib/format";
 import { PageHeader, Stat, Card, Avatar } from "@/components/ui";
@@ -12,15 +13,17 @@ export const metadata = { title: "Reports" };
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  const [r, clicks, meetings, engagement, recentActs] = await Promise.all([
+  const [r, clicks, meetings, engagement, recentActs, org] = await Promise.all([
     getReports(),
     clickStats(),
     bookingStats(),
     engagementStats(),
     resolveProvider().then((p) => p.listRecentActivities(500)).catch(() => [] as Activity[]),
+    getOrgSettings(),
   ]);
   const m = r.metrics;
   const calls = callStats(recentActs);
+  const { best: bestWindow } = bestCallWindow(recentActs, 30, new Date(), org.timezone || undefined);
 
   return (
     <div className="space-y-6">
@@ -57,6 +60,11 @@ export default async function ReportsPage() {
               <p className="stat-label mb-2">Dials per day</p>
               <BarChart data={calls.perDay} height={120} color="rgb(var(--brand-rgb))" />
             </div>
+            {bestWindow && (
+              <p className="text-sm text-muted">
+                Best window: <span className="font-medium text-fg">{windowLabel(bestWindow.hour)}</span> — {pct(bestWindow.connectRate)} connect rate over the last 30 days. Stack your call blocks there.
+              </p>
+            )}
           </div>
         )}
       </Card>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { callStats, callOutcomeOf, callSeconds } from "@/lib/calls/analytics";
+import { callStats, callOutcomeOf, callSeconds, bestCallWindow, windowLabel, MIN_SAMPLE_DIALS, MIN_WINDOW_DIALS } from "@/lib/calls/analytics";
 import { QUICK_OUTCOMES } from "@/lib/dialer-flow";
 import type { Activity } from "@/lib/crm/types";
 
@@ -67,5 +67,72 @@ describe("callStats over a week of activity", () => {
     const s = callStats([call("[Connected] hi — Next: x", 1), call("[No answer] z", 1)], 7, NOW);
     expect(s.perDay[6].value).toBe(2); // newest bucket = today
     expect(s.perDay.slice(0, 6).every((d) => d.value === 0)).toBe(true);
+  });
+});
+
+describe("hour-window labels", () => {
+  it("reads like a human wrote it, across noon and midnight", () => {
+    expect(windowLabel(9)).toBe("9–10 AM");
+    expect(windowLabel(11)).toBe("11 AM–12 PM");
+    expect(windowLabel(12)).toBe("12–1 PM");
+    expect(windowLabel(13)).toBe("1–2 PM");
+    expect(windowLabel(23)).toBe("11 PM–12 AM");
+    expect(windowLabel(0)).toBe("12–1 AM");
+  });
+});
+
+describe("best time to call", () => {
+  const CONNECT = "[Connected] good talk — Next: comps";
+  const MISS = QUICK_OUTCOMES[0].line; // [No answer]
+  // n dials in the given UTC hour (minute offsets keep timestamps unique),
+  // the first `connects` of them connected.
+  const block = (n: number, connects: number, hourUtc: number): Activity[] =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `d${hourUtc}-${i}`,
+      kind: "call",
+      direction: "outbound",
+      summary: i < connects ? CONNECT : MISS,
+      occurredAt: `2026-06-10T${String(hourUtc).padStart(2, "0")}:${String(i).padStart(2, "0")}:00Z`,
+    }) as Activity);
+
+  // 30 dials: 10am UTC runs 50%, 3pm runs 25%, 8pm never connects.
+  const SAMPLE = [...block(10, 5, 10), ...block(12, 3, 15), ...block(8, 0, 20)];
+
+  it("stays silent until there's enough signal (a thin sample would crown a fluke)", () => {
+    const { best, sampleDials } = bestCallWindow(SAMPLE.slice(0, MIN_SAMPLE_DIALS - 1), 30, NOW);
+    expect(best).toBeNull();
+    expect(sampleDials).toBe(MIN_SAMPLE_DIALS - 1);
+  });
+
+  it("picks the hour with the best connect rate, skipping zero-connect hours", () => {
+    const { best, sampleDials } = bestCallWindow(SAMPLE, 30, NOW);
+    expect(sampleDials).toBe(30);
+    expect(best?.hour).toBe(10);
+    expect(best?.connectRate).toBeCloseTo(0.5, 3);
+  });
+
+  it("never crowns an hour below the per-hour dial minimum, even at a perfect rate", () => {
+    const thinPerfect = block(MIN_WINDOW_DIALS - 1, MIN_WINDOW_DIALS - 1, 7); // 7/7 connects at 7am — too thin
+    const { best } = bestCallWindow([...SAMPLE, ...thinPerfect], 30, NOW);
+    expect(best?.hour).toBe(10);
+  });
+
+  it("buckets in the org's timezone — 10am UTC is the 6am hour in New York (June)", () => {
+    const { best } = bestCallWindow(SAMPLE, 30, NOW, "America/New_York");
+    expect(best?.hour).toBe(6);
+  });
+
+  it("breaks rate ties toward the bigger sample, then the earlier hour", () => {
+    const moreDials = [...block(8, 4, 9), ...block(10, 5, 11), ...block(12, 0, 20)];
+    expect(bestCallWindow(moreDials, 30, NOW).best?.hour).toBe(11); // same 50%, 11am has more dials
+    const dead = [...block(8, 4, 9), ...block(8, 4, 11), ...block(14, 0, 20)];
+    expect(bestCallWindow(dead, 30, NOW).best?.hour).toBe(9); // identical — earlier hour is the stable answer
+  });
+
+  it("ignores dials outside the trailing window", () => {
+    const old = block(40, 20, 10).map((a) => ({ ...a, occurredAt: a.occurredAt!.replace("2026-06-10", "2026-04-01") }));
+    const { best, sampleDials } = bestCallWindow(old, 30, NOW);
+    expect(sampleDials).toBe(0);
+    expect(best).toBeNull();
   });
 });

@@ -1,5 +1,6 @@
 import type { Activity } from "@/lib/crm/types";
 import { isRetryableOutcome, isVoicemailOutcome } from "@/lib/calls/retry";
+import { hourInZone } from "@/lib/tz";
 
 /**
  * Call analytics — the reporting layer of the dial-volume story. The plans sell
@@ -85,4 +86,59 @@ export function callStats(activities: Activity[], days = 7, now: Date = new Date
     talkMinutes: Number((talkSeconds / 60).toFixed(1)),
     perDay,
   };
+}
+
+// ---- best time to call -------------------------------------------------------
+// Connect rate by hour-of-day, from the org's OWN dial history — not a generic
+// "call between 4 and 5" blog claim. At ~100 dials/day the sample builds within
+// a week, and steering those dials into the proven window is the cheapest
+// connect-rate lift there is. Hours are bucketed in the org's timezone (the
+// rep's clock), falling back to UTC like the digests do.
+
+export interface CallWindow {
+  /** Local hour the window starts (0–23); the window is one hour wide. */
+  hour: number;
+  dials: number;
+  connects: number;
+  connectRate: number;
+}
+
+/** A single hour needs this many dials before its rate means anything. */
+export const MIN_WINDOW_DIALS = 8;
+/** And the whole sample needs this many dials before we claim a "best" window. */
+export const MIN_SAMPLE_DIALS = 30;
+
+/** "9–10 AM", "11 AM–12 PM", "12–1 PM", "11 PM–12 AM". */
+export function windowLabel(hour: number): string {
+  const h12 = (h: number) => (h % 12 === 0 ? 12 : h % 12);
+  const mer = (h: number) => (h % 24 < 12 ? "AM" : "PM");
+  const end = hour + 1;
+  return mer(hour) === mer(end % 24) ? `${h12(hour)}–${h12(end)} ${mer(end % 24)}` : `${h12(hour)} ${mer(hour)}–${h12(end)} ${mer(end % 24)}`;
+}
+
+/** The org's statistically-best calling hour over the trailing window, or null
+ *  until there's enough signal (a thin sample would crown a fluke). Ties go to
+ *  the hour with more dials, then the earlier hour, so the answer is stable. */
+export function bestCallWindow(activities: Activity[], days = 30, now: Date = new Date(), tz?: string): { best: CallWindow | null; sampleDials: number } {
+  const since = now.getTime() - days * DAY_MS;
+  const byHour = Array.from({ length: 24 }, (_, hour) => ({ hour, dials: 0, connects: 0, connectRate: 0 }));
+  let sampleDials = 0;
+  for (const a of activities) {
+    if (a.kind !== "call" || a.direction !== "outbound" || !a.occurredAt) continue;
+    const d = new Date(a.occurredAt);
+    if (!(d.getTime() > since)) continue;
+    sampleDials++;
+    const bucket = byHour[hourInZone(d, tz)];
+    bucket.dials++;
+    const outcome = callOutcomeOf(a.summary ?? "");
+    if (!isVoicemailOutcome(outcome) && !isRetryableOutcome(outcome)) bucket.connects++;
+  }
+  for (const b of byHour) b.connectRate = b.dials > 0 ? b.connects / b.dials : 0;
+  if (sampleDials < MIN_SAMPLE_DIALS) return { best: null, sampleDials };
+  let best: CallWindow | null = null;
+  for (const b of byHour) {
+    if (b.dials < MIN_WINDOW_DIALS || b.connects === 0) continue;
+    if (!best || b.connectRate > best.connectRate || (b.connectRate === best.connectRate && b.dials > best.dials)) best = b;
+  }
+  return { best, sampleDials };
 }
