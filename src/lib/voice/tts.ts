@@ -68,18 +68,46 @@ export const ELEVEN_VOICES: Record<string, string> = {
   bm_george: "JBFqnCBsd6RMkjVDRZzb", // George — male UK
 };
 
-/** OpenAI TTS voice names. */
+/** OpenAI TTS voice names (the full house catalog mapped to valid OpenAI
+ *  voices — a small fixed set, so several house voices share an OpenAI voice;
+ *  gender stays matched). */
 export const OPENAI_VOICES: Record<string, string> = {
   af_heart: "coral",
   af_bella: "shimmer",
   af_nicole: "sage",
   af_nova: "nova",
+  af_sarah: "shimmer",
+  af_sky: "coral",
+  af_jessica: "sage",
+  af_river: "alloy",
   am_adam: "onyx",
   am_michael: "echo",
   am_onyx: "ash",
+  am_echo: "echo",
+  am_eric: "ash",
+  am_liam: "verse",
+  am_fenrir: "onyx",
+  am_puck: "ballad",
   bf_emma: "ballad",
+  bf_alice: "shimmer",
+  bf_lily: "coral",
   bm_george: "fable",
+  bm_daniel: "onyx",
+  bm_lewis: "ash",
+  bm_fable: "fable",
 };
+
+/** Gender/accent-aware default within the confidently-mapped set. A house voice
+ *  without an exact provider mapping still resolves to a voice of the SAME group
+ *  (male UK → a male-UK default), never a mismatched one — so adding a new house
+ *  voice never makes a hosted call sound like the wrong person. */
+function groupDefault(voiceId: string): string {
+  const g = voiceId.slice(0, 2);
+  if (g === "am") return "am_adam";
+  if (g === "bf") return "bf_emma";
+  if (g === "bm") return "bm_george";
+  return "af_heart"; // af_ and anything unrecognized
+}
 
 /** Optional per-house-voice override map for Cartesia (JSON env), since its
  *  voices are account-scoped UUIDs: CARTESIA_VOICE_MAP='{"af_heart":"<uuid>",…}'.
@@ -107,13 +135,11 @@ export function providerVoice(provider: TtsProvider, voiceId?: string | null): s
   const id = voiceId && !voiceId.startsWith("clone:") ? voiceId : DEFAULT_HOUSE_VOICE;
   if (provider === "cartesia") return cartesiaVoice(voiceId);
   if (provider === "elevenlabs") {
-    return env("ELEVENLABS_VOICE_ID") && id === DEFAULT_HOUSE_VOICE
-      ? env("ELEVENLABS_VOICE_ID")!
-      : ELEVEN_VOICES[id] ?? ELEVEN_VOICES[DEFAULT_HOUSE_VOICE];
+    if (env("ELEVENLABS_VOICE_ID") && id === DEFAULT_HOUSE_VOICE) return env("ELEVENLABS_VOICE_ID")!;
+    return ELEVEN_VOICES[id] ?? ELEVEN_VOICES[groupDefault(id)] ?? ELEVEN_VOICES[DEFAULT_HOUSE_VOICE];
   }
-  return env("OPENAI_TTS_VOICE") && id === DEFAULT_HOUSE_VOICE
-    ? env("OPENAI_TTS_VOICE")!
-    : OPENAI_VOICES[id] ?? OPENAI_VOICES[DEFAULT_HOUSE_VOICE];
+  if (env("OPENAI_TTS_VOICE") && id === DEFAULT_HOUSE_VOICE) return env("OPENAI_TTS_VOICE")!;
+  return OPENAI_VOICES[id] ?? OPENAI_VOICES[groupDefault(id)] ?? OPENAI_VOICES[DEFAULT_HOUSE_VOICE];
 }
 
 /** ElevenLabs delivery settings per emotion. Lower stability = more expressive;

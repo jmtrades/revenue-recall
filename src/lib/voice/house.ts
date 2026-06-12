@@ -15,15 +15,33 @@ export interface HouseVoice {
 }
 
 export const HOUSE_VOICES: HouseVoice[] = [
+  // US female
   { id: "af_heart", label: "Aria", description: "Warm female · US" },
   { id: "af_bella", label: "Bella", description: "Bright female · US" },
   { id: "af_nicole", label: "Nicole", description: "Soft female · US" },
   { id: "af_nova", label: "Nova", description: "Confident female · US" },
+  { id: "af_sarah", label: "Sarah", description: "Clear female · US" },
+  { id: "af_sky", label: "Sky", description: "Youthful female · US" },
+  { id: "af_jessica", label: "Jessica", description: "Polished female · US" },
+  { id: "af_river", label: "River", description: "Calm female · US" },
+  // US male
   { id: "am_adam", label: "Adam", description: "Steady male · US" },
   { id: "am_michael", label: "Michael", description: "Friendly male · US" },
   { id: "am_onyx", label: "Onyx", description: "Deep male · US" },
+  { id: "am_echo", label: "Echo", description: "Even male · US" },
+  { id: "am_eric", label: "Eric", description: "Crisp male · US" },
+  { id: "am_liam", label: "Liam", description: "Approachable male · US" },
+  { id: "am_fenrir", label: "Fenrir", description: "Bold male · US" },
+  { id: "am_puck", label: "Puck", description: "Upbeat male · US" },
+  // UK female
   { id: "bf_emma", label: "Emma", description: "Female · UK" },
+  { id: "bf_alice", label: "Alice", description: "Bright female · UK" },
+  { id: "bf_lily", label: "Lily", description: "Soft female · UK" },
+  // UK male
   { id: "bm_george", label: "George", description: "Male · UK" },
+  { id: "bm_daniel", label: "Daniel", description: "Refined male · UK" },
+  { id: "bm_lewis", label: "Lewis", description: "Deep male · UK" },
+  { id: "bm_fable", label: "Fable", description: "Storyteller male · UK" },
 ];
 
 /** The default house voice (matches the gateway's Kokoro default). */
