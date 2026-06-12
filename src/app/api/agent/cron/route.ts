@@ -12,6 +12,7 @@ import { autopilotLockKey, digestLockKey } from "@/lib/agent/lock";
 import { sendAlert, isErrored } from "@/lib/alert";
 import { cleanupRateLimits } from "@/lib/ratelimit";
 import { ensureStripeCatalogCurrent } from "@/lib/billing/provision";
+import { runUsageNudge } from "@/lib/billing/usage-nudge";
 import { runPlatformPulse } from "@/lib/platform-pulse";
 import { acquireCronLock, releaseCronLock } from "@/lib/cron-lock";
 import { mapWithConcurrency } from "@/lib/async";
@@ -115,12 +116,16 @@ async function runForCurrentOrg() {
       await releaseCronLock(digestKey, digestFence);
     }
   }
+  // Usage-runway nudge: email the owner when this month's talk minutes or AI
+  // messages cross 80% / run out — the silent mid-month stall is the churn
+  // moment the in-app meters alone can't catch. Self-deduped per pool per month.
+  const usageNudge = await runUsageNudge().catch((e) => ({ error: e instanceof Error ? e.message : "usage nudge failed" }));
   // Surface engine errors to the operator — an autonomous tick that silently
   // errors every run would otherwise go unnoticed.
-  for (const [stage, result] of Object.entries({ cadence, batches, digests, callRetries, reminders, idleRules })) {
+  for (const [stage, result] of Object.entries({ cadence, batches, digests, callRetries, reminders, idleRules, usageNudge })) {
     if (isErrored(result)) await sendAlert(`cron.${stage}`, { error: result.error });
   }
-  return { ran: results.length, results, autopilotLocked: !fence, cadence, batches, digests, callRetries, reminders, idleRules };
+  return { ran: results.length, results, autopilotLocked: !fence, cadence, batches, digests, callRetries, reminders, idleRules, usageNudge };
 }
 
 /** Fan out: process every org in its own authenticated sub-request so each gets

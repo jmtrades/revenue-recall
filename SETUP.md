@@ -155,7 +155,7 @@ point a webhook at `…/api/billing/webhook`.
 | `STRIPE_PRICE_TOPUP_M1000` | +1,000 talk minutes (≈1,500 dials) | $159 (one-time) |
 | `STRIPE_PRICE_TOPUP_M3000` | +3,000 talk minutes (best rate) | $469 (one-time) |
 
-An "AI message" = each email, text, call script, or reply the AI writes. Included monthly pools: Starter 50 · Operator 1,500 · Autopilot 10,000 · Scale unlimited. Customers see live meters + buy both kinds of top-up in Settings → Billing; minute packs also keep the dialer running the moment a plan's talk minutes run dry (per-minute pack rates clear ~45–60% margin even at full premium-voice burn).
+An "AI message" = each email, text, call script, or reply the AI writes. Included monthly pools: Starter 50 · Operator 1,500 · Autopilot 10,000 · Scale unlimited. Customers see live meters + buy both kinds of top-up in Settings → Billing; minute packs also keep the dialer running the moment a plan's talk minutes run dry (per-minute pack rates clear ~45–60% margin even at full premium-voice burn). The platform also nudges by itself: when a workspace crosses **80%** of its monthly minutes or messages (and again at 100%), the owner gets one email with the remaining runway in dials and the pack prices — at most one "low" + one "out" per pool per month, automatic on the hourly cron.
 
 ### Skip the Stripe dashboard — auto-create everything
 You don't have to create products/prices by hand. Set **`STRIPE_SECRET_KEY`** (and `ADMIN_TOKEN`) in Vercel, redeploy, then run this **once**:
