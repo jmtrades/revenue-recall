@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { ttsProvider, ttsAvailable, providerVoice, cartesiaVoice, elevenSettings, openaiInstructions, ELEVEN_VOICES, OPENAI_VOICES, synthesizeSpeech } from "@/lib/voice/tts";
+import { ttsProvider, ttsAvailable, providerVoice, cartesiaVoice, elevenSettings, elevenModel, openaiInstructions, ELEVEN_VOICES, OPENAI_VOICES, synthesizeSpeech } from "@/lib/voice/tts";
 import { HOUSE_VOICES } from "@/lib/voice/house";
 
 const CLEAR = [
@@ -12,6 +12,8 @@ const CLEAR = [
   "CARTESIA_VOICE_ID",
   "CARTESIA_VOICE_MAP",
   "VOICE_TTS_PROVIDER",
+  "ELEVENLABS_MODEL",
+  "ELEVENLABS_MODEL_HQ",
 ];
 
 beforeEach(() => {
@@ -120,6 +122,26 @@ describe("house voice → provider voice mapping", () => {
     process.env.ELEVENLABS_VOICE_ID = "custom_el";
     expect(providerVoice("elevenlabs", undefined)).toBe("custom_el");
     expect(providerVoice("elevenlabs", "am_adam")).toBe(ELEVEN_VOICES.am_adam);
+  });
+});
+
+describe("ElevenLabs quality tier", () => {
+  it("realtime uses the low-latency Flash model the call margins are priced on", () => {
+    expect(elevenModel()).toBe("eleven_flash_v2_5");
+    expect(elevenModel("realtime")).toBe("eleven_flash_v2_5");
+  });
+
+  it("max uses the highest-quality production model for non-realtime audio", () => {
+    expect(elevenModel("max")).toBe("eleven_multilingual_v2");
+  });
+
+  it("both tiers are env-overridable, independently", () => {
+    process.env.ELEVENLABS_MODEL = "eleven_turbo_v2_5";
+    process.env.ELEVENLABS_MODEL_HQ = "eleven_v3";
+    expect(elevenModel("realtime")).toBe("eleven_turbo_v2_5");
+    expect(elevenModel("max")).toBe("eleven_v3");
+    delete process.env.ELEVENLABS_MODEL;
+    delete process.env.ELEVENLABS_MODEL_HQ;
   });
 });
 
