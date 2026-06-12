@@ -34,10 +34,10 @@ export async function ownerEmailsForOrg(orgId: string): Promise<string[]> {
   return rows.filter((r) => r.email).map((r) => r.email!);
 }
 
-async function deliver(to: string[], subject: string, body: string): Promise<boolean> {
+async function deliver(to: string[], subject: string, body: string, cta?: { label: string; url: string }): Promise<boolean> {
   let ok = false;
   for (const addr of to) {
-    const r = await sendEmail(addr, subject, body, { internal: true }).catch(() => null);
+    const r = await sendEmail(addr, subject, body, { internal: true, cta }).catch(() => null);
     if (r && r.status !== "failed") ok = true;
   }
   return ok;
@@ -62,7 +62,7 @@ export async function sendPaymentFailedEmail(orgId: string, eventId?: string): P
     "",
     "Need a hand? Reply to this email.",
   ].join("\n");
-  const ok = await deliver(to, "Action needed: your Revenue Recall payment didn't go through", body);
+  const ok = await deliver(to, "Action needed: your Revenue Recall payment didn't go through", body, { label: "Update billing", url: appLink("/settings?tab=billing") });
   if (ok) logInfo("lifecycle.dunning_sent", { orgId });
   return ok ? { sent: true } : { sent: false, reason: "send_failed" };
 }
@@ -98,7 +98,7 @@ export async function sendCancellationEmail(orgId: string, eventId?: string): Pr
   // session) via the same org-scoping the cron uses. Best-effort: a stats
   // hiccup must never block the goodbye note.
   const outcomes = await runWithOrg(orgId, () => getRecallOutcomes()).catch(() => null);
-  const ok = await deliver(to, "Your AI rep is off — here's where things stand", winbackBody(outcomes));
+  const ok = await deliver(to, "Your AI rep is off — here's where things stand", winbackBody(outcomes), { label: "Turn it back on", url: appLink("/settings?tab=billing") });
   if (ok) logInfo("lifecycle.winback_sent", { orgId });
   return ok ? { sent: true } : { sent: false, reason: "send_failed" };
 }
@@ -117,6 +117,6 @@ export async function sendWelcomeEmail(to: string, name?: string): Promise<Lifec
     "",
     "Questions at any point — just reply to this email.",
   ].join("\n");
-  const ok = await deliver([to], "Welcome to Revenue Recall — your workspace is live", body);
+  const ok = await deliver([to], "Welcome to Revenue Recall — your workspace is live", body, { label: "Open your recall queue", url: appLink("/recall") });
   return ok ? { sent: true } : { sent: false, reason: "send_failed" };
 }
