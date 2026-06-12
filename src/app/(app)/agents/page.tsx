@@ -35,6 +35,7 @@ export default async function AgentsPage() {
     "Never contacts opt-outs",
     `Re-engages a soft "no" after ${g.declineCooldownDays}d`,
     `Won't re-touch within ${g.cooldownDays}d`,
+    "Calls & texts only 8am–9pm the prospect's time",
     ...(g.quietHours ? [`Quiet hours ${g.quietHours}`] : []),
     g.dailyCap === null ? "No send cap" : `Cap ${g.dailyCap}/run`,
   ];

@@ -36,6 +36,36 @@ export function quickOutcome(id: string): QuickOutcome | undefined {
   return QUICK_OUTCOMES.find((o) => o.id === id);
 }
 
+/** Last-10-digit key for "same human, different lead rows" detection. NANP
+ *  numbers compare equal across every format ("+1 (415) 555-0100" vs
+ *  "4155550100"); anything shorter than 10 digits is too ambiguous to match. */
+export function phoneKey(phone: string | null | undefined): string | null {
+  const d = (phone ?? "").replace(/\D/g, "");
+  return d.length >= 10 ? d.slice(-10) : null;
+}
+
+export interface DuplicateInfo {
+  firstName: string;
+  firstIndex: number;
+}
+
+/** Queue index → the EARLIER queue entry sharing the same number. CSV imports
+ *  routinely carry the same human under two lead rows; at 100 dials a day that
+ *  means ringing someone you hung up with twenty minutes ago. Detection only —
+ *  merging records is a human decision. */
+export function duplicatePhoneIndexes(queue: { phone: string; contactName: string }[]): Map<number, DuplicateInfo> {
+  const seen = new Map<string, { name: string; index: number }>();
+  const dups = new Map<number, DuplicateInfo>();
+  queue.forEach((q, i) => {
+    const key = phoneKey(q.phone);
+    if (!key) return;
+    const first = seen.get(key);
+    if (first) dups.set(i, { firstName: first.name, firstIndex: first.index });
+    else seen.set(key, { name: q.contactName, index: i });
+  });
+  return dups;
+}
+
 export type DialerKeyAction =
   | { kind: "call" }
   | { kind: "quick"; outcomeId: string }
