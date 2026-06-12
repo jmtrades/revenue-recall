@@ -1,10 +1,21 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isAuthRequired } from "@/lib/config";
-import { isPublicRoute } from "@/lib/route-access";
+import { isPublicRoute, requiresSameOrigin, isSameOriginRequest } from "@/lib/route-access";
 
 export async function middleware(req: NextRequest) {
   let res = NextResponse.next({ request: req });
+
+  // CSRF defense-in-depth, applied first so it holds in every mode: a session-
+  // cookie-authed /api mutation must be same-origin. Machine webhooks (Stripe/
+  // Twilio/cron/inbound/API-key v1/HMAC form posts) are exempt — they're
+  // cross-origin by design and carry their own signature/secret auth.
+  if (requiresSameOrigin(req.method, req.nextUrl.pathname)) {
+    const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? req.nextUrl.host;
+    if (!isSameOriginRequest(req.headers.get("origin"), req.headers.get("referer"), host)) {
+      return NextResponse.json({ error: "Cross-origin request blocked" }, { status: 403 });
+    }
+  }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
