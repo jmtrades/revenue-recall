@@ -9,7 +9,7 @@ vi.mock("@/lib/crm/registry", async (orig) => ({
   resolveProvider: vi.fn(async () => ({
     info: () => ({ id: "builtin", label: "Built-in", capabilities: { read: true, write: true, activities: true, customFields: true }, ready: true }),
     listContacts: async () => h.contacts,
-    updateContact: async (id: string, patch: { attributes?: Record<string, unknown> }) => {
+    updateContact: async (id: string, patch: { attributes?: Contact["attributes"] }) => {
       const c = h.contacts.find((x) => x.id === id)!;
       c.attributes = { ...(c.attributes ?? {}), ...(patch.attributes ?? {}) };
       return c;
@@ -22,7 +22,7 @@ import { listSuppressed, suppressEmail, unsuppressEmail } from "@/lib/suppressio
 import { GET, POST } from "@/app/api/suppression/route";
 import { _resetRateLimit } from "@/lib/ratelimit";
 
-function contact(id: string, email: string, attributes: Record<string, unknown> = {}): Contact {
+function contact(id: string, email: string, attributes: NonNullable<Contact["attributes"]> = {}): Contact {
   return { id, name: `Contact ${id}`, points: [{ channel: "email", value: email }], attributes };
 }
 

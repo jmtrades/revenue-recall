@@ -5,6 +5,7 @@ import { getSupabase } from "@/lib/supabase/client";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 import { planAccountDeletion } from "@/lib/account-deletion";
+import { purgeOrgRecordings } from "@/lib/calls/recordings";
 import { recordAudit } from "@/lib/audit";
 import { logInfo, logError, errMessage } from "@/lib/log";
 
@@ -43,6 +44,15 @@ export async function POST(req: Request) {
       const plan = planAccountDeletion(member.role, others);
       if (plan.action === "block") return NextResponse.json({ error: plan.reason }, { status: 409 });
       if (plan.action === "delete_org") {
+        // Erasure covers the call recordings themselves, not just the DB rows
+        // that point at them — purge external audio BEFORE the cascade destroys
+        // the only index of what exists. Failures are logged with URLs (and
+        // audited) so an operator can finish by hand; they don't block the
+        // deletion the user is entitled to.
+        const recordings = await purgeOrgRecordings(member.org_id).catch(() => null);
+        if (recordings && recordings.failed.length > 0) {
+          await recordAudit("account.recordings_purge_incomplete", `${recordings.failed.length} recordings — see server logs`).catch(() => {});
+        }
         await admin.from("orgs").delete().eq("id", member.org_id); // sole member → cascades their data only
       } else {
         await admin.from("members").delete().eq("auth_user_id", user.id).eq("org_id", member.org_id);

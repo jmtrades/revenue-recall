@@ -16,7 +16,8 @@ describe("placeCall threads the voicemail script to the voice transport", () => 
     });
     const r = await placeCall("+15551234567", { opener: "Hey Sam — got a sec?", voicemail: "Hey Sam, it's Alex — quick one, ring me back." });
     expect(r.status).toBe("queued");
-    expect(captured?.voicemail).toBe("Hey Sam, it's Alex — quick one, ring me back.");
-    expect(captured?.opener).toBe("Hey Sam — got a sec?");
+    const got = captured as VoiceCall | null;
+    expect(got?.voicemail).toBe("Hey Sam, it's Alex — quick one, ring me back.");
+    expect(got?.opener).toBe("Hey Sam — got a sec?");
   });
 });

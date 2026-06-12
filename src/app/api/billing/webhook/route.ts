@@ -143,10 +143,10 @@ export async function POST(req: Request) {
         break;
     }
   } catch (err) {
-    // Return 5xx so Stripe RETRIES (its backoff over ~3 days is the safety net).
+    // Return 5xx so Stripe RETRIES (its backoff over ~3 days is the first safety
+    // net; the hourly reconcile sweep in lib/billing/reconcile.ts is the second).
     // A handler error here usually means a failed DB write — swallowing it with a
-    // 200 would permanently strand a paying customer on `free`, because the
-    // webhook is the ONLY path that grants a plan (there's no reconcile job).
+    // 200 would strand a paying customer on `free` until the next reconcile.
     // Every handler is idempotent (top-ups keyed on the Stripe session id;
     // subscription writes upsert by org/customer), so a retry can't double-apply.
     logError("billing.webhook.handler_failed", { type: event.type, error: errMessage(err) });

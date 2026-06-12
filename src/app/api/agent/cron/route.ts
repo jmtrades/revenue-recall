@@ -12,6 +12,8 @@ import { autopilotLockKey, digestLockKey } from "@/lib/agent/lock";
 import { sendAlert, isErrored } from "@/lib/alert";
 import { cleanupRateLimits } from "@/lib/ratelimit";
 import { ensureStripeCatalogCurrent } from "@/lib/billing/provision";
+import { reconcileSubscriptions } from "@/lib/billing/reconcile";
+import { logError } from "@/lib/log";
 import { runUsageNudge } from "@/lib/billing/usage-nudge";
 import { runPlatformPulse } from "@/lib/platform-pulse";
 import { acquireCronLock, releaseCronLock } from "@/lib/cron-lock";
@@ -61,6 +63,14 @@ function authorized(req: Request): boolean {
   if (secret) {
     const header = req.headers.get("authorization") ?? "";
     return safeEqual(header, `Bearer ${secret}`);
+  }
+  // No secret: in production this gate stays CLOSED. The x-vercel-cron header is
+  // attacker-settable on any non-Vercel host, and even on Vercel a secret costs
+  // nothing (Vercel Cron sends `Authorization: Bearer $CRON_SECRET` automatically
+  // once the env var exists) — so a missing secret is a config error, not a mode.
+  if (process.env.NODE_ENV === "production") {
+    logError("cron.unauthorized_no_secret", { hint: "Set CRON_SECRET — the production cron refuses to run without it." });
+    return false;
   }
   return Boolean(req.headers.get("x-vercel-cron"));
 }
@@ -157,6 +167,14 @@ async function run(req: Request) {
   // Operator's weekly platform pulse (Mondays, durable once-per-week dedupe;
   // inert without OPERATOR_EMAIL). Best-effort — never blocks tenant work.
   await runPlatformPulse().catch(() => {});
+
+  // Stripe ↔ DB reconciliation: the webhook is the fast path, this sweep is the
+  // safety net for lost events and dashboard-side changes. Best-effort, bounded,
+  // and alerted on repair so drift is visible instead of silent.
+  const reconcile = await reconcileSubscriptions().catch(() => null);
+  if (reconcile && (reconcile.repaired > 0 || reconcile.relinked > 0 || reconcile.errors > 0)) {
+    void sendAlert("billing.reconcile", { ...reconcile });
+  }
 
   const secret = process.env.CRON_SECRET;
   const ids = await allOrgIds();

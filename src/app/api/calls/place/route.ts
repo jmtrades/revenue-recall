@@ -8,7 +8,8 @@ import { getActiveVoice } from "@/lib/voice";
 import { getOrgSettings } from "@/lib/org";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { withGuard } from "@/lib/api/guard";
-import { hasOptedOut, recordingDisclosure } from "@/lib/agent/guardrails";
+import { aiDisclosure, hasOptedOut, recordingDisclosure } from "@/lib/agent/guardrails";
+import { courtesyCallDecision } from "@/lib/calls/local-time";
 import { enforcementOn } from "@/lib/billing/enforce";
 import { isWithinVoiceMinutes } from "@/lib/billing/voice-minutes";
 import { voicemailScript } from "@/lib/voice/voicemail";
@@ -46,6 +47,24 @@ export const POST = withGuard(async (req: Request) => {
     return NextResponse.json({ error: "This contact has opted out or is marked do-not-contact." }, { status: 403 });
   }
 
+  // This org's settings, fetched once: timezone for the courtesy gate, caller-ID
+  // + org id for the gateway echo below, the org name for the AI disclosure, and
+  // the industry that grounds the voicemail's call-back hook.
+  const org = await getOrgSettings().catch(() => null);
+
+  // TCPA calling window (8am–9pm in the PROSPECT's local time) applies to a rep
+  // pressing "Call" exactly as much as to autopilot — this is the gate the
+  // autonomous paths already enforce. Unknown zones fall back to the org clock,
+  // never open.
+  const courtesy = courtesyCallDecision(to, org?.timezone, new Date());
+  if (!courtesy.allowed) {
+    const whose = courtesy.basis === "prospect" ? "this prospect's local time" : "your workspace clock (their timezone is unknown)";
+    return NextResponse.json(
+      { error: `It's ${courtesy.hour}:00 on ${whose} — calls can go out 8am–9pm (TCPA). The dialer will be clear when their window opens.` },
+      { status: 403 },
+    );
+  }
+
   // Voice-minutes allowance: every connected minute has real COGS (telephony +
   // STT + premium voice + the model), so when billing enforcement is on, calls
   // gate on the plan's included minutes. Open demos / self-hosted stay unmetered.
@@ -57,24 +76,25 @@ export const POST = withGuard(async (req: Request) => {
   }
 
   // Brief the in-house agent so it talks like it knows the prospect. Best-effort:
-  // This org's settings, fetched once: caller-ID + org id for the gateway echo
-  // below, and the industry that grounds the voicemail's call-back hook.
-  const org = await getOrgSettings().catch(() => null);
-
   // never let context-building block the call.
   let context: string | undefined;
   let opener: string | undefined;
   let voicemail: string | undefined;
+  let repName: string | undefined;
   try {
     const voice = await getActiveVoice();
     const rep = voice.senderName?.trim();
+    repName = rep || undefined;
     const first = (contact?.name ?? "").trim().split(/\s+/)[0] || "there";
     const bits: string[] = [];
     if (contact?.name) bits.push(`You're calling ${oneLineUntrusted(contact.name)}${contact.company ? ` at ${oneLineUntrusted(contact.company)}` : ""}.`);
     if (opp?.title) bits.push(`It's about "${oneLineUntrusted(opp.title, 200)}"${opp.value ? ` — worth ${opp.currency ?? ""}${opp.value.toLocaleString()}` : ""}.`);
     if (opp?.lossReason) bits.push("This deal went cold / was marked lost — you're re-engaging warmly, no guilt-trip.");
     if (voice.business) bits.push(`Your business: ${voice.business}`);
-    if (rep) bits.push(`You are ${rep}.`);
+    // With the AI disclosure on (the default), the agent presents as the rep's
+    // AI assistant — the opener already said so, and "it's Sam" would be a lie.
+    const disclosing = aiDisclosure({}) !== null;
+    if (rep) bits.push(disclosing ? `You are ${rep}'s AI assistant — be open about that if it comes up.` : `You are ${rep}.`);
     // Memory: brief the agent with the recent relationship history (most recent
     // last) so it speaks like it remembers prior touches, not from a blank slate.
     const recent = activities
@@ -97,10 +117,10 @@ export const POST = withGuard(async (req: Request) => {
     context = bits.join(" ");
     opener =
       gapDays >= 21
-        ? rep
+        ? rep && !disclosing
           ? `Hey ${first}, it's ${rep} — been a while, I know. Caught you at an okay time?`
-          : `Hey ${first} — been a while! Got a quick sec?`
-        : rep
+          : `Hey ${first} — been a while, I know. Caught you at an okay time?`
+        : rep && !disclosing
           ? `Hey ${first}, it's ${rep} — caught you at an okay time?`
           : `Hey ${first} — caught you at an okay time?`;
     // A personalized voicemail to leave if the call hits a machine — gap-aware,
@@ -118,8 +138,11 @@ export const POST = withGuard(async (req: Request) => {
     /* context is a nicety; place the call regardless */
   }
 
-  // Recording disclosure (two-party-consent jurisdictions) is spoken first, even
-  // if context-building above failed.
+  // Disclosures are spoken first, even if context-building above failed: the
+  // AI-caller disclosure (on by default — state bot laws + FCC AI-voice rules),
+  // preceded by the recording disclosure (two-party-consent jurisdictions).
+  const ai = aiDisclosure({ orgName: org?.name ?? null, repName });
+  if (ai) opener = opener ? `${ai} ${opener}` : ai;
   const disclosure = recordingDisclosure();
   if (disclosure) opener = opener ? `${disclosure} ${opener}` : disclosure;
 

@@ -14,6 +14,7 @@ describe("security header framing policy", () => {
     const general = rules.find((r: { source: string }) => r.source.includes("(?!f/)"));
     expect(form).toBeTruthy();
     expect(general).toBeTruthy();
+    if (!form || !general) throw new Error("unreachable");
 
     const formHeaders = Object.fromEntries(form.headers.map((h: { key: string; value: string }) => [h.key, h.value]));
     const generalHeaders = Object.fromEntries(general.headers.map((h: { key: string; value: string }) => [h.key, h.value]));

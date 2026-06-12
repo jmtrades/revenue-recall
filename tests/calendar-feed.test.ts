@@ -23,13 +23,13 @@ describe("calendar feed token", () => {
     delete process.env.UNSUBSCRIBE_SECRET;
     delete process.env.INBOUND_TOKEN;
     delete process.env.CRON_SECRET;
-    process.env.NODE_ENV = "production";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
     try {
       expect(calendarFeedToken("org_1")).toBeNull();
       expect(verifyCalendarFeedToken("org_1", "anything")).toBe(false);
       expect(calendarFeedUrl("org_1")).toBeNull();
     } finally {
-      process.env.NODE_ENV = prevEnv;
+      (process.env as Record<string, string | undefined>).NODE_ENV = prevEnv;
       process.env.UNSUBSCRIBE_SECRET = "test-secret";
     }
   });

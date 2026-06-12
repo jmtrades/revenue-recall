@@ -41,9 +41,10 @@ Apply all migrations once, in order:
 SUPABASE_DB_URL="postgresql://postgres:PASSWORD@db.<ref>.supabase.co:5432/postgres" npm run db:migrate
 ```
 
-Or paste each file from `supabase/migrations/` (0001–0018) into the Supabase SQL
-Editor. Migrations are idempotent (`create … if not exists`). `0017` adds recall
-attribution; `0018` adds the opt-in draft-batch state.
+Or paste **every** file from `supabase/migrations/` into the Supabase SQL Editor,
+in numeric order — the folder is the source of truth (don't trust any doc that
+names a count; new migrations land regularly). Migrations are idempotent
+(`create … if not exists`); prefer `npm run db:migrate`, which tracks what ran.
 
 ## 4. Verify
 

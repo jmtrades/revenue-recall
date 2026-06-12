@@ -28,13 +28,13 @@ describe("booking token", () => {
     delete process.env.UNSUBSCRIBE_SECRET;
     delete process.env.INBOUND_TOKEN;
     delete process.env.CRON_SECRET;
-    process.env.NODE_ENV = "production";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
     try {
       expect(bookingToken("org_1")).toBeNull();
       expect(verifyBookingToken("org_1", "anything")).toBe(false);
       expect(hostedBookingUrl("org_1")).toBeNull();
     } finally {
-      process.env.NODE_ENV = prevEnv;
+      (process.env as Record<string, string | undefined>).NODE_ENV = prevEnv;
       process.env.UNSUBSCRIBE_SECRET = "test-secret";
     }
   });

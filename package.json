@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "typecheck:tests": "tsc -p tsconfig.tests.json --noEmit",
     "test": "vitest run",
     "smoke": "node scripts/smoke.mjs",
     "smoke:crm": "CRM_LIVE_SMOKE=1 vitest run tests/live/crm.live.test.ts",

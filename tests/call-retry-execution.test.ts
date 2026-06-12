@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { parseRetryTask, runCallRetries, scheduleCallRetry } from "@/lib/calls";
 import { createTask } from "@/lib/agent/store";
 import { getProvider } from "@/lib/crm/registry";
@@ -8,6 +8,10 @@ import { getProvider } from "@/lib/crm/registry";
 beforeEach(() => {
   delete process.env.AGENT_QUIET_START_UTC;
   delete process.env.AGENT_QUIET_END_UTC;
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("parseRetryTask", () => {
@@ -41,8 +45,12 @@ describe("runCallRetries", () => {
   });
 
   it("places a due retry once, then treats it as consumed on the next tick", async () => {
+    // Unknown-zone numbers now gate on the org clock (no more fail-open), so the
+    // fixture pins a mapped area code (212 → New York) at a mid-window moment.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-12T16:00:00Z")); // 12:00 in New York
     const p = getProvider();
-    const c = await p.createContact({ name: "Redial Me", points: [{ channel: "phone", value: "+15550100300" }] });
+    const c = await p.createContact({ name: "Redial Me", points: [{ channel: "phone", value: "+12125550300" }] });
     await p.logActivity({ contactId: c.id, kind: "call", direction: "outbound", summary: "no answer", occurredAt: new Date(Date.now() - 7_200_000).toISOString() });
     // A retry scheduled 2h ago that is due NOW (waitHours elapsed).
     await p.logActivity({

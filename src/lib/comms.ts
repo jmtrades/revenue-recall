@@ -277,7 +277,21 @@ export async function sendEmail(
   // Internal product mail (digests, reminders) isn't commercial outreach: no
   // CAN-SPAM footer, and definitely not the prospect-facing 'Reply "unsubscribe"'
   // line, which on an internal digest is a reply that does nothing.
-  const compliant = opts?.internal ? body : appendEmailCompliance(body, opts?.unsubscribeUrl, complianceConfig(opts?.compliance));
+  const cfg = complianceConfig(opts?.compliance);
+  // CAN-SPAM §7(a) requires a physical postal address on every commercial email
+  // — it is not optional, so in production a live transport refuses to send
+  // without one rather than quietly mailing non-compliant outreach.
+  // COMPLIANCE_REQUIRE_ADDRESS=false relaxes this for operators who add the
+  // address upstream (e.g. in their email gateway).
+  if (!opts?.internal && cfg.enabled && !cfg.address && t && process.env.NODE_ENV === "production" && process.env.COMPLIANCE_REQUIRE_ADDRESS !== "false") {
+    return {
+      id: "",
+      status: "failed",
+      provider: "compliance",
+      detail: "CAN-SPAM requires your business postal address on outreach email. Set it in Settings → General (or COMPLIANCE_ADDRESS) and resend.",
+    };
+  }
+  const compliant = opts?.internal ? body : appendEmailCompliance(body, opts?.unsubscribeUrl, cfg);
   // Product mail (internal) ships a branded HTML alternative alongside the text
   // part, with an optional prominent CTA button. Prospect outreach stays
   // plaintext-only on purpose: a personal email in the rep's voice must not look

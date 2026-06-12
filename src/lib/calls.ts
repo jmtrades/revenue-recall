@@ -1,6 +1,7 @@
 import { resolveProvider } from "@/lib/crm/registry";
 import { planCallRetry, isVoicemailOutcome, MAX_CALL_ATTEMPTS, type RetryPlan } from "@/lib/calls/retry";
-import { outsideCourtesyWindow } from "@/lib/calls/local-time";
+import { courtesyCallDecision } from "@/lib/calls/local-time";
+import { sendAlert } from "@/lib/alert";
 import { hasOptedOut, quietHoursNow } from "@/lib/agent/guardrails";
 import { listTasks } from "@/lib/agent/store";
 import { isEntitled } from "@/lib/billing/enforce";
@@ -289,9 +290,9 @@ export async function runCallRetries(now: Date = new Date()): Promise<RetryRunRe
       // PROSPECT-local courtesy hours (TCPA 8am–9pm, inferred from area code):
       // the org-clock quiet hours above can't see that 8:30am in New York is
       // 5:30am in San Francisco. Skipping leaves the task due, so the next
-      // hourly tick redials the moment their window opens. Unknown zones fail
-      // open — the org quiet hours already applied.
-      if (outsideCourtesyWindow(phone, now)) {
+      // hourly tick redials the moment their window opens. Unknown zones fall
+      // back to the org's clock — never open.
+      if (!courtesyCallDecision(phone, org.timezone, now).allowed) {
         result.skipped += 1;
         continue;
       }
@@ -306,16 +307,32 @@ export async function runCallRetries(now: Date = new Date()): Promise<RetryRunRe
         continue;
       }
       result.placed += 1;
-      await provider
-        .logActivity({
+      // This log is what marks the retry task CONSUMED (the check above looks
+      // for a later outbound call) — if it silently failed, the same prospect
+      // would be re-dialed every hour. So it retries, and a total failure pages
+      // the operator instead of vanishing.
+      let logged = false;
+      for (let attempt = 0; attempt < 3 && !logged; attempt++) {
+        try {
+          await provider.logActivity({
+            contactId: contact.id,
+            opportunityId: a.opportunityId,
+            kind: "call",
+            summary: `Autopilot retry call placed (attempt ${attempts + 1} of ${MAX_CALL_ATTEMPTS}).`,
+            direction: "outbound",
+            occurredAt: now.toISOString(),
+          });
+          logged = true;
+        } catch {
+          if (attempt < 2) await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
+        }
+      }
+      if (!logged) {
+        await sendAlert("calls.retry.consume_failed", {
           contactId: contact.id,
-          opportunityId: a.opportunityId,
-          kind: "call",
-          summary: `Autopilot retry call placed (attempt ${attempts + 1} of ${MAX_CALL_ATTEMPTS}).`,
-          direction: "outbound",
-          occurredAt: now.toISOString(),
-        })
-        .catch(() => {});
+          detail: "Retry call placed but the consuming activity log failed 3x — this contact may be re-dialed next tick.",
+        }).catch(() => {});
+      }
     }
   } catch {
     /* best-effort — the cron tick must never fail on retries */

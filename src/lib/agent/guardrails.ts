@@ -102,6 +102,23 @@ export function recordingDisclosure(): string | null {
   return v.length > 0 ? v : null;
 }
 
+/**
+ * AI-caller disclosure spoken at the top of every outbound call. ON by default:
+ * several states (e.g. California B&P 17941) and the FCC's AI-voice rules
+ * require an automated caller to identify itself, and the agent's brain is
+ * instructed to confirm honestly if asked. CALL_AI_DISCLOSURE customizes the
+ * wording; "off" disables it ONLY for operators who have verified their own
+ * jurisdictional footing — the safe default stands.
+ */
+export function aiDisclosure(opts?: { orgName?: string | null; repName?: string | null }): string | null {
+  const v = (process.env.CALL_AI_DISCLOSURE ?? "").trim();
+  if (/^(off|false|0|none)$/i.test(v)) return null;
+  if (v) return v;
+  const who = opts?.repName?.trim() ? `${opts.repName.trim()}'s AI assistant` : "an AI assistant";
+  const org = opts?.orgName?.trim() ? ` at ${opts.orgName.trim()}` : "";
+  return `Quick heads-up: I'm ${who}${org}.`;
+}
+
 /** Current guardrail configuration, for showing operators what's in effect. */
 export function guardrailConfig(): { cooldownDays: number; declineCooldownDays: number; dailyCap: number | null; quietHours: string | null } {
   const cap = dailySendCap();

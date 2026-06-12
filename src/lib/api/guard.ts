@@ -14,12 +14,18 @@ import { rateLimit } from "@/lib/ratelimit";
  * Handlers that already return their own error responses are unaffected — the
  * guard only catches what they DON'T handle.
  */
+// ctx is optional at the type level: Next always passes it, but handlers that
+// ignore it (most routes) can then be invoked as plain `POST(req)` — which is
+// exactly how the unit tests drive them.
 type RouteHandler<C> = (req: Request, ctx: C) => Promise<Response> | Response;
+type GuardedHandler<C> = (req: Request, ctx?: C) => Promise<Response>;
 
-export function withGuard<C = unknown>(handler: RouteHandler<C>): RouteHandler<C> {
-  return async (req: Request, ctx: C) => {
+export function withGuard<C = unknown>(handler: RouteHandler<C>): GuardedHandler<C> {
+  return async (req: Request, ctx?: C) => {
     try {
-      return await handler(req, ctx);
+      // Next always supplies ctx; the undefined case only exists for direct
+      // test invocation of routes that never read it.
+      return await handler(req, ctx as C);
     } catch (err) {
       const path = new URL(req.url).pathname;
       const error = errMessage(err);
