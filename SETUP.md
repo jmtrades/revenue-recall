@@ -213,6 +213,7 @@ client id/secret — then Settings shows an OAuth button.
 | Var | Purpose |
 |---|---|
 | `CRON_SECRET` | protects `…/api/agent/cron` (Vercel Cron is auto-trusted; schedule in `vercel.json`) |
+| `OPERATOR_EMAIL` | YOUR email — turns on the weekly **platform pulse** (Mondays): workspaces, paid subs, estimated MRR, AI/voice usage + COGS, straight from the live DB |
 
 > **Cron cadence:** `vercel.json` ships the **hourly** schedule (`0 * * * *`) — this requires Vercel **Pro** (Hobby rejects anything more frequent than daily, which makes every production deploy fail). On Hobby, change it to a daily expression, or point any external scheduler (cron-job.org, GitHub Actions, your own box) at `GET /api/agent/cron` with `Authorization: Bearer $CRON_SECRET` — the endpoint is built for it.
 | `SEQUENCE_AUTOPILOT=true` | auto-send due sequence steps (else queue to Approvals) |

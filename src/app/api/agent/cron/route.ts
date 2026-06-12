@@ -12,6 +12,7 @@ import { autopilotLockKey, digestLockKey } from "@/lib/agent/lock";
 import { sendAlert, isErrored } from "@/lib/alert";
 import { cleanupRateLimits } from "@/lib/ratelimit";
 import { ensureStripeCatalogCurrent } from "@/lib/billing/provision";
+import { runPlatformPulse } from "@/lib/platform-pulse";
 import { acquireCronLock, releaseCronLock } from "@/lib/cron-lock";
 import { mapWithConcurrency } from "@/lib/async";
 import { safeEqual } from "@/lib/safe-compare";
@@ -147,6 +148,10 @@ async function run(req: Request) {
   if (catalog === "healed" || catalog === "failed") {
     void sendAlert("billing.catalog.selfheal", { outcome: catalog });
   }
+
+  // Operator's weekly platform pulse (Mondays, durable once-per-week dedupe;
+  // inert without OPERATOR_EMAIL). Best-effort — never blocks tenant work.
+  await runPlatformPulse().catch(() => {});
 
   const secret = process.env.CRON_SECRET;
   const ids = await allOrgIds();
