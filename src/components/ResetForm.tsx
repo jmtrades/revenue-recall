@@ -47,12 +47,13 @@ export function ResetForm({ mode }: { mode: "request" | "update" }) {
   return (
     <form action={formAction} className="mt-6 space-y-3">
       {mode === "request" ? (
-        <input name="email" type="email" className={input} placeholder="Work email" autoComplete="email" autoFocus required />
+        <input name="email" type="email" aria-label="Work email" className={input} placeholder="Work email" autoComplete="email" autoFocus required />
       ) : (
         <div className="relative">
           <input
             name="password"
             type={showPw ? "text" : "password"}
+            aria-label="New password"
             className={`${input} pr-16`}
             placeholder="New password"
             autoComplete="new-password"
