@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import type { CallQueueItem } from "@/lib/queries";
 import { Icon } from "@/components/icons";
 import { Avatar, ReasonBadge, ScoreDot, EmptyState } from "@/components/ui";
 import { RolePlay } from "@/components/RolePlay";
 import { SpeakButton } from "@/components/SpeakButton";
-import { nextPendingIndex, QUICK_OUTCOMES } from "@/lib/dialer-flow";
+import { nextPendingIndex, QUICK_OUTCOMES, quickOutcome, dialerKeyAction } from "@/lib/dialer-flow";
 
 interface Brief {
   summary: string;
@@ -229,6 +229,27 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
     }
   }
 
+  // Keyboard-driven dialing: C call · 1/2/3 no-answer/voicemail/busy · N next.
+  // Routing logic lives in dialerKeyAction (pure, tested): never fires while
+  // typing in the notes/select, never eats modified chords, no-ops while a
+  // call/outcome is in flight or the deal is already done.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      const typing = Boolean(el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable));
+      const action = dialerKeyAction(e.key, { typing, modifier: e.metaKey || e.ctrlKey || e.altKey });
+      if (!action) return;
+      e.preventDefault();
+      if (action.kind === "call" && !placing && active && !done[active.dealId]) void call();
+      else if (action.kind === "quick" && !quickBusy && active && !done[active.dealId]) {
+        const o = quickOutcome(action.outcomeId);
+        if (o) void quickLog(o);
+      } else if (action.kind === "next" && nextIdx >= 0) selectIndex(nextIdx);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   if (queue.length === 0) {
     return (
       <EmptyState
@@ -305,7 +326,7 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
                 next, so a missed call is a single click, not the full notes flow. */}
             <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
               <span className="text-xs text-muted">Didn&apos;t connect?</span>
-              {QUICK_OUTCOMES.map((o) => (
+              {QUICK_OUTCOMES.map((o, i) => (
                 <button
                   key={o.id}
                   onClick={() => quickLog(o)}
@@ -313,8 +334,12 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
                   className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-fg transition hover:bg-surface-2 disabled:opacity-50"
                 >
                   {quickBusy === o.id ? "Logging…" : o.label}
+                  <kbd className="ml-1.5 rounded bg-surface-2 px-1 font-mono text-[10px] text-muted">{i + 1}</kbd>
                 </button>
               ))}
+              <span className="ml-auto hidden text-[11px] text-muted/70 sm:block">
+                <kbd className="rounded bg-surface-2 px-1 font-mono text-[10px]">C</kbd> call · <kbd className="rounded bg-surface-2 px-1 font-mono text-[10px]">N</kbd> next
+              </span>
             </div>
           </div>
 

@@ -35,3 +35,33 @@ export const QUICK_OUTCOMES: QuickOutcome[] = [
 export function quickOutcome(id: string): QuickOutcome | undefined {
   return QUICK_OUTCOMES.find((o) => o.id === id);
 }
+
+export type DialerKeyAction =
+  | { kind: "call" }
+  | { kind: "quick"; outcomeId: string }
+  | { kind: "next" };
+
+/**
+ * Keyboard map for the power dialer — at 100 dials a day, reaching for the
+ * mouse on every outcome is the remaining friction. Pure so the routing is
+ * testable: returns null while the rep is typing (notes/select focused), for
+ * modified chords (browser shortcuts must keep working), and for unmapped keys.
+ *   C → call · 1/2/3 → no answer / voicemail / busy · N → next pending
+ */
+export function dialerKeyAction(key: string, opts: { typing: boolean; modifier: boolean }): DialerKeyAction | null {
+  if (opts.typing || opts.modifier) return null;
+  switch (key.toLowerCase()) {
+    case "c":
+      return { kind: "call" };
+    case "1":
+      return { kind: "quick", outcomeId: QUICK_OUTCOMES[0].id };
+    case "2":
+      return { kind: "quick", outcomeId: QUICK_OUTCOMES[1].id };
+    case "3":
+      return { kind: "quick", outcomeId: QUICK_OUTCOMES[2].id };
+    case "n":
+      return { kind: "next" };
+    default:
+      return null;
+  }
+}

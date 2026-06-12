@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nextPendingIndex, QUICK_OUTCOMES, quickOutcome } from "@/lib/dialer-flow";
+import { nextPendingIndex, QUICK_OUTCOMES, quickOutcome, dialerKeyAction } from "@/lib/dialer-flow";
 import { isRetryableOutcome, isVoicemailOutcome } from "@/lib/calls/retry";
 
 describe("power-dialer queue advance", () => {
@@ -34,5 +34,27 @@ describe("one-tap no-connect outcomes", () => {
 
   it("each line leads with its bracketed label so the timeline reads cleanly", () => {
     for (const o of QUICK_OUTCOMES) expect(o.line.startsWith(`[${o.label}]`)).toBe(true);
+  });
+});
+
+describe("dialer keyboard map", () => {
+  const free = { typing: false, modifier: false };
+
+  it("routes C/1/2/3/N to call, the three quick outcomes, and next (case-insensitive)", () => {
+    expect(dialerKeyAction("c", free)).toEqual({ kind: "call" });
+    expect(dialerKeyAction("C", free)).toEqual({ kind: "call" });
+    expect(dialerKeyAction("1", free)).toEqual({ kind: "quick", outcomeId: "no_answer" });
+    expect(dialerKeyAction("2", free)).toEqual({ kind: "quick", outcomeId: "voicemail" });
+    expect(dialerKeyAction("3", free)).toEqual({ kind: "quick", outcomeId: "busy" });
+    expect(dialerKeyAction("n", free)).toEqual({ kind: "next" });
+  });
+
+  it("never fires while typing or with a modifier held (browser shortcuts intact)", () => {
+    expect(dialerKeyAction("c", { typing: true, modifier: false })).toBeNull();
+    expect(dialerKeyAction("1", { typing: false, modifier: true })).toBeNull(); // e.g. Cmd+1 tab switch
+  });
+
+  it("ignores unmapped keys", () => {
+    for (const k of ["x", "4", "Enter", "Escape", " "]) expect(dialerKeyAction(k, free)).toBeNull();
   });
 });
