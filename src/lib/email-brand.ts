@@ -26,11 +26,23 @@ export function bodyToHtml(body: string): string {
   return linked.replace(/\r?\n/g, "<br>");
 }
 
-/** Full HTML document for a product email. `body` is the same plaintext we send as the text part. */
-export function brandedEmailHtml({ subject, body }: { subject: string; body: string }): string {
+/** Full HTML document for a product email. `body` is the same plaintext we send
+ *  as the text part. An optional `cta` renders a prominent, email-safe button
+ *  for the primary action (the inline URL stays in the text part for plaintext
+ *  clients, so the button is an enhancement, never the only path). */
+export function brandedEmailHtml({ subject, body, cta }: { subject: string; body: string; cta?: { label: string; url: string } }): string {
   const title = escapeHtml(subject);
   const content = bodyToHtml(body);
   const site = SITE_URL.replace(/^https?:\/\//, "");
+  // A button is a bordered, padded table cell with an anchor — the only
+  // button pattern email clients render reliably. Only http(s) urls are linked.
+  const button =
+    cta && /^https?:\/\//.test(cta.url)
+      ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0 4px;"><tr>
+    <td style="background-color:#059669;border-radius:10px;">
+      <a href="${escapeHtml(cta.url)}" style="display:inline-block;padding:11px 22px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">${escapeHtml(cta.label)}</a>
+    </td></tr></table>`
+      : "";
   // Table layout + inline styles: the only thing email clients render reliably.
   return `<!doctype html>
 <html>
@@ -48,6 +60,7 @@ export function brandedEmailHtml({ subject, body }: { subject: string; body: str
 <tr><td style="background-color:#111513;border:1px solid #262a27;border-radius:14px;padding:28px;">
   <p style="margin:0 0 14px;font-family:Arial,Helvetica,sans-serif;font-size:17px;font-weight:600;color:#f2f4f2;">${title}</p>
   <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.65;color:#c8cdc8;">${content}</p>
+  ${button}
 </td></tr>
 <tr><td style="padding:16px 4px 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.6;color:#6f766f;">
   Revenue Recall — autonomous outbound · <a href="${SITE_URL}" style="color:#6f766f;text-decoration:underline;">${site}</a>

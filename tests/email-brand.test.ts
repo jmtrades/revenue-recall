@@ -24,6 +24,19 @@ describe("email brand wrapper", () => {
     expect(html).toContain(">RR</td>");
     expect(html.startsWith("<!doctype html>")).toBe(true);
   });
+
+  it("renders a CTA button when given one, with the label and url escaped", () => {
+    const html = brandedEmailHtml({ subject: "Heads up", body: "x", cta: { label: "Update billing", url: "https://app.example.com/settings?a=1&b=2" } });
+    expect(html).toContain(">Update billing</a>");
+    expect(html).toContain(`href="https://app.example.com/settings?a=1&amp;b=2"`); // & escaped
+  });
+
+  it("omits the button without a cta, and ignores a non-http(s) url (no javascript: injection)", () => {
+    expect(brandedEmailHtml({ subject: "s", body: "b" })).not.toContain("padding:11px 22px");
+    const evil = brandedEmailHtml({ subject: "s", body: "b", cta: { label: "Click", url: "javascript:alert(1)" } });
+    expect(evil).not.toContain("javascript:");
+    expect(evil).not.toContain(">Click</a>");
+  });
 });
 
 describe("sendEmail html boundary", () => {

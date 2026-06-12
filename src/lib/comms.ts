@@ -269,7 +269,7 @@ export async function sendEmail(
   to: string,
   subject: string,
   body: string,
-  opts?: { unsubscribeUrl?: string | null; compliance?: { orgName?: string; address?: string }; internal?: boolean },
+  opts?: { unsubscribeUrl?: string | null; compliance?: { orgName?: string; address?: string }; internal?: boolean; cta?: { label: string; url: string } },
 ): Promise<SendResult> {
   const t = resolveEmail();
   // Compliance footer (unsubscribe + per-org address) applied at the single send
@@ -278,10 +278,11 @@ export async function sendEmail(
   // CAN-SPAM footer, and definitely not the prospect-facing 'Reply "unsubscribe"'
   // line, which on an internal digest is a reply that does nothing.
   const compliant = opts?.internal ? body : appendEmailCompliance(body, opts?.unsubscribeUrl, complianceConfig(opts?.compliance));
-  // Product mail (internal) ships a branded HTML alternative alongside the
-  // text part. Prospect outreach stays plaintext-only on purpose: a personal
-  // email in the rep's voice must not look like a campaign.
-  const html = opts?.internal ? brandedEmailHtml({ subject, body: compliant }) : undefined;
+  // Product mail (internal) ships a branded HTML alternative alongside the text
+  // part, with an optional prominent CTA button. Prospect outreach stays
+  // plaintext-only on purpose: a personal email in the rep's voice must not look
+  // like a campaign.
+  const html = opts?.internal ? brandedEmailHtml({ subject, body: compliant, cta: opts?.cta }) : undefined;
   return t ? t.send({ to, subject, body: compliant, html }) : logResult();
 }
 
