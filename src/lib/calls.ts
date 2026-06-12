@@ -1,5 +1,6 @@
 import { resolveProvider } from "@/lib/crm/registry";
 import { planCallRetry, isVoicemailOutcome, MAX_CALL_ATTEMPTS, type RetryPlan } from "@/lib/calls/retry";
+import { outsideCourtesyWindow } from "@/lib/calls/local-time";
 import { hasOptedOut, quietHoursNow } from "@/lib/agent/guardrails";
 import { listTasks } from "@/lib/agent/store";
 import { isEntitled } from "@/lib/billing/enforce";
@@ -243,6 +244,15 @@ export async function runCallRetries(now: Date = new Date()): Promise<RetryRunRe
       const phone = contact?.points.find((p) => p.channel === "phone")?.value;
       const attempts = acts.filter((x) => x.kind === "call" && x.direction === "outbound").length;
       if (!contact || !phone || attempts >= MAX_CALL_ATTEMPTS || hasOptedOut(contact, undefined, acts)) {
+        result.skipped += 1;
+        continue;
+      }
+      // PROSPECT-local courtesy hours (TCPA 8am–9pm, inferred from area code):
+      // the org-clock quiet hours above can't see that 8:30am in New York is
+      // 5:30am in San Francisco. Skipping leaves the task due, so the next
+      // hourly tick redials the moment their window opens. Unknown zones fail
+      // open — the org quiet hours already applied.
+      if (outsideCourtesyWindow(phone, now)) {
         result.skipped += 1;
         continue;
       }

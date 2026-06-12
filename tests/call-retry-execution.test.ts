@@ -66,6 +66,31 @@ describe("runCallRetries", () => {
     expect(second.skipped).toBeGreaterThanOrEqual(1);
   });
 
+  it("holds a due retry at dawn in the PROSPECT's timezone, then places it when their window opens", async () => {
+    const p = getProvider();
+    // 415 → America/Los_Angeles. The org clock can't see this — that's the point.
+    const c = await p.createContact({ name: "West Coast", points: [{ channel: "phone", value: "+14155550199" }] });
+    await p.logActivity({ contactId: c.id, kind: "call", direction: "outbound", summary: "no answer", occurredAt: "2026-06-12T09:00:00Z" });
+    await p.logActivity({
+      contactId: c.id,
+      kind: "task",
+      summary: "Retry call — attempt 2 of 4: no pickup last time, best window is the morning (~1h). (due 2026-06-12T11:00:00Z)",
+      occurredAt: "2026-06-12T10:00:00Z",
+    });
+    await createTask({ name: "Auto call retries", goal: "redial no-pickups", trigger: "daily", scope: "recall_queue", channel: "call", autonomy: "auto" });
+
+    const dawn = await runCallRetries(new Date("2026-06-12T12:00:00Z")); // due, but 5am in San Francisco
+    expect(dawn.skipped).toBeGreaterThanOrEqual(1);
+    let acts = await p.listActivitiesByContact!(c.id);
+    expect(acts.some((a) => a.summary.includes("Autopilot retry call placed"))).toBe(false);
+
+    // Skipping left the task due — the next tick inside their window dials.
+    const open = await runCallRetries(new Date("2026-06-12T16:00:00Z")); // 9am in San Francisco
+    expect(open.placed).toBeGreaterThanOrEqual(1);
+    acts = await p.listActivitiesByContact!(c.id);
+    expect(acts.some((a) => a.summary.includes("Autopilot retry call placed"))).toBe(true);
+  });
+
   it("never redials an opted-out contact", async () => {
     const p = getProvider();
     const c = await p.createContact({ name: "Opted Out", points: [{ channel: "phone", value: "+15550100400" }], attributes: { optedOut: true } });
