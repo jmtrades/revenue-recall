@@ -223,6 +223,8 @@ client id/secret — then Settings shows an OAuth button.
 | `AGENT_QUIET_START_UTC` / `AGENT_QUIET_END_UTC` | quiet-hours window |
 | `AI_MONTHLY_BUDGET_USD` | cap AI spend per org/month (then falls back to templates) |
 
+> **Always-on, no config:** autonomous calls and texts also honor the **prospect's** local 8am–9pm window (TCPA), read from their phone number's area code — a New York org can't auto-dial San Francisco at dawn. Held touches retry automatically once the prospect's window opens. One-word replies like **STOP** opt a contact out permanently, and `CALL_RECORDING_DISCLOSURE` (Section 4) prepends a spoken disclosure for two-party-consent states.
+
 ---
 
 ## 6) Security & infra (recommended)

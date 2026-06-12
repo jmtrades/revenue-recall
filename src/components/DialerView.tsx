@@ -7,7 +7,7 @@ import { Icon } from "@/components/icons";
 import { Avatar, ReasonBadge, ScoreDot, EmptyState } from "@/components/ui";
 import { RolePlay } from "@/components/RolePlay";
 import { SpeakButton } from "@/components/SpeakButton";
-import { nextPendingIndex, QUICK_OUTCOMES, quickOutcome, dialerKeyAction } from "@/lib/dialer-flow";
+import { nextPendingIndex, QUICK_OUTCOMES, quickOutcome, dialerKeyAction, duplicatePhoneIndexes } from "@/lib/dialer-flow";
 import { prospectLocalTime, outsideCourtesyWindow } from "@/lib/calls/local-time";
 
 interface Brief {
@@ -124,6 +124,10 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
   // The next not-yet-completed call after the current one (−1 when none remain),
   // so advancing skips deals already wrapped up instead of landing back on them.
   const nextIdx = nextPendingIndex(queue.length, (i) => Boolean(done[queue[i].dealId]), idx);
+  // Same number under two lead rows (CSV imports do this constantly) — flag the
+  // later one so the rep doesn't ring someone they hung up with minutes ago.
+  const dupes = duplicatePhoneIndexes(queue);
+  const activeDup = dupes.get(idx);
 
   function selectIndex(i: number) {
     setIdx(i);
@@ -326,6 +330,11 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
                   🌙
                 </span>
               )}
+              {dupes.has(i) && (
+                <span className="shrink-0 rounded-full bg-warn/15 px-1.5 py-0.5 text-[10px] font-medium text-warn" title={`Same number as ${dupes.get(i)!.firstName} (#${dupes.get(i)!.firstIndex + 1} in this queue)`}>
+                  dup
+                </span>
+              )}
               {done[q.dealId] && <Icon name="check" size={13} strokeWidth={3} className="text-success" />}
             </button>
           ))}
@@ -345,6 +354,11 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
                     <span className="font-mono text-sm text-fg">{active.phone}</span>
                     <LocalTimeChip phone={active.phone} />
                   </div>
+                  {activeDup && (
+                    <p className="mt-1 text-xs text-warn">
+                      Same number as {activeDup.firstName} (#{activeDup.firstIndex + 1} in this queue) — likely a duplicate lead row.
+                    </p>
+                  )}
                 </div>
               </div>
               <ReasonBadge reason={active.reason} />
