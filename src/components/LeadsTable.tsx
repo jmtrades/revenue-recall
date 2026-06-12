@@ -259,6 +259,8 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
       )}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input
+          type="search"
+          aria-label="Search leads by name, company, or email"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search name, company, email…"
