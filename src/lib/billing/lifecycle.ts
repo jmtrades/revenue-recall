@@ -2,6 +2,9 @@ import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { sendEmail } from "@/lib/comms";
 import { seenInboundEvent } from "@/lib/inbound-dedup";
 import { logInfo } from "@/lib/log";
+import { runWithOrg } from "@/lib/supabase/org-context";
+import { getRecallOutcomes } from "@/lib/queries";
+import { money } from "@/lib/format";
 
 /**
  * User-lifecycle emails — the standard SaaS conversion/retention loop that was
@@ -61,6 +64,42 @@ export async function sendPaymentFailedEmail(orgId: string, eventId?: string): P
   ].join("\n");
   const ok = await deliver(to, "Action needed: your Revenue Recall payment didn't go through", body);
   if (ok) logInfo("lifecycle.dunning_sent", { orgId });
+  return ok ? { sent: true } : { sent: false, reason: "send_failed" };
+}
+
+/** The cancellation note's body — pure so the won-back framing is testable.
+ *  When the AI rep actually won deals back, the email leads with THEIR number
+ *  (the single most persuasive win-back argument we have); at zero it stays
+ *  graceful and asks for the real reason instead of bragging about nothing. */
+export function winbackBody(outcomes: { wonBack: number; recoveredValue: number; currency: string } | null): string {
+  const lines = [
+    "Your Revenue Recall subscription has ended — the AI rep is off. Your pipeline, contacts, and history are all safe on the free plan.",
+    "",
+  ];
+  if (outcomes && outcomes.wonBack > 0) {
+    lines.push(
+      `For the record: while it ran, it won back ${money(outcomes.recoveredValue, outcomes.currency)} across ${outcomes.wonBack} ${outcomes.wonBack === 1 ? "deal" : "deals"} that had gone cold.`,
+      `If it ever makes sense again, one click turns it back on — it picks up right where it left off: ${appLink("/settings?tab=billing")}`,
+    );
+  } else {
+    lines.push(`If it ever makes sense again, one click turns it back on: ${appLink("/settings?tab=billing")}`);
+  }
+  lines.push("", "And honestly — if something didn't work the way you needed, reply and tell me. I read every one of these.");
+  return lines.join("\n");
+}
+
+/** Win-back: the subscription was canceled — close gracefully, cite what the
+ *  AI rep actually recovered (their own number), and leave the door open. */
+export async function sendCancellationEmail(orgId: string, eventId?: string): Promise<LifecycleResult> {
+  if (await alreadySent("winback", eventId)) return { sent: false, reason: "duplicate" };
+  const to = await ownerEmailsForOrg(orgId);
+  if (to.length === 0) return { sent: false, reason: "no_recipient" };
+  // The org's own won-back numbers, resolved in this webhook context (no
+  // session) via the same org-scoping the cron uses. Best-effort: a stats
+  // hiccup must never block the goodbye note.
+  const outcomes = await runWithOrg(orgId, () => getRecallOutcomes()).catch(() => null);
+  const ok = await deliver(to, "Your AI rep is off — here's where things stand", winbackBody(outcomes));
+  if (ok) logInfo("lifecycle.winback_sent", { orgId });
   return ok ? { sent: true } : { sent: false, reason: "send_failed" };
 }
 

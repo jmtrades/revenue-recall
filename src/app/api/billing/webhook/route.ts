@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyStripeSignature, planForPrice } from "@/lib/billing/stripe";
 import { saveSubscriptionForOrg, saveSubscriptionForCustomer, orgIdForCustomer, type SubStatus } from "@/lib/billing/store";
-import { sendPaymentFailedEmail } from "@/lib/billing/lifecycle";
+import { sendPaymentFailedEmail, sendCancellationEmail } from "@/lib/billing/lifecycle";
 import { isPlanId } from "@/lib/billing/plans";
 import { addUsageCredits } from "@/lib/ai/usage";
 import { logError, errMessage } from "@/lib/log";
@@ -101,7 +101,14 @@ export async function POST(req: Request) {
       }
       case "customer.subscription.deleted": {
         const customer = obj.customer as string;
-        if (customer) await saveSubscriptionForCustomer(customer, { plan: "free", status: "canceled" });
+        if (customer) {
+          await saveSubscriptionForCustomer(customer, { plan: "free", status: "canceled" });
+          // Win-back: a graceful goodbye that cites what the AI rep actually
+          // recovered for them — the most persuasive reactivation argument we
+          // have. Best-effort and deduped on the event id, same as dunning.
+          const orgId = await orgIdForCustomer(customer).catch(() => null);
+          if (orgId) await sendCancellationEmail(orgId, event.id).catch(() => {});
+        }
         break;
       }
       case "invoice.payment_failed": {
