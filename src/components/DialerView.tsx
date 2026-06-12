@@ -8,6 +8,7 @@ import { Avatar, ReasonBadge, ScoreDot, EmptyState } from "@/components/ui";
 import { RolePlay } from "@/components/RolePlay";
 import { SpeakButton } from "@/components/SpeakButton";
 import { nextPendingIndex, QUICK_OUTCOMES, quickOutcome, dialerKeyAction } from "@/lib/dialer-flow";
+import { prospectLocalTime, outsideCourtesyWindow } from "@/lib/calls/local-time";
 
 interface Brief {
   summary: string;
@@ -58,6 +59,29 @@ function MinutesChip({ remainingMin, callsLeft }: { remainingMin: number; callsL
   // When out, the chip becomes the upgrade path — the rep can't dial, so point
   // them straight at billing instead of a dead status.
   return out ? <Link href="/settings?tab=billing" title="Out of call minutes — upgrade to keep dialing">{chip}</Link> : chip;
+}
+
+/** The prospect's wall-clock time next to their number — across timezones,
+ *  "it's 5:40am for them" is the difference between a connect and an annoyed
+ *  prospect. Amber outside the 8am–9pm courtesy window; hidden entirely when
+ *  the zone can't be read off the number (non-NANP / toll-free). */
+function LocalTimeChip({ phone }: { phone: string }) {
+  // Re-render each minute so the clock stays honest during a long prep pause.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  const lt = prospectLocalTime(phone);
+  if (!lt) return null;
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${lt.warn ? "bg-warn/15 text-warn" : "bg-surface-2 text-muted"}`}
+      title={lt.warn ? "Outside their local 8am–9pm calling window" : "Their local time"}
+    >
+      {lt.label} their time{lt.warn ? " · early/late" : ""}
+    </span>
+  );
 }
 
 /** Compact voice-minutes state for the dialer header (sanitized server-side).
@@ -297,6 +321,11 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
                   #{q.attempts + 1}
                 </span>
               )}
+              {!done[q.dealId] && outsideCourtesyWindow(q.phone) && (
+                <span className="shrink-0 text-[11px]" title="Outside their local 8am–9pm calling window" aria-label="Outside their local calling hours">
+                  🌙
+                </span>
+              )}
               {done[q.dealId] && <Icon name="check" size={13} strokeWidth={3} className="text-success" />}
             </button>
           ))}
@@ -312,7 +341,10 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
                 <div>
                   <Link href={`/deals/${active.dealId}`} className="font-semibold text-fg hover:underline">{active.contactName}</Link>
                   <div className="text-sm text-muted">{active.company || active.title}</div>
-                  <div className="mt-1 font-mono text-sm text-fg">{active.phone}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-sm text-fg">{active.phone}</span>
+                    <LocalTimeChip phone={active.phone} />
+                  </div>
                 </div>
               </div>
               <ReasonBadge reason={active.reason} />
