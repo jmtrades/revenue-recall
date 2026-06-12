@@ -1,16 +1,26 @@
 import { getReports } from "@/lib/queries";
 import { clickStats, engagementStats } from "@/lib/tracking";
 import { bookingStats } from "@/lib/meetings/stats";
+import { callStats } from "@/lib/calls/analytics";
+import { resolveProvider } from "@/lib/crm/registry";
 import { compactMoney, money, pct } from "@/lib/format";
 import { PageHeader, Stat, Card, Avatar } from "@/components/ui";
 import { Funnel, Donut, BarChart } from "@/components/charts";
+import type { Activity } from "@/lib/crm/types";
 
 export const metadata = { title: "Reports" };
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  const [r, clicks, meetings, engagement] = await Promise.all([getReports(), clickStats(), bookingStats(), engagementStats()]);
+  const [r, clicks, meetings, engagement, recentActs] = await Promise.all([
+    getReports(),
+    clickStats(),
+    bookingStats(),
+    engagementStats(),
+    resolveProvider().then((p) => p.listRecentActivities(500)).catch(() => [] as Activity[]),
+  ]);
   const m = r.metrics;
+  const calls = callStats(recentActs);
 
   return (
     <div className="space-y-6">
@@ -31,6 +41,25 @@ export default async function ReportsPage() {
           <BarChart data={r.monthlyWon} height={200} color="#34d399" />
         </Card>
       </div>
+
+      <Card title="Calling · last 7 days">
+        {calls.dials === 0 ? (
+          <p className="text-sm text-muted">No dials in the last week. The power dialer logs every attempt here — connects, voicemails, and no-answers alike.</p>
+        ) : (
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <Stat label="Dials" value={String(calls.dials)} hint={`${calls.noAnswers} no-answer · ${calls.voicemails} voicemail`} />
+              <Stat label="Connects" value={String(calls.connects)} tone="success" hint="reached a person" />
+              <Stat label="Connect rate" value={pct(calls.connectRate)} hint="of all dials" />
+              <Stat label="Talk time" value={`${calls.talkMinutes} min`} hint="connected minutes" />
+            </div>
+            <div>
+              <p className="stat-label mb-2">Dials per day</p>
+              <BarChart data={calls.perDay} height={120} color="rgb(var(--brand-rgb))" />
+            </div>
+          </div>
+        )}
+      </Card>
 
       <Card title="Revenue Recall ROI">
         {r.recallOutcomes.recalled === 0 ? (
