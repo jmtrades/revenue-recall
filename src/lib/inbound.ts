@@ -16,7 +16,7 @@ import { hasOptedOut, isHardOptOut } from "@/lib/agent/guardrails";
 import { markDoNotContact } from "@/lib/opt-out";
 import { parseCallbackTime, callbackLabel } from "@/lib/calls/callback-time";
 import { timezoneForPhone } from "@/lib/calls/local-time";
-import { scheduleRequestedCallback } from "@/lib/calls";
+import { scheduleRequestedCallback, parseRetryTask } from "@/lib/calls";
 import type { Activity, Contact, CrmProvider, Opportunity } from "@/lib/crm/types";
 
 /** Notify the org's webhook that a lead replied (best-effort, never throws). */
@@ -187,7 +187,15 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
   // "can you call me tomorrow at 3?" classifies as interest, and throwing that
   // time away would be the same old sticky-note bug wearing a new intent.
   const phone = contact.points.find((p) => p.channel === "phone" || p.channel === "sms")?.value;
-  const asksForCall = /\b(?:call|ring|phone|try) me\b/i.test(incoming) || intent === "busy" || intent === "gatekeeper";
+  // A pending callback also arms the parser: the confirmation we send PROMISES
+  // "reply with a time and I'll move it" — so a bare "4pm works" must re-book.
+  // The runner executes the newest task per contact, so a re-book supersedes.
+  const pendingCallback = priorActs.some((a) => {
+    if (a.kind !== "task") return false;
+    const p = parseRetryTask(a.summary);
+    return Boolean(p && Date.parse(p.dueAt) > Date.now());
+  });
+  const asksForCall = /\b(?:call|ring|phone|try) me\b/i.test(incoming) || intent === "busy" || intent === "gatekeeper" || pendingCallback;
   if (phone && asksForCall) {
     // `||` (not ??): an unset org timezone is the empty string, which would
     // make Intl throw and the parse fall back inconsistently.

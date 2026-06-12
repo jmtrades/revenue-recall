@@ -54,10 +54,24 @@ describe("parseCallbackTime — day words and relative offsets", () => {
 });
 
 describe("parseCallbackTime — conservative by design", () => {
+  it("reads a bare meridiem time and 'noon' — the way reschedule replies arrive", () => {
+    expect(at("4pm works for me", NY)).toBe("2026-06-12T20:00:00.000Z");
+    expect(at("noon is good", NY)).toBe("2026-06-13T16:00:00.000Z"); // noon EDT already passed at NOW → tomorrow
+  });
+
   it("returns null when no time is named", () => {
     expect(at("can't talk right now, call me back later")).toBeUndefined();
     expect(at("in a meeting")).toBeUndefined();
     expect(at("")).toBeUndefined();
+  });
+
+  it("never reads plain counts as times (no preposition, no meridiem)", () => {
+    expect(at("I have 3 kids so mornings are chaos")).toBeUndefined();
+    expect(at("I'll take 2")).toBeUndefined();
+    // "looked at 2 vendors" DOES parse ("at 2" is time-shaped) — that's why the
+    // inbound layer only books when the message asks for a call or a callback
+    // is already pending, never on a parse alone.
+    expect(at("we looked at 2 other vendors", NY)).toBeDefined();
   });
 
   it("rejects nonsense hours and far-future misparses", () => {

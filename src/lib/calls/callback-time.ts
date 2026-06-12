@@ -83,7 +83,13 @@ function parse(t: string, now: Date, tz?: string): Date | null {
 
   const today = partsInZone(now, tz);
   // Clock time, with optional day context: "(tomorrow|monday) at 3(:30)(pm)".
-  const clock = t.match(/\b(?:at|around|about|after|by) (\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\b(?:\s*(?:in the )?(morning|afternoon|evening))?/);
+  // A preposition lets a bare hour through ("at 3"); without one the meridiem
+  // is required ("4pm works") so plain counts ("I have 3 kids") never parse.
+  // "noon" is the one named clock time people actually text.
+  const clock =
+    t.match(/\b(?:at|around|about|after|by) (\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\b(?:\s*(?:in the )?(morning|afternoon|evening))?/) ??
+    t.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)\b/) ??
+    (/\bnoon\b/.test(t) ? ["", "12", "00", "pm", undefined] as unknown as RegExpMatchArray : null);
   const daypartWord = t.match(/\b(morning|afternoon|evening|tonight|night)\b/)?.[1];
   const tomorrow = /\btomorrow\b/.test(t);
   const weekdayWord = WEEKDAYS.find((w) => new RegExp(`\\b${w}\\b`).test(t));
