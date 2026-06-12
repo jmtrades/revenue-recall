@@ -14,6 +14,9 @@ import { stopEnrollmentsForContact } from "@/lib/cadence";
 import { emitWebhook } from "@/lib/webhooks-out";
 import { hasOptedOut, isHardOptOut } from "@/lib/agent/guardrails";
 import { markDoNotContact } from "@/lib/opt-out";
+import { parseCallbackTime, callbackLabel } from "@/lib/calls/callback-time";
+import { timezoneForPhone } from "@/lib/calls/local-time";
+import { scheduleRequestedCallback } from "@/lib/calls";
 import type { Activity, Contact, CrmProvider, Opportunity } from "@/lib/crm/types";
 
 /** Notify the org's webhook that a lead replied (best-effort, never throws). */
@@ -92,6 +95,14 @@ async function captureUnmatched(
       return { matched: false, contactId: contact.id, action: "logged", messageTaken: false, intent: "optout" };
     }
     await provider.logActivity({ contactId: contact.id, kind: "task", summary: `New inbound from ${name} — follow up`, occurredAt: now });
+    // A first message that NAMES a time ("call me tomorrow at 3") books the
+    // dial too — same machine-executable retry task the matched path writes,
+    // parsed in their timezone (from the number they just texted from).
+    if (channel === "sms") {
+      const tz = timezoneForPhone(from) ?? undefined;
+      const when = parseCallbackTime(subject ? `${subject}\n\n${body}` : body, new Date(), tz);
+      if (when) await scheduleRequestedCallback({ contactId: contact.id, when, label: callbackLabel(when, tz) });
+    }
     // Speed-to-lead: if the org runs new-lead autopilot, start working this fresh
     // lead immediately rather than waiting for the daily cron.
     await fireSpeedToLead(contact.id);
@@ -160,23 +171,33 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     return { matched: true, contactId: contact.id, dealId: deal?.id, action: "logged", messageTaken: false, intent: "empty" };
   }
 
+  const [voice, org] = await Promise.all([getActiveVoice(), getOrgSettings()]);
+
   // If they're unavailable / it's a gatekeeper, take a message: capture a
   // callback task so the follow-up is never lost (and still reply below). Use the
   // full incoming (subject + body) so a question in the subject isn't missed.
+  // When they NAME a time ("call me tomorrow at 3"), don't just take a message —
+  // book the dial: a machine-executable retry task due at their requested
+  // instant, parsed in THEIR timezone (from their number, else the org's). With
+  // autonomous calling on, the AI rep actually calls back when they asked.
   const intent = detectIntent(incoming);
   let messageTaken = false;
   if (intent === "busy" || intent === "gatekeeper") {
-    await provider.logActivity({
-      opportunityId: deal?.id,
-      contactId: contact.id,
-      kind: "task",
-      summary: `Message taken — call ${contact.name} back about ${deal?.title ?? "their enquiry"}`,
-      occurredAt: new Date().toISOString(),
-    });
+    const phone = contact.points.find((p) => p.channel === "phone" || p.channel === "sms")?.value;
+    const tz = (phone ? timezoneForPhone(phone) : null) ?? org.timezone ?? undefined;
+    const when = phone ? parseCallbackTime(incoming, new Date(), tz) : null;
+    const booked = when ? await scheduleRequestedCallback({ contactId: contact.id, dealId: deal?.id, when, label: callbackLabel(when, tz) }) : false;
+    if (!booked) {
+      await provider.logActivity({
+        opportunityId: deal?.id,
+        contactId: contact.id,
+        kind: "task",
+        summary: `Message taken — call ${contact.name} back about ${deal?.title ?? "their enquiry"}`,
+        occurredAt: new Date().toISOString(),
+      });
+    }
     messageTaken = true;
   }
-
-  const [voice, org] = await Promise.all([getActiveVoice(), getOrgSettings()]);
   const industry = getIndustry(org.industryId);
   const history = deal ? (await provider.listActivities(deal.id)).map((a) => `${a.direction ?? "out"} ${a.kind}: ${a.summary}`) : [];
   const reply = await draftReply({

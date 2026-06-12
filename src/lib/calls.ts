@@ -116,6 +116,45 @@ export async function scheduleCallRetry(input: { contactId?: string; dealId?: st
   return plan;
 }
 
+/**
+ * Book a callback the PROSPECT asked for ("call me tomorrow at 3"). Writes the
+ * same machine-parsable retry task runCallRetries() executes, due at the
+ * requested instant — so when the org runs autonomous calling, the AI rep
+ * actually calls back at the time they named (still subject to the attempt
+ * budget, opt-outs, and courtesy hours). Without autonomous calling it reads
+ * as a clearly-timed task for the rep. Best-effort: returns false, never throws.
+ */
+export async function scheduleRequestedCallback(input: { contactId?: string; dealId?: string; when: Date; label: string; now?: Date }): Promise<boolean> {
+  try {
+    const provider = await resolveProvider();
+    if (!provider.info().capabilities.write) return false;
+    if (!input.contactId && !input.dealId) return false;
+    let attempts = 0;
+    try {
+      const acts = input.contactId && provider.listActivitiesByContact
+        ? await provider.listActivitiesByContact(input.contactId)
+        : input.dealId
+          ? await provider.listActivities(input.dealId)
+          : [];
+      attempts = acts.filter((a) => a.kind === "call" && a.direction === "outbound").length;
+    } catch {
+      /* best-effort — book it as a first attempt */
+    }
+    await provider.logActivity({
+      contactId: input.contactId,
+      opportunityId: input.dealId,
+      kind: "task",
+      // Keep in sync with parseRetryTask — the "(due …)" tail is what the
+      // autonomous runner executes on.
+      summary: `Retry call — attempt ${Math.min(attempts + 1, MAX_CALL_ATTEMPTS)} of ${MAX_CALL_ATTEMPTS}: they asked for a callback ${input.label}. (due ${input.when.toISOString()})`,
+      occurredAt: (input.now ?? new Date()).toISOString(),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export type FollowupSkip = "not_voicemail" | "read_only" | "no_target" | "no_contact" | "no_phone" | "opted_out" | "recently_texted" | "already_queued" | "error";
 
 /**

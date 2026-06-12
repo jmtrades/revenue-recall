@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { handleInbound } from "@/lib/inbound";
+import { parseRetryTask } from "@/lib/calls";
 import { getProvider } from "@/lib/crm/registry";
 import { createTask } from "@/lib/agent/store";
 import { listEnrollments } from "@/lib/cadence";
@@ -51,6 +52,22 @@ describe("inbound message handling", () => {
     expect(res.matched).toBe(true);
     expect(res.intent).toBe("busy");
     expect(res.messageTaken).toBe(true);
+  });
+
+  it("BOOKS the dial when a busy reply names a time — not just a sticky note", async () => {
+    // The 555 test number carries no timezone and the test org sets none →
+    // times parse in UTC, so "tomorrow at 3" is tomorrow 15:00Z exactly.
+    const res = await handleInbound("sms", "+1 (555) 010-4477", "in a meeting — call me tomorrow at 3");
+    expect(res.intent).toBe("busy");
+    expect(res.messageTaken).toBe(true);
+
+    const acts = await getProvider().listRecentActivities(50);
+    const task = acts.find((a) => a.contactId === res.contactId && a.kind === "task" && a.summary.includes("asked for a callback"));
+    expect(task, "the callback should be booked as a machine-executable retry task").toBeTruthy();
+    const parsed = parseRetryTask(task!.summary);
+    expect(parsed).toBeTruthy();
+    const expected = Date.parse(`${new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)}T15:00:00Z`);
+    expect(Math.abs(Date.parse(parsed!.dueAt) - expected)).toBeLessThan(60_000);
   });
 
   // NOTE: these two share the process-level agent-task + enrollment stores, so
