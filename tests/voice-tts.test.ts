@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ttsProvider, ttsAvailable, providerVoice, cartesiaVoice, elevenSettings, openaiInstructions, ELEVEN_VOICES, OPENAI_VOICES, synthesizeSpeech } from "@/lib/voice/tts";
+import { HOUSE_VOICES } from "@/lib/voice/house";
 
 const CLEAR = [
   "ELEVENLABS_API_KEY",
@@ -87,6 +88,26 @@ describe("house voice → provider voice mapping", () => {
       expect(providerVoice("elevenlabs", id)).toBe(ELEVEN_VOICES[id]);
       expect(providerVoice("openai", id)).toBe(OPENAI_VOICES[id]);
     }
+  });
+
+  it("EVERY house voice resolves to a real, gender/accent-matched provider voice", () => {
+    const OPENAI_VALID = new Set(["alloy", "ash", "ballad", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer", "verse"]);
+    const elevenValues = new Set(Object.values(ELEVEN_VOICES));
+    for (const v of HOUSE_VOICES) {
+      // OpenAI: always a valid voice name (no 404 on a real call).
+      expect(OPENAI_VALID.has(providerVoice("openai", v.id)), `${v.id} → openai`).toBe(true);
+      // ElevenLabs: a real catalog id (either an exact map or the group default).
+      expect(elevenValues.has(providerVoice("elevenlabs", v.id)), `${v.id} → elevenlabs`).toBe(true);
+    }
+  });
+
+  it("an unmapped voice falls back within its own gender/accent group, never a mismatch", () => {
+    // af_sky has no exact ElevenLabs map → a female-US default (af_heart/Rachel),
+    // not a male or UK voice.
+    expect(providerVoice("elevenlabs", "af_sky")).toBe(ELEVEN_VOICES.af_heart);
+    expect(providerVoice("elevenlabs", "bm_lewis")).toBe(ELEVEN_VOICES.bm_george); // male UK → male UK
+    expect(providerVoice("elevenlabs", "am_fenrir")).toBe(ELEVEN_VOICES.am_adam); // male US → male US
+    expect(providerVoice("elevenlabs", "bf_lily")).toBe(ELEVEN_VOICES.bf_emma); // female UK → female UK
   });
 
   it("clone voices and unknown ids fall back to the default voice", () => {
