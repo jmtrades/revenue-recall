@@ -60,3 +60,45 @@ export function isPublicRoute(path: string): boolean {
   if (path.startsWith("/api/oauth/") && path.endsWith("/callback")) return true;
   return PUBLIC_API.some((p) => (p.endsWith("/") ? path.startsWith(p) : path === p));
 }
+
+// ---------------------------------------------------------------------------
+// CSRF defense-in-depth. Supabase's session cookies are SameSite=Lax (which
+// already blocks cross-site cookie POSTs), but we add an explicit same-origin
+// assertion on top: a state-changing /api call authed by the session cookie
+// must originate from our own site. The signature/secret-authed machine
+// endpoints (Stripe & Twilio webhooks, the cron fan-out, inbound, the public
+// API-key v1 routes, HMAC form/booking posts) are LEGITIMATELY cross-origin and
+// carry their own auth — so they're exempt (they're exactly the isPublicRoute
+// /api set). The two layers mean a browser CSRF can't ride a logged-in session
+// even if a future cookie-policy change weakened SameSite.
+// ---------------------------------------------------------------------------
+
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+/** True when a request must prove it's same-origin: a mutating method, an /api
+ *  route, and NOT one of the self-authed machine endpoints. */
+export function requiresSameOrigin(method: string, path: string): boolean {
+  if (!MUTATING_METHODS.has(method.toUpperCase())) return false;
+  if (!path.startsWith("/api/")) return false; // page Server Actions are CSRF-guarded by Next itself
+  return !isPublicRoute(path);
+}
+
+function hostOf(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    return new URL(value).host;
+  } catch {
+    return null;
+  }
+}
+
+/** True when the request's Origin (or, failing that, Referer) host matches the
+ *  serving host. Browsers always send Origin on non-GET fetch/XHR, so a real
+ *  same-origin app call passes; a cross-site forge does not. A mutation with no
+ *  Origin AND no Referer fails closed. */
+export function isSameOriginRequest(origin: string | null, referer: string | null, host: string | null): boolean {
+  if (!host) return false;
+  const reqHost = hostOf(`https://${host}`) ?? host;
+  const src = hostOf(origin) ?? hostOf(referer);
+  return src !== null && src === reqHost;
+}
