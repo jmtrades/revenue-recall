@@ -1,4 +1,13 @@
 {
   "extends": "next/core-web-vitals",
-  "ignorePatterns": ["node_modules/", ".next/", "tests/stubs/"]
+  "ignorePatterns": ["node_modules/", ".next/", "tests/stubs/"],
+  "rules": {
+    "no-console": ["warn", { "allow": ["warn", "error"] }]
+  },
+  "overrides": [
+    {
+      "files": ["src/lib/log.ts"],
+      "rules": { "no-console": "off" }
+    }
+  ]
 }
