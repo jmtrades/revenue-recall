@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { handleInbound } from "@/lib/inbound";
+import { parseRetryTask } from "@/lib/calls";
 import { getProvider } from "@/lib/crm/registry";
 import { createTask } from "@/lib/agent/store";
 import { listEnrollments } from "@/lib/cadence";
@@ -51,6 +52,62 @@ describe("inbound message handling", () => {
     expect(res.matched).toBe(true);
     expect(res.intent).toBe("busy");
     expect(res.messageTaken).toBe(true);
+  });
+
+  it("confirms a booked callback with the exact time, not an AI guess", async () => {
+    const { listOutbox } = await import("@/lib/agent/store");
+    const p = getProvider();
+    const c = await p.createContact({ name: "Confirm Me", points: [{ channel: "phone", value: "+1 (555) 010-6611" }] });
+
+    const res = await handleInbound("sms", "+1 (555) 010-6611", "swamped — call me tomorrow at 2pm");
+    expect(res.matched).toBe(true);
+    expect(res.contactId).toBe(c.id);
+    expect(res.action).toBe("queued"); // REPLY_AUTOPILOT off → Approvals
+
+    const pending = await listOutbox("pending");
+    const confirmation = pending.find((o) => o.contactId === c.id && o.channel === "sms");
+    expect(confirmation).toBeTruthy();
+    expect(confirmation!.body).toContain("I'll call you");
+    expect(confirmation!.body).toContain("2:00 PM"); // reads back THEIR exact time
+  });
+
+  it("reschedules when they reply with just a new time — the confirmation's promise is real", async () => {
+    const { listOutbox } = await import("@/lib/agent/store");
+    const p = getProvider();
+    const c = await p.createContact({ name: "Move It", points: [{ channel: "phone", value: "+1 (555) 010-7755" }] });
+
+    // First message books 2pm; the confirmation says "reply with a time and I'll move it".
+    await handleInbound("sms", "+1 (555) 010-7755", "busy day — call me tomorrow at 2pm");
+    // The reply names ONLY a time: no call-phrase, no busy phrasing. The pending
+    // callback is what arms the parser.
+    await handleInbound("sms", "+1 (555) 010-7755", "actually tomorrow at 4pm works better");
+
+    const acts = await p.listActivitiesByContact!(c.id);
+    const tasks = acts.filter((a) => a.kind === "task" && a.summary.includes("asked for a callback"));
+    expect(tasks.length).toBe(2); // the runner executes the newest, superseding 2pm
+    const expected = Date.parse(`${new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)}T16:00:00Z`);
+    const dues = tasks.map((t) => Date.parse(parseRetryTask(t.summary)!.dueAt));
+    expect(dues.some((d) => Math.abs(d - expected) < 60_000)).toBe(true);
+
+    const pending = await listOutbox("pending");
+    const confirmations = pending.filter((o) => o.contactId === c.id && o.channel === "sms" && o.body.includes("I'll call you"));
+    expect(confirmations.some((o) => o.body.includes("4:00 PM"))).toBe(true);
+  });
+
+  it("BOOKS the dial when a busy reply names a time — not just a sticky note", async () => {
+    // The 555 test number carries no timezone and the test org sets none →
+    // times parse in UTC, so "tomorrow at 3" is tomorrow 15:00Z exactly.
+    const res = await handleInbound("sms", "+1 (555) 010-4477", "in a meeting — call me tomorrow at 3");
+    expect(res.intent).toBe("busy");
+    expect(res.messageTaken).toBe(true);
+
+    const acts = await getProvider().listRecentActivities(50);
+    const task = acts.find((a) => a.contactId === res.contactId && a.kind === "task" && a.summary.includes("asked for a callback"));
+    expect(task, "the callback should be booked as a machine-executable retry task").toBeTruthy();
+    const parsed = parseRetryTask(task!.summary);
+    expect(parsed).toBeTruthy();
+    const expected = Date.parse(`${new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)}T15:00:00Z`);
+    expect(Math.abs(Date.parse(parsed!.dueAt) - expected)).toBeLessThan(60_000);
   });
 
   // NOTE: these two share the process-level agent-task + enrollment stores, so

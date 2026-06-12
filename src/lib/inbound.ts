@@ -14,6 +14,9 @@ import { stopEnrollmentsForContact } from "@/lib/cadence";
 import { emitWebhook } from "@/lib/webhooks-out";
 import { hasOptedOut, isHardOptOut } from "@/lib/agent/guardrails";
 import { markDoNotContact } from "@/lib/opt-out";
+import { parseCallbackTime, callbackLabel } from "@/lib/calls/callback-time";
+import { timezoneForPhone } from "@/lib/calls/local-time";
+import { scheduleRequestedCallback, parseRetryTask } from "@/lib/calls";
 import type { Activity, Contact, CrmProvider, Opportunity } from "@/lib/crm/types";
 
 /** Notify the org's webhook that a lead replied (best-effort, never throws). */
@@ -92,6 +95,14 @@ async function captureUnmatched(
       return { matched: false, contactId: contact.id, action: "logged", messageTaken: false, intent: "optout" };
     }
     await provider.logActivity({ contactId: contact.id, kind: "task", summary: `New inbound from ${name} — follow up`, occurredAt: now });
+    // A first message that NAMES a time ("call me tomorrow at 3") books the
+    // dial too — same machine-executable retry task the matched path writes,
+    // parsed in their timezone (from the number they just texted from).
+    if (channel === "sms") {
+      const tz = timezoneForPhone(from) ?? undefined;
+      const when = parseCallbackTime(subject ? `${subject}\n\n${body}` : body, new Date(), tz);
+      if (when) await scheduleRequestedCallback({ contactId: contact.id, when, label: callbackLabel(when, tz) });
+    }
     // Speed-to-lead: if the org runs new-lead autopilot, start working this fresh
     // lead immediately rather than waiting for the daily cron.
     await fireSpeedToLead(contact.id);
@@ -160,12 +171,42 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     return { matched: true, contactId: contact.id, dealId: deal?.id, action: "logged", messageTaken: false, intent: "empty" };
   }
 
+  const [voice, org] = await Promise.all([getActiveVoice(), getOrgSettings()]);
+
   // If they're unavailable / it's a gatekeeper, take a message: capture a
   // callback task so the follow-up is never lost (and still reply below). Use the
   // full incoming (subject + body) so a question in the subject isn't missed.
+  // When they NAME a time ("call me tomorrow at 3"), don't just take a message —
+  // book the dial: a machine-executable retry task due at their requested
+  // instant, parsed in THEIR timezone (from their number, else the org's). With
+  // autonomous calling on, the AI rep actually calls back when they asked.
   const intent = detectIntent(incoming);
   let messageTaken = false;
-  if (intent === "busy" || intent === "gatekeeper") {
+  let bookedLabel: string | null = null;
+  // Booking triggers on the CALL REQUEST itself, not just the busy intent —
+  // "can you call me tomorrow at 3?" classifies as interest, and throwing that
+  // time away would be the same old sticky-note bug wearing a new intent.
+  const phone = contact.points.find((p) => p.channel === "phone" || p.channel === "sms")?.value;
+  // A pending callback also arms the parser: the confirmation we send PROMISES
+  // "reply with a time and I'll move it" — so a bare "4pm works" must re-book.
+  // The runner executes the newest task per contact, so a re-book supersedes.
+  const pendingCallback = priorActs.some((a) => {
+    if (a.kind !== "task") return false;
+    const p = parseRetryTask(a.summary);
+    return Boolean(p && Date.parse(p.dueAt) > Date.now());
+  });
+  const asksForCall = /\b(?:call|ring|phone|try) me\b/i.test(incoming) || intent === "busy" || intent === "gatekeeper" || pendingCallback;
+  if (phone && asksForCall) {
+    // `||` (not ??): an unset org timezone is the empty string, which would
+    // make Intl throw and the parse fall back inconsistently.
+    const tz = timezoneForPhone(phone) ?? (org.timezone || undefined);
+    const when = parseCallbackTime(incoming, new Date(), tz);
+    if (when && (await scheduleRequestedCallback({ contactId: contact.id, dealId: deal?.id, when, label: callbackLabel(when, tz) }))) {
+      bookedLabel = callbackLabel(when, tz);
+      messageTaken = true;
+    }
+  }
+  if (!bookedLabel && (intent === "busy" || intent === "gatekeeper")) {
     await provider.logActivity({
       opportunityId: deal?.id,
       contactId: contact.id,
@@ -175,11 +216,9 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     });
     messageTaken = true;
   }
-
-  const [voice, org] = await Promise.all([getActiveVoice(), getOrgSettings()]);
   const industry = getIndustry(org.industryId);
   const history = deal ? (await provider.listActivities(deal.id)).map((a) => `${a.direction ?? "out"} ${a.kind}: ${a.summary}`) : [];
-  const reply = await draftReply({
+  let reply = await draftReply({
     channel,
     contactName: contact.name,
     company: contact.company,
@@ -191,6 +230,12 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     voice,
     language: contactPreferredLanguage(contact.attributes, org.language),
   });
+  // A booked callback gets a DETERMINISTIC confirmation, not an AI guess — the
+  // other half of the magic moment is the prospect reading back the exact time
+  // they asked for. The label renders in their own timezone.
+  if (bookedLabel) {
+    reply = { ...reply, body: `Got it — I'll call you ${bookedLabel}. If another time works better, just reply with it and I'll move things around.` };
+  }
 
   // Auto-send or queue for approval.
   if (process.env.REPLY_AUTOPILOT === "true") {
