@@ -47,3 +47,24 @@ describe("won-back proof line", () => {
     else expect(body).not.toContain("Won back:");
   });
 });
+
+describe("calling block", () => {
+  it("names the prospects who asked to be called today, with the time on the org's clock", async () => {
+    const { getProvider } = await import("@/lib/crm/registry");
+    const p = getProvider();
+    const c = await p.createContact({ name: "Dana Callback", points: [{ channel: "phone", value: "+15550109911" }] });
+    const due = new Date(Date.now() + 3 * 3_600_000);
+    await p.logActivity({
+      contactId: c.id,
+      kind: "task",
+      summary: `Retry call — attempt 1 of 4: they asked for a callback soon. (due ${due.toISOString()})`,
+      occurredAt: new Date().toISOString(),
+    });
+
+    const { body } = await buildDailyDigest("Acme"); // no org tz → times render in UTC
+    expect(body).toContain("Callbacks they asked for:");
+    expect(body).toContain("Dana Callback");
+    const hour = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", hour: "numeric", minute: "2-digit" }).format(due);
+    expect(body).toContain(hour);
+  });
+});

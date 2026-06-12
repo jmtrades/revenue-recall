@@ -3,8 +3,10 @@ import { getOrgSettings } from "@/lib/org";
 import { sendEmail } from "@/lib/comms";
 import { computeMetrics } from "@/lib/analytics";
 import { buildRecallQueue, summarizeRecall } from "@/lib/recall/engine";
+import { callStats, requestedCallbacks } from "@/lib/calls/analytics";
 import { getTasks, getRecallOutcomes, safePipeline } from "@/lib/queries";
 import { money } from "@/lib/format";
+import type { Activity } from "@/lib/crm/types";
 import { isSupabaseConfigured, getSupabase } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getActiveOrgId } from "@/lib/supabase/tenant";
@@ -86,9 +88,9 @@ export function wonBackLine(outcomes: { wonBack: number; recoveredValue: number;
   );
 }
 
-export async function buildDailyDigest(orgName: string): Promise<{ subject: string; body: string }> {
+export async function buildDailyDigest(orgName: string, tz?: string): Promise<{ subject: string; body: string }> {
   const provider = (await resolveProvider());
-  const [pipelines, opps, outcomes] = await Promise.all([
+  const [pipelines, opps, outcomes, recentActs] = await Promise.all([
     provider.listPipelines(),
     provider.listOpportunities(),
     // Realized wins attributed to recall (won on/after being recalled). The
@@ -96,6 +98,7 @@ export async function buildDailyDigest(orgName: string): Promise<{ subject: stri
     // is a promise; "won back" is the reason to keep paying. Never let an
     // outcomes hiccup kill the whole digest.
     getRecallOutcomes().catch(() => null),
+    provider.listRecentActivities(400).catch(() => [] as Activity[]),
   ]);
   const metrics = computeMetrics(opps, safePipeline(pipelines));
   const recall = buildRecallQueue(opps, pipelines);
@@ -115,6 +118,32 @@ export async function buildDailyDigest(orgName: string): Promise<{ subject: stri
   ];
   const won = wonBackLine(outcomes, cur);
   if (won) lines.push(won);
+
+  // Calling: yesterday's effort and — far more important — every callback a
+  // PROSPECT asked for in the next 24h. Missing one of those isn't a missed
+  // task, it's a broken promise; the digest names names and times.
+  const calls = callStats(recentActs, 1);
+  const promised = requestedCallbacks(recentActs, new Date(), 24);
+  if (calls.dials > 0 || promised.length > 0) {
+    lines.push("", "Calling");
+    if (calls.dials > 0) lines.push(`  Last 24h: ${calls.dials} dials · ${calls.connects} connected`);
+    if (promised.length > 0) {
+      const hour = (iso: string) => {
+        try {
+          return new Intl.DateTimeFormat("en-US", { timeZone: tz || "UTC", hour: "numeric", minute: "2-digit" }).format(new Date(iso));
+        } catch {
+          return iso.slice(11, 16);
+        }
+      };
+      const named = await Promise.all(
+        promised.slice(0, 5).map(async (cb) => {
+          const c = cb.contactId ? await provider.getContact(cb.contactId).catch(() => null) : null;
+          return `${c?.name ?? "a prospect"} ${hour(cb.dueAt)}`;
+        }),
+      );
+      lines.push(`  Callbacks they asked for: ${named.join(" · ")}`);
+    }
+  }
   const top = recall.slice(0, 3);
   if (top.length) {
     lines.push("", "Top 3 to work today:");
@@ -167,7 +196,7 @@ export async function runDigests(now: Date = new Date()): Promise<DigestResult> 
   if (!to.length) return result;
 
   if (prefs.daily_digest && !(await alreadySent("daily_digest", day))) {
-    const { subject, body } = await buildDailyDigest(orgName);
+    const { subject, body } = await buildDailyDigest(orgName, tz);
     result.recipients += await broadcast(to, subject, body);
     await markSent("daily_digest", day);
     result.sent.push("daily_digest");
