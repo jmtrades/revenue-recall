@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { callStats, callOutcomeOf, callSeconds, bestCallWindow, windowLabel, MIN_SAMPLE_DIALS, MIN_WINDOW_DIALS } from "@/lib/calls/analytics";
+import { callStats, callOutcomeOf, callSeconds, bestCallWindow, windowLabel, requestedCallbacks, MIN_SAMPLE_DIALS, MIN_WINDOW_DIALS } from "@/lib/calls/analytics";
 import { QUICK_OUTCOMES } from "@/lib/dialer-flow";
 import type { Activity } from "@/lib/crm/types";
 
@@ -134,5 +134,61 @@ describe("best time to call", () => {
     const { best, sampleDials } = bestCallWindow(old, 30, NOW);
     expect(sampleDials).toBe(0);
     expect(best).toBeNull();
+  });
+});
+
+describe("requestedCallbacks (the promises the digest must surface)", () => {
+  const cb = (contactId: string, dueIso: string, occurredAt: string): Activity =>
+    ({
+      id: `t-${contactId}-${occurredAt}`,
+      kind: "task",
+      contactId,
+      summary: `Retry call — attempt 2 of 4: they asked for a callback Fri, Jun 12, 3:00 PM. (due ${dueIso})`,
+      occurredAt,
+    }) as Activity;
+
+  it("returns upcoming promises sorted by time, within the horizon and the 30-min grace", () => {
+    const acts = [
+      cb("late", "2026-06-12T18:00:00Z", at(2)), // 3h from NOW — included
+      cb("soon", "2026-06-12T16:00:00Z", at(3)), // 1h from NOW — included, sorts first
+      cb("past", "2026-06-12T10:00:00Z", at(8)), // 5h overdue — beyond grace
+      cb("far", "2026-06-14T10:00:00Z", at(2)), // beyond the 24h horizon
+    ];
+    const got = requestedCallbacks(acts, NOW, 24);
+    expect(got.map((g) => g.contactId)).toEqual(["soon", "late"]);
+  });
+
+  it("keeps a slightly-overdue promise visible (the 'you promised Dana 20 minutes ago' line)", () => {
+    const got = requestedCallbacks([cb("dana", "2026-06-12T14:45:00Z", at(4))], NOW, 24);
+    expect(got).toHaveLength(1);
+  });
+
+  it("newest booking per contact wins, matching the runner's superseding rule", () => {
+    const acts = [
+      cb("c1", "2026-06-12T20:00:00Z", at(1)), // newest first (re-booked to 8pm)
+      cb("c1", "2026-06-12T17:00:00Z", at(5)), // superseded original
+    ];
+    const got = requestedCallbacks(acts, NOW, 24);
+    expect(got).toHaveLength(1);
+    expect(got[0].dueAt).toBe("2026-06-12T20:00:00.000Z");
+  });
+
+  it("drops a promise already answered by a later outbound call", () => {
+    const acts = [
+      call("Call — completed (90s)", 1, { contactId: "c2" } as Partial<Activity>), // called 1h ago
+      cb("c2", "2026-06-12T18:00:00Z", at(3)), // booked 3h ago — consumed by the call above
+    ];
+    expect(requestedCallbacks(acts, NOW, 24)).toHaveLength(0);
+  });
+
+  it("ignores plain retry tasks — only prospect-requested callbacks are promises", () => {
+    const retry = {
+      id: "r1",
+      kind: "task",
+      contactId: "c3",
+      summary: "Retry call — attempt 2 of 4: no pickup last time, best window is the afternoon (~3h). (due 2026-06-12T18:00:00Z)",
+      occurredAt: at(2),
+    } as Activity;
+    expect(requestedCallbacks([retry], NOW, 24)).toHaveLength(0);
   });
 });

@@ -19,6 +19,12 @@ describe("voicemailFollowupText", () => {
   it("is deterministic per seed", () => {
     expect(voicemailFollowupText({ contactName: "Sam", seed: "x" })).toBe(voicemailFollowupText({ contactName: "Sam", seed: "x" }));
   });
+
+  it("every variant invites naming a time — the reply that books the redial", () => {
+    const variants = new Set(["a", "b", "c", "d", "e", "f", "g"].map((seed) => voicemailFollowupText({ contactName: "Sam", seed })));
+    expect(variants.size).toBeGreaterThan(1); // the seeds actually cover the pool
+    for (const v of variants) expect(v).toMatch(/\btime\b/);
+  });
 });
 
 const mkPhoneContact = async (suffix: string, attributes?: Record<string, string | number | boolean | null>) => {

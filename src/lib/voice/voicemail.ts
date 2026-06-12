@@ -86,10 +86,14 @@ export function voicemailFollowupText(input: VoicemailInput): string {
   const about = (input.dealTitle ?? "").trim();
   const aboutClause = about ? ` about ${about}` : "";
   const seed = input.seed ?? `${input.contactName ?? ""}|${about}|${rep}`;
+  // Every variant invites naming a time — a reply like "4pm" re-books the
+  // scheduled redial to exactly then (inbound.ts arms the time parser whenever
+  // a pending callback/retry exists), so the invitation is a real capability,
+  // not politeness.
   const pool = [
-    `hey ${first}, just left you a quick voicemail${aboutClause}. no rush — easier to reply here if you'd rather.${sign}`,
-    `hi ${first} — tried you just now and left a message${aboutClause}. whenever's easy, a quick text back works great too.${sign}`,
-    `${first}, just missed you — left a voicemail${aboutClause}. happy to keep it to text if that's simpler for you.${sign}`,
+    `hey ${first}, just left you a quick voicemail${aboutClause}. no rush — text back a time that suits (even just "4pm") and i'll call you then.${sign}`,
+    `hi ${first} — tried you just now and left a message${aboutClause}. reply with a good time and i'll ring you exactly then. text works too.${sign}`,
+    `${first}, just missed you — left a voicemail${aboutClause}. happy to keep it to text, or name a time and i'll call you back then.${sign}`,
   ];
   return pick(pool, seed, "vm_followup");
 }

@@ -63,6 +63,7 @@ export const PLANS: Plan[] = [
       "Live AI across email, SMS & the phone",
       "~100 dials a day — 1,500 talk minutes/mo in a premium human voice",
       "No-answers are free · per-second billing · voicemail drops ~30s",
+      "They text “call me at 3”? It calls at 3 — booked, confirmed, kept",
       "Compliance built in: TCPA calling windows & instant opt-outs",
       "Autopilot sequences — it works the pipeline",
       "~1,500 AI messages / mo (emails, texts & calls it writes)",

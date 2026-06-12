@@ -1,5 +1,6 @@
 import type { Activity } from "@/lib/crm/types";
 import { isRetryableOutcome, isVoicemailOutcome } from "@/lib/calls/retry";
+import { parseRetryTask } from "@/lib/calls";
 import { hourInZone } from "@/lib/tz";
 
 /**
@@ -114,6 +115,47 @@ export function windowLabel(hour: number): string {
   const mer = (h: number) => (h % 24 < 12 ? "AM" : "PM");
   const end = hour + 1;
   return mer(hour) === mer(end % 24) ? `${h12(hour)}–${h12(end)} ${mer(end % 24)}` : `${h12(hour)} ${mer(hour)}–${h12(end)} ${mer(end % 24)}`;
+}
+
+export interface UpcomingCallback {
+  contactId?: string;
+  dealId?: string;
+  /** ISO instant the prospect asked to be called. */
+  dueAt: string;
+}
+
+/**
+ * Prospect-promised callbacks coming up within the horizon — the ones a human
+ * literally asked for, so missing one is a broken promise, not a missed task.
+ * Mirrors the runner's rules: newest task per contact wins (a re-book
+ * supersedes), and a callback already answered by ANY later outbound call is
+ * consumed. Expects activities newest-first (listRecentActivities order).
+ */
+export function requestedCallbacks(activities: Activity[], now: Date = new Date(), withinHours = 24): UpcomingCallback[] {
+  const lastCall = new Map<string, string>();
+  for (const x of activities) {
+    if (x.kind !== "call" || x.direction !== "outbound" || !x.contactId) continue;
+    const cur = lastCall.get(x.contactId);
+    if (!cur || x.occurredAt > cur) lastCall.set(x.contactId, x.occurredAt);
+  }
+  const horizon = now.getTime() + withinHours * 3_600_000;
+  const seen = new Set<string>();
+  const out: UpcomingCallback[] = [];
+  for (const a of activities) {
+    if (a.kind !== "task" || !a.summary?.includes("asked for a callback")) continue;
+    const key = a.contactId ?? a.opportunityId ?? a.id;
+    if (seen.has(key)) continue;
+    seen.add(key); // newest first — older bookings for the same contact are superseded
+    const p = parseRetryTask(a.summary);
+    if (!p) continue;
+    if ((lastCall.get(key) ?? "") > a.occurredAt) continue; // already called back
+    const due = Date.parse(p.dueAt);
+    // Keep slightly-overdue ones visible (a 30-min grace) — "you promised Dana
+    // 20 minutes ago" is exactly what a morning digest should say.
+    if (due < now.getTime() - 30 * 60_000 || due > horizon) continue;
+    out.push({ contactId: a.contactId, dealId: a.opportunityId, dueAt: p.dueAt });
+  }
+  return out.sort((x, y) => x.dueAt.localeCompare(y.dueAt));
 }
 
 /** The org's statistically-best calling hour over the trailing window, or null
