@@ -190,6 +190,21 @@ export interface SynthesizeInput {
   /** 0.5–1.5; provider-side speaking speed (OpenAI honors it; ElevenLabs ignores). */
   rate?: number;
   lang?: string;
+  /** "realtime" (default) optimizes for low latency on live calls — the model
+   *  the minute-margin math is priced on. "max" uses the highest-quality
+   *  production model for non-realtime audio (read-aloud, previews, the landing
+   *  demo) where a second of extra latency is invisible and fidelity is the
+   *  whole point. Never use "max" on the live-call path. */
+  quality?: "realtime" | "max";
+}
+
+/** The ElevenLabs model id for a quality tier (both env-overridable). Flash for
+ *  realtime calls; multilingual_v2 — ElevenLabs' most natural production model —
+ *  for max-quality non-realtime speech. */
+export function elevenModel(quality: "realtime" | "max" = "realtime"): string {
+  return quality === "max"
+    ? env("ELEVENLABS_MODEL_HQ") ?? "eleven_multilingual_v2"
+    : env("ELEVENLABS_MODEL") ?? "eleven_flash_v2_5";
 }
 
 export interface SynthesizedAudio {
@@ -232,13 +247,12 @@ export async function synthesizeSpeech(input: SynthesizeInput): Promise<Synthesi
       method: "POST",
       headers: { "xi-api-key": env("ELEVENLABS_API_KEY")!, "Content-Type": "application/json" },
       body: JSON.stringify({
+        // Realtime (calls) → Flash v2.5 (~75 ms, the model the minute-margin
+        // math is priced on). Max (read-aloud/previews/demo) → multilingual_v2,
+        // ElevenLabs' most natural production model, since latency is invisible
+        // there and fidelity is the whole point. See elevenModel().
         text,
-        // Flash v2.5 is the conversational-agent standard: ~75 ms latency, the
-        // same voice library, ~half the per-minute cost of turbo — which is
-        // what makes rep-scale minute allowances profitable (the constant in
-        // billing/voice-minutes.ts assumes it). Pin ELEVENLABS_MODEL to
-        // eleven_turbo_v2_5 if you'd rather spend margin on the last 5% polish.
-        model_id: env("ELEVENLABS_MODEL") ?? "eleven_flash_v2_5",
+        model_id: elevenModel(input.quality),
         voice_settings: elevenSettings(input.emotion),
       }),
     });

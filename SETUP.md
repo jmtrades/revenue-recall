@@ -69,6 +69,14 @@ Hosted voices for PHONE calls, in priority order (quality-first):
 Pin one with `VOICE_TTS_PROVIDER=cartesia|elevenlabs|openai`; otherwise the
 best-configured wins (ElevenLabs > Cartesia > OpenAI).
 
+**Two-tier ElevenLabs quality (automatic):** live calls use **Flash v2.5**
+(~75 ms, the model the minute-margin math is priced on); in-app read-aloud,
+voice previews, and the landing demo use **`eleven_multilingual_v2`** — the
+most natural production model — because latency is invisible there and fidelity
+is the whole point. Override either independently: `ELEVENLABS_MODEL` (realtime
+calls) and `ELEVENLABS_MODEL_HQ` (non-realtime, e.g. set to `eleven_v3` once
+it's GA for your account).
+
 **Voice economics (the margin math, all knobs env-overridable —
 `VOICE_COST_*_PER_MIN`):** the unit is a CONNECTED TALK MINUTE, not a dial — a
 no-answer is free and a voicemail drop is ~30 s, so 100 dials/day consumes

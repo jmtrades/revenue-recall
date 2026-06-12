@@ -25,6 +25,10 @@ const Body = z.object({
   emotion: z.enum(Object.keys(EMOTIONS) as [string, ...string[]]).optional(),
   rate: z.number().min(0.5).max(1.5).optional(),
   lang: z.string().max(16).optional(),
+  // This in-app route is read-aloud/previews (non-realtime), so it defaults to
+  // the highest-quality model; a caller may pass "realtime" to opt into the
+  // low-latency call model.
+  quality: z.enum(["realtime", "max"]).optional(),
 });
 
 export const POST = withGuard(async (req: Request) => {
@@ -43,6 +47,7 @@ export const POST = withGuard(async (req: Request) => {
       emotion: parsed.data.emotion as never,
       rate: parsed.data.rate,
       lang: parsed.data.lang,
+      quality: parsed.data.quality ?? "max", // read-aloud/previews want fidelity, not latency
     });
     return new Response(out.audio, {
       headers: {
