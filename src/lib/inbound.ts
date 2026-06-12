@@ -182,25 +182,35 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
   // autonomous calling on, the AI rep actually calls back when they asked.
   const intent = detectIntent(incoming);
   let messageTaken = false;
-  if (intent === "busy" || intent === "gatekeeper") {
-    const phone = contact.points.find((p) => p.channel === "phone" || p.channel === "sms")?.value;
-    const tz = (phone ? timezoneForPhone(phone) : null) ?? org.timezone ?? undefined;
-    const when = phone ? parseCallbackTime(incoming, new Date(), tz) : null;
-    const booked = when ? await scheduleRequestedCallback({ contactId: contact.id, dealId: deal?.id, when, label: callbackLabel(when, tz) }) : false;
-    if (!booked) {
-      await provider.logActivity({
-        opportunityId: deal?.id,
-        contactId: contact.id,
-        kind: "task",
-        summary: `Message taken — call ${contact.name} back about ${deal?.title ?? "their enquiry"}`,
-        occurredAt: new Date().toISOString(),
-      });
+  let bookedLabel: string | null = null;
+  // Booking triggers on the CALL REQUEST itself, not just the busy intent —
+  // "can you call me tomorrow at 3?" classifies as interest, and throwing that
+  // time away would be the same old sticky-note bug wearing a new intent.
+  const phone = contact.points.find((p) => p.channel === "phone" || p.channel === "sms")?.value;
+  const asksForCall = /\b(?:call|ring|phone|try) me\b/i.test(incoming) || intent === "busy" || intent === "gatekeeper";
+  if (phone && asksForCall) {
+    // `||` (not ??): an unset org timezone is the empty string, which would
+    // make Intl throw and the parse fall back inconsistently.
+    const tz = timezoneForPhone(phone) ?? (org.timezone || undefined);
+    const when = parseCallbackTime(incoming, new Date(), tz);
+    if (when && (await scheduleRequestedCallback({ contactId: contact.id, dealId: deal?.id, when, label: callbackLabel(when, tz) }))) {
+      bookedLabel = callbackLabel(when, tz);
+      messageTaken = true;
     }
+  }
+  if (!bookedLabel && (intent === "busy" || intent === "gatekeeper")) {
+    await provider.logActivity({
+      opportunityId: deal?.id,
+      contactId: contact.id,
+      kind: "task",
+      summary: `Message taken — call ${contact.name} back about ${deal?.title ?? "their enquiry"}`,
+      occurredAt: new Date().toISOString(),
+    });
     messageTaken = true;
   }
   const industry = getIndustry(org.industryId);
   const history = deal ? (await provider.listActivities(deal.id)).map((a) => `${a.direction ?? "out"} ${a.kind}: ${a.summary}`) : [];
-  const reply = await draftReply({
+  let reply = await draftReply({
     channel,
     contactName: contact.name,
     company: contact.company,
@@ -212,6 +222,12 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     voice,
     language: contactPreferredLanguage(contact.attributes, org.language),
   });
+  // A booked callback gets a DETERMINISTIC confirmation, not an AI guess — the
+  // other half of the magic moment is the prospect reading back the exact time
+  // they asked for. The label renders in their own timezone.
+  if (bookedLabel) {
+    reply = { ...reply, body: `Got it — I'll call you ${bookedLabel}. If another time works better, just reply with it and I'll move things around.` };
+  }
 
   // Auto-send or queue for approval.
   if (process.env.REPLY_AUTOPILOT === "true") {

@@ -129,10 +129,12 @@ function parse(t: string, now: Date, tz?: string): Date | null {
 }
 
 /** Short human label for confirmations and task summaries, in the same zone
- *  the time was parsed in ("tomorrow 3:00 PM" reads wrong in another zone). */
+ *  the time was parsed in ("tomorrow 3:00 PM" reads wrong in another zone).
+ *  No/empty zone formats in UTC — matching what parseCallbackTime assumed —
+ *  never the server's own clock. */
 export function callbackLabel(when: Date, tz?: string): string {
   try {
-    return new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(when);
+    return new Intl.DateTimeFormat("en-US", { timeZone: tz || "UTC", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(when);
   } catch {
     return when.toISOString();
   }

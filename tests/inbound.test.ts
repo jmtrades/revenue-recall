@@ -54,6 +54,23 @@ describe("inbound message handling", () => {
     expect(res.messageTaken).toBe(true);
   });
 
+  it("confirms a booked callback with the exact time, not an AI guess", async () => {
+    const { listOutbox } = await import("@/lib/agent/store");
+    const p = getProvider();
+    const c = await p.createContact({ name: "Confirm Me", points: [{ channel: "phone", value: "+1 (555) 010-6611" }] });
+
+    const res = await handleInbound("sms", "+1 (555) 010-6611", "swamped — call me tomorrow at 2pm");
+    expect(res.matched).toBe(true);
+    expect(res.contactId).toBe(c.id);
+    expect(res.action).toBe("queued"); // REPLY_AUTOPILOT off → Approvals
+
+    const pending = await listOutbox("pending");
+    const confirmation = pending.find((o) => o.contactId === c.id && o.channel === "sms");
+    expect(confirmation).toBeTruthy();
+    expect(confirmation!.body).toContain("I'll call you");
+    expect(confirmation!.body).toContain("2:00 PM"); // reads back THEIR exact time
+  });
+
   it("BOOKS the dial when a busy reply names a time — not just a sticky note", async () => {
     // The 555 test number carries no timezone and the test org sets none →
     // times parse in UTC, so "tomorrow at 3" is tomorrow 15:00Z exactly.
