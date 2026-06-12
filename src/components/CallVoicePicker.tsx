@@ -10,6 +10,15 @@ import type { SpeakHandle } from "@/lib/voice/speech";
 // a call" is exactly what you hear, not "the quick brown fox".
 const PREVIEW_LINE = "Hi, it's {name} calling from Northwind — I know it's been a minute, but I've got something worth thirty seconds. Is now okay?";
 
+// Group the catalog the same way the provider-fallback logic does (id prefix)
+// — 23 voices read as a curated set of four sections, not one wall of buttons.
+const VOICE_GROUPS: { prefix: string; label: string }[] = [
+  { prefix: "af", label: "Female · US" },
+  { prefix: "am", label: "Male · US" },
+  { prefix: "bf", label: "Female · UK" },
+  { prefix: "bm", label: "Male · UK" },
+];
+
 /**
  * Per-org outbound CALL voice. Unlike VoiceControls (on-device read-aloud), this
  * persists to the org and is the voice the AI actually speaks in on real calls —
@@ -76,8 +85,11 @@ export function CallVoicePicker({ initialVoiceId }: { initialVoiceId: string | n
     <div className="mt-5 space-y-2 border-t border-border pt-4">
       <p className="text-sm font-medium text-fg">Outbound call voice</p>
       <p className="text-xs text-muted">The in-house voice your AI speaks in on real phone calls — tap ▶ to hear each one say a real opener.</p>
-      <div className="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {HOUSE_VOICES.map((v) => {
+      {VOICE_GROUPS.map((g) => (
+        <div key={g.prefix} className="mt-3 first:mt-1">
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted/70">{g.label}</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {HOUSE_VOICES.filter((v) => v.id.startsWith(`${g.prefix}_`)).map((v) => {
           const active = voiceId === v.id || (!voiceId && v.id === DEFAULT_HOUSE_VOICE);
           const isPreviewing = previewing === v.id;
           const isWarming = warming === v.id;
@@ -112,8 +124,10 @@ export function CallVoicePicker({ initialVoiceId }: { initialVoiceId: string | n
               </button>
             </div>
           );
-        })}
-      </div>
+            })}
+          </div>
+        </div>
+      ))}
       {saved && <p className="text-sm text-success">Saved — new calls use this voice.</p>}
       {error && <p className="text-sm text-danger">{error}</p>}
     </div>
