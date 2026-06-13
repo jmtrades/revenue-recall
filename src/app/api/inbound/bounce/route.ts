@@ -6,11 +6,20 @@ import { withGuard } from "@/lib/api/guard";
 import { verifyHmacSignature } from "@/lib/webhook";
 import { verifyInboundOrgToken } from "@/lib/inbound-routing";
 import { runWithOrg } from "@/lib/supabase/org-context";
+import { seenInboundEvent, forgetInboundEvent } from "@/lib/inbound-dedup";
 import { logInfo, logWarn } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
-const Body = z.object({ email: z.string().email(), type: z.string().max(80).optional() });
+// ESPs name the dedup id variously (SendGrid `sg_event_id`, SES/SNS `messageId`,
+// Resend `id`) — accept the common ones so a retry of the SAME event no-ops.
+const Body = z.object({
+  email: z.string().email(),
+  type: z.string().max(80).optional(),
+  id: z.string().max(200).optional(),
+  eventId: z.string().max(200).optional(),
+  messageId: z.string().max(200).optional(),
+});
 
 /** Bounce/complaint webhook. Point your ESP's bounce + spam-complaint events
  *  here so hard bounces stop further email to that address (sender-reputation
@@ -55,11 +64,28 @@ export const POST = withGuard(async (req: Request) => {
   const parsed = Body.safeParse(json);
   if (!parsed.success) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
 
-  // Only HARD/permanent bounces (and complaints) suppress; soft/transient ones
-  // are ignored so a full mailbox or a blip doesn't kill a good address.
-  const t = parsed.data.type ?? "";
-  const hard = t === "" || /hard|permanent|complaint|spam|blocked|invalid|5\.\d|55\d/i.test(t);
-  const flagged = hard ? (orgParam ? await runWithOrg(orgParam, () => markEmailBounced(parsed.data.email)) : await markEmailBounced(parsed.data.email)) : 0;
-  logInfo("inbound.bounce", { hard, flagged });
-  return NextResponse.json({ ok: true, hard, flagged });
+  // Idempotency: ESPs deliver at-least-once and retry on any non-2xx, so a
+  // duplicate delivery of the SAME event must no-op — otherwise concurrent
+  // retries can race markEmailBounced's check-then-write and log duplicate
+  // "[bounce]" activities. Dedup on the provider event id when present, scoped
+  // by org so two tenants' coincidentally-equal ids can't collide.
+  const eventId = parsed.data.id || parsed.data.eventId || parsed.data.messageId;
+  const dedupKey = eventId ? `${orgParam ?? "default"}:${eventId}` : "";
+  if (dedupKey && (await seenInboundEvent("bounce", dedupKey))) {
+    return NextResponse.json({ ok: true, duplicate: true });
+  }
+
+  try {
+    // Only HARD/permanent bounces (and complaints) suppress; soft/transient ones
+    // are ignored so a full mailbox or a blip doesn't kill a good address.
+    const t = parsed.data.type ?? "";
+    const hard = t === "" || /hard|permanent|complaint|spam|blocked|invalid|5\.\d|55\d/i.test(t);
+    const flagged = hard ? (orgParam ? await runWithOrg(orgParam, () => markEmailBounced(parsed.data.email)) : await markEmailBounced(parsed.data.email)) : 0;
+    logInfo("inbound.bounce", { hard, flagged });
+    return NextResponse.json({ ok: true, hard, flagged });
+  } catch (e) {
+    // Un-record so the provider's retry can reprocess instead of being deduped.
+    if (dedupKey) await forgetInboundEvent("bounce", dedupKey);
+    throw e;
+  }
 });
