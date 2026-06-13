@@ -1,4 +1,5 @@
 import { getSupabase } from "@/lib/supabase/client";
+import { getOrgScopedSupabase } from "@/lib/supabase/server";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getSessionUser } from "@/lib/auth";
 
@@ -42,9 +43,15 @@ export async function recordAudit(action: string, target?: string): Promise<void
   }
 }
 
-/** Recent audit events for the current org, newest first. */
+/** Recent audit events for the current org, newest first.
+ *
+ *  Read through the RLS-enforced session client (NOT the service-role client):
+ *  the audit_log SELECT policy (migration 0052) constrains rows to the caller's
+ *  org, so this is safe even if the explicit org filter below were ever dropped.
+ *  Writes (recordAudit) stay on the service-role client to keep the trail
+ *  append-only — clients have no insert/update/delete grant on audit_log. */
 export async function listAudit(limit = 100): Promise<AuditEntry[]> {
-  const client = getSupabase();
+  const client = getOrgScopedSupabase();
   if (!client) return [];
   const orgId = await resolveActiveOrgId();
   if (!orgId) return [];
