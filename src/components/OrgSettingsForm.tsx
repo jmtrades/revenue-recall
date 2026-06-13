@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { LANGUAGES } from "@/lib/languages";
+import { useUnsavedChangesWarning } from "@/lib/useUnsavedChanges";
 
 // Full IANA zone list where the runtime supports it; a common-business fallback
 // otherwise. Computed once.
@@ -46,6 +47,7 @@ export function OrgSettingsForm({
 
   const dirty =
     name !== initialName || Number(quota) !== initialQuota || language !== initialLanguage || timezone !== initialTimezone || senderName !== initialSenderName || address !== initialAddress;
+  useUnsavedChangesWarning(dirty);
   const input = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand disabled:opacity-60";
   const touched = () => setStatus("idle");
 

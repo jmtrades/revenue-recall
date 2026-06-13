@@ -365,7 +365,9 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <button onClick={call} disabled={placing} className="inline-flex items-center gap-1.5 rounded-lg bg-success px-5 py-2.5 text-sm font-semibold text-white transition active:scale-[0.97] hover:bg-success/90 disabled:opacity-50 disabled:active:scale-100"><Icon name="dialer" size={15} /> {placing ? "Dialing…" : "Call"}</button>
-              {callStatus && <span className="text-sm text-muted">{callStatus}</span>}
+              {/* role=status announces dial outcomes (incl. the TCPA window
+                  message) to screen readers without stealing focus. */}
+              {callStatus && <span role="status" aria-live="polite" className="text-sm text-muted">{callStatus}</span>}
             </div>
             {/* One-tap no-connect logging — the bulk of any dial day. Each logs
                 the outcome, re-queues the deal, and (in Power Mode) jumps to the

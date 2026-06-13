@@ -50,6 +50,7 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
   const [copied, setCopied] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [snoozingId, setSnoozingId] = useState<string | null>(null);
+  const [snoozeError, setSnoozeError] = useState<string | null>(null);
   const visible = rows.filter((r) => !hidden.has(r.opportunityId));
   const filtered = filter === "all" ? visible : visible.filter((r) => r.reason === filter);
 
@@ -80,6 +81,7 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
   // the snooze lapses). Optimistically hide the row; the refresh reconciles.
   async function snooze(row: RecallRow, days: number) {
     setSnoozingId(row.opportunityId);
+    setSnoozeError(null);
     try {
       const res = await fetch("/api/recall/snooze", {
         method: "POST",
@@ -89,9 +91,13 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
       if (res.ok) {
         setHidden((h) => new Set(h).add(row.opportunityId));
         router.refresh();
+      } else {
+        const b = (await res.json().catch(() => null)) as { error?: string } | null;
+        setSnoozeError(b?.error ?? "Couldn't snooze that deal — try again.");
       }
     } catch {
-      /* leave it visible; a refresh will reconcile */
+      // The row stays visible; tell the rep instead of failing silently.
+      setSnoozeError("Couldn't snooze that deal — check your connection and try again.");
     } finally {
       setSnoozingId(null);
     }
@@ -174,6 +180,12 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
           );
         })}
       </div>
+
+      {snoozeError && (
+        <p role="alert" className="mb-3 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+          {snoozeError}
+        </p>
+      )}
 
       <div className="card overflow-x-auto p-0">
         {filtered.length === 0 ? (
@@ -273,7 +285,7 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
                   <div className="flex gap-2">
                     <button onClick={() => openDraft(draft.row)} className="rounded-lg border border-border px-3 py-1.5 text-sm text-fg hover:bg-surface-2">Regenerate</button>
                     {draft.source !== "error" && (
-                      <button onClick={copy} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-fg hover:bg-surface-2">{copied ? <><Icon name="check" size={13} strokeWidth={3} className="text-success" /> Copied</> : "Copy"}</button>
+                      <button onClick={copy} aria-live="polite" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-fg hover:bg-surface-2">{copied ? <><Icon name="check" size={13} strokeWidth={3} className="text-success" /> Copied</> : "Copy"}</button>
                     )}
                     {draft.source !== "error" && (
                       draft.row.channel === "call" ? (
