@@ -120,6 +120,10 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
   const [quickBusy, setQuickBusy] = useState<string | null>(null);
 
   const active = queue[idx];
+  // Synced every render so in-flight requests can tell whether the rep has
+  // moved on (see loadBrief's stale-response guard).
+  const activeDealRef = useRef<string | undefined>(undefined);
+  activeDealRef.current = active?.dealId;
   const remaining = queue.filter((q) => !done[q.dealId]).length;
   // The next not-yet-completed call after the current one (−1 when none remain),
   // so advancing skips deals already wrapped up instead of landing back on them.
@@ -142,15 +146,19 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
 
   async function loadBrief() {
     if (!active) return;
+    // Guard against the stale-response race: the rep can hit N (next) while a
+    // brief is in flight, and deal A's brief must never render under deal B.
+    const dealId = active.dealId;
     setBriefBusy(true);
     setBriefError(null);
     try {
-      const res = await fetch("/api/ai/brief", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dealId: active.dealId }) });
+      const res = await fetch("/api/ai/brief", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dealId }) });
       if (!res.ok) throw new Error();
-      setBrief(await res.json());
+      const data = await res.json();
+      if (activeDealRef.current === dealId) setBrief(data);
     } catch {
       // Don't fail silently — the rep clicks "Prepare" and otherwise sees nothing.
-      setBriefError("Couldn't prepare the brief — try again.");
+      if (activeDealRef.current === dealId) setBriefError("Couldn't prepare the brief — try again.");
     } finally {
       setBriefBusy(false);
     }
