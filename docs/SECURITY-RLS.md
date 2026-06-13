@@ -35,12 +35,40 @@ service-role paths are guarded by `tests/org-isolation-tripwire.test.ts`, which
 fails CI when a new file queries an org-scoped table without being audited for
 explicit `org_id` scoping.
 
+## The `RLS_ENFORCE_READS` flag
+
+User-facing reads route through a single context-aware selector,
+`getOrgReadClient()` (`lib/supabase/read-client.ts`):
+
+| Context | Client | Why |
+|---|---|---|
+| Flag off (default) | service-role | byte-identical to legacy behavior |
+| `runWithOrg` active (cron/webhook) | service-role | no session; already org-authorized |
+| Authenticated request | **session (RLS)** | Postgres scopes rows to the caller's org |
+| Public/unauth request (`/book/[org]`, forms) | service-role | scoped by explicit org id; RLS would empty it |
+| Not configured / any error | service-role / null | fail-safe — a read never breaks |
+
+Writes never use the selector; they stay on the service-role client.
+
+**Rollout:** the flag defaults **off** because there's no way to test against a
+real Postgres from CI and the blast radius is every dashboard read. To turn RLS
+enforcement on:
+
+1. On **staging** (separate Supabase project), set `RLS_ENFORCE_READS=true`.
+2. Run `supabase/rls-verify.sql` (impersonates a signed-in user, proves reads
+   are org-scoped and cross-tenant reads/writes are denied).
+3. Smoke the app as a real user: dashboard, pipeline, leads, recall, reports all
+   show the right data.
+4. Flip it in production. Reversible instantly by unsetting the env var.
+
 ## Surfaces under active RLS
 
 | Surface | Status | Notes |
 |---|---|---|
-| Audit log read (`listAudit`, `/api/audit`) | ✅ RLS-enforced | Read via session client; SELECT policy in `0052`. Writes (`recordAudit`) stay service-role → append-only. |
-| Everything else | service-role + manual `org_id` + tripwire | Staged rollout below. |
+| Audit log read (`listAudit`, `/api/audit`) | ✅ RLS-enforced (unconditional) | Read via session client; SELECT policy in `0052`. Writes (`recordAudit`) stay service-role → append-only. |
+| CRM provider reads (`SupabaseProvider`) — powers dashboard, pipeline, leads, recall, reports, contacts/activities | ✅ RLS-enforced when `RLS_ENFORCE_READS=true` | All entity reads flow through `queries.ts` → `resolveProvider()` → this provider, so one chokepoint covers them. Writes stay service-role. |
+| `org.ts` (`getOrgSettings`), and the smaller `*-store` modules | service-role + manual `org_id` + tripwire | Hot, dual-use (called from cron too) or low-sensitivity. Next phase — migrate read paths via the recipe below. |
+| Public surfaces (booking, hosted forms, inbound) | service-role (by design) | No session; scoped by explicit org id from the URL/token. Must NOT move to the session client. |
 
 ## How to put a new read surface under RLS
 

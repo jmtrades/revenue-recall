@@ -100,4 +100,13 @@ describe("RLS policy coverage across migrations", () => {
       .map((p) => `${p.table}.${p.name} (${p.command})`);
     expect(offenders, `Write-capable policies missing WITH CHECK — a session client could write rows into another org:\n  ${offenders.join("\n  ")}`).toEqual([]);
   });
+
+  it("every org-scoped table has a SELECT-capable policy (so RLS_ENFORCE_READS can't empty it)", () => {
+    // A SELECT under RLS needs a policy whose command covers reads: `for select`
+    // or the default `all`. A table with only e.g. an INSERT policy would return
+    // zero rows to the session client the moment the flag flips on.
+    const readable = new Set(livePolicies.filter((p) => p.command === "select" || p.command === "all").map((p) => p.table));
+    const missing = ORG_SCOPED_TABLES.filter((t) => !readable.has(t));
+    expect(missing, `Tables with no SELECT-capable policy — flipping RLS_ENFORCE_READS would empty these for the session client: ${missing.join(", ")}`).toEqual([]);
+  });
 });

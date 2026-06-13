@@ -13,6 +13,7 @@ import type {
   User,
 } from "@/lib/crm/types";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { getOrgReadClient } from "@/lib/supabase/read-client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import type {
   ActivityRow,
@@ -34,8 +35,14 @@ import type {
 // reply channel and detect a recent opt-out; bounds memory on huge histories.
 const ACTIVITIES_PER_OPP = 25;
 export class SupabaseProvider implements CrmProvider {
+  // `client` is the service-role client used for WRITES (and as the read
+  // fallback). Reads go through `readClient()`, which is context-aware: under
+  // the RLS_ENFORCE_READS flag it returns the session client for authenticated
+  // requests so Postgres RLS isolates tenants, and the service-role client
+  // otherwise (background jobs, public pages, flag off) — see read-client.ts.
   private client: SupabaseClient;
   private orgIdPromise?: Promise<string>;
+  private readClientPromise?: Promise<SupabaseClient>;
 
   constructor() {
     const client = getSupabase();
@@ -51,6 +58,15 @@ export class SupabaseProvider implements CrmProvider {
       });
     }
     return this.orgIdPromise;
+  }
+
+  /** The client for READS in the current context (RLS-enforced session client
+   *  when appropriate, else service-role). Cached per provider instance. */
+  private read(): Promise<SupabaseClient> {
+    if (!this.readClientPromise) {
+      this.readClientPromise = getOrgReadClient().then((c) => c ?? this.client);
+    }
+    return this.readClientPromise;
   }
 
   private async q<T>(builder: PromiseLike<{ data: unknown; error: { message: string } | null }>): Promise<T> {
@@ -69,21 +85,21 @@ export class SupabaseProvider implements CrmProvider {
   }
 
   async listUsers(): Promise<User[]> {
-    const orgId = await this.orgId();
+    const [orgId, db] = await Promise.all([this.orgId(), this.read()]);
     const rows = await this.q<MemberRow[]>(
-      this.client.from("members").select("id,name,email").eq("org_id", orgId).order("created_at"),
+      db.from("members").select("id,name,email").eq("org_id", orgId).order("created_at"),
     );
     return rows.map((m) => ({ id: m.id, name: m.name, email: m.email ?? undefined }));
   }
 
   async listPipelines(): Promise<Pipeline[]> {
-    const orgId = await this.orgId();
+    const [orgId, db] = await Promise.all([this.orgId(), this.read()]);
     const pipes = await this.q<PipelineRow[]>(
-      this.client.from("pipelines").select("id,label,position").eq("org_id", orgId).order("position"),
+      db.from("pipelines").select("id,label,position").eq("org_id", orgId).order("position"),
     );
     if (pipes.length === 0) return [];
     const stages = await this.q<StageRow[]>(
-      this.client
+      db
         .from("stages")
         .select("id,pipeline_id,label,probability,type,position")
         .in("pipeline_id", pipes.map((p) => p.id))
@@ -99,16 +115,16 @@ export class SupabaseProvider implements CrmProvider {
   }
 
   async listContacts(): Promise<Contact[]> {
-    const orgId = await this.orgId();
+    const [orgId, db] = await Promise.all([this.orgId(), this.read()]);
     const rows = await this.q<ContactRow[]>(
-      this.client.from("contacts").select("*").eq("org_id", orgId).order("created_at", { ascending: false }),
+      db.from("contacts").select("*").eq("org_id", orgId).order("created_at", { ascending: false }),
     );
     return rows.map(mapContact);
   }
 
   async getContact(id: Id): Promise<Contact | null> {
-    const orgId = await this.orgId();
-    const { data, error } = await this.client.from("contacts").select("*").eq("org_id", orgId).eq("id", id).maybeSingle();
+    const [orgId, db] = await Promise.all([this.orgId(), this.read()]);
+    const { data, error } = await db.from("contacts").select("*").eq("org_id", orgId).eq("id", id).maybeSingle();
     if (error) throw new Error(error.message);
     return data ? mapContact(data as ContactRow) : null;
   }
@@ -160,8 +176,8 @@ export class SupabaseProvider implements CrmProvider {
   }
 
   async listOpportunities(filter?: OpportunityFilter): Promise<Opportunity[]> {
-    const orgId = await this.orgId();
-    let query = this.client.from("opportunities").select("*").eq("org_id", orgId);
+    const [orgId, db] = await Promise.all([this.orgId(), this.read()]);
+    let query = db.from("opportunities").select("*").eq("org_id", orgId);
     if (filter?.pipelineId) query = query.eq("pipeline_id", filter.pipelineId);
     if (filter?.ownerId) query = query.eq("owner_id", filter.ownerId);
     if (filter?.staleSince) query = query.lte("last_activity_at", filter.staleSince);
@@ -175,8 +191,8 @@ export class SupabaseProvider implements CrmProvider {
   }
 
   async getOpportunity(id: Id): Promise<Opportunity | null> {
-    const orgId = await this.orgId();
-    const { data, error } = await this.client.from("opportunities").select("*").eq("org_id", orgId).eq("id", id).maybeSingle();
+    const [orgId, db] = await Promise.all([this.orgId(), this.read()]);
+    const { data, error } = await db.from("opportunities").select("*").eq("org_id", orgId).eq("id", id).maybeSingle();
     if (error) throw new Error(error.message);
     return data ? mapOpportunity(data as OpportunityRow) : null;
   }
@@ -259,9 +275,9 @@ export class SupabaseProvider implements CrmProvider {
   }
 
   async listActivities(opportunityId: Id): Promise<Activity[]> {
-    const orgId = await this.orgId();
+    const [orgId, db] = await Promise.all([this.orgId(), this.read()]);
     const rows = await this.q<ActivityRow[]>(
-      this.client
+      db
         .from("activities")
         .select("*")
         .eq("org_id", orgId)
@@ -272,9 +288,9 @@ export class SupabaseProvider implements CrmProvider {
   }
 
   async listRecentActivities(limit: number): Promise<Activity[]> {
-    const orgId = await this.orgId();
+    const [orgId, db] = await Promise.all([this.orgId(), this.read()]);
     const rows = await this.q<ActivityRow[]>(
-      this.client.from("activities").select("*").eq("org_id", orgId).order("occurred_at", { ascending: false }).limit(limit),
+      db.from("activities").select("*").eq("org_id", orgId).order("occurred_at", { ascending: false }).limit(limit),
     );
     return rows.map(mapActivity);
   }
@@ -283,7 +299,7 @@ export class SupabaseProvider implements CrmProvider {
     const out: Record<Id, Activity[]> = {};
     for (const id of opportunityIds) out[id] = [];
     if (opportunityIds.length === 0) return out;
-    const orgId = await this.orgId();
+    const [orgId, db] = await Promise.all([this.orgId(), this.read()]);
     // Cap the rows pulled in one shot. Callers (cadence, agent) only need recent
     // history per deal to pick a reply channel and honor opt-outs — not the full
     // timeline — so without a ceiling a batch of long-history deals could drag
@@ -291,7 +307,7 @@ export class SupabaseProvider implements CrmProvider {
     // keeps it bounded while still giving each deal its latest activity.
     const cap = Math.min(5000, Math.max(200, opportunityIds.length * ACTIVITIES_PER_OPP));
     const rows = await this.q<ActivityRow[]>(
-      this.client
+      db
         .from("activities")
         .select("*")
         .eq("org_id", orgId)
