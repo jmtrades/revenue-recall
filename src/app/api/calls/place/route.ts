@@ -8,7 +8,7 @@ import { getActiveVoice } from "@/lib/voice";
 import { getOrgSettings } from "@/lib/org";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { withGuard } from "@/lib/api/guard";
-import { aiDisclosure, hasOptedOut, recordingDisclosure } from "@/lib/agent/guardrails";
+import { aiDisclosure, calledTooRecently, hasOptedOut, manualCallCooldownSec, recordingDisclosure } from "@/lib/agent/guardrails";
 import { courtesyCallDecision } from "@/lib/calls/local-time";
 import { enforcementOn } from "@/lib/billing/enforce";
 import { isWithinVoiceMinutes } from "@/lib/billing/voice-minutes";
@@ -45,6 +45,14 @@ export const POST = withGuard(async (req: Request) => {
   }
   if (hasOptedOut(contact ?? undefined, opp ?? undefined, activities)) {
     return NextResponse.json({ error: "This contact has opted out or is marked do-not-contact." }, { status: 403 });
+  }
+
+  // Anti-rapid-fire: don't let the same contact be dialed again within the
+  // cooldown window (the client double-click guard and the per-IP rate limit
+  // can't see per-contact frequency). A good-faith backstop, not a hard block —
+  // 45s by default, tunable via MANUAL_CALL_COOLDOWN_SEC, 0 to disable.
+  if (calledTooRecently(activities, manualCallCooldownSec())) {
+    return NextResponse.json({ error: "You just called this contact — give it a moment before dialing again." }, { status: 429 });
   }
 
   // This org's settings, fetched once: timezone for the courtesy gate, caller-ID

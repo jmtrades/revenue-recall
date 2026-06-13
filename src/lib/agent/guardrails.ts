@@ -91,6 +91,24 @@ export function cooldownDays(): number {
   return Number.isFinite(n) && n >= 0 ? n : 3;
 }
 
+/** Seconds a manual dial waits after the last outbound call to the SAME contact
+ *  — an anti-rapid-fire / good-faith backstop above the client double-click
+ *  guard and the per-IP rate limit (neither of which sees per-contact call
+ *  frequency). Default 45s; 0 disables. Autopilot redials are governed instead
+ *  by their per-contact attempt budget (MAX_CALL_ATTEMPTS). */
+export function manualCallCooldownSec(): number {
+  const n = Number(process.env.MANUAL_CALL_COOLDOWN_SEC);
+  return Number.isFinite(n) && n >= 0 ? n : 45;
+}
+
+/** True when an outbound call to this contact landed within the cooldown window,
+ *  so the manual dialer should hold off on placing another. Pure + tested. */
+export function calledTooRecently(activities: Activity[], cooldownSec: number, now: number = Date.now()): boolean {
+  if (cooldownSec <= 0) return false;
+  const cutoff = now - cooldownSec * 1000;
+  return activities.some((a) => a.kind === "call" && a.direction === "outbound" && new Date(a.occurredAt).getTime() >= cutoff);
+}
+
 /**
  * Call-recording disclosure spoken at the very top of a call when the operator
  * configures one via CALL_RECORDING_DISCLOSURE. Required for two-party-consent
