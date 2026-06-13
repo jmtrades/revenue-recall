@@ -55,17 +55,38 @@ export function ttsAvailable(): boolean {
 // gateway). Each hosted provider gets a hand-matched equivalent so "warm
 // female · US" sounds warm-female-US on every backend.
 
-/** ElevenLabs stock voice ids (stable, public catalog). */
+/** ElevenLabs stock voice ids (stable, public catalog). Every house voice gets
+ *  a hand-matched premium voice from ElevenLabs' default library, so picking a
+ *  voice on the best provider gives a DISTINCT voice — not a collapse to the
+ *  group default. The handful without an exact premade match (bm_lewis,
+ *  bm_fable) resolve to their group (UK male → George) and can be pointed at any
+ *  voice — including a cloned one — via ELEVENLABS_VOICE_MAP. */
 export const ELEVEN_VOICES: Record<string, string> = {
-  af_heart: "21m00Tcm4TlvDq8ikWAM", // Rachel — warm female US
+  // US female
+  af_heart: "21m00Tcm4TlvDq8ikWAM", // Rachel — warm female US (default)
   af_bella: "EXAVITQu4vr4xnSDxMaL", // Sarah — bright female US
   af_nicole: "FGY2WhTYpPnrIDTdsKH5", // Laura — soft female US
   af_nova: "XB0fDUnXU5powFXDhCwa", // Charlotte — confident female
+  af_sarah: "cgSgspJ2msm6clMCkdW9", // Jessica — clear, conversational female US
+  af_sky: "9BWtsMINqrJLrRacOk9x", // Aria — youthful female US
+  af_jessica: "XrExE9yKIg1WjnnlVkGX", // Matilda — polished, warm female US
+  af_river: "SAz9YHcvj6GT2YYXdXww", // River — calm, neutral female US
+  // US male
   am_adam: "pNInz6obpgDQGcFmaJgB", // Adam — steady male US
   am_michael: "TxGEqnHWrfWFTfGW9XjX", // Josh — friendly male US
   am_onyx: "onwK4e9ZLuTAKqWW03F9", // Daniel — deep male
+  am_echo: "iP95p4xoKVk53GoZ742B", // Chris — even, casual male US
+  am_eric: "cjVigY5qzO86Huf0OWal", // Eric — crisp, classy male US
+  am_liam: "TX3LPaxmHKxFdv7VOQHJ", // Liam — approachable male US
+  am_fenrir: "nPczCjzI2devNBz1zQrb", // Brian — bold, deep male US
+  am_puck: "bIHbv24MWmeRgasZH58o", // Will — upbeat, young male US
+  // UK female
   bf_emma: "Xb7hH8MSUJpSbSDYk0k2", // Alice — female UK
-  bm_george: "JBFqnCBsd6RMkjVDRZzb", // George — male UK
+  bf_alice: "ThT5KcBeYPX3keUQqHPh", // Dorothy — bright female UK
+  bf_lily: "pFZP5JQG7iQjIQuC4Bku", // Lily — soft female UK
+  // UK male
+  bm_george: "JBFqnCBsd6RMkjVDRZzb", // George — warm male UK (storyteller)
+  bm_daniel: "onwK4e9ZLuTAKqWW03F9", // Daniel — refined male UK
 };
 
 /** OpenAI TTS voice names (the full house catalog mapped to valid OpenAI
@@ -129,15 +150,35 @@ export function cartesiaVoice(voiceId?: string | null): string {
   return fallback;
 }
 
+/** Resolve a house/clone voice id to an ElevenLabs voice. Precedence:
+ *  1. ELEVENLABS_VOICE_MAP — a JSON env override mapping ANY house voice to ANY
+ *     ElevenLabs voice id (a premade, a library voice, or your own cloned voice),
+ *     so an operator can curate "the best voices" with no deploy and correct any
+ *     id ElevenLabs ever retires.
+ *  2. ELEVENLABS_VOICE_ID — the single default-voice override (back-compat).
+ *  3. The built-in ELEVEN_VOICES catalog, then a same-group default.
+ *  clone:<id> voices (cloning is the in-house model's job) use the default. */
+export function elevenVoice(voiceId?: string | null): string {
+  const id = voiceId && !voiceId.startsWith("clone:") ? voiceId : DEFAULT_HOUSE_VOICE;
+  const raw = env("ELEVENLABS_VOICE_MAP");
+  if (raw) {
+    try {
+      const map = JSON.parse(raw) as Record<string, string>;
+      if (typeof map[id] === "string" && map[id]) return map[id];
+    } catch {
+      /* malformed map — fall through to the built-in catalog */
+    }
+  }
+  if (env("ELEVENLABS_VOICE_ID") && id === DEFAULT_HOUSE_VOICE) return env("ELEVENLABS_VOICE_ID")!;
+  return ELEVEN_VOICES[id] ?? ELEVEN_VOICES[groupDefault(id)] ?? ELEVEN_VOICES[DEFAULT_HOUSE_VOICE];
+}
+
 /** Resolve a house/clone voice id to the provider's voice. Unknown ids and
  *  clone:<id> voices (cloning is the in-house model's job) use the default. */
 export function providerVoice(provider: TtsProvider, voiceId?: string | null): string {
   const id = voiceId && !voiceId.startsWith("clone:") ? voiceId : DEFAULT_HOUSE_VOICE;
   if (provider === "cartesia") return cartesiaVoice(voiceId);
-  if (provider === "elevenlabs") {
-    if (env("ELEVENLABS_VOICE_ID") && id === DEFAULT_HOUSE_VOICE) return env("ELEVENLABS_VOICE_ID")!;
-    return ELEVEN_VOICES[id] ?? ELEVEN_VOICES[groupDefault(id)] ?? ELEVEN_VOICES[DEFAULT_HOUSE_VOICE];
-  }
+  if (provider === "elevenlabs") return elevenVoice(voiceId);
   if (env("OPENAI_TTS_VOICE") && id === DEFAULT_HOUSE_VOICE) return env("OPENAI_TTS_VOICE")!;
   return OPENAI_VOICES[id] ?? OPENAI_VOICES[groupDefault(id)] ?? OPENAI_VOICES[DEFAULT_HOUSE_VOICE];
 }

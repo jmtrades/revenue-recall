@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { ttsProvider, ttsAvailable, providerVoice, cartesiaVoice, elevenSettings, elevenModel, openaiInstructions, ELEVEN_VOICES, OPENAI_VOICES, synthesizeSpeech } from "@/lib/voice/tts";
+import { ttsProvider, ttsAvailable, providerVoice, cartesiaVoice, elevenVoice, elevenSettings, elevenModel, openaiInstructions, ELEVEN_VOICES, OPENAI_VOICES, synthesizeSpeech } from "@/lib/voice/tts";
 import { HOUSE_VOICES } from "@/lib/voice/house";
 
 const CLEAR = [
@@ -7,6 +7,7 @@ const CLEAR = [
   "OPENAI_API_KEY",
   "OPENAI_TTS_API_KEY",
   "ELEVENLABS_VOICE_ID",
+  "ELEVENLABS_VOICE_MAP",
   "OPENAI_TTS_VOICE",
   "CARTESIA_API_KEY",
   "CARTESIA_VOICE_ID",
@@ -103,13 +104,34 @@ describe("house voice → provider voice mapping", () => {
     }
   });
 
-  it("an unmapped voice falls back within its own gender/accent group, never a mismatch", () => {
-    // af_sky has no exact ElevenLabs map → a female-US default (af_heart/Rachel),
-    // not a male or UK voice.
-    expect(providerVoice("elevenlabs", "af_sky")).toBe(ELEVEN_VOICES.af_heart);
-    expect(providerVoice("elevenlabs", "bm_lewis")).toBe(ELEVEN_VOICES.bm_george); // male UK → male UK
-    expect(providerVoice("elevenlabs", "am_fenrir")).toBe(ELEVEN_VOICES.am_adam); // male US → male US
-    expect(providerVoice("elevenlabs", "bf_lily")).toBe(ELEVEN_VOICES.bf_emma); // female UK → female UK
+  it("the curated catalog now gives previously-collapsing voices a DISTINCT premium voice", () => {
+    // Before: these fell back to their group default. Now each maps to its own
+    // hand-matched ElevenLabs voice (the point of this change).
+    expect(providerVoice("elevenlabs", "af_sky")).toBe(ELEVEN_VOICES.af_sky);
+    expect(providerVoice("elevenlabs", "af_sky")).not.toBe(ELEVEN_VOICES.af_heart);
+    expect(providerVoice("elevenlabs", "am_fenrir")).toBe(ELEVEN_VOICES.am_fenrir);
+    expect(providerVoice("elevenlabs", "am_fenrir")).not.toBe(ELEVEN_VOICES.am_adam);
+    expect(providerVoice("elevenlabs", "bf_lily")).toBe(ELEVEN_VOICES.bf_lily);
+    expect(providerVoice("elevenlabs", "bf_lily")).not.toBe(ELEVEN_VOICES.bf_emma);
+  });
+
+  it("the few voices without a distinct premade match fall back within their own group", () => {
+    // bm_lewis / bm_fable have no exact premade → a male-UK default (George),
+    // never a mismatch. (Operators can give them their own via ELEVENLABS_VOICE_MAP.)
+    expect(providerVoice("elevenlabs", "bm_lewis")).toBe(ELEVEN_VOICES.bm_george);
+    expect(providerVoice("elevenlabs", "bm_fable")).toBe(ELEVEN_VOICES.bm_george);
+  });
+
+  it("ELEVENLABS_VOICE_MAP overrides the built-in catalog (curate any voice, incl. clones, with no deploy)", () => {
+    process.env.ELEVENLABS_VOICE_MAP = JSON.stringify({ af_heart: "my-best-voice", bm_lewis: "my-uk-clone" });
+    expect(elevenVoice("af_heart")).toBe("my-best-voice"); // overrides Rachel
+    expect(elevenVoice("bm_lewis")).toBe("my-uk-clone"); // fills a group-default gap
+    expect(elevenVoice("am_adam")).toBe(ELEVEN_VOICES.am_adam); // unmapped → built-in catalog
+  });
+
+  it("a malformed ELEVENLABS_VOICE_MAP falls back to the catalog instead of throwing", () => {
+    process.env.ELEVENLABS_VOICE_MAP = "{not json";
+    expect(elevenVoice("af_heart")).toBe(ELEVEN_VOICES.af_heart);
   });
 
   it("clone voices and unknown ids fall back to the default voice", () => {
