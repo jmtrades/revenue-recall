@@ -1,5 +1,6 @@
 import { cache } from "@/lib/cache";
 import { getSupabase } from "@/lib/supabase/client";
+import { getOrgReadClient } from "@/lib/supabase/read-client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getConfig } from "@/lib/config";
 import { getIndustry } from "@/lib/industries";
@@ -72,7 +73,11 @@ function envFallback(): OrgSettings {
 }
 
 async function read(): Promise<OrgSettings> {
-  const client = getSupabase();
+  // Read through the context-aware client: under RLS_ENFORCE_READS an
+  // authenticated request scopes the orgs row by RLS (current_org_id()); public
+  // pages (booking) and background (cron via runWithOrg) fall back to the
+  // service-role client. Writes (updateOrgSettings) stay on service-role.
+  const client = await getOrgReadClient();
   if (!client) return envFallback();
   try {
     const orgId = await resolveActiveOrgId();

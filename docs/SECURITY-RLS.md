@@ -67,7 +67,8 @@ enforcement on:
 |---|---|---|
 | Audit log read (`listAudit`, `/api/audit`) | ✅ RLS-enforced (unconditional) | Read via session client; SELECT policy in `0052`. Writes (`recordAudit`) stay service-role → append-only. |
 | CRM provider reads (`SupabaseProvider`) — powers dashboard, pipeline, leads, recall, reports, contacts/activities | ✅ RLS-enforced when `RLS_ENFORCE_READS=true` | All entity reads flow through `queries.ts` → `resolveProvider()` → this provider, so one chokepoint covers them. Writes stay service-role. |
-| `org.ts` (`getOrgSettings`), and the smaller `*-store` modules | service-role + manual `org_id` + tripwire | Hot, dual-use (called from cron too) or low-sensitivity. Next phase — migrate read paths via the recipe below. |
+| Org settings read (`getOrgSettings`, `org.ts`) | ✅ RLS-enforced when `RLS_ENFORCE_READS=true` | Routed through `getOrgReadClient()`; public (booking) and cron contexts fall back to service-role. `updateOrgSettings` stays service-role. |
+| The smaller `*-store` / `*-server` modules | service-role + manual `org_id` + tripwire | Lower-traffic or write-heavy/dual-use. Next phase — migrate read paths via the recipe below. |
 | Public surfaces (booking, hosted forms, inbound) | service-role (by design) | No session; scoped by explicit org id from the URL/token. Must NOT move to the session client. |
 
 ## How to put a new read surface under RLS
