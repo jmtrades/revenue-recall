@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { SuppressedRow } from "@/lib/suppression";
+import { useResource } from "@/lib/useResource";
 
 /**
  * Settings → Deliverability → suppression. Shows who the engine won't contact
@@ -11,24 +12,18 @@ import type { SuppressedRow } from "@/lib/suppression";
 const REASON_LABEL: Record<string, string> = { opted_out: "Opted out", bounced: "Bounced" };
 
 export function SuppressionList({ canManage }: { canManage: boolean }) {
-  const [rows, setRows] = useState<SuppressedRow[] | null>(null);
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
-  async function load() {
-    try {
-      const res = await fetch("/api/suppression");
-      const body = (await res.json().catch(() => ({}))) as { suppressed?: SuppressedRow[] };
-      setRows(body.suppressed ?? []);
-    } catch {
-      setRows([]);
-    }
-  }
-  useEffect(() => {
-    void load();
-  }, []);
+  // Fetched via useResource: aborts on unmount, ignores stale responses, and
+  // reload() refreshes the list after a mutation.
+  const { data: rows, reload } = useResource<SuppressedRow[]>(
+    "/api/suppression",
+    (json) => (json as { suppressed?: SuppressedRow[] }).suppressed ?? [],
+    { cache: "default" },
+  );
 
   async function mutate(method: "POST" | "DELETE", addr: string) {
     setBusy(true);
@@ -43,7 +38,7 @@ export function SuppressionList({ canManage }: { canManage: boolean }) {
       }
       if (method === "POST") setNote(body.flagged ? `Suppressed ${body.flagged} contact(s).` : "No matching contact found for that email.");
       else setNote(body.restored ? `Restored ${body.restored} contact(s).` : "No suppressed contact found for that email.");
-      await load();
+      reload();
     } catch {
       setError("Couldn't update — check your connection.");
     } finally {
