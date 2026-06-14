@@ -16,6 +16,7 @@ import { loadVoicePrefs, toVoicePrefs } from "@/lib/voice/prefs";
 import { shouldBargeIn, wordCount, pickAck, thinkingPauseMs } from "@/lib/voice/turntaking";
 import type { Sentiment } from "@/lib/voice/reactive";
 import { analyzeCall, type CallScore } from "@/lib/voice/scorecard";
+import { VoiceAgent } from "@/components/VoiceAgent";
 
 type Difficulty = "easy" | "medium" | "hard";
 interface Turn {
@@ -294,6 +295,11 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
         You sell, the app plays {contactName.split(" ")[0]} as a {difficulty} prospect — out loud, on-device.
         {!canSpeak && " (Spoken voice needs a browser that supports speech synthesis.)"}
       </p>
+
+      {/* Optional live ElevenLabs Conversational AI agent — a real two-way spoken
+          call instead of the on-device turn-by-turn loop. Self-hides unless the
+          agent is configured (key + agent id) and entitled on this plan. */}
+      <VoiceAgent label="Talk to a live AI prospect" className="mb-3" />
 
       <div ref={scrollRef} className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border bg-surface-2/40 p-3">
         {!started ? (
