@@ -2,7 +2,7 @@
   "name": "revenue-recall",
   "version": "0.1.0",
   "private": true,
-  "description": "Revenue Recall \u2014 a universal sales OS that works with any CRM (or none) and adapts to any industry.",
+  "description": "Revenue Recall — a universal sales OS that works with any CRM (or none) and adapts to any industry.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.97.1",
+    "@elevenlabs/elevenlabs-js": "^2.52.0",
     "@stripe/stripe-js": "^9.7.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.45.4",
