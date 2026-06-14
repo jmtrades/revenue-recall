@@ -55,10 +55,10 @@ export function ElevenLabsVoices() {
 
   return (
     <div className="card mt-4">
-      <h2 className="font-semibold text-fg">ElevenLabs voices</h2>
+      <h2 className="font-semibold text-fg">Premium studio voices</h2>
       <p className="mt-1 text-sm text-muted">
-        The voices in your ElevenLabs account — library voices and your own clones. Copy an id into{" "}
-        <span className="font-mono text-xs">ELEVENLABS_VOICE_MAP</span> to map it to a house voice.
+        Ultra-realistic voices available on your account, including any custom voices you&apos;ve cloned. Copy a voice id
+        to assign it to one of your house voices.
       </p>
 
       {loading ? (
