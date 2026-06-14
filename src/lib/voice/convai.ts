@@ -1,8 +1,8 @@
 /**
  * ElevenLabs Conversational AI — the live, two-way voice-agent path (distinct
- * from the one-shot TTS in tts.ts). The browser talks to ElevenLabs over a
- * WebSocket via @elevenlabs/react's useConversation hook; this server module
- * mints the short-lived SIGNED URL that authorizes that socket so the API key
+ * from the one-shot TTS in tts.ts). The browser talks to the agent over WebRTC
+ * via @elevenlabs/react's useConversation hook; this server module mints the
+ * short-lived CONVERSATION TOKEN that authorizes that session so the API key
  * never reaches the client.
  *
  * Like every other provider here it's inert until configured: it needs BOTH the
@@ -27,22 +27,22 @@ export function convaiConfigured(): boolean {
 }
 
 /**
- * Mint a short-lived signed URL the browser uses to open the agent WebSocket.
- * Keeps ELEVENLABS_API_KEY server-side; the client only ever sees the URL.
- * Throws when unconfigured or the provider errors — the route maps that to a
- * clean JSON error and the client falls back to "agent unavailable".
+ * Mint a short-lived WebRTC conversation token the browser uses to open the
+ * agent session. Keeps ELEVENLABS_API_KEY server-side; the client only ever
+ * sees the token. Throws when unconfigured or the provider errors — the route
+ * maps that to a clean JSON error and the client falls back to "unavailable".
  */
-export async function getConvaiSignedUrl(): Promise<string> {
+export async function getConvaiToken(): Promise<{ token: string; agentId: string }> {
   const key = env("ELEVENLABS_API_KEY");
   const agentId = convaiAgentId();
   if (!key || !agentId) throw new Error("ElevenLabs Conversational AI not configured");
 
   const res = await fetch(
-    `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${encodeURIComponent(agentId)}`,
+    `https://api.elevenlabs.io/v1/convai/conversation/token?agent_id=${encodeURIComponent(agentId)}`,
     { headers: { "xi-api-key": key }, cache: "no-store" },
   );
-  if (!res.ok) throw new Error(`ElevenLabs signed-url ${res.status}`);
-  const data = (await res.json()) as { signed_url?: string };
-  if (!data.signed_url) throw new Error("ElevenLabs signed-url: missing url");
-  return data.signed_url;
+  if (!res.ok) throw new Error(`ElevenLabs token ${res.status}`);
+  const data = (await res.json()) as { token?: string };
+  if (!data.token) throw new Error("ElevenLabs token: missing token");
+  return { token: data.token, agentId };
 }

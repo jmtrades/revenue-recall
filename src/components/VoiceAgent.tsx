@@ -7,9 +7,9 @@ import { Icon } from "@/components/icons";
 /**
  * Live ElevenLabs Conversational AI agent — a real two-way spoken conversation
  * (the prospect talks, the agent listens and replies), as opposed to the
- * one-shot read-aloud TTS behind SpeakButton. It connects over a WebSocket
- * authorized by a short-lived signed URL minted server-side (/api/voice/convai),
- * so the ElevenLabs key never touches the browser.
+ * one-shot read-aloud TTS behind SpeakButton. It connects over WebRTC (low
+ * latency) authorized by a short-lived conversation token minted server-side
+ * (/api/voice/convai), so the ElevenLabs key never touches the browser.
  *
  * Self-gating, like every other voice surface: it probes GET /api/voice/convai
  * once and renders NOTHING unless the agent is both configured (key + agent id)
@@ -17,10 +17,13 @@ import { Icon } from "@/components/icons";
  * dead button.
  */
 function VoiceAgentInner({ label }: { label: string }) {
-  const conversation = useConversation();
-  const { status, isSpeaking, startSession, endSession } = conversation;
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
+
+  const conversation = useConversation({
+    onError: (message: string) => setError(message || "Voice agent error."),
+  });
+  const { status, isSpeaking, startSession, endSession } = conversation;
 
   // End the session if the component unmounts mid-call (navigation, etc.).
   useEffect(() => () => endSession(), [endSession]);
@@ -37,8 +40,8 @@ function VoiceAgentInner({ label }: { label: string }) {
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
         throw new Error(body?.error ?? "Could not start the voice agent.");
       }
-      const { signedUrl } = (await res.json()) as { signedUrl: string };
-      await startSession({ signedUrl, connectionType: "websocket" });
+      const { token } = (await res.json()) as { token: string };
+      await startSession({ conversationToken: token, connectionType: "webrtc" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not start the voice agent.");
     } finally {
