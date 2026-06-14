@@ -40,8 +40,14 @@ function VoiceAgentInner({ label }: { label: string }) {
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
         throw new Error(body?.error ?? "Could not start the voice agent.");
       }
-      const { token } = (await res.json()) as { token: string };
-      await startSession({ conversationToken: token, connectionType: "webrtc" });
+      const { token, voiceId } = (await res.json()) as { token: string; voiceId?: string };
+      await startSession({
+        conversationToken: token,
+        connectionType: "webrtc",
+        // Speak in the org's chosen/cloned voice when one is set (honored if the
+        // agent permits voice overrides; otherwise the agent's own voice is used).
+        ...(voiceId ? { overrides: { tts: { voiceId } } } : {}),
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not start the voice agent.");
     } finally {

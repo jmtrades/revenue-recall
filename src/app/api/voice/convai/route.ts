@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { withGuard } from "@/lib/api/guard";
 import { isEntitled } from "@/lib/billing/enforce";
 import { convaiConfigured, getConvaiToken } from "@/lib/voice/convai";
+import { getOrgSettings } from "@/lib/org";
+import { parseElevenSelection } from "@/lib/voice/eleven";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +29,13 @@ export const POST = withGuard(async () => {
   }
   try {
     const { token, agentId } = await getConvaiToken();
-    return NextResponse.json({ token, agentId }, { headers: { "Cache-Control": "no-store" } });
+    // Speak the live agent in the org's chosen ElevenLabs voice (a stock voice
+    // or the org's own clone), passed as a per-session override. Honored only if
+    // the agent allows voice overrides in its ElevenLabs security settings;
+    // otherwise the agent's configured voice is used — never an error.
+    const org = await getOrgSettings().catch(() => null);
+    const voiceId = parseElevenSelection(org?.ttsVoiceId) ?? undefined;
+    return NextResponse.json({ token, agentId, voiceId }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Could not start voice agent" }, { status: 502 });
   }
