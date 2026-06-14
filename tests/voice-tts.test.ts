@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { ttsProvider, ttsAvailable, providerVoice, cartesiaVoice, elevenVoice, elevenSettings, elevenModel, openaiInstructions, ELEVEN_VOICES, OPENAI_VOICES, synthesizeSpeech, listElevenVoices } from "@/lib/voice/tts";
+import { ttsProvider, ttsAvailable, providerVoice, cartesiaVoice, elevenVoice, elevenSettings, elevenModel, elevenOutputFormat, elevenMime, openaiInstructions, ELEVEN_VOICES, OPENAI_VOICES, synthesizeSpeech, listElevenVoices } from "@/lib/voice/tts";
 import { HOUSE_VOICES } from "@/lib/voice/house";
 import { vi } from "vitest";
 
@@ -16,6 +16,7 @@ const CLEAR = [
   "VOICE_TTS_PROVIDER",
   "ELEVENLABS_MODEL",
   "ELEVENLABS_MODEL_HQ",
+  "ELEVENLABS_OUTPUT_FORMAT",
 ];
 
 beforeEach(() => {
@@ -165,6 +166,25 @@ describe("ElevenLabs quality tier", () => {
     expect(elevenModel("max")).toBe("eleven_v3");
     delete process.env.ELEVENLABS_MODEL;
     delete process.env.ELEVENLABS_MODEL_HQ;
+  });
+
+  it("max quality requests the highest-fidelity browser-playable format; realtime stays 128k", () => {
+    expect(elevenOutputFormat("max")).toBe("mp3_44100_192");
+    expect(elevenOutputFormat("realtime")).toBe("mp3_44100_128");
+    expect(elevenOutputFormat()).toBe("mp3_44100_128");
+  });
+
+  it("the max format is env-overridable (free-tier downgrade or lossless)", () => {
+    process.env.ELEVENLABS_OUTPUT_FORMAT = "pcm_44100";
+    expect(elevenOutputFormat("max")).toBe("pcm_44100");
+    expect(elevenOutputFormat("realtime")).toBe("mp3_44100_128"); // realtime unaffected
+  });
+
+  it("MIME follows the format token", () => {
+    expect(elevenMime("mp3_44100_192")).toBe("audio/mpeg");
+    expect(elevenMime("pcm_44100")).toBe("audio/L16");
+    expect(elevenMime("wav_44100")).toBe("audio/wav");
+    expect(elevenMime("ulaw_8000")).toBe("audio/basic");
   });
 });
 

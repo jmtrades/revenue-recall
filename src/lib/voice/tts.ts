@@ -295,6 +295,27 @@ export function elevenModel(quality: "realtime" | "max" = "realtime"): string {
     : env("ELEVENLABS_MODEL") ?? "eleven_flash_v2_5";
 }
 
+/** ElevenLabs output format per quality tier. Max (previews/demo/read-aloud —
+ *  HD playback where fidelity is the whole point) defaults to 192 kbps MP3, the
+ *  highest-fidelity browser-playable format; realtime stays full-band 128 kbps
+ *  for latency. `ELEVENLABS_OUTPUT_FORMAT` overrides the max tier (e.g.
+ *  `pcm_44100` for lossless if your pipeline can play it, or `mp3_44100_128` on
+ *  a free ElevenLabs tier that doesn't allow 192). A format the account's tier
+ *  doesn't permit just 4xxs and the client falls back to the browser voice —
+ *  never a hard failure. */
+export function elevenOutputFormat(quality: "realtime" | "max" = "realtime"): string {
+  if (quality === "max") return env("ELEVENLABS_OUTPUT_FORMAT") ?? "mp3_44100_192";
+  return "mp3_44100_128";
+}
+
+/** MIME for an ElevenLabs output_format token. */
+export function elevenMime(format: string): string {
+  if (format.startsWith("wav")) return "audio/wav";
+  if (format.startsWith("ulaw") || format.startsWith("alaw")) return "audio/basic";
+  if (format.startsWith("pcm")) return "audio/L16";
+  return "audio/mpeg"; // mp3_*
+}
+
 export interface SynthesizedAudio {
   audio: ArrayBuffer;
   mime: string;
@@ -331,21 +352,23 @@ export async function synthesizeSpeech(input: SynthesizeInput): Promise<Synthesi
 
   if (provider === "elevenlabs") {
     const voice = providerVoice("elevenlabs", input.voiceId);
-    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`, {
+    const format = elevenOutputFormat(input.quality);
+    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=${format}`, {
       method: "POST",
       headers: { "xi-api-key": env("ELEVENLABS_API_KEY")!, "Content-Type": "application/json" },
       body: JSON.stringify({
         // Realtime (calls) → Flash v2.5 (~75 ms, the model the minute-margin
         // math is priced on). Max (read-aloud/previews/demo) → multilingual_v2,
-        // ElevenLabs' most natural production model, since latency is invisible
-        // there and fidelity is the whole point. See elevenModel().
+        // ElevenLabs' most natural production model, at the highest-fidelity
+        // browser-playable bitrate — latency is invisible there and fidelity is
+        // the whole point. See elevenModel() / elevenOutputFormat().
         text,
         model_id: elevenModel(input.quality),
         voice_settings: elevenSettings(input.emotion),
       }),
     });
     if (!res.ok) throw new Error(`ElevenLabs ${res.status}`);
-    return { audio: await res.arrayBuffer(), mime: "audio/mpeg", provider };
+    return { audio: await res.arrayBuffer(), mime: elevenMime(format), provider };
   }
 
   const res = await fetch("https://api.openai.com/v1/audio/speech", {
