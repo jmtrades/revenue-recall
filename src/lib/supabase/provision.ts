@@ -3,6 +3,7 @@ import { getSupabase } from "@/lib/supabase/client";
 import { bootstrapOrg } from "@/lib/supabase/bootstrap";
 import { sendWelcomeEmail } from "@/lib/billing/lifecycle";
 import { acceptPendingInvite } from "@/lib/invites-server";
+import { logError, errMessage } from "@/lib/log";
 import type { SessionUser } from "@/lib/auth";
 
 function workspaceName(email: string): string {
@@ -43,7 +44,7 @@ export const ensureOrgForUser = cache(async (user: SessionUser): Promise<string 
     // Best-effort: provisioning must never fail on a mail hiccup.
     sendWelcomeEmail(user.email, user.name).catch(() => {});
     return res.orgId;
-  } catch {
+  } catch (e) {
     // Bootstrap can fail on a race: a concurrent first request already created
     // this user's membership, and the unique index on members.auth_user_id
     // rejects the duplicate. Recover by reading the membership that won the
@@ -54,6 +55,12 @@ export const ensureOrgForUser = cache(async (user: SessionUser): Promise<string 
       .eq("auth_user_id", user.id)
       .limit(1)
       .maybeSingle();
-    return (existing?.org_id as string) ?? null;
+    if (existing?.org_id) return existing.org_id as string;
+    // Not a race — a real provisioning failure (most often: the database is
+    // missing the app's tables, or no service-role key is set so the insert is
+    // blocked by RLS). Log the actual cause so "couldn't save your workspace"
+    // is diagnosable from the server logs instead of being a silent dead-end.
+    logError("provision.bootstrap_failed", { userId: user.id, error: errMessage(e) });
+    return null;
   }
 });
