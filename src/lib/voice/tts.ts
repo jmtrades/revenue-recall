@@ -11,6 +11,7 @@
  */
 import { speakable, type Emotion } from "@/lib/voice/speech";
 import { DEFAULT_HOUSE_VOICE } from "@/lib/voice/house";
+import { parseElevenSelection } from "@/lib/voice/eleven";
 
 export type TtsProvider = "cartesia" | "elevenlabs" | "openai";
 
@@ -132,6 +133,14 @@ export function cartesiaVoice(voiceId?: string | null): string {
 /** Resolve a house/clone voice id to the provider's voice. Unknown ids and
  *  clone:<id> voices (cloning is the in-house model's job) use the default. */
 export function providerVoice(provider: TtsProvider, voiceId?: string | null): string {
+  // An ElevenLabs selection ("eleven:<id>", including the org's own clones) is a
+  // real ElevenLabs voice id — pass it straight through on that provider. Other
+  // providers can't use it, so they fall back to their own default voice.
+  const elevenId = parseElevenSelection(voiceId);
+  if (elevenId) {
+    if (provider === "elevenlabs") return elevenId;
+    voiceId = null;
+  }
   const id = voiceId && !voiceId.startsWith("clone:") ? voiceId : DEFAULT_HOUSE_VOICE;
   if (provider === "cartesia") return cartesiaVoice(voiceId);
   if (provider === "elevenlabs") {

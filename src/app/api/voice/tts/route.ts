@@ -4,6 +4,7 @@ import { withGuard } from "@/lib/api/guard";
 import { isEntitled } from "@/lib/billing/enforce";
 import { ttsAvailable, ttsProvider, synthesizeSpeech } from "@/lib/voice/tts";
 import { EMOTIONS } from "@/lib/voice/speech";
+import { getOrgSettings } from "@/lib/org";
 
 export const dynamic = "force-dynamic";
 
@@ -40,10 +41,13 @@ export const POST = withGuard(async (req: Request) => {
   }
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  // No explicit voice → use the org's chosen hosted (ElevenLabs) read-aloud
+  // voice, so a selected stock voice or clone is what every read-aloud speaks in.
+  const voiceId = parsed.data.voiceId || (await getOrgSettings().catch(() => null))?.ttsVoiceId || undefined;
   try {
     const out = await synthesizeSpeech({
       text: parsed.data.text,
-      voiceId: parsed.data.voiceId,
+      voiceId,
       emotion: parsed.data.emotion as never,
       rate: parsed.data.rate,
       lang: parsed.data.lang,
