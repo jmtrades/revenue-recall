@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useResource } from "@/lib/useResource";
 
 interface Channel {
   provider: string;
@@ -36,27 +36,12 @@ function Sub({ ok, label }: { ok: boolean; label: string }) {
 /** Live check that outbound calls/texts are actually wired — it pings the
  *  gateway, so a misconfigured URL shows red instead of a false green. */
 export function CallingStatus() {
-  const [d, setD] = useState<Diagnostics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/calls/diagnostics", { cache: "no-store" });
-      if (!res.ok) throw new Error("Couldn't load status");
-      setD((await res.json()) as Diagnostics);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't load status");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  // Fetched via useResource (no-store default): aborts on unmount, ignores
+  // stale responses, and reload() drives the "Re-check" button.
+  const { data: d, loading, error, reload } = useResource<Diagnostics>(
+    "/api/calls/diagnostics",
+    (json) => json as Diagnostics,
+  );
 
   const g = d?.gateway;
   const voiceLine: { ok: boolean; text: string; detail?: string; steps?: string[] } = !d
@@ -90,13 +75,13 @@ export function CallingStatus() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="stat-label">Calls &amp; texts — live status</p>
-        <button onClick={() => void load()} disabled={loading} className="rounded-lg border border-border px-2.5 py-1 text-xs text-muted transition hover:text-fg disabled:opacity-50">
+        <button onClick={() => reload()} disabled={loading} className="rounded-lg border border-border px-2.5 py-1 text-xs text-muted transition hover:text-fg disabled:opacity-50">
           {loading ? "Checking…" : "Re-check"}
         </button>
       </div>
 
       {error ? (
-        <p className="text-sm text-danger">{error}</p>
+        <p className="text-sm text-danger">Couldn&apos;t load status — try Re-check.</p>
       ) : (
         <ul className="divide-y divide-border rounded-lg border border-border">
           {/* SMS */}
