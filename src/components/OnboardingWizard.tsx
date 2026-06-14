@@ -174,7 +174,17 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
       }
     } catch {
       setFinishing(false);
-      setSaveError("We couldn't save your workspace — check your connection and try again.");
+      // Turn the dead-end into a diagnosis: ask the health probe WHY a save fails
+      // (most often the database isn't fully set up — missing tables or no
+      // service-role key) so the owner sees the actual fix, not a generic error.
+      let detail = " Check your connection and try again.";
+      try {
+        const h = await fetch("/api/health").then((r) => r.json());
+        const blocker = h?.launch?.blockers?.[0];
+        if (typeof blocker === "string" && blocker) detail = ` ${blocker}`;
+        else detail = " Your workspace database may not be fully set up yet — if you're the owner, finish setup in Settings, otherwise contact your admin.";
+      } catch { /* keep the connection-retry default */ }
+      setSaveError(`We couldn't save your workspace.${detail}`);
       return;
     }
     // Brief "building your workspace" beat so finishing feels like the system coming alive.
