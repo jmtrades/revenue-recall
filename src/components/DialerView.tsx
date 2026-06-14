@@ -120,6 +120,10 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
   const [quickBusy, setQuickBusy] = useState<string | null>(null);
 
   const active = queue[idx];
+  // Synced every render so in-flight requests can tell whether the rep has
+  // moved on (see loadBrief's stale-response guard).
+  const activeDealRef = useRef<string | undefined>(undefined);
+  activeDealRef.current = active?.dealId;
   const remaining = queue.filter((q) => !done[q.dealId]).length;
   // The next not-yet-completed call after the current one (−1 when none remain),
   // so advancing skips deals already wrapped up instead of landing back on them.
@@ -142,15 +146,19 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
 
   async function loadBrief() {
     if (!active) return;
+    // Guard against the stale-response race: the rep can hit N (next) while a
+    // brief is in flight, and deal A's brief must never render under deal B.
+    const dealId = active.dealId;
     setBriefBusy(true);
     setBriefError(null);
     try {
-      const res = await fetch("/api/ai/brief", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dealId: active.dealId }) });
+      const res = await fetch("/api/ai/brief", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dealId }) });
       if (!res.ok) throw new Error();
-      setBrief(await res.json());
+      const data = await res.json();
+      if (activeDealRef.current === dealId) setBrief(data);
     } catch {
       // Don't fail silently — the rep clicks "Prepare" and otherwise sees nothing.
-      setBriefError("Couldn't prepare the brief — try again.");
+      if (activeDealRef.current === dealId) setBriefError("Couldn't prepare the brief — try again.");
     } finally {
       setBriefBusy(false);
     }
@@ -365,7 +373,9 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <button onClick={call} disabled={placing} className="inline-flex items-center gap-1.5 rounded-lg bg-success px-5 py-2.5 text-sm font-semibold text-white transition active:scale-[0.97] hover:bg-success/90 disabled:opacity-50 disabled:active:scale-100"><Icon name="dialer" size={15} /> {placing ? "Dialing…" : "Call"}</button>
-              {callStatus && <span className="text-sm text-muted">{callStatus}</span>}
+              {/* role=status announces dial outcomes (incl. the TCPA window
+                  message) to screen readers without stealing focus. */}
+              {callStatus && <span role="status" aria-live="polite" className="text-sm text-muted">{callStatus}</span>}
             </div>
             {/* One-tap no-connect logging — the bulk of any dial day. Each logs
                 the outcome, re-queues the deal, and (in Power Mode) jumps to the

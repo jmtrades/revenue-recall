@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { getProvider } from "@/lib/crm/registry";
 import { runTask } from "@/lib/agent/engine";
 import type { AgentTask } from "@/lib/agent/types";
@@ -7,6 +7,14 @@ import type { AgentTask } from "@/lib/agent/types";
 beforeEach(() => {
   delete process.env.ANTHROPIC_API_KEY;
   delete process.env.BILLING_ENFORCE;
+  // SMS/call paths gate on the prospect's 8am–9pm window (org clock for
+  // unknown zones — no fail-open), so pin a mid-window moment: 12:00 New York.
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-06-12T16:00:00Z"));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 async function autoTask(channel: AgentTask["channel"], dealId: string): Promise<AgentTask> {
@@ -19,7 +27,7 @@ describe("autopilot channel fallback (auto mode)", () => {
     const pipeline = (await provider.listPipelines())[0];
     const stage = pipeline.stages.find((s) => s.type === "open")!;
     // No email on file — only a phone number.
-    const contact = await provider.createContact({ name: "Phone Only", points: [{ channel: "phone", value: "+15551230000" }] });
+    const contact = await provider.createContact({ name: "Phone Only", points: [{ channel: "phone", value: "+12125551230" }] });
     const opp = await provider.createOpportunity({ title: "Reachable deal", pipelineId: pipeline.id, stageId: stage.id, value: 4200, currency: "USD", contactId: contact.id });
 
     const run = await runTask(await autoTask("email", opp.id));

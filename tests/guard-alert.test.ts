@@ -24,7 +24,7 @@ describe("withGuard alerts the operator on unhandled 500s (rate-limited)", () =>
     expect(res.status).toBe(500);
     await flush();
     expect(sendAlert).toHaveBeenCalledTimes(1);
-    expect(sendAlert.mock.calls[0][0]).toBe("api.unhandled");
+    expect((sendAlert.mock.calls[0] as unknown as [string])[0]).toBe("api.unhandled");
   });
 
   it("rate-limits repeated alerts for the same path — no webhook storm", async () => {

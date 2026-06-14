@@ -3,6 +3,7 @@ import { getConfig } from "@/lib/config";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { isAiConfigured } from "@/lib/ai/client";
 import { channelStatus } from "@/lib/comms";
+import { productionConfigIssues } from "@/lib/env-check";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,12 @@ export async function GET() {
   const warnings: string[] = [];
   if (!isAiConfigured()) warnings.push("AI is in template mode (set ANTHROPIC_API_KEY for live drafting).");
   if (!ch.email.live) warnings.push("Email sending is off (signup/invite/outreach emails only log).");
+
+  // Production secret audit: every silent fail-closed path (cron auth, Stripe
+  // webhook, inbound verification, CAN-SPAM address) becomes a named issue here.
+  const audit = productionConfigIssues();
+  blockers.push(...audit.blockers);
+  warnings.push(...audit.warnings);
 
   // Which build is actually serving. Vercel injects the commit SHA at build
   // time (GIT_COMMIT_SHA covers other hosts), so an outside probe can prove a

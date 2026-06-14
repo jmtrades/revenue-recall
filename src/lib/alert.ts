@@ -19,8 +19,9 @@ export async function sendAlert(event: string, detail: Record<string, unknown>):
   const timer = setTimeout(() => ctrl.abort(), 5000);
   try {
     await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload), signal: ctrl.signal });
-  } catch {
-    /* swallow — never let alerting throw */
+  } catch (e) {
+    // Never throws, but a dead alert webhook must itself be visible in logs.
+    logError("alert.webhook_failed", { event, error: e instanceof Error ? e.message : "delivery failed" });
   } finally {
     clearTimeout(timer);
   }

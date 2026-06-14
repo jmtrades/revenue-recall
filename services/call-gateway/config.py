@@ -67,3 +67,17 @@ PUBLIC_WS_BASE = env("PUBLIC_WS_BASE", "ws://127.0.0.1:8080")
 
 # Telephony media is 8 kHz mono PCM; our neural voice emits 24 kHz (we resample).
 TELEPHONY_SAMPLE_RATE = 8000
+
+# ── Hosted call voice (optional, OFF by default) ────────────────────────────
+# Live calls speak in your in-house neural voice by default (NEURAL_VOICE_URL,
+# zero marginal cost). Set CALL_TTS_PROVIDER=elevenlabs to speak calls in
+# ElevenLabs instead (premium quality) — requires ELEVENLABS_API_KEY. ElevenLabs
+# streams pcm_8000, the exact telephony format, so there's no resampling. If a
+# hosted request fails before any audio, the call falls back to the neural voice
+# when NEURAL_VOICE_URL is set (a hosted hiccup never kills a live call). Per-
+# house-voice ids are mapped in tts.py; CALL_ELEVENLABS_VOICE_ID overrides the
+# voice used for unmapped/clone ids.
+CALL_TTS_PROVIDER = env("CALL_TTS_PROVIDER", "neural").lower()
+ELEVENLABS_API_KEY = env("ELEVENLABS_API_KEY")
+ELEVENLABS_MODEL = env("ELEVENLABS_MODEL", "eleven_flash_v2_5")
+CALL_ELEVENLABS_VOICE_ID = env("CALL_ELEVENLABS_VOICE_ID")

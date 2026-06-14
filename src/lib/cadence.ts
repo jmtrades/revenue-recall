@@ -17,7 +17,7 @@ import { sendEmail, sendSms } from "@/lib/comms";
 import { trackLinks, recordSent } from "@/lib/tracking";
 import { createOutboxItem } from "@/lib/agent/store";
 import { hasOptedOut, quietHoursNow } from "@/lib/agent/guardrails";
-import { outsideCourtesyWindow } from "@/lib/calls/local-time";
+import { courtesyCallDecision } from "@/lib/calls/local-time";
 import { batchActivities } from "@/lib/crm/activities";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
 import {  } from "@/lib/sequences";
@@ -456,7 +456,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
       // see that 9am in New York is 6am for a San Francisco number). Held
       // messages queue to Approvals, so nothing is lost. (Outside autopilot we
       // always queue to Approvals.)
-      const canSend = autoSend && !quietHoursNow(new Date(now), org.timezone) && !(step.channel === "sms" && outsideCourtesyWindow(address, new Date(now)));
+      const canSend = autoSend && !quietHoursNow(new Date(now), org.timezone) && !(step.channel === "sms" && !courtesyCallDecision(address, org.timezone, new Date(now)).allowed);
       const res = canSend
         ? step.channel === "email"
           ? await sendEmail(address, draft.subject ?? "", trackLinks(draft.body, { orgId: org.id, contactId: e.contactId, dealId: e.dealId, channel: "email" }), { unsubscribeUrl: await unsubscribeUrl(e.contactId), compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address } })

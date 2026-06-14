@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useResource } from "@/lib/useResource";
 
 interface Invoice {
   id: string;
@@ -17,31 +18,30 @@ const money = (cents: number, currency: string) =>
   new Intl.NumberFormat(undefined, { style: "currency", currency }).format(cents / 100);
 
 /** In-app invoice history (owner/admin only — the endpoint 403s otherwise, and
- *  this renders nothing). Finance teams expect receipts inside the product. */
+ *  this renders nothing). Finance teams expect receipts inside the product.
+ *  Fetched via useResource (aborts on unmount, ignores stale responses). */
 export function InvoiceHistory() {
-  const [invoices, setInvoices] = useState<Invoice[] | null>(null);
   const [hidden, setHidden] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/billing/invoices", { cache: "no-store" })
-      .then(async (r) => {
-        if (r.status === 403 || r.status === 401) {
+  const { data: invoices, loading } = useResource<Invoice[]>(
+    "/api/billing/invoices",
+    (json) => (json as { invoices?: Invoice[] }).invoices ?? [],
+    {
+      onStatus: (s) => {
+        if (s === 403 || s === 401) {
           setHidden(true);
-          return;
+          return true;
         }
-        if (!r.ok) return;
-        const d = (await r.json()) as { invoices?: Invoice[] };
-        setInvoices(d.invoices ?? []);
-      })
-      .catch(() => undefined);
-  }, []);
+        return false;
+      },
+    },
+  );
 
   if (hidden) return null;
 
   return (
     <div className="mt-5 space-y-2 border-t border-border pt-5">
       <p className="stat-label">Invoices</p>
-      {invoices === null ? (
+      {loading || invoices === null ? (
         <p className="text-sm text-muted">Loading…</p>
       ) : invoices.length === 0 ? (
         <p className="text-sm text-muted">No invoices yet — they appear here once billing starts.</p>

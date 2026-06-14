@@ -16,8 +16,9 @@ describe("per-org SMS caller ID", () => {
     });
     const r = await sendSms("+15551234567", "hello", { from: "+14155550000" });
     expect(r.status).toBe("queued");
-    expect(captured?.from).toBe("+14155550000");
-    expect(captured?.to).toBe("+15551234567");
+    const got = captured as SmsMessage | null;
+    expect(got?.from).toBe("+14155550000");
+    expect(got?.to).toBe("+15551234567");
   });
 
   it("omits 'from' when the org has no caller ID (transport falls back)", async () => {
@@ -31,6 +32,6 @@ describe("per-org SMS caller ID", () => {
       },
     });
     await sendSms("+15551234567", "hello");
-    expect(captured?.from).toBeUndefined();
+    expect((captured as SmsMessage | null)?.from).toBeUndefined();
   });
 });

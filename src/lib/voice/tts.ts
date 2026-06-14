@@ -50,22 +50,90 @@ export function ttsAvailable(): boolean {
   return ttsProvider() !== null;
 }
 
+/** A voice available in the org's ElevenLabs account — a premade library voice
+ *  or one of their own cloned voices. Surfaced so an operator can discover the
+ *  ids to plug into ELEVENLABS_VOICE_MAP (or pick a clone) without leaving the
+ *  product. */
+export interface ElevenVoiceInfo {
+  id: string;
+  name: string;
+  /** "premade" | "cloned" | "professional" | "generated" — ElevenLabs' grouping. */
+  category: string;
+  /** ElevenLabs labels (accent, gender, age, use case) when present. */
+  labels?: Record<string, string>;
+  previewUrl?: string;
+}
+
+/** List the voices available to the configured ElevenLabs account (premade +
+ *  the operator's own cloned voices). Returns [] when ElevenLabs isn't
+ *  configured or on any error — never throws (a discovery helper must not break
+ *  the settings page). */
+export async function listElevenVoices(): Promise<ElevenVoiceInfo[]> {
+  const key = env("ELEVENLABS_API_KEY");
+  if (!key) return [];
+  try {
+    const res = await fetch("https://api.elevenlabs.io/v1/voices", {
+      headers: { "xi-api-key": key },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return [];
+    const json = (await res.json().catch(() => null)) as { voices?: unknown[] } | null;
+    const voices = Array.isArray(json?.voices) ? json!.voices : [];
+    return voices
+      .map((v): ElevenVoiceInfo | null => {
+        const o = v as { voice_id?: unknown; name?: unknown; category?: unknown; labels?: unknown; preview_url?: unknown };
+        if (typeof o.voice_id !== "string" || typeof o.name !== "string") return null;
+        return {
+          id: o.voice_id,
+          name: o.name,
+          category: typeof o.category === "string" ? o.category : "premade",
+          labels: o.labels && typeof o.labels === "object" ? (o.labels as Record<string, string>) : undefined,
+          previewUrl: typeof o.preview_url === "string" ? o.preview_url : undefined,
+        };
+      })
+      .filter((v): v is ElevenVoiceInfo => v !== null);
+  } catch {
+    return [];
+  }
+}
+
 // ---- house voice → provider voice maps ----
 // The product speaks in house-voice ids everywhere (picker, org setting, call
 // gateway). Each hosted provider gets a hand-matched equivalent so "warm
 // female · US" sounds warm-female-US on every backend.
 
-/** ElevenLabs stock voice ids (stable, public catalog). */
+/** ElevenLabs stock voice ids (stable, public catalog). Every house voice gets
+ *  a hand-matched premium voice from ElevenLabs' default library, so picking a
+ *  voice on the best provider gives a DISTINCT voice — not a collapse to the
+ *  group default. The handful without an exact premade match (bm_lewis,
+ *  bm_fable) resolve to their group (UK male → George) and can be pointed at any
+ *  voice — including a cloned one — via ELEVENLABS_VOICE_MAP. */
 export const ELEVEN_VOICES: Record<string, string> = {
-  af_heart: "21m00Tcm4TlvDq8ikWAM", // Rachel — warm female US
+  // US female
+  af_heart: "21m00Tcm4TlvDq8ikWAM", // Rachel — warm female US (default)
   af_bella: "EXAVITQu4vr4xnSDxMaL", // Sarah — bright female US
   af_nicole: "FGY2WhTYpPnrIDTdsKH5", // Laura — soft female US
   af_nova: "XB0fDUnXU5powFXDhCwa", // Charlotte — confident female
+  af_sarah: "cgSgspJ2msm6clMCkdW9", // Jessica — clear, conversational female US
+  af_sky: "9BWtsMINqrJLrRacOk9x", // Aria — youthful female US
+  af_jessica: "XrExE9yKIg1WjnnlVkGX", // Matilda — polished, warm female US
+  af_river: "SAz9YHcvj6GT2YYXdXww", // River — calm, neutral female US
+  // US male
   am_adam: "pNInz6obpgDQGcFmaJgB", // Adam — steady male US
   am_michael: "TxGEqnHWrfWFTfGW9XjX", // Josh — friendly male US
   am_onyx: "onwK4e9ZLuTAKqWW03F9", // Daniel — deep male
+  am_echo: "iP95p4xoKVk53GoZ742B", // Chris — even, casual male US
+  am_eric: "cjVigY5qzO86Huf0OWal", // Eric — crisp, classy male US
+  am_liam: "TX3LPaxmHKxFdv7VOQHJ", // Liam — approachable male US
+  am_fenrir: "nPczCjzI2devNBz1zQrb", // Brian — bold, deep male US
+  am_puck: "bIHbv24MWmeRgasZH58o", // Will — upbeat, young male US
+  // UK female
   bf_emma: "Xb7hH8MSUJpSbSDYk0k2", // Alice — female UK
-  bm_george: "JBFqnCBsd6RMkjVDRZzb", // George — male UK
+  bf_alice: "ThT5KcBeYPX3keUQqHPh", // Dorothy — bright female UK
+  bf_lily: "pFZP5JQG7iQjIQuC4Bku", // Lily — soft female UK
+  // UK male
+  bm_george: "JBFqnCBsd6RMkjVDRZzb", // George — warm male UK (storyteller)
+  bm_daniel: "onwK4e9ZLuTAKqWW03F9", // Daniel — refined male UK
 };
 
 /** OpenAI TTS voice names (the full house catalog mapped to valid OpenAI
@@ -129,15 +197,35 @@ export function cartesiaVoice(voiceId?: string | null): string {
   return fallback;
 }
 
+/** Resolve a house/clone voice id to an ElevenLabs voice. Precedence:
+ *  1. ELEVENLABS_VOICE_MAP — a JSON env override mapping ANY house voice to ANY
+ *     ElevenLabs voice id (a premade, a library voice, or your own cloned voice),
+ *     so an operator can curate "the best voices" with no deploy and correct any
+ *     id ElevenLabs ever retires.
+ *  2. ELEVENLABS_VOICE_ID — the single default-voice override (back-compat).
+ *  3. The built-in ELEVEN_VOICES catalog, then a same-group default.
+ *  clone:<id> voices (cloning is the in-house model's job) use the default. */
+export function elevenVoice(voiceId?: string | null): string {
+  const id = voiceId && !voiceId.startsWith("clone:") ? voiceId : DEFAULT_HOUSE_VOICE;
+  const raw = env("ELEVENLABS_VOICE_MAP");
+  if (raw) {
+    try {
+      const map = JSON.parse(raw) as Record<string, string>;
+      if (typeof map[id] === "string" && map[id]) return map[id];
+    } catch {
+      /* malformed map — fall through to the built-in catalog */
+    }
+  }
+  if (env("ELEVENLABS_VOICE_ID") && id === DEFAULT_HOUSE_VOICE) return env("ELEVENLABS_VOICE_ID")!;
+  return ELEVEN_VOICES[id] ?? ELEVEN_VOICES[groupDefault(id)] ?? ELEVEN_VOICES[DEFAULT_HOUSE_VOICE];
+}
+
 /** Resolve a house/clone voice id to the provider's voice. Unknown ids and
  *  clone:<id> voices (cloning is the in-house model's job) use the default. */
 export function providerVoice(provider: TtsProvider, voiceId?: string | null): string {
   const id = voiceId && !voiceId.startsWith("clone:") ? voiceId : DEFAULT_HOUSE_VOICE;
   if (provider === "cartesia") return cartesiaVoice(voiceId);
-  if (provider === "elevenlabs") {
-    if (env("ELEVENLABS_VOICE_ID") && id === DEFAULT_HOUSE_VOICE) return env("ELEVENLABS_VOICE_ID")!;
-    return ELEVEN_VOICES[id] ?? ELEVEN_VOICES[groupDefault(id)] ?? ELEVEN_VOICES[DEFAULT_HOUSE_VOICE];
-  }
+  if (provider === "elevenlabs") return elevenVoice(voiceId);
   if (env("OPENAI_TTS_VOICE") && id === DEFAULT_HOUSE_VOICE) return env("OPENAI_TTS_VOICE")!;
   return OPENAI_VOICES[id] ?? OPENAI_VOICES[groupDefault(id)] ?? OPENAI_VOICES[DEFAULT_HOUSE_VOICE];
 }
@@ -207,6 +295,27 @@ export function elevenModel(quality: "realtime" | "max" = "realtime"): string {
     : env("ELEVENLABS_MODEL") ?? "eleven_flash_v2_5";
 }
 
+/** ElevenLabs output format per quality tier. Max (previews/demo/read-aloud —
+ *  HD playback where fidelity is the whole point) defaults to 192 kbps MP3, the
+ *  highest-fidelity browser-playable format; realtime stays full-band 128 kbps
+ *  for latency. `ELEVENLABS_OUTPUT_FORMAT` overrides the max tier (e.g.
+ *  `pcm_44100` for lossless if your pipeline can play it, or `mp3_44100_128` on
+ *  a free ElevenLabs tier that doesn't allow 192). A format the account's tier
+ *  doesn't permit just 4xxs and the client falls back to the browser voice —
+ *  never a hard failure. */
+export function elevenOutputFormat(quality: "realtime" | "max" = "realtime"): string {
+  if (quality === "max") return env("ELEVENLABS_OUTPUT_FORMAT") ?? "mp3_44100_192";
+  return "mp3_44100_128";
+}
+
+/** MIME for an ElevenLabs output_format token. */
+export function elevenMime(format: string): string {
+  if (format.startsWith("wav")) return "audio/wav";
+  if (format.startsWith("ulaw") || format.startsWith("alaw")) return "audio/basic";
+  if (format.startsWith("pcm")) return "audio/L16";
+  return "audio/mpeg"; // mp3_*
+}
+
 export interface SynthesizedAudio {
   audio: ArrayBuffer;
   mime: string;
@@ -243,21 +352,23 @@ export async function synthesizeSpeech(input: SynthesizeInput): Promise<Synthesi
 
   if (provider === "elevenlabs") {
     const voice = providerVoice("elevenlabs", input.voiceId);
-    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`, {
+    const format = elevenOutputFormat(input.quality);
+    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=${format}`, {
       method: "POST",
       headers: { "xi-api-key": env("ELEVENLABS_API_KEY")!, "Content-Type": "application/json" },
       body: JSON.stringify({
         // Realtime (calls) → Flash v2.5 (~75 ms, the model the minute-margin
         // math is priced on). Max (read-aloud/previews/demo) → multilingual_v2,
-        // ElevenLabs' most natural production model, since latency is invisible
-        // there and fidelity is the whole point. See elevenModel().
+        // ElevenLabs' most natural production model, at the highest-fidelity
+        // browser-playable bitrate — latency is invisible there and fidelity is
+        // the whole point. See elevenModel() / elevenOutputFormat().
         text,
         model_id: elevenModel(input.quality),
         voice_settings: elevenSettings(input.emotion),
       }),
     });
     if (!res.ok) throw new Error(`ElevenLabs ${res.status}`);
-    return { audio: await res.arrayBuffer(), mime: "audio/mpeg", provider };
+    return { audio: await res.arrayBuffer(), mime: elevenMime(format), provider };
   }
 
   const res = await fetch("https://api.openai.com/v1/audio/speech", {

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { NOTIFICATION_OPTIONS, type NotificationPrefs } from "@/lib/notifications";
+import { useUnsavedChangesWarning } from "@/lib/useUnsavedChanges";
 
 export function NotificationSettings({ initial, persisted }: { initial: NotificationPrefs; persisted: boolean }) {
   const router = useRouter();
@@ -12,6 +13,7 @@ export function NotificationSettings({ initial, persisted }: { initial: Notifica
   const [error, setError] = useState<string | null>(null);
 
   const dirty = NOTIFICATION_OPTIONS.some((o) => (prefs[o.key] ?? false) !== (initial[o.key] ?? false));
+  useUnsavedChangesWarning(dirty);
 
   function toggle(key: string) {
     if (!persisted) return;

@@ -21,7 +21,7 @@ it. Companion docs: `SETUP.md` (local/dev), `GO-LIVE-CALLS.md` and
 
 ## 1. Database (Supabase)
 1. Create the project; copy the **Project URL**, **anon key**, and **service-role key**.
-2. Apply **all** migrations in `supabase/migrations/` in order (Supabase CLI `db push`, or paste each `.sql`) — they're numbered sequentially; apply through the latest (**0038** at time of writing).
+2. Apply **all** migrations in `supabase/migrations/` in order — use `npm run db:migrate` (or Supabase CLI `db push`); it applies every file and records what ran, so it can't go stale. Don't hand-copy a subset: the folder is the source of truth for how many there are.
 3. Confirm Row Level Security is on (the migrations enable it). The app's
    service-role calls are explicitly org-scoped, but RLS is the backstop.
 
@@ -113,6 +113,17 @@ and on the gateway `CALL_STATUS_WEBHOOK_URL=https://<app>/api/calls/log` plus it
 STT/TTS/trunk config. Full steps: `services/call-gateway/README.md` and `GO-LIVE-CALLS.md`.
 Verify in-app at **Settings → Channels → Calling gateway** (it live-pings the gateway).
 
+> **Compliance on calls (read this):**
+> - Every outbound call opens with an **AI disclosure** by default ("Quick
+>   heads-up: I'm <rep>'s AI assistant at <org>."). State bot-disclosure laws
+>   (e.g. California) and FCC AI-voice rules require it; the agent also confirms
+>   honestly if asked. Customize via `CALL_AI_DISCLOSURE`; only set `off` with
+>   counsel's sign-off.
+> - **TCPA calling window (8am–9pm prospect-local)** is enforced on every dial
+>   path — autopilot, retries, AND the manual dialer. Numbers whose timezone
+>   can't be inferred gate on the org's clock instead of failing open.
+> - Set `CALL_RECORDING_DISCLOSURE` if you record (two-party-consent states).
+
 > **Voicemail detection [optional]:** set `AMD_ENABLED=true` on the gateway so a call that hits voicemail is logged as `voicemail` (which fires the app's voicemail follow-up + call-retry) instead of `no-answer`. See `services/call-gateway/README.md`.
 
 ## 7. Inbound (replies, bounces, opt-outs)
@@ -133,7 +144,19 @@ so messages land on the right tenant.
 - [ ] Complete a Stripe test checkout → the plan updates in-app
 - [ ] (calls) Place a test call from the Dialer → it dials via the gateway
 
-## 9. Recommended launch posture
+## 9. Staging & operations **[strongly recommended]**
+- **Staging:** run a second Vercel project + a second (free) Supabase project +
+  Stripe **test mode**, with its own `CRON_SECRET` and a throwaway Twilio number.
+  Webhooks, cron, and checkout flows are exactly the things you cannot safely
+  test in production — this is ~30 minutes of setup once.
+- **Backups:** Supabase Pro keeps daily backups; verify your plan's retention in
+  **Supabase → Database → Backups** and do one practice restore into staging.
+  Migrations are idempotent, but data is not re-creatable.
+- **Deploys:** deploy a few minutes past the hour to avoid overlapping the cron
+  tick (`maxDuration` is 5 min); in-flight calls live on the gateway and survive
+  an app deploy.
+
+## 10. Recommended launch posture
 1. Start with AUTOPILOT flags **off** — everything drafts to Approvals; review quality.
 2. Turn on `SEQUENCE_AUTOPILOT`, then `REPLY_AUTOPILOT`, once you trust the drafts.
 3. Set quiet hours + a daily send cap before going fully autonomous.

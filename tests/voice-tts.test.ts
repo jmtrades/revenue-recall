@@ -1,12 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { ttsProvider, ttsAvailable, providerVoice, cartesiaVoice, elevenSettings, elevenModel, openaiInstructions, ELEVEN_VOICES, OPENAI_VOICES, synthesizeSpeech } from "@/lib/voice/tts";
+import { ttsProvider, ttsAvailable, providerVoice, cartesiaVoice, elevenVoice, elevenSettings, elevenModel, elevenOutputFormat, elevenMime, openaiInstructions, ELEVEN_VOICES, OPENAI_VOICES, synthesizeSpeech, listElevenVoices } from "@/lib/voice/tts";
 import { HOUSE_VOICES } from "@/lib/voice/house";
+import { vi } from "vitest";
 
 const CLEAR = [
   "ELEVENLABS_API_KEY",
   "OPENAI_API_KEY",
   "OPENAI_TTS_API_KEY",
   "ELEVENLABS_VOICE_ID",
+  "ELEVENLABS_VOICE_MAP",
   "OPENAI_TTS_VOICE",
   "CARTESIA_API_KEY",
   "CARTESIA_VOICE_ID",
@@ -14,6 +16,7 @@ const CLEAR = [
   "VOICE_TTS_PROVIDER",
   "ELEVENLABS_MODEL",
   "ELEVENLABS_MODEL_HQ",
+  "ELEVENLABS_OUTPUT_FORMAT",
 ];
 
 beforeEach(() => {
@@ -103,13 +106,34 @@ describe("house voice → provider voice mapping", () => {
     }
   });
 
-  it("an unmapped voice falls back within its own gender/accent group, never a mismatch", () => {
-    // af_sky has no exact ElevenLabs map → a female-US default (af_heart/Rachel),
-    // not a male or UK voice.
-    expect(providerVoice("elevenlabs", "af_sky")).toBe(ELEVEN_VOICES.af_heart);
-    expect(providerVoice("elevenlabs", "bm_lewis")).toBe(ELEVEN_VOICES.bm_george); // male UK → male UK
-    expect(providerVoice("elevenlabs", "am_fenrir")).toBe(ELEVEN_VOICES.am_adam); // male US → male US
-    expect(providerVoice("elevenlabs", "bf_lily")).toBe(ELEVEN_VOICES.bf_emma); // female UK → female UK
+  it("the curated catalog now gives previously-collapsing voices a DISTINCT premium voice", () => {
+    // Before: these fell back to their group default. Now each maps to its own
+    // hand-matched ElevenLabs voice (the point of this change).
+    expect(providerVoice("elevenlabs", "af_sky")).toBe(ELEVEN_VOICES.af_sky);
+    expect(providerVoice("elevenlabs", "af_sky")).not.toBe(ELEVEN_VOICES.af_heart);
+    expect(providerVoice("elevenlabs", "am_fenrir")).toBe(ELEVEN_VOICES.am_fenrir);
+    expect(providerVoice("elevenlabs", "am_fenrir")).not.toBe(ELEVEN_VOICES.am_adam);
+    expect(providerVoice("elevenlabs", "bf_lily")).toBe(ELEVEN_VOICES.bf_lily);
+    expect(providerVoice("elevenlabs", "bf_lily")).not.toBe(ELEVEN_VOICES.bf_emma);
+  });
+
+  it("the few voices without a distinct premade match fall back within their own group", () => {
+    // bm_lewis / bm_fable have no exact premade → a male-UK default (George),
+    // never a mismatch. (Operators can give them their own via ELEVENLABS_VOICE_MAP.)
+    expect(providerVoice("elevenlabs", "bm_lewis")).toBe(ELEVEN_VOICES.bm_george);
+    expect(providerVoice("elevenlabs", "bm_fable")).toBe(ELEVEN_VOICES.bm_george);
+  });
+
+  it("ELEVENLABS_VOICE_MAP overrides the built-in catalog (curate any voice, incl. clones, with no deploy)", () => {
+    process.env.ELEVENLABS_VOICE_MAP = JSON.stringify({ af_heart: "my-best-voice", bm_lewis: "my-uk-clone" });
+    expect(elevenVoice("af_heart")).toBe("my-best-voice"); // overrides Rachel
+    expect(elevenVoice("bm_lewis")).toBe("my-uk-clone"); // fills a group-default gap
+    expect(elevenVoice("am_adam")).toBe(ELEVEN_VOICES.am_adam); // unmapped → built-in catalog
+  });
+
+  it("a malformed ELEVENLABS_VOICE_MAP falls back to the catalog instead of throwing", () => {
+    process.env.ELEVENLABS_VOICE_MAP = "{not json";
+    expect(elevenVoice("af_heart")).toBe(ELEVEN_VOICES.af_heart);
   });
 
   it("clone voices and unknown ids fall back to the default voice", () => {
@@ -142,6 +166,69 @@ describe("ElevenLabs quality tier", () => {
     expect(elevenModel("max")).toBe("eleven_v3");
     delete process.env.ELEVENLABS_MODEL;
     delete process.env.ELEVENLABS_MODEL_HQ;
+  });
+
+  it("max quality requests the highest-fidelity browser-playable format; realtime stays 128k", () => {
+    expect(elevenOutputFormat("max")).toBe("mp3_44100_192");
+    expect(elevenOutputFormat("realtime")).toBe("mp3_44100_128");
+    expect(elevenOutputFormat()).toBe("mp3_44100_128");
+  });
+
+  it("the max format is env-overridable (free-tier downgrade or lossless)", () => {
+    process.env.ELEVENLABS_OUTPUT_FORMAT = "pcm_44100";
+    expect(elevenOutputFormat("max")).toBe("pcm_44100");
+    expect(elevenOutputFormat("realtime")).toBe("mp3_44100_128"); // realtime unaffected
+  });
+
+  it("MIME follows the format token", () => {
+    expect(elevenMime("mp3_44100_192")).toBe("audio/mpeg");
+    expect(elevenMime("pcm_44100")).toBe("audio/L16");
+    expect(elevenMime("wav_44100")).toBe("audio/wav");
+    expect(elevenMime("ulaw_8000")).toBe("audio/basic");
+  });
+});
+
+describe("listElevenVoices (discovery for ELEVENLABS_VOICE_MAP)", () => {
+  const realFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = realFetch;
+  });
+
+  it("returns [] when ElevenLabs isn't configured (never calls out)", async () => {
+    const spy = vi.fn();
+    global.fetch = spy as unknown as typeof fetch;
+    expect(await listElevenVoices()).toEqual([]);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("maps the account's voices (premade + cloned), dropping malformed entries", async () => {
+    process.env.ELEVENLABS_API_KEY = "el-x";
+    global.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          voices: [
+            { voice_id: "v1", name: "Rachel", category: "premade", labels: { accent: "american", gender: "female" }, preview_url: "http://x/p" },
+            { voice_id: "v2", name: "My Clone", category: "cloned" },
+            { name: "no id — dropped" },
+          ],
+        }),
+        { status: 200 },
+      ),
+    ) as typeof fetch;
+    const voices = await listElevenVoices();
+    expect(voices).toHaveLength(2);
+    expect(voices[0]).toMatchObject({ id: "v1", name: "Rachel", category: "premade", labels: { gender: "female" }, previewUrl: "http://x/p" });
+    expect(voices[1]).toMatchObject({ id: "v2", name: "My Clone", category: "cloned" });
+  });
+
+  it("returns [] on a non-OK response or a network error — never throws", async () => {
+    process.env.ELEVENLABS_API_KEY = "el-x";
+    global.fetch = vi.fn(async () => new Response("nope", { status: 401 })) as typeof fetch;
+    expect(await listElevenVoices()).toEqual([]);
+    global.fetch = vi.fn(async () => {
+      throw new TypeError("network");
+    }) as typeof fetch;
+    expect(await listElevenVoices()).toEqual([]);
   });
 });
 

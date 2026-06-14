@@ -91,6 +91,24 @@ export function cooldownDays(): number {
   return Number.isFinite(n) && n >= 0 ? n : 3;
 }
 
+/** Seconds a manual dial waits after the last outbound call to the SAME contact
+ *  — an anti-rapid-fire / good-faith backstop above the client double-click
+ *  guard and the per-IP rate limit (neither of which sees per-contact call
+ *  frequency). Default 45s; 0 disables. Autopilot redials are governed instead
+ *  by their per-contact attempt budget (MAX_CALL_ATTEMPTS). */
+export function manualCallCooldownSec(): number {
+  const n = Number(process.env.MANUAL_CALL_COOLDOWN_SEC);
+  return Number.isFinite(n) && n >= 0 ? n : 45;
+}
+
+/** True when an outbound call to this contact landed within the cooldown window,
+ *  so the manual dialer should hold off on placing another. Pure + tested. */
+export function calledTooRecently(activities: Activity[], cooldownSec: number, now: number = Date.now()): boolean {
+  if (cooldownSec <= 0) return false;
+  const cutoff = now - cooldownSec * 1000;
+  return activities.some((a) => a.kind === "call" && a.direction === "outbound" && new Date(a.occurredAt).getTime() >= cutoff);
+}
+
 /**
  * Call-recording disclosure spoken at the very top of a call when the operator
  * configures one via CALL_RECORDING_DISCLOSURE. Required for two-party-consent
@@ -100,6 +118,23 @@ export function cooldownDays(): number {
 export function recordingDisclosure(): string | null {
   const v = (process.env.CALL_RECORDING_DISCLOSURE ?? "").trim();
   return v.length > 0 ? v : null;
+}
+
+/**
+ * AI-caller disclosure spoken at the top of every outbound call. ON by default:
+ * several states (e.g. California B&P 17941) and the FCC's AI-voice rules
+ * require an automated caller to identify itself, and the agent's brain is
+ * instructed to confirm honestly if asked. CALL_AI_DISCLOSURE customizes the
+ * wording; "off" disables it ONLY for operators who have verified their own
+ * jurisdictional footing — the safe default stands.
+ */
+export function aiDisclosure(opts?: { orgName?: string | null; repName?: string | null }): string | null {
+  const v = (process.env.CALL_AI_DISCLOSURE ?? "").trim();
+  if (/^(off|false|0|none)$/i.test(v)) return null;
+  if (v) return v;
+  const who = opts?.repName?.trim() ? `${opts.repName.trim()}'s AI assistant` : "an AI assistant";
+  const org = opts?.orgName?.trim() ? ` at ${opts.orgName.trim()}` : "";
+  return `Quick heads-up: I'm ${who}${org}.`;
 }
 
 /** Current guardrail configuration, for showing operators what's in effect. */

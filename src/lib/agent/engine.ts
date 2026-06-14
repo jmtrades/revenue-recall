@@ -8,7 +8,7 @@ import { isAiConfigured } from "@/lib/ai/client";
 import { sendEmail, sendSms, placeCall } from "@/lib/comms";
 import { trackLinks, recordSent } from "@/lib/tracking";
 import { sendGate, dailySendCap, type SkipReason } from "@/lib/agent/guardrails";
-import { outsideCourtesyWindow } from "@/lib/calls/local-time";
+import { courtesyCallDecision } from "@/lib/calls/local-time";
 import { compactMoney } from "@/lib/format";
 import { createRun, createOutboxItem, touchTask } from "@/lib/agent/store";
 import { batchActivities } from "@/lib/crm/activities";
@@ -157,9 +157,8 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
       // time — the org-clock quiet hours in sendGate can't see a cross-country
       // number. Checked before drafting so a held touch doesn't burn an AI
       // action; nothing is logged, so the next run retries the deal once their
-      // window opens. Unknown zones fail open (sendGate already held the org's
-      // own night).
-      if (autonomy === "auto" && (channel === "sms" || channel === "call") && outsideCourtesyWindow(reachOn(channel))) {
+      // window opens. Unknown zones gate on the org clock — never open.
+      if (autonomy === "auto" && (channel === "sms" || channel === "call") && !courtesyCallDecision(reachOn(channel), org.timezone).allowed) {
         actions.push({ type: task.channel, dealId: t.opp.id, title: name, detail: SKIP_LABEL.quiet_hours, result: "skipped", source: "template", value: t.recoverable });
         continue;
       }

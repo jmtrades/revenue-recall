@@ -16,7 +16,8 @@ describe("per-org caller ID", () => {
     });
     const r = await placeCall("+15551234567", { from: "+14155550000", context: "hi" });
     expect(r.status).toBe("queued");
-    expect(captured?.from).toBe("+14155550000");
-    expect(captured?.to).toBe("+15551234567");
+    const got = captured as VoiceCall | null;
+    expect(got?.from).toBe("+14155550000");
+    expect(got?.to).toBe("+15551234567");
   });
 });

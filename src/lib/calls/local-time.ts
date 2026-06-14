@@ -83,6 +83,31 @@ export function outsideCourtesyWindow(phone: string | null | undefined, now: Dat
   return h !== null && (h < COURTESY_START_HOUR || h >= COURTESY_END_HOUR);
 }
 
+export interface CourtesyDecision {
+  allowed: boolean;
+  /** Whose clock decided: the prospect's inferred zone, the org's zone, or UTC. */
+  basis: "prospect" | "org" | "utc";
+  /** Hour-of-day (0–23) on that clock — for "it's 6am for them" error messages. */
+  hour: number;
+}
+
+/**
+ * Hard gate for placing a call or text RIGHT NOW (TCPA 8am–9pm). Prefers the
+ * prospect's zone inferred from their area code; when the zone can't be known
+ * (non-NANP, toll-free, VoIP) it falls back to the ORG's timezone, then UTC —
+ * it never fails open. Every dial/send path that contacts a phone should gate
+ * on this, including the manual dialer (TCPA applies to human-pressed buttons
+ * exactly as much as to autopilot).
+ */
+export function courtesyCallDecision(phone: string | null | undefined, orgTimezone?: string | null, now: Date = new Date()): CourtesyDecision {
+  const prospectHour = prospectLocalHour(phone, now);
+  if (prospectHour !== null) {
+    return { allowed: prospectHour >= COURTESY_START_HOUR && prospectHour < COURTESY_END_HOUR, basis: "prospect", hour: prospectHour };
+  }
+  const hour = hourInZone(now, orgTimezone ?? undefined);
+  return { allowed: hour >= COURTESY_START_HOUR && hour < COURTESY_END_HOUR, basis: orgTimezone ? "org" : "utc", hour };
+}
+
 /** Display payload for the dialer: the prospect's wall-clock time and whether
  *  it's a courteous moment to call. Null when their zone is unknown. */
 export function prospectLocalTime(phone: string | null | undefined, now: Date = new Date()): { label: string; hour: number; warn: boolean } | null {

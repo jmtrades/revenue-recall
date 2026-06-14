@@ -79,6 +79,26 @@ labeling the outcome) is the one step to validate against your deployed gateway.
 Pure logic (`amd.py`, `twilio_out.call_params`) is covered by
 `python3 -m unittest discover -s tests`.
 
+## Premium call voice (ElevenLabs) — opt-in
+Off by default: calls speak in your in-house neural voice (zero marginal cost).
+To speak calls in ElevenLabs instead (premium quality), set on the gateway:
+```
+CALL_TTS_PROVIDER = elevenlabs
+ELEVENLABS_API_KEY = sk_...
+ELEVENLABS_MODEL = eleven_flash_v2_5            # optional; low-latency for calls
+CALL_ELEVENLABS_VOICE_ID = <voice id>           # optional; used for unmapped/clone voices
+```
+ElevenLabs streams `pcm_8000` — the exact telephony format — so there's no
+resampling. House voice ids map to ElevenLabs voices in `tts.py` (mirrors the
+app's `ELEVEN_VOICES`). A hosted request that fails *before* any audio falls back
+to the in-house voice when `NEURAL_VOICE_URL` is set, so a hosted hiccup never
+kills a live call. The pure logic (voice mapping + emotion settings) is covered
+by `python3 -m unittest discover -s tests`; the network/audio path runs only on
+the gateway, so **validate a real call after enabling**. Trade-off: ElevenLabs adds a
+per-character cost and the phone codec (8 kHz) masks much of its HD edge, so the
+in-house voice is usually the better economics for high-volume dialing — reserve
+this for premium tiers / signature voices.
+
 ## Run it
 ```bash
 cd services/call-gateway

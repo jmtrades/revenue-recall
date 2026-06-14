@@ -42,7 +42,7 @@ describe("call-prep brief includes a ready voicemail", () => {
   });
 
   it("still works (no rep name) for a fresh deal", async () => {
-    getActiveVoice.mockResolvedValue({ senderName: undefined });
+    getActiveVoice.mockResolvedValue({ senderName: undefined as unknown as string });
     getDealDetail.mockResolvedValue({
       opp: { id: "o2", title: "the pilot", value: 0, currency: "USD", lastActivityAt: new Date().toISOString() },
       contact: { name: "Sam" },

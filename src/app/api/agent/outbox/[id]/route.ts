@@ -4,6 +4,8 @@ import { getOutboxItem, setOutboxStatus } from "@/lib/agent/store";
 import { resolveProvider } from "@/lib/crm/registry";
 import { sendReply, isSocialChannel } from "@/lib/outbound";
 import { hasOptedOut } from "@/lib/agent/guardrails";
+import { courtesyCallDecision } from "@/lib/calls/local-time";
+import { getOrgSettings } from "@/lib/org";
 import { recordRecallTouch } from "@/lib/recall/events";
 import { platformTag } from "@/lib/social/ingest";
 import type { SocialPlatform } from "@/lib/social/types";
@@ -48,6 +50,22 @@ export const POST = withGuard(async (req: Request, { params }: { params: { id: s
   if (hasOptedOut(contact, opp ?? undefined, activities)) {
     await setOutboxStatus(item.id, "dismissed");
     return NextResponse.json({ error: "This contact has opted out — not sending." }, { status: 403 });
+  }
+
+  // Texts honor the TCPA window (8am–9pm prospect-local) at SEND time too — a
+  // draft queued at 2pm can be approved at 11pm. The item stays pending so the
+  // rep can approve again once their window opens. Email has no such window.
+  if (item.channel === "sms") {
+    const phone = contact.points.find((p) => p.channel === "sms" || p.channel === "phone")?.value;
+    const org = await getOrgSettings().catch(() => null);
+    const courtesy = courtesyCallDecision(phone, org?.timezone, new Date());
+    if (!courtesy.allowed) {
+      const whose = courtesy.basis === "prospect" ? "their local time" : "your workspace clock (their timezone is unknown)";
+      return NextResponse.json(
+        { error: `It's ${courtesy.hour}:00 on ${whose} — texts can go out 8am–9pm (TCPA). This stays queued; approve it when their window opens.` },
+        { status: 403 },
+      );
+    }
   }
 
   const res = await sendReply({ contact, channel: item.channel, subject: item.subject, body: item.body });
