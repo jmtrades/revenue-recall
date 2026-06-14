@@ -18,8 +18,6 @@ validate a real call after enabling it.
 """
 import json
 
-import websockets
-
 from config import (
     NEURAL_VOICE_URL,
     TELEPHONY_SAMPLE_RATE,
@@ -82,6 +80,8 @@ def _eleven_settings(emotion):
 
 async def _neural_synthesize(text, voice_id=None, rate=1.0, emotion=None, sample_rate=TELEPHONY_SAMPLE_RATE):
     """Yield PCM s16le mono chunks from the in-house neural-voice service."""
+    import websockets  # lazy: keeps this module importable (for unit tests) without it
+
     if not NEURAL_VOICE_URL:
         raise RuntimeError("NEURAL_VOICE_URL not set — point at your neural-voice service")
     frame = {

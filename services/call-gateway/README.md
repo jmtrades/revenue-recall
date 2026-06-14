@@ -92,8 +92,9 @@ ElevenLabs streams `pcm_8000` — the exact telephony format — so there's no
 resampling. House voice ids map to ElevenLabs voices in `tts.py` (mirrors the
 app's `ELEVEN_VOICES`). A hosted request that fails *before* any audio falls back
 to the in-house voice when `NEURAL_VOICE_URL` is set, so a hosted hiccup never
-kills a live call. **Validate a real call after enabling** — this path runs only
-on the gateway and isn't covered by the app's CI. Trade-off: ElevenLabs adds a
+kills a live call. The pure logic (voice mapping + emotion settings) is covered
+by `python3 -m unittest discover -s tests`; the network/audio path runs only on
+the gateway, so **validate a real call after enabling**. Trade-off: ElevenLabs adds a
 per-character cost and the phone codec (8 kHz) masks much of its HD edge, so the
 in-house voice is usually the better economics for high-volume dialing — reserve
 this for premium tiers / signature voices.
