@@ -50,6 +50,53 @@ export function ttsAvailable(): boolean {
   return ttsProvider() !== null;
 }
 
+/** A voice available in the org's ElevenLabs account — a premade library voice
+ *  or one of their own cloned voices. Surfaced so an operator can discover the
+ *  ids to plug into ELEVENLABS_VOICE_MAP (or pick a clone) without leaving the
+ *  product. */
+export interface ElevenVoiceInfo {
+  id: string;
+  name: string;
+  /** "premade" | "cloned" | "professional" | "generated" — ElevenLabs' grouping. */
+  category: string;
+  /** ElevenLabs labels (accent, gender, age, use case) when present. */
+  labels?: Record<string, string>;
+  previewUrl?: string;
+}
+
+/** List the voices available to the configured ElevenLabs account (premade +
+ *  the operator's own cloned voices). Returns [] when ElevenLabs isn't
+ *  configured or on any error — never throws (a discovery helper must not break
+ *  the settings page). */
+export async function listElevenVoices(): Promise<ElevenVoiceInfo[]> {
+  const key = env("ELEVENLABS_API_KEY");
+  if (!key) return [];
+  try {
+    const res = await fetch("https://api.elevenlabs.io/v1/voices", {
+      headers: { "xi-api-key": key },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return [];
+    const json = (await res.json().catch(() => null)) as { voices?: unknown[] } | null;
+    const voices = Array.isArray(json?.voices) ? json!.voices : [];
+    return voices
+      .map((v): ElevenVoiceInfo | null => {
+        const o = v as { voice_id?: unknown; name?: unknown; category?: unknown; labels?: unknown; preview_url?: unknown };
+        if (typeof o.voice_id !== "string" || typeof o.name !== "string") return null;
+        return {
+          id: o.voice_id,
+          name: o.name,
+          category: typeof o.category === "string" ? o.category : "premade",
+          labels: o.labels && typeof o.labels === "object" ? (o.labels as Record<string, string>) : undefined,
+          previewUrl: typeof o.preview_url === "string" ? o.preview_url : undefined,
+        };
+      })
+      .filter((v): v is ElevenVoiceInfo => v !== null);
+  } catch {
+    return [];
+  }
+}
+
 // ---- house voice → provider voice maps ----
 // The product speaks in house-voice ids everywhere (picker, org setting, call
 // gateway). Each hosted provider gets a hand-matched equivalent so "warm

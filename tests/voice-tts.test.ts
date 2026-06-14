@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { ttsProvider, ttsAvailable, providerVoice, cartesiaVoice, elevenVoice, elevenSettings, elevenModel, openaiInstructions, ELEVEN_VOICES, OPENAI_VOICES, synthesizeSpeech } from "@/lib/voice/tts";
+import { ttsProvider, ttsAvailable, providerVoice, cartesiaVoice, elevenVoice, elevenSettings, elevenModel, openaiInstructions, ELEVEN_VOICES, OPENAI_VOICES, synthesizeSpeech, listElevenVoices } from "@/lib/voice/tts";
 import { HOUSE_VOICES } from "@/lib/voice/house";
+import { vi } from "vitest";
 
 const CLEAR = [
   "ELEVENLABS_API_KEY",
@@ -164,6 +165,50 @@ describe("ElevenLabs quality tier", () => {
     expect(elevenModel("max")).toBe("eleven_v3");
     delete process.env.ELEVENLABS_MODEL;
     delete process.env.ELEVENLABS_MODEL_HQ;
+  });
+});
+
+describe("listElevenVoices (discovery for ELEVENLABS_VOICE_MAP)", () => {
+  const realFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = realFetch;
+  });
+
+  it("returns [] when ElevenLabs isn't configured (never calls out)", async () => {
+    const spy = vi.fn();
+    global.fetch = spy as unknown as typeof fetch;
+    expect(await listElevenVoices()).toEqual([]);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("maps the account's voices (premade + cloned), dropping malformed entries", async () => {
+    process.env.ELEVENLABS_API_KEY = "el-x";
+    global.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          voices: [
+            { voice_id: "v1", name: "Rachel", category: "premade", labels: { accent: "american", gender: "female" }, preview_url: "http://x/p" },
+            { voice_id: "v2", name: "My Clone", category: "cloned" },
+            { name: "no id — dropped" },
+          ],
+        }),
+        { status: 200 },
+      ),
+    ) as typeof fetch;
+    const voices = await listElevenVoices();
+    expect(voices).toHaveLength(2);
+    expect(voices[0]).toMatchObject({ id: "v1", name: "Rachel", category: "premade", labels: { gender: "female" }, previewUrl: "http://x/p" });
+    expect(voices[1]).toMatchObject({ id: "v2", name: "My Clone", category: "cloned" });
+  });
+
+  it("returns [] on a non-OK response or a network error — never throws", async () => {
+    process.env.ELEVENLABS_API_KEY = "el-x";
+    global.fetch = vi.fn(async () => new Response("nope", { status: 401 })) as typeof fetch;
+    expect(await listElevenVoices()).toEqual([]);
+    global.fetch = vi.fn(async () => {
+      throw new TypeError("network");
+    }) as typeof fetch;
+    expect(await listElevenVoices()).toEqual([]);
   });
 });
 
