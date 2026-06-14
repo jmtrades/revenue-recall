@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LANGUAGES } from "@/lib/languages";
 import { Icon, type IconName } from "@/components/icons";
-import { ensureLocalVoice, localSynth } from "@/lib/voice/local";
-import { browserSynth } from "@/lib/voice/synth";
+import { getSynth } from "@/lib/voice/synth";
+import { enableNeuralVoice } from "@/lib/voice/neural";
 import type { SpeakHandle } from "@/lib/voice/speech";
 import { LogoBadge } from "@/components/Logo";
 
@@ -60,6 +60,10 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
   // call voice; the browser engine answers only if the model can't run here.
   const [hearState, setHearState] = useState<"idle" | "warming" | "playing">("idle");
   const hearRef = useRef<SpeakHandle | null>(null);
+  // Register the voice backends (ElevenLabs hosted → Kokoro → browser) so the
+  // "hear your calls" preview uses the best available voice, not just the
+  // on-device fallback. Safe + idempotent; no-op visually.
+  useEffect(() => { enableNeuralVoice(); }, []);
   useEffect(() => () => hearRef.current?.stop(), []);
 
   async function hearVoice() {
@@ -70,8 +74,7 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
       return;
     }
     setHearState("warming");
-    const ok = await ensureLocalVoice();
-    const synth = ok && localSynth.available() ? localSynth : browserSynth;
+    const synth = getSynth();
     const first = yourName.trim().split(/\s+/)[0] || "Aria";
     const from = org.trim() || "your company";
     setHearState("playing");

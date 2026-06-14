@@ -252,9 +252,15 @@ const compositeSynth: VoiceSynth = {
   kind: "neural",
   available: () => neuralSynth.available() || localSynth.available() || hostedSynth.available(),
   async speak(text, opts = {}) {
+    // Quality order: in-house streaming service (if running) → ElevenLabs/OpenAI
+    // hosted voice when a key is configured (the most human voice, what users
+    // expect to hear) → the FREE on-device Kokoro model → the browser engine.
+    // ElevenLabs is preferred over Kokoro because the lifelike voice is the whole
+    // point of a sales call; Kokoro remains the zero-cost fallback when no key.
     if (neuralSynth.available()) return neuralSynth.speak(text, opts);
+    if (hostedSynth.available()) return hostedSynth.speak(text, opts);
     if (localSynth.available()) return localSynth.speak(text, opts);
-    return hostedSynth.speak(text, opts);
+    return browserSynth.speak(text, opts);
   },
 };
 
