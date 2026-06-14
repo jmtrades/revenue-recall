@@ -3,6 +3,8 @@ import { getConfig } from "@/lib/config";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { isAiConfigured } from "@/lib/ai/client";
 import { channelStatus } from "@/lib/comms";
+import { ttsAvailable } from "@/lib/voice/tts";
+import { convaiConfigured } from "@/lib/voice/convai";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,9 @@ export async function GET() {
     email: ch.email.live,
     sms: ch.sms.live,
     voice: ch.voice.live,
+    // ElevenLabs surfaces: hosted read-aloud TTS, and the live two-way agent.
+    voiceHosted: ttsAvailable(),
+    voiceAgent: convaiConfigured(),
   };
 
   // Explicit, machine-readable launch verdict so a misconfigured production

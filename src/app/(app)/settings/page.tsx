@@ -20,6 +20,8 @@ import { getTeamAndPipeline, getRecentCaptures } from "@/lib/queries";
 import { money } from "@/lib/format";
 import { getOrgSettings } from "@/lib/org";
 import { getStoredVoice } from "@/lib/voice";
+import { ttsAvailable } from "@/lib/voice/tts";
+import { convaiConfigured } from "@/lib/voice/convai";
 import { pct } from "@/lib/format";
 import { PageHeader, Card, Avatar, InfoRow } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
@@ -132,6 +134,18 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       detail: "Writes outreach live in each user's voice. Until connected, polished templates are used.",
       steps: ["Get an API key at console.anthropic.com", "Add it as ANTHROPIC_API_KEY in Vercel", "Redeploy"],
       link: { href: "https://console.anthropic.com", label: "Open Anthropic" },
+    },
+    {
+      label: "Lifelike voice (ElevenLabs)", ok: ttsAvailable(), required: false, where: "ElevenLabs + Vercel",
+      detail: "Reads outreach and previews aloud in a real, human-grade voice — and unlocks the voice library + cloning in Settings → Voice.",
+      steps: ["Get an API key at elevenlabs.io", "Add it as ELEVENLABS_API_KEY in Vercel", "Redeploy", "Settings → Voice: pick a voice or clone your own"],
+      link: { href: "https://elevenlabs.io/app", label: "Open ElevenLabs" },
+    },
+    {
+      label: "Live voice agent", ok: convaiConfigured(), required: false, where: "ElevenLabs + Vercel",
+      detail: "Turns on the two-way \"Talk to a live AI prospect\" agent — a real spoken conversation, not turn-by-turn.",
+      steps: ["In ElevenLabs, create a Conversational AI agent", "Add its id as ELEVENLABS_AGENT_ID in Vercel (with ELEVENLABS_API_KEY)", "Allow voice overrides in the agent's security settings to use your chosen/cloned voice", "Redeploy"],
+      link: { href: "https://elevenlabs.io/app/conversational-ai", label: "Open Agents" },
     },
     {
       label: "Billing — charge customers", ok: billingOn, required: false, where: "Stripe + Vercel",
