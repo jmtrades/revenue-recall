@@ -60,7 +60,11 @@ describe("cadence quiet-hours hold", () => {
 
     const tick = await runDueSteps(at10utc());
     expect(tick.due).toBeGreaterThan(0);
-    expect(tick.sent).toBe(tick.due); // delivered (logged transport in tests)
-    expect(tick.queued).toBe(0);
+    // Outside quiet hours, autopilot delivers — EXCEPT messages the claim-guard
+    // holds for human review (a draft making a financial representation, e.g.
+    // "comps"/"home value"), which queue to Approvals. So sent + queued == due,
+    // and most still auto-send.
+    expect(tick.sent + tick.queued).toBe(tick.due);
+    expect(tick.sent).toBeGreaterThan(0);
   });
 });

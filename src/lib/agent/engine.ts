@@ -7,7 +7,7 @@ import { draftMessage } from "@/lib/ai/draft";
 import { isAiConfigured } from "@/lib/ai/client";
 import { sendEmail, sendSms, placeCall } from "@/lib/comms";
 import { trackLinks, recordSent } from "@/lib/tracking";
-import { sendGate, dailySendCap, type SkipReason } from "@/lib/agent/guardrails";
+import { sendGate, dailySendCap, containsUnverifiedClaim, type SkipReason } from "@/lib/agent/guardrails";
 import { outsideCourtesyWindow } from "@/lib/calls/local-time";
 import { compactMoney } from "@/lib/format";
 import { createRun, createOutboxItem, touchTask } from "@/lib/agent/store";
@@ -187,9 +187,16 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
 
       const to = reachOn(channel);
 
+      // Claim-guard: never auto-send a message that makes a financial claim
+      // ($/% figures, equity, comps, rates, valuation) — hold it for human
+      // approval even in full autopilot. A wrong autonomous financial statement
+      // to a client is a compliance/reputation event; review mode is unaffected.
+      const risky = containsUnverifiedClaim(`${draft.subject ?? ""} ${draft.body}`);
+      const canAuto = autonomy === "auto" && !risky;
+
       let result: AgentAction["result"] = "drafted";
       if (channel === "call") {
-        if (autonomy === "auto" && to) {
+        if (canAuto && to) {
           // Place the call autonomously (real dial when Twilio is set; logged
           // otherwise) — from THIS org's caller ID, like the SMS branch below.
           const res = await placeCall(to, { from: org.callerId });
@@ -208,11 +215,13 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
             if (t.reason) await recordRecallTouch({ dealId: t.opp.id, contactId: t.opp.contactId, channel: "call", source: "autopilot" });
           }
         } else {
-          result = "queued"; // talk track prepared for the dialer (review mode / no number)
+          result = "queued"; // talk track prepared for the dialer (review mode / no number / claim held)
         }
       } else if (autonomy === "auto") {
         if (!to) {
           result = "skipped";
+        } else if (risky) {
+          result = "drafted"; // claim-guard: hold the financial claim for human approval
         } else {
           const tracked = trackLinks(draft.body, { orgId: org.id, contactId: t.opp.contactId, dealId: t.opp.id, channel: channel === "email" ? "email" : "sms" });
           const res =
