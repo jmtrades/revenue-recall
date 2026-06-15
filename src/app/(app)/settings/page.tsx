@@ -21,8 +21,8 @@ import { getTeamAndPipeline, getRecentCaptures } from "@/lib/queries";
 import { money } from "@/lib/format";
 import { getOrgSettings } from "@/lib/org";
 import { getStoredVoice } from "@/lib/voice";
-import { ttsAvailable } from "@/lib/voice/tts";
 import { convaiConfigured } from "@/lib/voice/convai";
+import { elevenConfigured } from "@/lib/voice/eleven";
 import { pct } from "@/lib/format";
 import { PageHeader, Card, Avatar, InfoRow } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
@@ -137,9 +137,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       link: { href: "https://console.anthropic.com", label: "Open Anthropic" },
     },
     {
-      label: "Lifelike voice (ElevenLabs)", ok: ttsAvailable(), required: false, where: "ElevenLabs + Vercel",
-      detail: "Reads outreach and previews aloud in a real, human-grade voice — and unlocks the voice library + cloning in Settings → Voice.",
-      steps: ["Get an API key at elevenlabs.io", "Add it as ELEVENLABS_API_KEY in Vercel", "Redeploy", "Settings → Voice: pick a voice or clone your own"],
+      label: "Lifelike voice (ElevenLabs)", ok: elevenConfigured(), required: false, where: "ElevenLabs + Vercel",
+      detail: "Reads outreach and previews aloud in a real, human-grade voice — and unlocks the voice library + cloning in Settings → Voice. This row is green only when ELEVENLABS_API_KEY is live in this deployment.",
+      steps: ["Get an API key at elevenlabs.io", "Add it as ELEVENLABS_API_KEY in the Vercel project serving recall-touch.com", "Redeploy (server vars need a fresh build)", "Settings → Voice: pick a voice or clone your own"],
       link: { href: "https://elevenlabs.io/app", label: "Open ElevenLabs" },
     },
     {
