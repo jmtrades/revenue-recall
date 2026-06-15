@@ -74,9 +74,26 @@ describe("standard SMS opt-out keywords are honored", () => {
     }
   });
 
+  it("honors opt-out keywords wrapped in politeness or repeated (real STOP replies)", () => {
+    for (const msg of [
+      "STOP please",
+      "please STOP",
+      "STOP STOP STOP",
+      "unsubscribe me thanks",
+      "cancel pls",
+      "stop now",
+      "STOP!",
+      "please unsubscribe me",
+    ]) {
+      expect(isHardOptOut(msg), msg).toBe(true);
+    }
+  });
+
   it("does not over-trigger on normal sentences containing those words", () => {
     expect(isHardOptOut("don't stop sending these, they're great")).toBe(false);
     expect(isHardOptOut("can we end the call with next steps?")).toBe(false);
     expect(isHardOptOut("not interested right now")).toBe(false); // soft decline, re-engageable
+    expect(isHardOptOut("stop by my office at 3pm")).toBe(false); // "stop" mid-sentence, a real lead
+    expect(isHardOptOut("can you remove the typo on the quote?")).toBe(false);
   });
 });
