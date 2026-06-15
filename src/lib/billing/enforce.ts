@@ -1,6 +1,7 @@
 import { getSubscription } from "@/lib/billing/store";
 import { entitlements, effectivePlan, effectiveSeats, type Entitlements } from "@/lib/billing/entitlements";
 import { billingConfigured } from "@/lib/billing/stripe";
+import { isOperator } from "@/lib/operator";
 
 /**
  * Plan-limit gating (the free → paid boundary). Margin-safe by default: the
@@ -31,5 +32,10 @@ export async function orgEntitlements(): Promise<Entitlements> {
  *  not enforcing, everything is available. */
 export async function isEntitled(feature: "aiLive" | "autopilot" | "integrations"): Promise<boolean> {
   if (!enforcementOn()) return true;
+  // The operator/owner is always fully entitled to their own product — billing
+  // enforcement is for customers, and locking the owner out of live AI (e.g. the
+  // ElevenLabs voice) in their own workspace the moment they connect Stripe is a
+  // footgun. Customers still hit the plan gate below.
+  if (await isOperator()) return true;
   return (await orgEntitlements())[feature];
 }
