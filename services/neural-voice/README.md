@@ -17,6 +17,7 @@ neural voice with **zero app code changes**.
 | **`kokoro`** (default) | Kokoro 82M, Apache-2.0 | Top of open TTS leaderboards; **54 voices**; native **24 kHz**; ~**0.3× real-time on CPU** (faster than real-time); genuinely close to commercial quality. |
 | `voxcpm` | [OpenBMB VoxCPM](https://github.com/OpenBMB/VoxCPM) | **Most expressive option.** Tokenizer-free MiniCPM-family TTS with context-aware prosody, **native zero-shot cloning**, and **voice design** (describe how it should sound). Heavier — diffusion decoder, **GPU recommended**. Set `VOICE_ENGINE=voxcpm` and `pip install voxcpm`. |
 | `piper` | VITS, MIT | Lighter/faster, lower fidelity. Set `VOICE_ENGINE=piper`. |
+| `elevenlabs` | ElevenLabs (hosted) | **Use ElevenLabs on live phone calls too.** The call gateway streams PCM from this service, so `VOICE_ENGINE=elevenlabs` makes calls speak in ElevenLabs with no gateway change. The one engine that calls a vendor (audio leaves your box). Needs `ELEVENLABS_API_KEY`; uses `eleven_flash_v2_5` (low latency) and streams `pcm_24000` (Creator+ tier — set `ELEVENLABS_PCM_FORMAT=pcm_16000` otherwise). Voice via `ELEVENLABS_VOICE_ID` / per-call `voiceId`. |
 
 ### VoxCPM (`VOICE_ENGINE=voxcpm`)
 

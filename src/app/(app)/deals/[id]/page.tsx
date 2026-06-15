@@ -11,6 +11,7 @@ import { DealInfoEdit } from "@/components/DealInfoEdit";
 import { DeleteButton } from "@/components/DeleteButton";
 import { EnrollPicker } from "@/components/EnrollPicker";
 import { AiBrief } from "@/components/AiBrief";
+import { SpeakButton } from "@/components/SpeakButton";
 import { contactInsights } from "@/lib/insights";
 import { getLanguage, toLanguageCode } from "@/lib/languages";
 
@@ -84,9 +85,12 @@ export default async function DealPage({ params }: { params: { id: string } }) {
                   <li key={a.id} className="relative flex gap-3">
                     <ActivityIcon kind={a.kind} />
                     <div className="flex-1 pb-1">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <span className="text-sm capitalize text-fg">{a.kind.replace("_", " ")}{a.direction ? ` · ${a.direction}` : ""}</span>
-                        <span className="text-xs text-muted">{relativeDays(daysAgo(a.occurredAt))}</span>
+                        <div className="flex flex-none items-center gap-1.5">
+                          {a.kind === "call" && a.summary && <SpeakButton text={a.summary} label="" />}
+                          <span className="text-xs text-muted">{relativeDays(daysAgo(a.occurredAt))}</span>
+                        </div>
                       </div>
                       <p className="text-sm text-muted">{a.summary}</p>
                     </div>
