@@ -11,7 +11,7 @@
  */
 import { speakable, type Emotion } from "@/lib/voice/speech";
 import { DEFAULT_HOUSE_VOICE } from "@/lib/voice/house";
-import { parseElevenSelection } from "@/lib/voice/eleven";
+import { parseElevenSelection, elevenErrorDetail } from "@/lib/voice/eleven";
 import { expressivenessToStability } from "@/lib/voice/voice-settings";
 
 export type TtsProvider = "cartesia" | "elevenlabs" | "openai";
@@ -283,7 +283,7 @@ export async function synthesizeSpeech(input: SynthesizeInput): Promise<Synthesi
         voice_settings: elevenSettings(input.emotion, input.expressiveness),
       }),
     });
-    if (!res.ok) throw new Error(`ElevenLabs ${res.status}`);
+    if (!res.ok) throw new Error(`ElevenLabs ${res.status}${await elevenErrorDetail(res)}`);
     return { audio: await res.arrayBuffer(), mime: "audio/mpeg", provider };
   }
 
