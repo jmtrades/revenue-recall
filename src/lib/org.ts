@@ -46,6 +46,10 @@ export interface OrgSettings {
   /** IANA timezone (e.g. "America/New_York") the workspace operates in — drives
    *  the daily digest's local send time. Empty = fall back to a fixed UTC hour. */
   timezone: string;
+  /** Global kill switch: when true, ALL autonomous sending (autopilot + cadences)
+   *  is held — drafts queue to Approvals instead of going out. The "pause
+   *  everything" brake for an agent that acts on the user's behalf. */
+  sendingPaused: boolean;
   /** true when backed by a database row (editable), false when env-derived. */
   persisted: boolean;
 }
@@ -75,6 +79,7 @@ function envFallback(): OrgSettings {
     ttsVoiceId: undefined,
     voiceSettings: { ...DEFAULT_VOICE_SETTINGS },
     timezone: process.env.AGENT_TIMEZONE || "",
+    sendingPaused: false,
     persisted: false,
   };
 }
@@ -87,7 +92,7 @@ async function read(): Promise<OrgSettings> {
     if (!orgId) return envFallback();
     const { data } = await client
       .from("orgs")
-      .select("id,name,industry_id,language,currency,monthly_quota,notification_prefs,theme,compliance,caller_id,voice_id,tts_voice_id,voice_settings,automations,timezone")
+      .select("id,name,industry_id,language,currency,monthly_quota,notification_prefs,theme,compliance,caller_id,voice_id,tts_voice_id,voice_settings,automations,timezone,sending_paused")
       .eq("id", orgId)
       .maybeSingle();
     if (!data) return envFallback();
@@ -107,6 +112,7 @@ async function read(): Promise<OrgSettings> {
       ttsVoiceId: (data.tts_voice_id as string) || undefined,
       voiceSettings: mergeVoiceSettings(data.voice_settings as Record<string, unknown> | null),
       timezone: (data.timezone as string) || process.env.AGENT_TIMEZONE || "",
+      sendingPaused: data.sending_paused === true,
       persisted: true,
     };
   } catch {
@@ -141,6 +147,8 @@ export async function updateOrgSettings(patch: {
   automations?: Record<string, boolean>;
   /** IANA timezone, or "" to clear (fall back to the fixed UTC digest hour). */
   timezone?: string;
+  /** Global kill switch for all autonomous sending. */
+  sendingPaused?: boolean;
 }): Promise<OrgSettings> {
   const client = getSupabase();
   if (!client) throw new Error("Settings are read-only without a database.");
@@ -175,6 +183,7 @@ export async function updateOrgSettings(patch: {
     update.voice_settings = mergeVoiceSettings({ ...current.voiceSettings, ...patch.voiceSettings });
   }
   if (patch.automations !== undefined) update.automations = patch.automations;
+  if (patch.sendingPaused !== undefined) update.sending_paused = patch.sendingPaused;
   // Only store a valid IANA zone; anything else clears it (→ UTC digest fallback).
   if (patch.timezone !== undefined) {
     const tz = patch.timezone.trim();

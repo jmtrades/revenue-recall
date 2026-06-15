@@ -2,6 +2,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { BillingBanner } from "@/components/BillingBanner";
 import { LaunchBanner } from "@/components/LaunchBanner";
+import { SendingPausedBanner } from "@/components/SendingPause";
 import { SystemTheme } from "@/components/SystemTheme";
 import { NeuralVoice } from "@/components/NeuralVoice";
 import { getIndustry } from "@/lib/industries";
@@ -36,6 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar userName={user?.name ?? "You"} userEmail={user?.email} signedIn={Boolean(user)} orgName={org.name} />
         <LaunchBanner />
+        <SendingPausedBanner initialPaused={org.sendingPaused} />
         <BillingBanner />
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-x-hidden px-4 py-6 sm:px-8 sm:py-7">{children}</main>
       </div>

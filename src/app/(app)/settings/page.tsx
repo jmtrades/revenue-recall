@@ -28,6 +28,7 @@ import { PageHeader, Card, Avatar, InfoRow } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
 import { BillingReturnBanner } from "@/components/BillingReturnBanner";
 import { OrgSettingsForm } from "@/components/OrgSettingsForm";
+import { SendingPauseToggle } from "@/components/SendingPause";
 import { AppearanceSettings } from "@/components/AppearanceSettings";
 import { BillingSettings } from "@/components/BillingSettings";
 import { InvoiceHistory } from "@/components/InvoiceHistory";
@@ -261,6 +262,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
         </InfoRow>
         <InfoRow label="Storage">{org.persisted ? "Database" : "In-memory / env"}</InfoRow>
       </div>
+      {org.persisted && (
+        <div className="mt-5 border-t border-border pt-4">
+          <SendingPauseToggle initialPaused={org.sendingPaused} />
+        </div>
+      )}
     </Card>
   );
 

@@ -25,6 +25,8 @@ const Patch = z.object({
   // zone (else null). Not a strict refine, so an unrecognized browser-detected zone
   // from onboarding can't 400 the whole settings PATCH (dropping name/industry/etc.).
   timezone: z.string().max(64).optional(),
+  // Global kill switch: pause/resume ALL autonomous sending.
+  sendingPaused: z.boolean().optional(),
 });
 
 export async function PATCH(req: Request) {

@@ -309,7 +309,10 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
   const stageById = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
   const contactById = new Map<string, Contact>(contacts.map((c) => [c.id, c]));
   const oppById = new Map<string, Opportunity>(opps.map((o) => [o.id, o]));
-  const autoSend = process.env.SEQUENCE_AUTOPILOT === "true";
+  // The org's global kill switch forces every cadence step to queue to Approvals
+  // instead of sending — the same "pause all autonomous sending" brake the
+  // autopilot honors. Off by default; flip it and nothing goes out.
+  const autoSend = process.env.SEQUENCE_AUTOPILOT === "true" && !org.sendingPaused;
   // Opt-in: defer drafts to the Anthropic Batches API (~50% cheaper, async).
   // Batched drafts are always queued to Approvals on collect — never auto-sent —
   // since opt-out/quiet-hours were evaluated at submit time, not collect time.
