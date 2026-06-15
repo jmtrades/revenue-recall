@@ -16,7 +16,7 @@ import { isWithinActionAllowance } from "@/lib/ai/usage";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { trackLinks, recordSent } from "@/lib/tracking";
 import { createOutboxItem } from "@/lib/agent/store";
-import { hasOptedOut, quietHoursNow, dailySendCap, declineCooldownDays, lastSoftDeclineAt } from "@/lib/agent/guardrails";
+import { hasOptedOut, quietHoursNow, dailySendCap, declineCooldownDays, lastSoftDeclineAt, containsUnverifiedClaim } from "@/lib/agent/guardrails";
 import { outsideCourtesyWindow } from "@/lib/calls/local-time";
 import { batchActivities } from "@/lib/crm/activities";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
@@ -507,7 +507,11 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
     // (TCPA applies to texts like calls — and the org clock can't see that 9am in
     // New York is 6am for a San Francisco number). Held messages queue to
     // Approvals, so nothing is lost. (Outside autopilot we always queue.)
-    const canSend = autoSend && !quietHoursNow(new Date(now), org.timezone) && !(step.channel === "sms" && outsideCourtesyWindow(address, new Date(now)));
+    // Claim-guard: a step whose copy makes a financial claim ($/% figure, equity,
+    // comps, rate, valuation) is never auto-sent — it queues to Approvals for a
+    // human, even on autopilot. Same rule as the autonomous agent.
+    const claimHeld = containsUnverifiedClaim(`${draft.subject ?? ""} ${draft.body}`);
+    const canSend = autoSend && !claimHeld && !quietHoursNow(new Date(now), org.timezone) && !(step.channel === "sms" && outsideCourtesyWindow(address, new Date(now)));
     // A send that THROWS must not crash the run or (now that we've advanced) lose
     // the step silently — treat it as a failed send and queue to Approvals.
     let res: { status: string } | null = null;
