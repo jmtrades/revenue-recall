@@ -43,7 +43,10 @@ export const GET = withGuard(async (req: Request) => {
 });
 
 const AddBody = z.object({
-  publicOwnerId: z.string().min(1).max(64),
+  // A public_owner_id is a long hex string (~64 chars, right at the old limit) —
+  // match the lib's roomier 128 bound so a valid owner isn't rejected here (400)
+  // before addSharedElevenVoice can validate it. voiceId stays a 20-char id.
+  publicOwnerId: z.string().min(1).max(128),
   voiceId: z.string().min(1).max(64),
   name: z.string().max(80).optional(),
 });

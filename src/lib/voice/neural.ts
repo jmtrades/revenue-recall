@@ -153,6 +153,14 @@ export const neuralSynth: VoiceSynth = {
 // We probe availability ONCE per page load; if the route says no (no key, free
 // plan, or logged out) the browser engine keeps doing its job untouched.
 
+/** Whether a failed /api/voice/tts response should DISABLE the hosted voice for
+ *  the session. Only config/entitlement failures (key revoked, plan downgraded,
+ *  route off) are permanent; a transient 429/5xx must not — the next read-aloud
+ *  retries ElevenLabs. Pure + tested. */
+export function hostedDisableOnStatus(status: number): boolean {
+  return status === 401 || status === 403 || status === 503;
+}
+
 let hostedState: "unknown" | "yes" | "no" = "unknown";
 // The org's saved speaking speed, learned from the probe — applied at playback
 // for ElevenLabs (which ignores server-side rate) so the tuned speed is audible
@@ -205,9 +213,13 @@ function hostedSpeak(text: string, opts: SpeakOptions): SpeakHandle {
         signal: controller.signal,
       });
       if (!res.ok) {
-        // Key revoked / plan changed mid-session: remember, and still SPEAK —
-        // this call falls back to the browser engine so the user hears something.
-        hostedState = "no";
+        // Only DISABLE the hosted voice for the session on a config/entitlement
+        // failure (key revoked, plan downgraded, route off). A transient 429
+        // (rate limit) or 5xx must NOT permanently drop the user to the browser
+        // voice for the rest of the session: leave hostedState alone so the next
+        // read-aloud tries ElevenLabs again. Either way, still SPEAK via the
+        // browser engine so this one click isn't silent.
+        if (hostedDisableOnStatus(res.status)) hostedState = "no";
         if (!stopped) await browserSynth.speak(text, opts).then((h) => h.done);
         return;
       }
