@@ -198,7 +198,7 @@ export default function LandingPage() {
                 <Arrow className="text-muted" />
               </Link>
             </div>
-            <p className="mt-3 text-xs text-muted">Live in 2 minutes · Cancel anytime</p>
+            <p className="mt-3 text-xs text-muted">Live in 2 minutes · See the revenue you&apos;re losing before you pay · Cancel anytime</p>
             <div className="mt-10 pt-6">
               <div className="hairline" />
               <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Runs closing teams in</p>
@@ -498,6 +498,20 @@ export default function LandingPage() {
             <p className="mt-4 text-muted">Start free and watch it surface the revenue you&apos;re losing. Add reps when it&apos;s already paying for itself.</p>
           </Reveal>
           <PricingPlans />
+          {/* Risk reversal — the value-equation's weak link is "perceived
+              likelihood." An honest money-back guarantee removes the risk of
+              trying, without overpromising results we can't control. */}
+          <div className="mx-auto mt-10 flex max-w-2xl flex-col items-center gap-3 rounded-2xl border border-brand/30 bg-brand-soft/10 px-6 py-6 text-center sm:flex-row sm:gap-5 sm:text-left">
+            <span className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20">
+              <Icon name="shield" size={22} />
+            </span>
+            <div>
+              <p className="font-semibold text-fg">30-day money-back guarantee</p>
+              <p className="mt-1 text-sm leading-relaxed text-muted">
+                Start free and watch it surface the revenue slipping through your pipeline. Put it to work for a month — if it doesn&apos;t earn its keep, email us and we&apos;ll refund every cent. The risk is ours, not yours.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
