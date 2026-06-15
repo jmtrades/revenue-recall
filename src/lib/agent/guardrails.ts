@@ -124,6 +124,26 @@ export function guardrailConfig(): { cooldownDays: number; declineCooldownDays: 
 
 export type SkipReason = "opted_out" | "recently_declined" | "recently_contacted" | "quiet_hours" | "daily_cap" | null;
 
+// A message that makes a FINANCIAL REPRESENTATION to a client — an equity/comps/
+// rate/appraisal/valuation/pre-approval statement, or a rate-like decimal percent
+// (e.g. "6.5%") — must never be sent autonomously: it's a claim the rep is legally
+// on the hook for and the model can get wrong. These are held for human approval.
+// Deliberately scoped to financial-domain claims, NOT bare dollar amounts — a
+// re-engagement message naming a deal's value ("your $4,200 quote") is normal and
+// must still auto-send; the risk is the unverified *assertion*, not the number.
+const CLAIM_RATE = /\b\d+\.\d+\s?%/; // a decimal percentage = a rate/APR/return, not rhetorical "100%"
+const CLAIM_TERMS =
+  /\b(equity|appraisal|appraised|comps?|comparable sales?|apr|interest rates?|mortgage rates?|rate lock|refinanc\w*|valuation|pre[\s-]?approv\w*|home value|market value|net proceeds|cap rate|cash[\s-]?on[\s-]?cash)\b/i;
+
+/**
+ * True when text makes an unverified financial claim that must be human-reviewed
+ * before going to a client (autopilot holds it for approval). Pure + tested.
+ */
+export function containsUnverifiedClaim(text: string | null | undefined): boolean {
+  if (!text) return false;
+  return CLAIM_RATE.test(text) || CLAIM_TERMS.test(text);
+}
+
 /**
  * Single decision point: should the agent send to this target right now? Returns
  * a skip reason or null (clear to send). `autonomy` gates the volume rails;

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { hasOptedOut, isHardOptOut, lastSoftDeclineAt, inCooldown, quietHoursNow, sendGate } from "@/lib/agent/guardrails";
+import { hasOptedOut, isHardOptOut, lastSoftDeclineAt, inCooldown, quietHoursNow, sendGate, containsUnverifiedClaim } from "@/lib/agent/guardrails";
 import type { Activity, Contact, Opportunity } from "@/lib/crm/types";
 
 beforeEach(() => {
@@ -108,3 +108,32 @@ describe("sendGate", () => {
     expect(sendGate({ contact: contact(), opp: opp(), activities: [], autonomy: "auto", sentSoFar: 0, now })).toBeNull();
   });
 });
+
+describe("containsUnverifiedClaim — claim-guard for autonomous sends", () => {
+  it("flags financial representations that must be human-reviewed", () => {
+    for (const t of [
+      "I pulled fresh comps — you've got more equity than you'd think",
+      "rates just dropped to 6.5%, worth a look",
+      "you're pre-approved up to 500k",
+      "your home value is up this year",
+      "we can refinance and cut your payment",
+      "appraised higher than expected",
+    ]) {
+      expect(containsUnverifiedClaim(t), t).toBe(true);
+    }
+  });
+
+  it("does NOT flag normal copy — incl. a deal's dollar value or rhetorical 100% (autopilot still sends)", () => {
+    for (const t of [
+      "Hey Jordan — saw your inquiry on the Maple property, still looking?",
+      "Do you have 15 minutes Thursday to reconnect?",
+      "Following up on your $4,200 quote — still interested?", // bare $ value is fine
+      "We're 100% committed to getting you across the line", // rhetorical %, not a rate
+      "Mind leaving us a rating if this helped?", // 'rating', not a financial rate
+    ]) {
+      expect(containsUnverifiedClaim(t), t).toBe(false);
+    }
+    expect(containsUnverifiedClaim("")).toBe(false);
+    expect(containsUnverifiedClaim(undefined)).toBe(false);
+  });
+})
