@@ -145,6 +145,27 @@ export function containsUnverifiedClaim(text: string | null | undefined): boolea
 }
 
 /**
+ * True when a contact has a recorded consent marker for an AI voice call. Post-2024
+ * FCC ruling, an AI/artificial voice needs PRIOR EXPRESS CONSENT — and reactivated
+ * cold leads are exactly where consent is stale. So the autonomous agent NEVER
+ * auto-dials a contact without an explicit consent marker; those are handed to the
+ * human dialer instead (a rep can confirm consent and place the call). Recognized
+ * markers (any one): callConsent/voiceConsent/consentToCall = true, or a non-empty
+ * consent timestamp (callConsentAt/voiceConsentAt/consentAt). Pure + tested.
+ */
+export function hasCallConsent(contact: Contact | undefined): boolean {
+  const a = contact?.attributes;
+  if (!a) return false;
+  const truthy = (v: unknown) => v === true || v === "true" || v === "yes" || v === 1 || v === "1";
+  if (truthy(a.callConsent) || truthy(a.voiceConsent) || truthy(a.consentToCall)) return true;
+  for (const k of ["callConsentAt", "voiceConsentAt", "consentAt"]) {
+    const v = a[k];
+    if (typeof v === "string" && v.trim()) return true;
+  }
+  return false;
+}
+
+/**
  * Single decision point: should the agent send to this target right now? Returns
  * a skip reason or null (clear to send). `autonomy` gates the volume rails;
  * opt-out always applies. A soft decline pauses re-engagement for a cooldown but
