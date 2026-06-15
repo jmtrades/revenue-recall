@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { learnVoice } from "@/lib/voice";
 import { aiRateLimit } from "@/lib/ratelimit";
+import { withGuard } from "@/lib/api/guard";
+import { requireRole } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -19,7 +21,12 @@ const Body = z.object({
   bookingUrl: z.union([z.string().url().max(500).regex(/^https?:\/\//i), z.literal("")]).optional(),
 });
 
-export async function POST(req: Request) {
+// The persona/voice is an ORG-WIDE setting that shapes every member's drafted
+// email/SMS, so it's owner/admin only — matching its siblings voice/select and
+// voice/hosted (a rep shouldn't be able to rewrite the whole org's voice).
+export const POST = withGuard(async (req: Request) => {
+  const denied = await requireRole("owner", "admin");
+  if (denied) return denied;
   if (!(await aiRateLimit(req, "voice-learn")).ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Add a description or a writing sample first." }, { status: 400 });
@@ -37,4 +44,4 @@ export async function POST(req: Request) {
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Failed" }, { status: 500 });
   }
-}
+});

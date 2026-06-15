@@ -15,9 +15,33 @@
 import { resolveProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
 import { seedDataset } from "@/lib/data/seed";
+import { getSessionUser } from "@/lib/auth";
+import { isAuthRequired } from "@/lib/config";
 import type { Stage } from "@/lib/crm/types";
 
 const TARGET = { stale: 5, active: 6, closed: 3 } as const;
+
+// Demo sample data must NEVER land in a real customer's workspace. On a live
+// (auth-on) deploy it's restricted to the operator's own account(s) — every
+// other/new user gets a genuinely clean workspace and never even sees the
+// "load sample data" option. Configurable via SAMPLE_DATA_EMAILS (comma list),
+// falling back to OPERATOR_EMAIL, then the founder's address. With auth off
+// (local/built-in demo) it stays available so the demo works.
+const SAMPLE_DATA_DEFAULT_EMAIL = "jmtrades1990@gmail.com";
+
+export function sampleDataAllowlist(): string[] {
+  const raw = process.env.SAMPLE_DATA_EMAILS || process.env.OPERATOR_EMAIL || SAMPLE_DATA_DEFAULT_EMAIL;
+  return raw.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+}
+
+/** True only for accounts allowed to load demo sample data (operator only on a
+ *  live deploy; anyone on the open/built-in demo). */
+export async function canUseSampleData(): Promise<boolean> {
+  if (!isAuthRequired()) return true; // open demo / built-in store
+  const user = await getSessionUser().catch(() => null);
+  const email = user?.email?.toLowerCase();
+  return !!email && sampleDataAllowlist().includes(email);
+}
 
 /** Map a seed stage onto the org's real pipeline by type + relative position,
  *  so customized pipelines (renamed/reordered stages) still get sane placement.
@@ -34,9 +58,20 @@ export function mapStage(seedStage: Stage | undefined, seedOpen: Stage[], orgSta
 }
 
 export async function loadSampleData(): Promise<{ contacts: number; deals: number }> {
+  // Hard gate: demo data is operator-only on a live deploy (never a real
+  // customer's workspace). Defense-in-depth — the UI hides the button too.
+  if (!(await canUseSampleData())) {
+    throw new Error("Sample data isn't available on this account.");
+  }
   const provider = await resolveProvider();
-  if (provider.info().id !== "builtin") {
-    throw new Error("Sample data is only for the built-in CRM — your connected CRM stays untouched.");
+  // Allow both first-party stores — the built-in demo store AND the app's own
+  // Supabase store (the live default). Only a customer's CONNECTED external CRM
+  // (close/hubspot/salesforce/pipedrive) is off-limits, so we never write demo
+  // rows into their real CRM. Without this, the "Explore with sample data" CTA —
+  // the fastest path to value for a brand-new signup — fails on every live
+  // (Supabase) workspace.
+  if (!["builtin", "supabase"].includes(provider.info().id)) {
+    throw new Error("Sample data is only for the built-in workspace — your connected CRM stays untouched.");
   }
   const existing = await provider.listContacts();
   if (existing.length > 0) return { contacts: 0, deals: 0 }; // already has data — never duplicate

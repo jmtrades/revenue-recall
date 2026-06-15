@@ -15,7 +15,30 @@ neural voice with **zero app code changes**.
 | Engine | Model | Notes |
 |---|---|---|
 | **`kokoro`** (default) | Kokoro 82M, Apache-2.0 | Top of open TTS leaderboards; **54 voices**; native **24 kHz**; ~**0.3× real-time on CPU** (faster than real-time); genuinely close to commercial quality. |
+| `voxcpm` | [OpenBMB VoxCPM](https://github.com/OpenBMB/VoxCPM) | **Most expressive option.** Tokenizer-free MiniCPM-family TTS with context-aware prosody, **native zero-shot cloning**, and **voice design** (describe how it should sound). Heavier — diffusion decoder, **GPU recommended**. Set `VOICE_ENGINE=voxcpm` and `pip install voxcpm`. |
 | `piper` | VITS, MIT | Lighter/faster, lower fidelity. Set `VOICE_ENGINE=piper`. |
+
+### VoxCPM (`VOICE_ENGINE=voxcpm`)
+
+The most natural-sounding open engine here, for when you want the in-house voice
+to rival a vendor on expressiveness:
+
+```bash
+pip install voxcpm            # not installed by default (heavy; GPU recommended)
+VOICE_ENGINE=voxcpm python server.py
+```
+
+- **Voice design** — send a `voiceId` of `design:<style>` and VoxCPM shapes the
+  delivery, e.g. `design:warm, energetic, professional`. (No fixed voice
+  catalogue: any other id uses VoxCPM's neutral default voice.)
+- **Cloning** still routes through Chatterbox (`clone:<id>`) so the **consent +
+  watermark** guarantees hold regardless of the base engine.
+- Tunables: `VOXCPM_MODEL` (default `openbmb/VoxCPM2`), `VOXCPM_CFG` (guidance,
+  default `2.0`), `VOXCPM_TIMESTEPS` (diffusion steps, default `10`),
+  `VOXCPM_DENOISER=1` (clean noisy reference clips). The native sample rate is
+  read from the model; the service resamples to the client's requested rate.
+- VoxCPM paces itself, so server-side `rate` isn't applied for this engine (the
+  browser can still nudge `playbackRate`).
 
 ### Honest quality note
 

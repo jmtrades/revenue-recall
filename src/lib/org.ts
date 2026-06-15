@@ -6,6 +6,7 @@ import { getIndustry } from "@/lib/industries";
 import { DEFAULT_LANGUAGE } from "@/lib/languages";
 import { defaultNotificationPrefs, mergeNotificationPrefs, type NotificationPrefs } from "@/lib/notifications";
 import { defaultTheme, mergeTheme, type Theme } from "@/lib/theme";
+import { mergeVoiceSettings, DEFAULT_VOICE_SETTINGS, type VoiceSettings } from "@/lib/voice/voice-settings";
 import { isValidTimeZone } from "@/lib/tz";
 
 export { NOTIFICATION_OPTIONS, defaultNotificationPrefs, mergeNotificationPrefs, type NotificationPrefs } from "@/lib/notifications";
@@ -37,6 +38,11 @@ export interface OrgSettings {
   /** This org's outbound CALL voice — an in-house Kokoro voice id (e.g.
    *  "af_heart") or a "clone:<id>" signature voice. Undefined = gateway default. */
   voiceId?: string;
+  /** This org's hosted read-aloud voice — an "eleven:<id>" ElevenLabs voice
+   *  (stock or the org's own clone) used by the neural TTS. Undefined = default. */
+  ttsVoiceId?: string;
+  /** Per-org read-aloud voice tuning (speaking speed + expressiveness). */
+  voiceSettings: VoiceSettings;
   /** IANA timezone (e.g. "America/New_York") the workspace operates in — drives
    *  the daily digest's local send time. Empty = fall back to a fixed UTC hour. */
   timezone: string;
@@ -66,6 +72,8 @@ function envFallback(): OrgSettings {
     automations: {},
     callerId: process.env.OUTBOUND_FROM_NUMBER || undefined,
     voiceId: process.env.OUTBOUND_VOICE_ID || undefined,
+    ttsVoiceId: undefined,
+    voiceSettings: { ...DEFAULT_VOICE_SETTINGS },
     timezone: process.env.AGENT_TIMEZONE || "",
     persisted: false,
   };
@@ -79,7 +87,7 @@ async function read(): Promise<OrgSettings> {
     if (!orgId) return envFallback();
     const { data } = await client
       .from("orgs")
-      .select("id,name,industry_id,language,currency,monthly_quota,notification_prefs,theme,compliance,caller_id,voice_id,automations,timezone")
+      .select("id,name,industry_id,language,currency,monthly_quota,notification_prefs,theme,compliance,caller_id,voice_id,tts_voice_id,voice_settings,automations,timezone")
       .eq("id", orgId)
       .maybeSingle();
     if (!data) return envFallback();
@@ -96,6 +104,8 @@ async function read(): Promise<OrgSettings> {
       automations: (data.automations && typeof data.automations === "object" ? (data.automations as Record<string, boolean>) : {}),
       callerId: (data.caller_id as string) || process.env.OUTBOUND_FROM_NUMBER || undefined,
       voiceId: (data.voice_id as string) || process.env.OUTBOUND_VOICE_ID || undefined,
+      ttsVoiceId: (data.tts_voice_id as string) || undefined,
+      voiceSettings: mergeVoiceSettings(data.voice_settings as Record<string, unknown> | null),
       timezone: (data.timezone as string) || process.env.AGENT_TIMEZONE || "",
       persisted: true,
     };
@@ -123,6 +133,10 @@ export async function updateOrgSettings(patch: {
   callerId?: string;
   /** This org's outbound call voice id (house id or "clone:<id>"), or "" to clear. */
   voiceId?: string;
+  /** This org's hosted read-aloud voice ("eleven:<id>"), or "" to clear. */
+  ttsVoiceId?: string;
+  /** Per-org read-aloud voice tuning (partial — merged over current). */
+  voiceSettings?: Partial<VoiceSettings>;
   /** Per-org automation enable overrides ({ automationId: boolean }). */
   automations?: Record<string, boolean>;
   /** IANA timezone, or "" to clear (fall back to the fixed UTC digest hour). */
@@ -155,6 +169,11 @@ export async function updateOrgSettings(patch: {
   }
   if (patch.callerId !== undefined) update.caller_id = patch.callerId.trim() || null;
   if (patch.voiceId !== undefined) update.voice_id = patch.voiceId.trim() || null;
+  if (patch.ttsVoiceId !== undefined) update.tts_voice_id = patch.ttsVoiceId.trim() || null;
+  if (patch.voiceSettings !== undefined) {
+    const current = await read();
+    update.voice_settings = mergeVoiceSettings({ ...current.voiceSettings, ...patch.voiceSettings });
+  }
   if (patch.automations !== undefined) update.automations = patch.automations;
   // Only store a valid IANA zone; anything else clears it (→ UTC digest fallback).
   if (patch.timezone !== undefined) {

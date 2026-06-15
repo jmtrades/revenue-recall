@@ -1,4 +1,5 @@
 import { getConfig } from "@/lib/config";
+import { SITE_URL } from "@/lib/site";
 import { INDUSTRIES, getIndustry } from "@/lib/industries";
 import { getLanguage } from "@/lib/languages";
 import { listIntegrations, resolveProvider } from "@/lib/crm/registry";
@@ -20,6 +21,8 @@ import { getTeamAndPipeline, getRecentCaptures } from "@/lib/queries";
 import { money } from "@/lib/format";
 import { getOrgSettings } from "@/lib/org";
 import { getStoredVoice } from "@/lib/voice";
+import { convaiConfigured } from "@/lib/voice/convai";
+import { elevenConfigured } from "@/lib/voice/eleven";
 import { pct } from "@/lib/format";
 import { PageHeader, Card, Avatar, InfoRow } from "@/components/ui";
 import { Tabs } from "@/components/Tabs";
@@ -38,6 +41,7 @@ import { AiHealthCheck } from "@/components/AiHealthCheck";
 import { VoiceStudio } from "@/components/VoiceStudio";
 import { VoiceControls } from "@/components/VoiceControls";
 import { CallVoicePicker } from "@/components/CallVoicePicker";
+import { ElevenVoiceLibrary } from "@/components/ElevenVoiceLibrary";
 import { getSubscription } from "@/lib/billing/store";
 import { billingConfigured, resolvePriceId, resolveTopupPriceId } from "@/lib/billing/stripe";
 import { isAuthRequired } from "@/lib/config";
@@ -133,6 +137,18 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       link: { href: "https://console.anthropic.com", label: "Open Anthropic" },
     },
     {
+      label: "Lifelike voice (ElevenLabs)", ok: elevenConfigured(), required: false, where: "ElevenLabs + Vercel",
+      detail: "Reads outreach and previews aloud in a real, human-grade voice — and unlocks the voice library + cloning in Settings → Voice. This row is green only when ELEVENLABS_API_KEY is live in this deployment.",
+      steps: ["Get an API key at elevenlabs.io", "Add it as ELEVENLABS_API_KEY in the Vercel project serving recall-touch.com", "Redeploy (server vars need a fresh build)", "Settings → Voice: pick a voice or clone your own"],
+      link: { href: "https://elevenlabs.io/app", label: "Open ElevenLabs" },
+    },
+    {
+      label: "Live voice agent", ok: convaiConfigured(), required: false, where: "ElevenLabs + Vercel",
+      detail: "Turns on the two-way \"Talk to a live AI prospect\" agent — a real spoken conversation, not turn-by-turn.",
+      steps: ["In ElevenLabs, create a Conversational AI agent", "Add its id as ELEVENLABS_AGENT_ID in Vercel (with ELEVENLABS_API_KEY)", "Allow voice overrides in the agent's security settings to use your chosen/cloned voice", "Redeploy"],
+      link: { href: "https://elevenlabs.io/app/conversational-ai", label: "Open Agents" },
+    },
+    {
       label: "Billing — charge customers", ok: billingOn, required: false, where: "Stripe + Vercel",
       detail: "Turns on self-serve checkout, the customer portal, and usage top-ups.",
       steps: ["Add STRIPE_SECRET_KEY (Stripe → Developers → API keys)", "Add a webhook to /api/billing/webhook and paste STRIPE_WEBHOOK_SECRET", "Add STRIPE_PUBLISHABLE_KEY so checkout runs on your own domain", "Redeploy"],
@@ -170,6 +186,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       <VoiceStudio initial={voice} persisted={org.persisted} />
       <Card className="mt-4">
         <VoiceControls />
+        <ElevenVoiceLibrary />
         <CallVoicePicker initialVoiceId={org.voiceId ?? null} />
       </Card>
     </>
@@ -571,7 +588,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
     </Card>
   );
 
-  const leadApiEndpoint = `${(process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "")}/api/v1/leads`;
+  const leadApiEndpoint = `${SITE_URL}/api/v1/leads`;
   const orgFormUrl = org.id ? hostedFormUrl(org.id) : null;
   const orgFormEmbed = org.id ? formEmbedSnippet(org.id) : null;
   const recentCaptures = await getRecentCaptures(8).catch(() => []);

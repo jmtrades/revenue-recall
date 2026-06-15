@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { publicSiteUrl } from "@/lib/site";
 
 /**
  * Hosted / embeddable lead-capture form tokens. The form posts with an HMAC
@@ -31,7 +32,7 @@ export function verifyFormToken(orgId: string, token: string | null | undefined)
 }
 
 function base(): string | null {
-  const b = process.env.NEXT_PUBLIC_SITE_URL;
+  const b = publicSiteUrl();
   return b ? b.replace(/\/$/, "") : null;
 }
 

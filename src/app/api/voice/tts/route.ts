@@ -4,6 +4,7 @@ import { withGuard } from "@/lib/api/guard";
 import { isEntitled } from "@/lib/billing/enforce";
 import { ttsAvailable, ttsProvider, synthesizeSpeech } from "@/lib/voice/tts";
 import { EMOTIONS } from "@/lib/voice/speech";
+import { getOrgSettings } from "@/lib/org";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,11 @@ export const dynamic = "force-dynamic";
  */
 export const GET = withGuard(async () => {
   const available = ttsAvailable() && (await isEntitled("aiLive"));
-  return NextResponse.json({ available, provider: available ? ttsProvider() : null });
+  // Hand the client the org's saved speaking speed so it can apply it at
+  // playback (ElevenLabs ignores server-side rate), making the tuned speed
+  // audible on every read-aloud, not just synthesized previews.
+  const rate = available ? (await getOrgSettings().catch(() => null))?.voiceSettings.rate ?? 1 : 1;
+  return NextResponse.json({ available, provider: available ? ttsProvider() : null, rate });
 });
 
 const Body = z.object({
@@ -24,6 +29,7 @@ const Body = z.object({
   voiceId: z.string().max(80).optional(),
   emotion: z.enum(Object.keys(EMOTIONS) as [string, ...string[]]).optional(),
   rate: z.number().min(0.5).max(1.5).optional(),
+  expressiveness: z.number().min(0).max(1).optional(),
   lang: z.string().max(16).optional(),
   // This in-app route is read-aloud/previews (non-realtime), so it defaults to
   // the highest-quality model; a caller may pass "realtime" to opt into the
@@ -40,12 +46,20 @@ export const POST = withGuard(async (req: Request) => {
   }
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  // Fill unset fields from the org's saved voice: the chosen ElevenLabs voice,
+  // and its speaking speed + expressiveness — so every read-aloud speaks in the
+  // org's tuned voice unless the caller explicitly overrides.
+  const org = await getOrgSettings().catch(() => null);
+  const voiceId = parsed.data.voiceId || org?.ttsVoiceId || undefined;
+  const rate = parsed.data.rate ?? org?.voiceSettings.rate;
+  const expressiveness = parsed.data.expressiveness ?? org?.voiceSettings.expressiveness;
   try {
     const out = await synthesizeSpeech({
       text: parsed.data.text,
-      voiceId: parsed.data.voiceId,
+      voiceId,
       emotion: parsed.data.emotion as never,
-      rate: parsed.data.rate,
+      rate,
+      expressiveness,
       lang: parsed.data.lang,
       quality: parsed.data.quality ?? "max", // read-aloud/previews want fidelity, not latency
     });

@@ -298,8 +298,15 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
 
       {/* Optional live ElevenLabs Conversational AI agent — a real two-way spoken
           call instead of the on-device turn-by-turn loop. Self-hides unless the
-          agent is configured (key + agent id) and entitled on this plan. */}
-      <VoiceAgent label="Talk to a live AI prospect" className="mb-3" />
+          agent is configured (key + agent id) and entitled on this plan. The
+          scenario (who they are, the deal, the difficulty) is passed as a prompt
+          override so the live prospect is THIS deal, not a generic bot. */}
+      <VoiceAgent
+        label="Talk to a live AI prospect"
+        className="mb-3"
+        prompt={`You are ${contactName}${company ? ` from ${company}` : ""}, a prospect receiving a sales call about "${dealTitle}". Play a realistic, ${difficulty} prospect on a live phone call: speak naturally and briefly like a real person on the phone, show the guardedness and objections a ${difficulty} prospect would, and only warm up if the rep genuinely earns it. Never break character or say you are an AI.`}
+        firstMessage={`Hello, this is ${contactName.split(" ")[0]}.`}
+      />
 
       <div ref={scrollRef} className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border bg-surface-2/40 p-3">
         {!started ? (

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   alternates: { canonical: `${SITE_URL}/docs/api` },
 };
 
-const BASE = (process.env.NEXT_PUBLIC_SITE_URL || "https://app.recall-touch.com").replace(/\/$/, "");
+const BASE = SITE_URL;
 
 function Code({ children }: { children: string }) {
   return <pre className="mt-3 overflow-x-auto rounded-xl border border-border bg-surface-2 p-4 font-mono text-[12px] leading-relaxed text-fg">{children}</pre>;

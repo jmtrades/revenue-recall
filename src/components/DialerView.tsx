@@ -7,7 +7,8 @@ import { Icon } from "@/components/icons";
 import { Avatar, ReasonBadge, ScoreDot, EmptyState } from "@/components/ui";
 import { RolePlay } from "@/components/RolePlay";
 import { SpeakButton } from "@/components/SpeakButton";
-import { nextPendingIndex, QUICK_OUTCOMES, quickOutcome, dialerKeyAction, duplicatePhoneIndexes } from "@/lib/dialer-flow";
+import { VoiceAgent } from "@/components/VoiceAgent";
+import { nextPendingIndex, QUICK_OUTCOMES, quickOutcome, dialerKeyAction, duplicatePhoneIndexes, liveAgentPrompt, liveAgentOpener } from "@/lib/dialer-flow";
 import { prospectLocalTime, outsideCourtesyWindow } from "@/lib/calls/local-time";
 
 interface Brief {
@@ -419,6 +420,30 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
                 )}
               </div>
             )}
+            {/* Live AI agent for THIS real call — a two-way spoken conversation
+                in the org's voice, primed with the prospect + the brief's talk
+                track and goal. Self-hides unless ElevenLabs Conversational AI is
+                connected; as the primary calling surface it opts into the owner
+                diagnostic (so the "why it's off" notice shows here, once). The
+                section header + divider live inside VoiceAgent (via className) so
+                nothing — not even the rule — renders for reps on an unconfigured
+                deploy. */}
+            <VoiceAgent
+              className="mt-3 border-t border-border/60 pt-3"
+              title="Live AI agent"
+              hint="Let the AI run the call in your voice — it speaks, listens, and replies in real time, using the prep above."
+              label="Start live call with AI"
+              diagnostic
+              prompt={liveAgentPrompt({
+                contactName: active.contactName,
+                company: active.company,
+                dealTitle: active.title,
+                summary: brief?.summary,
+                talkingPoints: brief?.talkingPoints,
+                goal: brief?.nextStep,
+              })}
+              firstMessage={liveAgentOpener({ contactName: active.contactName })}
+            />
           </div>
 
           <RolePlay contactName={active.contactName} company={active.company} dealTitle={active.title} locale={locale} />

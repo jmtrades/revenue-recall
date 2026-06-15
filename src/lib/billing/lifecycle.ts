@@ -1,4 +1,5 @@
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { publicSiteUrl } from "@/lib/site";
 import { sendEmail } from "@/lib/comms";
 import { seenInboundEvent } from "@/lib/inbound-dedup";
 import { logInfo } from "@/lib/log";
@@ -18,7 +19,7 @@ import { money } from "@/lib/format";
 export type LifecycleResult = { sent: boolean; reason?: "duplicate" | "no_recipient" | "send_failed" };
 
 function appLink(path: string): string {
-  const base = process.env.NEXT_PUBLIC_SITE_URL;
+  const base = publicSiteUrl();
   return base ? `${base.replace(/\/$/, "")}${path}` : path;
 }
 

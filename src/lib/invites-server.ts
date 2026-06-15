@@ -1,4 +1,5 @@
 import { getSupabase } from "@/lib/supabase/client";
+import { publicSiteUrl } from "@/lib/site";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getSessionUser, type SessionUser } from "@/lib/auth";
 import { sendEmail } from "@/lib/comms";
@@ -13,7 +14,7 @@ import { enforcementOn, orgEntitlements } from "@/lib/billing/enforce";
  */
 
 function signupUrl(token: string): string {
-  const base = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
+  const base = (publicSiteUrl() ?? "").replace(/\/$/, "");
   return base ? `${base}/signup?invite=${token}` : `/signup?invite=${token}`;
 }
 

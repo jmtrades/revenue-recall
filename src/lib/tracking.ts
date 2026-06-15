@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { publicSiteUrl } from "@/lib/site";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { safeEqual } from "@/lib/safe-compare";
@@ -66,7 +67,7 @@ const URL_RE = /https?:\/\/[^\s<>()"']+/g;
  * secret, and never rewrites our own /api/ links (unsubscribe, forms, …).
  */
 export function trackLinks(body: string, ctx: ClickContext): string {
-  const base = process.env.NEXT_PUBLIC_SITE_URL;
+  const base = publicSiteUrl();
   if (!base || !secret()) return body;
   const origin = base.replace(/\/$/, "");
   return body.replace(URL_RE, (url) => {

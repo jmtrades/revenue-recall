@@ -18,6 +18,8 @@ const STATS: PlatformStats = {
   aiCostUsd7d: 38.4,
   aiActions7d: 1234,
   talkMinutes7d: 870,
+  weeklyRevenueUsd: 872,
+  grossMarginPct: 96,
 };
 
 describe("platform pulse body", () => {
@@ -28,6 +30,7 @@ describe("platform pulse body", () => {
     expect(body).toContain("Estimated MRR: $3,793");
     expect(body).toContain("AI actions: 1,234 · talk minutes: 870");
     expect(body).toContain("AI + voice COGS: $38.40");
+    expect(body).toContain("Gross margin (est): 96%");
   });
 
   it("omits the plan breakdown cleanly when there are no paid subs", () => {

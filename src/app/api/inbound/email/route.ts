@@ -8,6 +8,7 @@ import { verifyInboundOrgToken } from "@/lib/inbound-routing";
 import { runWithOrg } from "@/lib/supabase/org-context";
 import { logWarn } from "@/lib/log";
 import { seenInboundEvent, forgetInboundEvent } from "@/lib/inbound-dedup";
+import { safeEqual } from "@/lib/safe-compare";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -47,7 +48,7 @@ export const POST = withGuard(async (req: Request) => {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
     } else if (token) {
-      if (url.searchParams.get("token") !== token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      if (!safeEqual(url.searchParams.get("token") ?? "", token)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     } else if (process.env.NODE_ENV === "production") {
       // Fail closed in prod: an unauthenticated inbound endpoint lets anyone inject
       // a "reply" from a contact (and trigger an auto-reply). Configure a secret.
