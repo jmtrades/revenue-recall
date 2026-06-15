@@ -344,15 +344,15 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
 
       {active && (
         <div className="space-y-4">
-          <div className="card">
+          <div className="card ring-1 ring-brand/10">
             <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <Avatar name={active.contactName} size={44} />
+              <div className="flex items-center gap-3.5">
+                <Avatar name={active.contactName} size={52} />
                 <div>
-                  <Link href={`/deals/${active.dealId}`} className="font-semibold text-fg hover:underline">{active.contactName}</Link>
+                  <Link href={`/deals/${active.dealId}`} className="text-lg font-semibold text-fg hover:underline">{active.contactName}</Link>
                   <div className="text-sm text-muted">{active.company || active.title}</div>
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-sm text-fg">{active.phone}</span>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-base font-semibold tracking-tight text-fg">{active.phone}</span>
                     <LocalTimeChip phone={active.phone} />
                   </div>
                   {activeDup && (
@@ -365,7 +365,7 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
               <ReasonBadge reason={active.reason} />
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <button onClick={call} disabled={placing} className="inline-flex items-center gap-1.5 rounded-lg bg-success px-5 py-2.5 text-sm font-semibold text-white transition active:scale-[0.97] hover:bg-success/90 disabled:opacity-50 disabled:active:scale-100"><Icon name="dialer" size={15} /> {placing ? "Dialing…" : "Call"}</button>
+              <button onClick={call} disabled={placing} className="inline-flex items-center gap-2 rounded-xl bg-success px-6 py-3 text-base font-semibold text-white shadow-sm transition active:scale-[0.97] hover:bg-success/90 disabled:opacity-50 disabled:active:scale-100"><Icon name="dialer" size={17} /> {placing ? "Dialing…" : "Call"}</button>
               {callStatus && <span className="text-sm text-muted">{callStatus}</span>}
             </div>
             {/* One-tap no-connect logging — the bulk of any dial day. Each logs
