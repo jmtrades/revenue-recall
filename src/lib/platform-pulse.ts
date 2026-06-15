@@ -26,6 +26,11 @@ export interface PlatformStats {
   aiCostUsd7d: number;
   aiActions7d: number;
   talkMinutes7d: number;
+  /** Revenue earned in the 7-day window (MRR pro-rated to a week). */
+  weeklyRevenueUsd: number;
+  /** Estimated gross margin % this week = (weekly revenue − COGS) / revenue.
+   *  null when there's no revenue yet (margin is undefined on $0). */
+  grossMarginPct: number | null;
 }
 
 /** Monthly price for a plan in USD from the billing catalog (source of truth). */
@@ -64,6 +69,10 @@ export async function platformStats(now: Date = new Date()): Promise<PlatformSta
       if (u.feature === CALL_MINUTES_FEATURE) talkSeconds += Number(u.input_tokens ?? 0);
       else actions += 1;
     }
+    // Pro-rate monthly revenue to the 7-day COGS window so margin compares like
+    // with like (avg month ≈ 30.44 days).
+    const weeklyRevenue = mrr * 7 / 30.44;
+    const grossMarginPct = weeklyRevenue > 0 ? Math.round(((weeklyRevenue - cost) / weeklyRevenue) * 100) : null;
     return {
       totalOrgs: orgsAll.count ?? 0,
       newOrgs7d: orgsNew.count ?? 0,
@@ -73,6 +82,8 @@ export async function platformStats(now: Date = new Date()): Promise<PlatformSta
       aiCostUsd7d: Number(cost.toFixed(2)),
       aiActions7d: actions,
       talkMinutes7d: Math.round(talkSeconds / 60),
+      weeklyRevenueUsd: Math.round(weeklyRevenue),
+      grossMarginPct,
     };
   } catch {
     return null;
@@ -95,6 +106,7 @@ export function pulseBody(s: PlatformStats): string {
     "  Last 7 days of usage:",
     `  AI actions: ${s.aiActions7d.toLocaleString()} · talk minutes: ${s.talkMinutes7d.toLocaleString()}`,
     `  AI + voice COGS: $${s.aiCostUsd7d.toFixed(2)}`,
+    `  Gross margin (est): ${s.grossMarginPct === null ? "—" : `${s.grossMarginPct}%`} (weekly rev ~$${s.weeklyRevenueUsd.toLocaleString()} vs COGS $${s.aiCostUsd7d.toFixed(2)})`,
     "",
     "Numbers come straight from the live database — no sampling, no spin.",
   ].join("\n");
