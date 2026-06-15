@@ -146,7 +146,18 @@ export async function acceptPendingInvite(user: SessionUser): Promise<string | n
   const orgId = (inv as { org_id: string }).org_id;
   const role = normalizeRole((inv as { role: string }).role);
 
-  await client.from("members").insert({ org_id: orgId, name: user.name, email: user.email, role, auth_user_id: user.id });
+  // Create the membership FIRST and only mark the invite accepted if it landed.
+  // Marking accepted on a failed insert would strand the invitee: no membership,
+  // and the invite is no longer "pending" to retry, so their next sign-in falls
+  // through to provisioning a brand-new private org — silently defeating the
+  // invite. On a duplicate (they're already a member) treat it as success.
+  const { error: memberErr } = await client
+    .from("members")
+    .insert({ org_id: orgId, name: user.name, email: user.email, role, auth_user_id: user.id });
+  if (memberErr && !/duplicate|unique/i.test(memberErr.message)) {
+    // Leave the invite pending so it can be retried on the next sign-in.
+    return null;
+  }
   await client.from("invitations").update({ status: "accepted", accepted_at: new Date().toISOString() }).eq("id", (inv as { id: string }).id);
   return orgId;
 }
