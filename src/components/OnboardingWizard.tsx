@@ -143,7 +143,9 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
       const res = await fetch("/api/org", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ industryId: industry, language, name: org || undefined, monthlyQuota: Number(quota) || undefined, timezone }),
+        // Send the goal whenever it's a valid number — including 0 (`Number(x) ||
+        // undefined` would silently drop a deliberate 0). Omit only when blank.
+        body: JSON.stringify({ industryId: industry, language, name: org || undefined, monthlyQuota: String(quota).trim() !== "" && Number.isFinite(Number(quota)) ? Number(quota) : undefined, timezone }),
       });
       // The core save MUST land — otherwise the user enters a workspace that
       // silently lost their industry/quota/language. Surface it and let them
