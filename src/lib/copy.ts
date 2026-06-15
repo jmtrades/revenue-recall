@@ -129,6 +129,19 @@ export function sentence(s: string): string {
 }
 
 /**
+ * Make casual copy read like a professional, not a bot: capitalize the first
+ * letter and every sentence start, and fix the standalone "i" (and its
+ * contractions, "i'll"/"i'm"/…) to "I". Applied to TEMPLATE messages so the
+ * non-AI fallback never ships all-lowercase text to a client (the AI path is
+ * instructed to do this directly). Leaves URLs/merge tokens untouched.
+ */
+export function professionalize(text: string): string {
+  return text
+    .replace(/(^\s*|[.!?]\s+|\n+)([a-z])/g, (_m, pre, ch: string) => pre + ch.toUpperCase())
+    .replace(/\bi\b/g, "I");
+}
+
+/**
  * Salt a base seed so independent parts of a message (greeting, sign-off,
  * skeleton choice, …) vary independently of each other but stay deterministic
  * for a given deal. Without salting, every part of a message would rotate in
@@ -161,10 +174,10 @@ export const GREETINGS_EMAIL: ((f: string) => string)[] = [
 
 /** SMS greetings: plain, lowercase-casual, no trailing punctuation. */
 export const GREETINGS_SMS: ((f: string) => string)[] = [
-  (f) => `hey ${f}`,
-  (f) => `hi ${f}`,
+  (f) => `Hey ${f}`,
+  (f) => `Hi ${f}`,
   (f) => `${f}`,
-  (f) => `hey ${f}`,
+  (f) => `Hey ${f}`,
 ];
 
 /** Low-pressure email closers for re-engagement, so we never repeat one line. */
