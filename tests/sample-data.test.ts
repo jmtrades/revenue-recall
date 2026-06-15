@@ -1,6 +1,24 @@
-import { describe, it, expect } from "vitest";
-import { loadSampleData, mapStage } from "@/lib/sample-data";
+import { describe, it, expect, afterEach } from "vitest";
+import { loadSampleData, mapStage, sampleDataAllowlist } from "@/lib/sample-data";
 import type { Stage } from "@/lib/crm/types";
+
+afterEach(() => {
+  delete process.env.SAMPLE_DATA_EMAILS;
+  delete process.env.OPERATOR_EMAIL;
+});
+
+describe("sample-data allowlist — operator only", () => {
+  it("defaults to the founder's address so demo data can't leak to real users", () => {
+    expect(sampleDataAllowlist()).toEqual(["jmtrades1990@gmail.com"]);
+  });
+  it("honors SAMPLE_DATA_EMAILS (comma list, normalized), then OPERATOR_EMAIL", () => {
+    process.env.SAMPLE_DATA_EMAILS = "A@x.com, b@y.com";
+    expect(sampleDataAllowlist()).toEqual(["a@x.com", "b@y.com"]);
+    delete process.env.SAMPLE_DATA_EMAILS;
+    process.env.OPERATOR_EMAIL = "Owner@Co.com";
+    expect(sampleDataAllowlist()).toEqual(["owner@co.com"]);
+  });
+});
 
 const stage = (id: string, type: Stage["type"], probability = 0.5): Stage => ({ id, label: id, probability, type });
 

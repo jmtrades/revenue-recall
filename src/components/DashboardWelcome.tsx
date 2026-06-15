@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, Button } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
 import { SampleDataButton } from "@/components/SampleDataButton";
+import { canUseSampleData } from "@/lib/sample-data";
 
 /**
  * First-run experience. A brand-new workspace has no deals yet, so the metric
@@ -33,7 +34,10 @@ const STEPS: { icon: IconName; title: string; body: string; href: string; cta: s
   },
 ];
 
-export function DashboardWelcome({ greeting }: { greeting: string }) {
+export async function DashboardWelcome({ greeting }: { greeting: string }) {
+  // Sample data is operator-only — real users get a clean start and the
+  // import/connect paths below, never a "load fake data" button.
+  const showSample = await canUseSampleData();
   return (
     <div className="space-y-6">
       <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-brand-soft/40 to-surface px-7 py-9">
@@ -45,12 +49,21 @@ export function DashboardWelcome({ greeting }: { greeting: string }) {
             Revenue Recall is ready. Bring in your deals and it starts surfacing the revenue you&rsquo;re losing, drafts
             outreach in your voice, and works every deal around the clock. Pick a way to start:
           </p>
-          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
-            <SampleDataButton />
-            <p className="max-w-xs text-xs leading-relaxed text-muted">
-              Fastest way to see it work — realistic deals, several already slipping, all editable and deletable.
-            </p>
-          </div>
+          {showSample ? (
+            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <SampleDataButton />
+              <p className="max-w-xs text-xs leading-relaxed text-muted">
+                Fastest way to see it work — realistic deals, several already slipping, all editable and deletable.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-5">
+              <Button href="/settings?tab=import" size="sm">Import your leads</Button>
+              <p className="mt-2 max-w-sm text-xs leading-relaxed text-muted">
+                Drop in a CSV or connect your CRM below — your pipeline fills in minutes.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
