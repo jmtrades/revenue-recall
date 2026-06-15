@@ -31,12 +31,6 @@ function partOfDay(hour: number): string {
   return "Good evening";
 }
 
-/** A short, personal nudge based on what's actually waiting in the recall queue. */
-function focusLine(recallCount: number, recoverable: number, currency: string): string {
-  if (recallCount === 0) return "Your pipeline is well tended — nothing slipping today.";
-  return `${recallCount} ${recallCount === 1 ? "deal needs" : "deals need"} attention — ${money(recoverable, currency)} recoverable if you act now.`;
-}
-
 export default async function DashboardPage() {
   const [o, feed, reports, org, user, sub, engagement, meetings] = await Promise.all([
     getOverview(),
@@ -76,9 +70,44 @@ export default async function DashboardPage() {
       <StartCheckoutWatcher eligible={checkoutEligible} />
       <PageHeader
         title={greeting}
-        subtitle={focusLine(o.recallSummary.itemCount, o.recallSummary.totalRecoverable, m.currency)}
-        action={<Button href="/recall" variant="primary"><Icon name="recall" size={15} /> Work the recall queue</Button>}
+        subtitle={o.recallSummary.itemCount > 0 ? "Here's where your revenue stands — and what's slipping out of the pipeline." : "Your pipeline is well tended — here's where things stand today."}
       />
+
+      {/* Recoverable-revenue hero — the product's North Star. Lead with the money
+          dying in the pipeline and the single action that recovers it, rather than
+          burying it as one of four equal stats. Calm, reassuring state when there's
+          nothing slipping. */}
+      {o.recallSummary.itemCount > 0 ? (
+        <Link href="/recall" className="group relative block overflow-hidden rounded-2xl border border-warn/30 bg-surface p-6 transition hover:border-warn/55">
+          <span className="pointer-events-none absolute inset-0 bg-gradient-to-br from-warn/10 via-transparent to-transparent" aria-hidden />
+          <div className="relative flex flex-wrap items-end justify-between gap-5">
+            <div className="min-w-0">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-warn"><Icon name="recall" size={14} /> Recoverable revenue</span>
+              <div className="mt-2 font-display text-[2.75rem] font-semibold leading-none tabular-nums tracking-tight text-fg">{money(o.recallSummary.totalRecoverable, m.currency)}</div>
+              <p className="mt-2 text-sm text-muted">Slipping across {o.recallSummary.itemCount} at-risk {o.recallSummary.itemCount === 1 ? "deal" : "deals"} — recover it before it&apos;s gone.</p>
+            </div>
+            <span className="inline-flex flex-none items-center gap-2 rounded-xl bg-warn px-5 py-3 text-sm font-semibold text-white transition group-hover:brightness-110">
+              <Icon name="recall" size={16} /> Work the recall queue <span aria-hidden>→</span>
+            </span>
+          </div>
+          {reports.recallOutcomes.wonBack > 0 && (
+            <div className="relative mt-4 flex flex-wrap items-center gap-2 border-t border-warn/15 pt-3 text-sm">
+              <Icon name="reports" size={13} className="text-success" />
+              <span className="text-muted">Already won back</span>
+              <span className="font-semibold text-success">{money(reports.recallOutcomes.recoveredValue, m.currency)}</span>
+              <span className="text-muted">· {reports.recallOutcomes.wonBack} {reports.recallOutcomes.wonBack === 1 ? "deal" : "deals"}</span>
+            </div>
+          )}
+        </Link>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-success/25 bg-surface p-5">
+          <span className="inline-flex items-center gap-2.5 text-sm text-body">
+            <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-success/15 text-success"><Icon name="reports" size={18} /></span>
+            Your pipeline is well tended — nothing slipping today.
+          </span>
+          <Button href="/dialer" variant="outline"><Icon name="dialer" size={15} /> Start calling</Button>
+        </div>
+      )}
 
       {o.dialsToday > 0 && (
         <Link href="/dialer" className="group flex items-center gap-4 rounded-2xl border border-border bg-surface px-5 py-3.5 transition hover:border-brand/40">
@@ -99,7 +128,7 @@ export default async function DashboardPage() {
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Open Pipeline" value={money(m.openValue, m.currency)} hint={`${m.openCount} open ${o.terminology.opportunity.toLowerCase()}s`} icon="pipeline" countUp />
         <Stat label="Weighted Forecast" value={money(m.weightedForecast, m.currency)} hint="probability-adjusted" icon="forecast" countUp />
-        <Stat label="Recoverable Revenue" value={money(o.recallSummary.totalRecoverable, m.currency)} hint={`${o.recallSummary.itemCount} at-risk deals`} tone="warn" icon="recall" countUp />
+        <Stat label="Won This Month" value={money(wonThisMonth, m.currency)} hint="closed-won" tone="success" icon="approvals" countUp />
         <Stat label="Win Rate" value={pct(m.winRate)} hint={`${m.wonCount} won · ${m.lostCount} lost`} tone="success" icon="reports" countUp />
       </section>
 
