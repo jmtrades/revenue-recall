@@ -359,6 +359,10 @@ function BrowseLibrary({ onAdded, defaultOpen = false }: { onAdded: () => void; 
   const [previewing, setPreviewing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // One-shot guard for the initial auto-load, so a search that legitimately
+  // returns zero results doesn't re-trigger the default-list fetch (which would
+  // snap the empty state back to the full catalogue).
+  const autoLoaded = useRef(false);
 
   const search = useCallback(async (q: string) => {
     setLoading(true);
@@ -377,11 +381,14 @@ function BrowseLibrary({ onAdded, defaultOpen = false }: { onAdded: () => void; 
   }, []);
 
   useEffect(() => {
-    if (open && voices.length === 0) void search("");
+    if (open && !autoLoaded.current) {
+      autoLoaded.current = true;
+      void search("");
+    }
     return () => {
       audioRef.current?.pause();
     };
-  }, [open, voices.length, search]);
+  }, [open, search]);
 
   async function preview(v: SharedVoice) {
     audioRef.current?.pause();
