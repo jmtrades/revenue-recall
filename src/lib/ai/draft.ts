@@ -1,4 +1,4 @@
-import { completeJson, isAiConfigured } from "@/lib/ai/client";
+import { completeJson, isAiConfigured, aiCheapModel } from "@/lib/ai/client";
 import { isEntitled } from "@/lib/billing/enforce";
 import { refineForHumanness } from "@/lib/ai/refine";
 import { getPlaybook } from "@/lib/industries";
@@ -495,6 +495,17 @@ export async function draftMessage(input: DraftInput): Promise<DraftResult> {
   // copy can be auto-sent back to them on the autopilot path).
   const guardedSystem = `${SYSTEM}\n\n${UNTRUSTED_DATA_RULE}`;
 
+  // Margin guard: a cold re-engagement NUDGE (long-dormant or a winnable-loss, and
+  // not a live reply) is high-volume and low-stakes — draft it on the cheaper
+  // model at lower effort and skip the refine pass. A live reply (lastInbound) or
+  // any non-cold draft keeps the frontier model + refine for top fidelity.
+  const coldNudge =
+    !input.lastInbound &&
+    ((input.daysSinceContact ?? 0) >= 21 ||
+      input.recallReason === "lost_winnable" ||
+      input.recallReason === "going_cold" ||
+      input.recallReason === "no_activity");
+
   try {
     const raw = await completeJson<{ subject?: string; body: string }>({
       system: guardedSystem,
@@ -503,13 +514,15 @@ export async function draftMessage(input: DraftInput): Promise<DraftResult> {
       maxTokens: 1024,
       // Adaptive thinking at xhigh for the sharpest, most human-sounding copy.
       // (Variation comes from the per-variant prompt directive, not temperature —
-      // sampling params are rejected on Opus 4.7/4.8.)
-      think: true,
-      effort: "xhigh",
+      // sampling params are rejected on Opus 4.7/4.8.) Cold nudges run cheaper.
+      think: !coldNudge,
+      effort: coldNudge ? "high" : "xhigh",
+      model: coldNudge ? aiCheapModel() : undefined,
       feature: "draft",
     });
-    // Score locally and let the model fix its own tells once if needed.
-    const out = await refineForHumanness({ system: guardedSystem, schema: SCHEMA, draft: raw, maxTokens: 1024, feature: "draft" });
+    // Score locally and let the model fix its own tells once if needed. Skipped
+    // for cold nudges (not worth a second frontier call on a low-stakes touch).
+    const out = coldNudge ? raw : await refineForHumanness({ system: guardedSystem, schema: SCHEMA, draft: raw, maxTokens: 1024, feature: "draft" });
     // Never let a schema-valid but empty body through to a send/queue — fall back
     // to the deterministic template, which always produces real copy.
     if (!out.body || !out.body.trim()) return fallback(input);

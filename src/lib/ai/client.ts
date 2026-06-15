@@ -27,6 +27,14 @@ export function aiModel(): string {
   return process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8";
 }
 
+/** A cheaper/faster model for high-volume, low-stakes drafting (cold re-engagement
+ *  nudges) so margin doesn't ride the frontier model on every cold dial. Operators
+ *  can pin it; defaults to Haiku. The premium model stays the default everywhere
+ *  fidelity matters (replies, warm/high-value drafts). */
+export function aiCheapModel(): string {
+  return process.env.ANTHROPIC_MODEL_CHEAP ?? "claude-haiku-4-5-20251001";
+}
+
 export type EffortLevel = "low" | "medium" | "high" | "xhigh" | "max";
 const EFFORT_ORDER: readonly EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
 const EFFORTS: ReadonlySet<string> = new Set(EFFORT_ORDER);
@@ -78,6 +86,8 @@ export interface CompletionShape {
   maxTokens?: number;
   think?: boolean;
   effort?: EffortLevel;
+  /** Override the model for this call (e.g. aiCheapModel() for cold nudges). */
+  model?: string;
 }
 
 /**
@@ -90,7 +100,7 @@ export function buildMessageParams(opts: CompletionShape & { spent?: number }): 
   // Built untyped: output_config / adaptive thinking are current API fields
   // that may post-date the installed SDK's static types.
   const params: Record<string, unknown> = {
-    model: aiModel(),
+    model: opts.model ?? aiModel(),
     max_tokens: opts.maxTokens ?? 1500,
     system: [{ type: "text", text: opts.system, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: opts.user }],
@@ -137,6 +147,8 @@ export async function completeJson<T>(opts: {
    *  floor, then "medium" when thinking is on. Use "xhigh"/"max" only for
    *  intelligence-heavy calls — they cost materially more. */
   effort?: EffortLevel;
+  /** Override the model for this call (e.g. aiCheapModel() for cold nudges). */
+  model?: string;
   /** Label for usage/cost attribution (e.g. "draft", "reply", "brief"). */
   feature?: string;
 }): Promise<T> {
@@ -164,7 +176,10 @@ export async function completeJson<T>(opts: {
   const usage = (res as { usage?: { input_tokens?: number; output_tokens?: number } }).usage;
   const inTok = usage?.input_tokens ?? 0;
   const outTok = usage?.output_tokens ?? 0;
-  void recordUsage({ model: aiModel(), inputTokens: inTok, outputTokens: outTok, costUsd: costOf(aiModel(), inTok, outTok), feature: opts.feature });
+  // Attribute cost to the model ACTUALLY used (cheap model on cold nudges), so the
+  // budget/margin reflect the real spend, not the premium default.
+  const usedModel = opts.model ?? aiModel();
+  void recordUsage({ model: usedModel, inputTokens: inTok, outputTokens: outTok, costUsd: costOf(usedModel, inTok, outTok), feature: opts.feature });
 
   // With adaptive thinking + high effort, responses are larger and likelier to
   // hit the cap or refuse — give the caller a precise reason instead of an
