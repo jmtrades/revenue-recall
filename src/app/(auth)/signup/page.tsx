@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AuthForm } from "@/components/AuthForm";
 import { RememberPlan } from "@/components/RememberPlan";
+import { normalizePlanParam } from "@/lib/billing/plans";
 
 export const metadata = {
   title: "Create account — Revenue Recall",
@@ -9,7 +10,9 @@ export const metadata = {
 };
 
 export default function SignupPage({ searchParams }: { searchParams?: { plan?: string } }) {
-  const plan = searchParams?.plan;
+  // Accept marketing names (?plan=operator/autopilot) or legacy keys (growth/team)
+  // and store the canonical PlanId so checkout works either way.
+  const plan = normalizePlanParam(searchParams?.plan);
   const isPaid = plan === "growth" || plan === "team";
   return (
     <div>

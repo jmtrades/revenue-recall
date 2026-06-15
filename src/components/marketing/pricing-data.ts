@@ -55,7 +55,7 @@ export const PLANS: Plan[] = [
     unit: "/rep/mo",
     tagline: "One autonomous AI rep, working 24/7.",
     cta: "Get started",
-    href: "/signup?plan=growth",
+    href: "/signup?plan=operator",
     featured: false,
     anchor: "An SDR costs $5,000+/mo for 8 hrs a day. This is one rep that never clocks out.",
     features: [
@@ -76,7 +76,7 @@ export const PLANS: Plan[] = [
     unit: "/mo",
     tagline: "An autonomous sales team for the whole desk.",
     cta: "Get started",
-    href: "/signup?plan=team",
+    href: "/signup?plan=autopilot",
     featured: true,
     anchor: "Replaces an SDR pod + your sequencer + your dialer — for less than one hire.",
     features: [

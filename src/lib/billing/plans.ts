@@ -75,3 +75,21 @@ export function getPlan(id: PlanId): Plan {
 export function isPlanId(v: unknown): v is PlanId {
   return v === "free" || v === "growth" || v === "team" || v === "scale";
 }
+
+// The marketing names (Operator/Autopilot) differ from the internal billing keys
+// (growth/team) for back-compat. Accept BOTH from a ?plan= URL so the public
+// links can read cleanly (?plan=operator) without renaming the billing internals
+// or breaking existing ?plan=growth links. Returns the canonical PlanId.
+const PLAN_ALIASES: Record<string, PlanId> = {
+  free: "free",
+  starter: "free",
+  growth: "growth",
+  operator: "growth",
+  team: "team",
+  autopilot: "team",
+  scale: "scale",
+};
+export function normalizePlanParam(raw?: string | null): PlanId | undefined {
+  if (!raw) return undefined;
+  return PLAN_ALIASES[raw.trim().toLowerCase()];
+}
