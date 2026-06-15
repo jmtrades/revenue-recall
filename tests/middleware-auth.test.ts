@@ -30,7 +30,7 @@ describe("middleware auth-gate allowlist (real isPublicRoute)", () => {
   });
 
   it("keeps auth screens, legal pages, and callbacks public", () => {
-    for (const p of ["/", "/login", "/signup", "/reset", "/pricing", "/status", "/privacy", "/terms", "/security", "/auth/callback", "/f/org_123", "/docs/api", "/api/social/whatsapp", "/api/oauth/x/callback"]) {
+    for (const p of ["/", "/login", "/signup", "/reset", "/pricing", "/audit", "/status", "/privacy", "/terms", "/security", "/auth/callback", "/f/org_123", "/docs/api", "/api/social/whatsapp", "/api/oauth/x/callback"]) {
       expect(isPublicRoute(p), `${p} must be public`).toBe(true);
     }
   });

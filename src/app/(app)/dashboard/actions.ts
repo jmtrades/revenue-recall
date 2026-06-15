@@ -3,18 +3,22 @@
 import { revalidatePath } from "next/cache";
 import { hasRole } from "@/lib/authz";
 import { isAuthRequired } from "@/lib/config";
-import { loadSampleData } from "@/lib/sample-data";
+import { loadSampleData, canUseSampleData } from "@/lib/sample-data";
 
 export interface SampleDataResult {
   ok: boolean;
   error?: string;
 }
 
-/** First-run "explore with sample data" — same permission bar as other
- *  workspace-shaping actions (owner/admin once auth is live). */
+/** First-run "explore with sample data" — owner/admin only, and only on the
+ *  operator's own account (demo data must never enter a real customer's
+ *  workspace). */
 export async function loadSampleDataAction(): Promise<SampleDataResult> {
   if (isAuthRequired() && !(await hasRole("owner", "admin"))) {
     return { ok: false, error: "Only an owner or admin can load sample data." };
+  }
+  if (!(await canUseSampleData())) {
+    return { ok: false, error: "Sample data isn't available on this account." };
   }
   try {
     await loadSampleData();

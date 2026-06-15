@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { publicSiteUrl } from "@/lib/site";
 
 /**
  * Subscribable calendar feed (iCalendar). The org's upcoming deals/meetings flow
@@ -32,7 +33,7 @@ export function verifyCalendarFeedToken(orgId: string, token: string | null | un
 
 /** Absolute feed URL for an org (null when no public base / no secret). */
 export function calendarFeedUrl(orgId: string): string | null {
-  const base = process.env.NEXT_PUBLIC_SITE_URL;
+  const base = publicSiteUrl();
   const token = calendarFeedToken(orgId);
   if (!base || !orgId || !token) return null;
   return `${base.replace(/\/$/, "")}/api/calendar/feed?org=${encodeURIComponent(orgId)}&token=${token}`;

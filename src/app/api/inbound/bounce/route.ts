@@ -7,6 +7,7 @@ import { verifyHmacSignature } from "@/lib/webhook";
 import { verifyInboundOrgToken } from "@/lib/inbound-routing";
 import { runWithOrg } from "@/lib/supabase/org-context";
 import { logInfo, logWarn } from "@/lib/log";
+import { safeEqual } from "@/lib/safe-compare";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ export const POST = withGuard(async (req: Request) => {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
     } else if (token) {
-      if (url.searchParams.get("token") !== token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      if (!safeEqual(url.searchParams.get("token") ?? "", token)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     } else if (process.env.NODE_ENV === "production") {
       // Fail closed in prod: an unauthenticated bounce endpoint lets anyone
       // suppress a tenant's outbound email to any address. Configure a secret.

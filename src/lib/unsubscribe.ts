@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { publicSiteUrl } from "@/lib/site";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 
 /**
@@ -33,7 +34,7 @@ export function verifyUnsubToken(contactId: string, token: string | null | undef
  *  (so it routes to the right tenant), else a legacy contact-only link. Null when
  *  no public base URL is set. */
 export async function unsubscribeUrl(contactId: string): Promise<string | null> {
-  const base = process.env.NEXT_PUBLIC_SITE_URL;
+  const base = publicSiteUrl();
   if (!base || !contactId) return null;
   const orgId = await resolveActiveOrgId().catch(() => null);
   const q = `c=${encodeURIComponent(contactId)}${orgId ? `&org=${encodeURIComponent(orgId)}` : ""}&t=${unsubToken(contactId, orgId)}`;

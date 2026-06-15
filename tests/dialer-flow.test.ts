@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nextPendingIndex, QUICK_OUTCOMES, quickOutcome, dialerKeyAction, phoneKey, duplicatePhoneIndexes } from "@/lib/dialer-flow";
+import { nextPendingIndex, QUICK_OUTCOMES, quickOutcome, dialerKeyAction, phoneKey, duplicatePhoneIndexes, liveAgentPrompt, liveAgentOpener } from "@/lib/dialer-flow";
 import { isRetryableOutcome, isVoicemailOutcome } from "@/lib/calls/retry";
 
 describe("power-dialer queue advance", () => {
@@ -92,3 +92,36 @@ describe("duplicate-number detection in the queue", () => {
     expect(dups.size).toBe(0);
   });
 });
+
+describe("live agent prompt builders", () => {
+  it("opens with the prospect's first name, warm and non-scripted", () => {
+    expect(liveAgentOpener({ contactName: "Dana Scully" })).toContain("Hi Dana,");
+    // Missing name degrades to a usable generic opener, never "Hi ,".
+    expect(liveAgentOpener({ contactName: "" })).toContain("Hi there,");
+  });
+
+  it("builds a system prompt from prospect + brief, with guardrails", () => {
+    const p = liveAgentPrompt({
+      contactName: "Dana Scully",
+      company: "Acme",
+      dealTitle: "Q3 renewal",
+      summary: "Went cold after a demo in March.",
+      talkingPoints: ["New pricing", "Case study"],
+      goal: "Book a 15-minute call",
+    });
+    expect(p).toContain("Dana Scully at Acme");
+    expect(p).toContain("Q3 renewal");
+    expect(p).toContain("New pricing");
+    expect(p).toContain("Book a 15-minute call");
+    expect(p).toMatch(/short|conversational/i); // guardrail against rambling
+  });
+
+  it("works with no brief and caps talking points", () => {
+    const p = liveAgentPrompt({ contactName: "Sam" });
+    expect(p).toContain("Sam");
+    expect(p).not.toContain("Talking points"); // none supplied → omitted
+    const many = liveAgentPrompt({ contactName: "Sam", talkingPoints: Array.from({ length: 20 }, (_, i) => `point ${i}`) });
+    expect(many).toContain("point 5");
+    expect(many).not.toContain("point 6"); // capped at 6
+  });
+})

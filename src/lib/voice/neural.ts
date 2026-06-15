@@ -154,13 +154,18 @@ export const neuralSynth: VoiceSynth = {
 // plan, or logged out) the browser engine keeps doing its job untouched.
 
 let hostedState: "unknown" | "yes" | "no" = "unknown";
+// The org's saved speaking speed, learned from the probe — applied at playback
+// for ElevenLabs (which ignores server-side rate) so the tuned speed is audible
+// on every read-aloud.
+let hostedRate = 1;
 
 function probeHosted(): void {
   if (typeof window === "undefined" || hostedState !== "unknown") return;
   fetch("/api/voice/tts")
     .then((r) => (r.ok ? r.json() : { available: false }))
-    .then((j: { available?: boolean }) => {
+    .then((j: { available?: boolean; rate?: number }) => {
       hostedState = j?.available ? "yes" : "no";
+      if (typeof j?.rate === "number" && j.rate > 0) hostedRate = j.rate;
     })
     .catch(() => {
       hostedState = "no";
@@ -182,15 +187,20 @@ function hostedSpeak(text: string, opts: SpeakOptions): SpeakHandle {
 
   const done = (async () => {
     try {
+      // Only send fields the caller explicitly set, so the server can fill the
+      // rest from the org's saved voice (chosen ElevenLabs voice + speed +
+      // expressiveness). Always forcing rate:1 / a default voice here would
+      // silently override the workspace's tuned voice on every read-aloud.
+      const voice = opts.voiceId ?? opts.preferName;
       const res = await fetch("/api/voice/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text,
-          voiceId: opts.voiceId ?? opts.preferName,
-          emotion: opts.emotion ?? "neutral",
-          rate: opts.rate ?? 1,
-          lang: opts.lang,
+          ...(voice ? { voiceId: voice } : {}),
+          ...(opts.emotion ? { emotion: opts.emotion } : {}),
+          ...(typeof opts.rate === "number" && opts.rate !== 1 ? { rate: opts.rate } : {}),
+          ...(opts.lang ? { lang: opts.lang } : {}),
         }),
         signal: controller.signal,
       });
@@ -207,9 +217,11 @@ function hostedSpeak(text: string, opts: SpeakOptions): SpeakHandle {
       objectUrl = URL.createObjectURL(blob);
       audio = new Audio(objectUrl);
       // OpenAI applies `rate` server-side; ElevenLabs ignores it, so apply it
-      // at playback — never both, or the speed compounds.
-      if (provider === "elevenlabs" && opts.rate && opts.rate !== 1) {
-        audio.playbackRate = Math.min(1.5, Math.max(0.5, opts.rate));
+      // at playback — never both, or the speed compounds. Use the caller's rate
+      // if given, else the org's saved speaking speed from the probe.
+      if (provider === "elevenlabs") {
+        const effectiveRate = typeof opts.rate === "number" && opts.rate !== 1 ? opts.rate : hostedRate;
+        if (effectiveRate && effectiveRate !== 1) audio.playbackRate = Math.min(1.5, Math.max(0.5, effectiveRate));
       }
       await new Promise<void>((resolve) => {
         if (!audio) return resolve();
@@ -252,9 +264,15 @@ const compositeSynth: VoiceSynth = {
   kind: "neural",
   available: () => neuralSynth.available() || localSynth.available() || hostedSynth.available(),
   async speak(text, opts = {}) {
+    // Quality order: in-house streaming service (if running) → ElevenLabs/OpenAI
+    // hosted voice when a key is configured (the most human voice, what users
+    // expect to hear) → the FREE on-device Kokoro model → the browser engine.
+    // ElevenLabs is preferred over Kokoro because the lifelike voice is the whole
+    // point of a sales call; Kokoro remains the zero-cost fallback when no key.
     if (neuralSynth.available()) return neuralSynth.speak(text, opts);
+    if (hostedSynth.available()) return hostedSynth.speak(text, opts);
     if (localSynth.available()) return localSynth.speak(text, opts);
-    return hostedSynth.speak(text, opts);
+    return browserSynth.speak(text, opts);
   },
 };
 

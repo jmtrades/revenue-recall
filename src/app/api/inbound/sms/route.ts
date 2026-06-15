@@ -5,6 +5,7 @@ import { verifyInboundOrgToken } from "@/lib/inbound-routing";
 import { runWithOrg } from "@/lib/supabase/org-context";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 import { seenInboundEvent, forgetInboundEvent } from "@/lib/inbound-dedup";
+import { safeEqual } from "@/lib/safe-compare";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -14,7 +15,8 @@ const TWIML = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
 function tokenOk(url: URL): boolean {
   const token = process.env.INBOUND_TOKEN;
   if (!token) return true;
-  return url.searchParams.get("token") === token;
+  // Constant-time compare so the shared token can't be recovered via response timing.
+  return safeEqual(url.searchParams.get("token") ?? "", token);
 }
 
 /**

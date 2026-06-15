@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { SITE_URL } from "@/lib/site";
 import { headers } from "next/headers";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getSupabase } from "@/lib/supabase/client";
@@ -64,7 +65,7 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   // Point the confirmation link (if the project requires one) back at our
   // callback so it completes the session and lands the user in onboarding,
   // rather than the project's default Site URL.
-  const origin = headers().get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "";
+  const origin = headers().get("origin") || SITE_URL || "";
   const { data, error } = await sb.auth.signUp({
     email,
     password,
@@ -126,7 +127,7 @@ export async function requestPasswordReset(_prev: AuthState, formData: FormData)
   if (!(await distributedRateLimit(`reset:${ip}`, 5, 60_000)).ok) return { message: "If an account exists for that email, we've sent a reset link. Check your inbox." };
   const email = String(formData.get("email") ?? "").trim();
   if (!email) return { error: "Enter your email address." };
-  const origin = headers().get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "";
+  const origin = headers().get("origin") || SITE_URL || "";
   await sb.auth
     .resetPasswordForEmail(email, { redirectTo: origin ? `${origin}/auth/callback?next=/reset/update` : undefined })
     .catch(() => undefined); // don't leak existence / transport errors

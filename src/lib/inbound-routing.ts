@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { publicSiteUrl } from "@/lib/site";
 
 /**
  * Per-org inbound webhook routing (multi-tenant). In a shared deployment the
@@ -45,7 +46,7 @@ export function verifyInboundOrgToken(orgId: string | null | undefined, token: s
  *  This is what an operator configures in each org's email/SMS provider so the
  *  conversation lands on the right tenant. */
 export function inboundWebhookUrl(kind: InboundKind, orgId: string): string | null {
-  const base = process.env.NEXT_PUBLIC_SITE_URL;
+  const base = publicSiteUrl();
   const token = inboundOrgToken(orgId);
   if (!base || !orgId || !token) return null;
   return `${base.replace(/\/$/, "")}/api/inbound/${kind}?org=${encodeURIComponent(orgId)}&t=${token}`;

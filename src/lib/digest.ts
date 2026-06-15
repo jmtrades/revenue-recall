@@ -1,4 +1,5 @@
 import { resolveProvider } from "@/lib/crm/registry";
+import { publicSiteUrl } from "@/lib/site";
 import { getOrgSettings } from "@/lib/org";
 import { sendEmail } from "@/lib/comms";
 import { computeMetrics } from "@/lib/analytics";
@@ -64,7 +65,7 @@ async function recipientEmails(): Promise<string[]> {
 
 /** Deep link into the app, or null when no public URL is configured. */
 function appLink(path: string): string | null {
-  const base = process.env.NEXT_PUBLIC_SITE_URL;
+  const base = publicSiteUrl();
   return base ? `${base.replace(/\/$/, "")}${path}` : null;
 }
 

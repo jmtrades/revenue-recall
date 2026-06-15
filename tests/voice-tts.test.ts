@@ -109,7 +109,7 @@ describe("house voice → provider voice mapping", () => {
     expect(providerVoice("elevenlabs", "af_sky")).toBe(ELEVEN_VOICES.af_heart);
     expect(providerVoice("elevenlabs", "bm_lewis")).toBe(ELEVEN_VOICES.bm_george); // male UK → male UK
     expect(providerVoice("elevenlabs", "am_fenrir")).toBe(ELEVEN_VOICES.am_adam); // male US → male US
-    expect(providerVoice("elevenlabs", "bf_lily")).toBe(ELEVEN_VOICES.bf_emma); // female UK → female UK
+    expect(providerVoice("elevenlabs", "bf_alice")).toBe(ELEVEN_VOICES.bf_emma); // female UK → female UK
   });
 
   it("clone voices and unknown ids fall back to the default voice", () => {

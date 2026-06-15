@@ -11,6 +11,8 @@
  */
 import { speakable, type Emotion } from "@/lib/voice/speech";
 import { DEFAULT_HOUSE_VOICE } from "@/lib/voice/house";
+import { parseElevenSelection } from "@/lib/voice/eleven";
+import { expressivenessToStability } from "@/lib/voice/voice-settings";
 
 export type TtsProvider = "cartesia" | "elevenlabs" | "openai";
 
@@ -55,17 +57,26 @@ export function ttsAvailable(): boolean {
 // gateway). Each hosted provider gets a hand-matched equivalent so "warm
 // female · US" sounds warm-female-US on every backend.
 
-/** ElevenLabs stock voice ids (stable, public catalog). */
+/** ElevenLabs stock voice ids (stable, public catalog). Each house voice maps to
+ *  a DISTINCT real ElevenLabs voice (gender/accent matched); anything unmapped
+ *  falls back to its group default. The full account catalogue (incl. the org's
+ *  own clones) is also selectable live via lib/voice/eleven.ts. */
 export const ELEVEN_VOICES: Record<string, string> = {
   af_heart: "21m00Tcm4TlvDq8ikWAM", // Rachel — warm female US
   af_bella: "EXAVITQu4vr4xnSDxMaL", // Sarah — bright female US
   af_nicole: "FGY2WhTYpPnrIDTdsKH5", // Laura — soft female US
   af_nova: "XB0fDUnXU5powFXDhCwa", // Charlotte — confident female
+  af_jessica: "cgSgspJ2msm6clMCkdW9", // Jessica — polished female US
+  af_river: "SAz9YHcvj6GT2YYXdXww", // River — calm female US
   am_adam: "pNInz6obpgDQGcFmaJgB", // Adam — steady male US
   am_michael: "TxGEqnHWrfWFTfGW9XjX", // Josh — friendly male US
-  am_onyx: "onwK4e9ZLuTAKqWW03F9", // Daniel — deep male
+  am_onyx: "pqHfZKP75CvOlQylNhV4", // Bill — deep male US
+  am_eric: "cjVigY5qzO86Huf0OWal", // Eric — crisp male US
+  am_liam: "TX3LPaxmHKxFdv7VOQHJ", // Liam — approachable male US
   bf_emma: "Xb7hH8MSUJpSbSDYk0k2", // Alice — female UK
+  bf_lily: "pFZP5JQG7iQjIQuC4Bku", // Lily — soft female UK
   bm_george: "JBFqnCBsd6RMkjVDRZzb", // George — male UK
+  bm_daniel: "onwK4e9ZLuTAKqWW03F9", // Daniel — refined male UK
 };
 
 /** OpenAI TTS voice names (the full house catalog mapped to valid OpenAI
@@ -132,6 +143,14 @@ export function cartesiaVoice(voiceId?: string | null): string {
 /** Resolve a house/clone voice id to the provider's voice. Unknown ids and
  *  clone:<id> voices (cloning is the in-house model's job) use the default. */
 export function providerVoice(provider: TtsProvider, voiceId?: string | null): string {
+  // An ElevenLabs selection ("eleven:<id>", including the org's own clones) is a
+  // real ElevenLabs voice id — pass it straight through on that provider. Other
+  // providers can't use it, so they fall back to their own default voice.
+  const elevenId = parseElevenSelection(voiceId);
+  if (elevenId) {
+    if (provider === "elevenlabs") return elevenId;
+    voiceId = null;
+  }
   const id = voiceId && !voiceId.startsWith("clone:") ? voiceId : DEFAULT_HOUSE_VOICE;
   if (provider === "cartesia") return cartesiaVoice(voiceId);
   if (provider === "elevenlabs") {
@@ -146,8 +165,14 @@ export function providerVoice(provider: TtsProvider, voiceId?: string | null): s
  *  `use_speaker_boost` is on everywhere — it tightens fidelity to the reference
  *  voice (the difference that reads as "a real person", which is the make-or-
  *  break on a sales call) for a negligible latency cost on the turbo model. */
-export function elevenSettings(emotion?: Emotion): { stability: number; similarity_boost: number; style: number; use_speaker_boost: boolean } {
+export function elevenSettings(emotion?: Emotion, expressiveness?: number): { stability: number; similarity_boost: number; style: number; use_speaker_boost: boolean } {
   const boost = { use_speaker_boost: true };
+  // An explicit per-org expressiveness wins: it sets stability directly (lower =
+  // livelier) and nudges style up with it, overriding the per-emotion default.
+  if (typeof expressiveness === "number") {
+    const stability = expressivenessToStability(expressiveness);
+    return { stability, similarity_boost: 0.78, style: Math.round(Math.min(0.5, expressiveness * 0.5) * 100) / 100, ...boost };
+  }
   switch (emotion) {
     case "energetic":
       return { stability: 0.35, similarity_boost: 0.75, style: 0.45, ...boost };
@@ -196,6 +221,8 @@ export interface SynthesizeInput {
    *  demo) where a second of extra latency is invisible and fidelity is the
    *  whole point. Never use "max" on the live-call path. */
   quality?: "realtime" | "max";
+  /** 0–1 per-org expressiveness (overrides the per-emotion ElevenLabs stability). */
+  expressiveness?: number;
 }
 
 /** The ElevenLabs model id for a quality tier (both env-overridable). Flash for
@@ -253,7 +280,7 @@ export async function synthesizeSpeech(input: SynthesizeInput): Promise<Synthesi
         // there and fidelity is the whole point. See elevenModel().
         text,
         model_id: elevenModel(input.quality),
-        voice_settings: elevenSettings(input.emotion),
+        voice_settings: elevenSettings(input.emotion, input.expressiveness),
       }),
     });
     if (!res.ok) throw new Error(`ElevenLabs ${res.status}`);

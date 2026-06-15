@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { Icon } from "@/components/icons";
+import { VoiceDisabledNotice } from "@/components/VoiceDisabledNotice";
 
 /**
  * Live ElevenLabs Conversational AI agent — a real two-way spoken conversation
@@ -16,7 +17,7 @@ import { Icon } from "@/components/icons";
  * and entitled on the current plan — so an unconfigured or free deploy shows no
  * dead button.
  */
-function VoiceAgentInner({ label }: { label: string }) {
+function VoiceAgentInner({ label, prompt, firstMessage }: { label: string; prompt?: string; firstMessage?: string }) {
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
 
@@ -40,14 +41,27 @@ function VoiceAgentInner({ label }: { label: string }) {
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
         throw new Error(body?.error ?? "Could not start the voice agent.");
       }
-      const { token } = (await res.json()) as { token: string };
-      await startSession({ conversationToken: token, connectionType: "webrtc" });
+      const { token, voiceId } = (await res.json()) as { token: string; voiceId?: string };
+      // Tailor the live conversation to THIS scenario + the org's chosen voice.
+      // Honored when the agent permits overrides in its ElevenLabs security
+      // settings; otherwise the agent's own config is used (never an error).
+      const agent: { prompt?: { prompt: string }; firstMessage?: string } = {};
+      if (prompt) agent.prompt = { prompt };
+      if (firstMessage) agent.firstMessage = firstMessage;
+      const overrides: { tts?: { voiceId: string }; agent?: typeof agent } = {};
+      if (voiceId) overrides.tts = { voiceId };
+      if (agent.prompt || agent.firstMessage) overrides.agent = agent;
+      await startSession({
+        conversationToken: token,
+        connectionType: "webrtc",
+        ...(overrides.tts || overrides.agent ? { overrides } : {}),
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not start the voice agent.");
     } finally {
       setStarting(false);
     }
-  }, [startSession]);
+  }, [startSession, prompt, firstMessage]);
 
   const connected = status === "connected";
   const connecting = status === "connecting" || starting;
@@ -80,15 +94,44 @@ function VoiceAgentInner({ label }: { label: string }) {
   );
 }
 
-export function VoiceAgent({ label = "Talk to agent", className = "" }: { label?: string; className?: string }) {
+export function VoiceAgent({
+  label = "Talk to agent",
+  className = "",
+  prompt,
+  firstMessage,
+  title,
+  hint,
+  diagnostic = false,
+}: {
+  label?: string;
+  className?: string;
+  /** System-prompt override so the live agent role-plays THIS scenario. */
+  prompt?: string;
+  /** The agent's opening line, tailored to the scenario. */
+  firstMessage?: string;
+  /** Optional section heading + hint, rendered ONLY when something shows below
+   *  (the button, or the owner diagnostic) — so an unavailable agent leaves no
+   *  dangling empty chrome. */
+  title?: string;
+  hint?: string;
+  /** Opt-in: when the agent is unavailable, show owners/admins exactly why and
+   *  how to fix it. Default false so secondary placements (e.g. role-play) stay
+   *  silent and the "not connected" notice appears once, on the primary surface. */
+  diagnostic?: boolean;
+}) {
   const [available, setAvailable] = useState<boolean | null>(null);
+  const [reason, setReason] = useState<string>("ok");
+  const [canFix, setCanFix] = useState(false);
 
   useEffect(() => {
     let live = true;
     fetch("/api/voice/convai")
       .then((r) => (r.ok ? r.json() : { available: false }))
-      .then((j: { available?: boolean }) => {
-        if (live) setAvailable(Boolean(j?.available));
+      .then((j: { available?: boolean; reason?: string; canFix?: boolean }) => {
+        if (!live) return;
+        setAvailable(Boolean(j?.available));
+        setReason(typeof j?.reason === "string" ? j.reason : "ok");
+        setCanFix(Boolean(j?.canFix));
       })
       .catch(() => {
         if (live) setAvailable(false);
@@ -98,12 +141,43 @@ export function VoiceAgent({ label = "Talk to agent", className = "" }: { label?
     };
   }, []);
 
-  if (!available) return null;
+  const header =
+    title || hint ? (
+      <div className="mb-1.5">
+        {title && <p className="flex items-center gap-1.5 text-xs font-medium text-fg"><Icon name="mic" size={12} className="text-brand" /> {title}</p>}
+        {hint && <p className="mt-0.5 text-[11px] text-muted">{hint}</p>}
+      </div>
+    ) : null;
+
+  if (available === null) return null; // still probing
+
+  // Not available: tell the owner exactly why + how — but only where the caller
+  // opted in (diagnostic), so the notice shows once and reps always see nothing.
+  if (!available) {
+    if (!diagnostic || !canFix) return null;
+    const msg =
+      reason === "not_entitled"
+        ? "The live voice agent is on paid plans — connect billing, or set BILLING_ENFORCE=false to use it now."
+        : reason === "no_agent"
+          ? "ElevenLabs key is set, but no agent. Create a Conversational AI agent in the ElevenLabs dashboard and add its id as ELEVENLABS_AGENT_ID, then redeploy."
+          : "The live voice agent isn't connected. Add ELEVENLABS_API_KEY and ELEVENLABS_AGENT_ID in Vercel, then redeploy.";
+    return (
+      <div className={className}>
+        {header}
+        <VoiceDisabledNotice
+          title="Live voice agent not connected"
+          message={msg}
+          link={reason === "no_agent" ? { href: "https://elevenlabs.io/app/conversational-ai", label: "Create an agent →" } : undefined}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={className}>
+      {header}
       <ConversationProvider>
-        <VoiceAgentInner label={label} />
+        <VoiceAgentInner label={label} prompt={prompt} firstMessage={firstMessage} />
       </ConversationProvider>
     </div>
   );
