@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Avatar, ChannelIcon, channelLabel, EmptyState } from "@/components/ui";
+import { SpeakButton } from "@/components/SpeakButton";
 import type { OutboxChannel } from "@/lib/agent/types";
 
 export interface ApprovalRow {
@@ -66,7 +67,8 @@ export function ApprovalsView({ rows }: { rows: ApprovalRow[] }) {
                 <div className="flex items-center gap-1 text-xs text-muted"><ChannelIcon channel={it.channel} size={11} /> {channelLabel(it.channel)} · {it.source === "ai" ? "AI draft" : "template"}</div>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              <SpeakButton text={[it.subject, it.body].filter(Boolean).join(". ")} label="Hear it" />
               <button onClick={() => act(it.id, "dismiss")} disabled={busy === it.id} className="rounded-lg border border-border px-3 py-1.5 text-sm text-muted hover:text-danger disabled:opacity-50">Dismiss</button>
               <button onClick={() => act(it.id, "approve")} disabled={busy === it.id} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand/90 disabled:opacity-50">
                 {busy === it.id ? "Sending…" : "Approve & send"}
