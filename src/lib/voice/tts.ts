@@ -56,17 +56,26 @@ export function ttsAvailable(): boolean {
 // gateway). Each hosted provider gets a hand-matched equivalent so "warm
 // female · US" sounds warm-female-US on every backend.
 
-/** ElevenLabs stock voice ids (stable, public catalog). */
+/** ElevenLabs stock voice ids (stable, public catalog). Each house voice maps to
+ *  a DISTINCT real ElevenLabs voice (gender/accent matched); anything unmapped
+ *  falls back to its group default. The full account catalogue (incl. the org's
+ *  own clones) is also selectable live via lib/voice/eleven.ts. */
 export const ELEVEN_VOICES: Record<string, string> = {
   af_heart: "21m00Tcm4TlvDq8ikWAM", // Rachel — warm female US
   af_bella: "EXAVITQu4vr4xnSDxMaL", // Sarah — bright female US
   af_nicole: "FGY2WhTYpPnrIDTdsKH5", // Laura — soft female US
   af_nova: "XB0fDUnXU5powFXDhCwa", // Charlotte — confident female
+  af_jessica: "cgSgspJ2msm6clMCkdW9", // Jessica — polished female US
+  af_river: "SAz9YHcvj6GT2YYXdXww", // River — calm female US
   am_adam: "pNInz6obpgDQGcFmaJgB", // Adam — steady male US
   am_michael: "TxGEqnHWrfWFTfGW9XjX", // Josh — friendly male US
-  am_onyx: "onwK4e9ZLuTAKqWW03F9", // Daniel — deep male
+  am_onyx: "pqHfZKP75CvOlQylNhV4", // Bill — deep male US
+  am_eric: "cjVigY5qzO86Huf0OWal", // Eric — crisp male US
+  am_liam: "TX3LPaxmHKxFdv7VOQHJ", // Liam — approachable male US
   bf_emma: "Xb7hH8MSUJpSbSDYk0k2", // Alice — female UK
+  bf_lily: "pFZP5JQG7iQjIQuC4Bku", // Lily — soft female UK
   bm_george: "JBFqnCBsd6RMkjVDRZzb", // George — male UK
+  bm_daniel: "onwK4e9ZLuTAKqWW03F9", // Daniel — refined male UK
 };
 
 /** OpenAI TTS voice names (the full house catalog mapped to valid OpenAI
