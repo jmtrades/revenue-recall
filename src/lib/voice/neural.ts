@@ -262,7 +262,15 @@ function hostedSpeak(text: string, opts: SpeakOptions): SpeakHandle {
 export const hostedSynth: VoiceSynth = {
   id: "rr-hosted-tts",
   kind: "neural",
-  available: () => typeof window !== "undefined" && hostedState === "yes",
+  // Prefer the hosted ElevenLabs voice whenever it isn't KNOWN-unavailable —
+  // i.e. during the brief "unknown" window before the async probe resolves, too.
+  // Otherwise the first read-aloud after page load loses the race and falls
+  // through to Kokoro/browser, which IGNORE the org's chosen `eleven:<id>` voice
+  // and speak in their own default (often female) — so a male selection comes
+  // out female. hostedSpeak already falls back to the browser if the POST fails,
+  // so being optimistic here is safe. Only a config/entitlement failure
+  // (probe → "no") suppresses it.
+  available: () => typeof window !== "undefined" && hostedState !== "no",
   async speak(text, opts = {}) {
     return hostedSpeak(text, opts);
   },
