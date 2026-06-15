@@ -35,8 +35,14 @@ export function mapStage(seedStage: Stage | undefined, seedOpen: Stage[], orgSta
 
 export async function loadSampleData(): Promise<{ contacts: number; deals: number }> {
   const provider = await resolveProvider();
-  if (provider.info().id !== "builtin") {
-    throw new Error("Sample data is only for the built-in CRM — your connected CRM stays untouched.");
+  // Allow both first-party stores — the built-in demo store AND the app's own
+  // Supabase store (the live default). Only a customer's CONNECTED external CRM
+  // (close/hubspot/salesforce/pipedrive) is off-limits, so we never write demo
+  // rows into their real CRM. Without this, the "Explore with sample data" CTA —
+  // the fastest path to value for a brand-new signup — fails on every live
+  // (Supabase) workspace.
+  if (!["builtin", "supabase"].includes(provider.info().id)) {
+    throw new Error("Sample data is only for the built-in workspace — your connected CRM stays untouched.");
   }
   const existing = await provider.listContacts();
   if (existing.length > 0) return { contacts: 0, deals: 0 }; // already has data — never duplicate
