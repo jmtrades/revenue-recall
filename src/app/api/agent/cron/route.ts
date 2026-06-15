@@ -12,6 +12,7 @@ import { autopilotLockKey, digestLockKey } from "@/lib/agent/lock";
 import { sendAlert, isErrored } from "@/lib/alert";
 import { cleanupRateLimits } from "@/lib/ratelimit";
 import { ensureStripeCatalogCurrent } from "@/lib/billing/provision";
+import { reconcileSubscriptions } from "@/lib/billing/reconcile";
 import { runUsageNudge } from "@/lib/billing/usage-nudge";
 import { runPlatformPulse } from "@/lib/platform-pulse";
 import { acquireCronLock, releaseCronLock } from "@/lib/cron-lock";
@@ -152,6 +153,16 @@ async function run(req: Request) {
   const catalog = await ensureStripeCatalogCurrent().catch(() => "failed" as const);
   if (catalog === "healed" || catalog === "failed") {
     void sendAlert("billing.catalog.selfheal", { outcome: catalog });
+  }
+
+  // Stripe ↔ DB reconciliation: repair subscriptions that drifted from Stripe (a
+  // webhook lost past its retry window, a dashboard edit, or a checkout whose
+  // completed-event never landed → a paying customer stuck on free). Bounded per
+  // tick, self-guards when billing isn't configured, alerts only when it actually
+  // repairs/relinks something so drift is observable, not silent.
+  const reconcile = await reconcileSubscriptions().catch(() => null);
+  if (reconcile && (reconcile.repaired > 0 || reconcile.relinked > 0 || reconcile.errors > 0)) {
+    void sendAlert("billing.reconcile", { ...reconcile });
   }
 
   // Operator's weekly platform pulse (Mondays, durable once-per-week dedupe;
