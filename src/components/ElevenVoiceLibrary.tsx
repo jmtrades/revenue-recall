@@ -31,7 +31,9 @@ export function ElevenVoiceLibrary() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState<string | null>(null);
+  const [settings, setSettings] = useState<{ rate: number; expressiveness: number }>({ rate: 1, expressiveness: 0.5 });
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -40,10 +42,30 @@ export function ElevenVoiceLibrary() {
       setConfigured(Boolean(data.configured));
       setVoices(Array.isArray(data.voices) ? data.voices : []);
       setSelected(data.selected ?? null);
+      if (data.settings && typeof data.settings === "object") {
+        setSettings({
+          rate: Number(data.settings.rate) || 1,
+          expressiveness: typeof data.settings.expressiveness === "number" ? data.settings.expressiveness : 0.5,
+        });
+      }
       if (data.error) setError(data.error);
     } catch {
       setConfigured(false);
     }
+  }, []);
+
+  // Debounced persist of the speed/expressiveness sliders (so dragging doesn't
+  // fire a request per pixel).
+  const saveSettings = useCallback((next: { rate: number; expressiveness: number }) => {
+    setSettings(next);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      fetch("/api/voice/hosted", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rate: next.rate, expressiveness: next.expressiveness }),
+      }).catch(() => {});
+    }, 500);
   }, []);
 
   useEffect(() => {
@@ -91,7 +113,7 @@ export function ElevenVoiceLibrary() {
         const res = await fetch("/api/voice/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: PREVIEW_LINE, voiceId: sel(v.id), emotion: "warm", quality: "max" }),
+          body: JSON.stringify({ text: PREVIEW_LINE, voiceId: sel(v.id), emotion: "warm", quality: "max", rate: settings.rate, expressiveness: settings.expressiveness }),
         });
         if (!res.ok) {
           const b = await res.json().catch(() => null);
@@ -101,6 +123,9 @@ export function ElevenVoiceLibrary() {
         revoke = true;
       }
       const audio = new Audio(url);
+      // ElevenLabs ignores server-side rate; apply the speed at playback so the
+      // preview reflects the chosen speaking speed.
+      audio.playbackRate = Math.min(1.5, Math.max(0.5, settings.rate));
       audioRef.current = audio;
       audio.onended = () => {
         setPreviewing((p) => (p === v.id ? null : p));
@@ -142,6 +167,33 @@ export function ElevenVoiceLibrary() {
         <p className="text-xs text-muted">
           The voice the app speaks in for read-alouds and previews. Pick from the catalogue below, or clone your own — tap ▶ to hear each one.
         </p>
+      </div>
+
+      {/* Voice tuning — speaking speed + expressiveness, applied to every
+          read-aloud. Persisted (debounced); preview the effect with ▶ above. */}
+      <div className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-surface-2/40 p-3 sm:grid-cols-2">
+        <label className="block">
+          <span className="flex items-center justify-between text-xs font-medium text-fg">
+            Speaking speed <span className="text-muted">{settings.rate.toFixed(2)}×</span>
+          </span>
+          <input
+            type="range" min={0.7} max={1.2} step={0.05} value={settings.rate}
+            onChange={(e) => saveSettings({ ...settings, rate: Number(e.target.value) })}
+            className="mt-1.5 w-full accent-[var(--brand,#6366f1)]"
+            aria-label="Speaking speed"
+          />
+        </label>
+        <label className="block">
+          <span className="flex items-center justify-between text-xs font-medium text-fg">
+            Expressiveness <span className="text-muted">{Math.round(settings.expressiveness * 100)}%</span>
+          </span>
+          <input
+            type="range" min={0} max={1} step={0.05} value={settings.expressiveness}
+            onChange={(e) => saveSettings({ ...settings, expressiveness: Number(e.target.value) })}
+            className="mt-1.5 w-full accent-[var(--brand,#6366f1)]"
+            aria-label="Expressiveness"
+          />
+        </label>
       </div>
 
       <CloneVoice onCloned={load} />

@@ -22,7 +22,7 @@ export const GET = withGuard(async () => {
       listElevenVoices(),
       getOrgSettings().catch(() => null),
     ]);
-    return NextResponse.json({ configured: true, voices, selected: org?.ttsVoiceId ?? null });
+    return NextResponse.json({ configured: true, voices, selected: org?.ttsVoiceId ?? null, settings: org?.voiceSettings ?? null });
   } catch (e) {
     return NextResponse.json(
       { configured: true, voices: [], selected: null, error: e instanceof Error ? e.message : "Could not load voices" },

@@ -12,6 +12,7 @@
 import { speakable, type Emotion } from "@/lib/voice/speech";
 import { DEFAULT_HOUSE_VOICE } from "@/lib/voice/house";
 import { parseElevenSelection } from "@/lib/voice/eleven";
+import { expressivenessToStability } from "@/lib/voice/voice-settings";
 
 export type TtsProvider = "cartesia" | "elevenlabs" | "openai";
 
@@ -164,8 +165,14 @@ export function providerVoice(provider: TtsProvider, voiceId?: string | null): s
  *  `use_speaker_boost` is on everywhere — it tightens fidelity to the reference
  *  voice (the difference that reads as "a real person", which is the make-or-
  *  break on a sales call) for a negligible latency cost on the turbo model. */
-export function elevenSettings(emotion?: Emotion): { stability: number; similarity_boost: number; style: number; use_speaker_boost: boolean } {
+export function elevenSettings(emotion?: Emotion, expressiveness?: number): { stability: number; similarity_boost: number; style: number; use_speaker_boost: boolean } {
   const boost = { use_speaker_boost: true };
+  // An explicit per-org expressiveness wins: it sets stability directly (lower =
+  // livelier) and nudges style up with it, overriding the per-emotion default.
+  if (typeof expressiveness === "number") {
+    const stability = expressivenessToStability(expressiveness);
+    return { stability, similarity_boost: 0.78, style: Math.round(Math.min(0.5, expressiveness * 0.5) * 100) / 100, ...boost };
+  }
   switch (emotion) {
     case "energetic":
       return { stability: 0.35, similarity_boost: 0.75, style: 0.45, ...boost };
@@ -214,6 +221,8 @@ export interface SynthesizeInput {
    *  demo) where a second of extra latency is invisible and fidelity is the
    *  whole point. Never use "max" on the live-call path. */
   quality?: "realtime" | "max";
+  /** 0–1 per-org expressiveness (overrides the per-emotion ElevenLabs stability). */
+  expressiveness?: number;
 }
 
 /** The ElevenLabs model id for a quality tier (both env-overridable). Flash for
@@ -271,7 +280,7 @@ export async function synthesizeSpeech(input: SynthesizeInput): Promise<Synthesi
         // there and fidelity is the whole point. See elevenModel().
         text,
         model_id: elevenModel(input.quality),
-        voice_settings: elevenSettings(input.emotion),
+        voice_settings: elevenSettings(input.emotion, input.expressiveness),
       }),
     });
     if (!res.ok) throw new Error(`ElevenLabs ${res.status}`);
