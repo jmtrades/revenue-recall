@@ -18,9 +18,14 @@ const OUTBOUND_KINDS = new Set(["email", "sms", "call"]);
 const HARD_OPT_OUT =
   /\b(unsubscribe|opt[\s-]?out|please remove|remove me|take me off( your list)?|do(?:n'?t| not)( ever)? (contact|call|text|email|message)( me)?|stop (calling|texting|messaging|emailing|contacting)|lose my number|never contact me)\b/i;
 
-// Standard carrier opt-out keywords: a one-word reply like "STOP" or "UNSUBSCRIBE"
-// must opt them out (TCPA/CTIA), even though it doesn't match the phrase patterns above.
-const STANDALONE_OPT_OUT = /^\s*(stop|stopall|unsubscribe|cancel|end|quit|opt[\s-]?out|remove)\s*[.!]?\s*$/i;
+// Standard carrier opt-out keywords (TCPA/CTIA): a reply that is *essentially*
+// just an opt-out keyword must suppress, even when wrapped in politeness or
+// repeated — "STOP", "STOP please", "please STOP", "STOP STOP STOP",
+// "unsubscribe me thanks", "cancel pls". Anchored to the whole message and the
+// tail limited to filler words, so a mid-sentence keyword ("stop by my office",
+// "can we end the call") does NOT false-trigger and suppress a real lead.
+const STANDALONE_OPT_OUT =
+  /^\s*(?:please\s+|pls\s+)?(?:stop|stopall|unsubscribe|cancel|end|quit|opt[\s-]?out|remove)(?:[\s,]+(?:stop|stopall|unsubscribe|cancel|quit|please|pls|now|me|all|everything|thanks|thank you|asap|immediately))*\s*[.!]*\s*$/i;
 
 /** True only for an explicit, permanent opt-out (or outright hostility). */
 export function isHardOptOut(text: string): boolean {
