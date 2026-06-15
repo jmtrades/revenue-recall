@@ -70,6 +70,9 @@ def _default_voice() -> str:
         # voice unless given a reference clip ("clone:<id>") or a voice-design
         # description ("design:<style>"). "default" is just a sentinel here.
         return "default"
+    if ENGINE == "elevenlabs":
+        # A stable premade ElevenLabs voice; override with VOICE_ID / per-call voiceId.
+        return os.environ.get("ELEVENLABS_VOICE_ID") or "21m00Tcm4TlvDq8ikWAM"
     return "en_US-amy-medium"
 
 
@@ -197,11 +200,69 @@ def _voxcpm_synth(text: str, voice: str, rate: float) -> tuple[np.ndarray, int]:
     return samples, _voxcpm_sr or _read_voxcpm_sample_rate(m)
 
 
+# ─── ElevenLabs engine (hosted — the one engine that calls a vendor) ──────────
+# For operators who want ElevenLabs quality on LIVE phone calls too (the call
+# gateway streams PCM from this service, so VOICE_ENGINE=elevenlabs here makes
+# calls speak in ElevenLabs with no gateway changes). Unlike the local engines,
+# audio DOES leave to ElevenLabs — that's the trade for top naturalness on calls.
+# Streams raw PCM (no mp3 decoder needed): output_format=pcm_24000 requires a
+# Creator+ ElevenLabs tier; set ELEVENLABS_PCM_FORMAT=pcm_16000 etc. if needed.
+ELEVENLABS_MODEL = os.environ.get("ELEVENLABS_MODEL", "eleven_flash_v2_5")  # low latency for calls
+ELEVENLABS_PCM_FORMAT = os.environ.get("ELEVENLABS_PCM_FORMAT", "pcm_24000")
+_ELEVEN_PCM_RATE = {"pcm_16000": 16000, "pcm_22050": 22050, "pcm_24000": 24000, "pcm_44100": 44100}
+
+
+def _load_elevenlabs():
+    key = os.environ.get("ELEVENLABS_API_KEY")
+    if not key:
+        raise RuntimeError("VOICE_ENGINE=elevenlabs needs ELEVENLABS_API_KEY")
+    log.info("ElevenLabs engine ready (model=%s, format=%s)", ELEVENLABS_MODEL, ELEVENLABS_PCM_FORMAT)
+    return key  # the warm "engine" is just the key
+
+
+def _eleven_voice(voice: str) -> str:
+    """Resolve a requested voiceId to a raw ElevenLabs voice id. Accepts a stored
+    'eleven:<id>' selection, a raw id, or falls back to the default voice."""
+    v = (voice or "").strip()
+    if v.startswith("eleven:"):
+        v = v[len("eleven:") :]
+    return v or DEFAULT_VOICE
+
+
+def _elevenlabs_synth(text: str, voice: str, rate: float) -> tuple[np.ndarray, int]:
+    import urllib.request
+    import urllib.error
+
+    key = _engine
+    vid = _eleven_voice(voice)
+    sr = _ELEVEN_PCM_RATE.get(ELEVENLABS_PCM_FORMAT, 24000)
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{vid}/stream?output_format={ELEVENLABS_PCM_FORMAT}"
+    body = json.dumps({
+        "text": text,
+        "model_id": ELEVENLABS_MODEL,
+        "voice_settings": {"stability": 0.5, "similarity_boost": 0.75, "style": 0.3, "use_speaker_boost": True},
+    }).encode()
+    req = urllib.request.Request(url, data=body, headers={"xi-api-key": key, "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            pcm = resp.read()
+    except urllib.error.HTTPError as e:  # surface ElevenLabs' real reason
+        detail = e.read().decode("utf-8", "ignore")[:200]
+        raise RuntimeError(f"ElevenLabs {e.code}: {detail}")
+    # Raw signed-16 LE PCM at the requested rate. `rate` doesn't apply server-side
+    # (ElevenLabs paces itself); the client/gateway resamples as needed.
+    _ = rate
+    samples = np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32768.0
+    return samples, sr
+
+
 def _load_engine():
     if ENGINE == "kokoro":
         return _load_kokoro()
     if ENGINE == "voxcpm":
         return _load_voxcpm()
+    if ENGINE == "elevenlabs":
+        return _load_elevenlabs()
     return _load_piper()
 
 
@@ -269,6 +330,8 @@ def _synthesize_raw(text: str, rate: float = 1.0, voice: str | None = None) -> t
         return _kokoro_synth(text, v, rate)
     if ENGINE == "voxcpm":
         return _voxcpm_synth(text, v, rate)
+    if ENGINE == "elevenlabs":
+        return _elevenlabs_synth(text, v, rate)
     return _piper_synth(text, v, rate)
 
 

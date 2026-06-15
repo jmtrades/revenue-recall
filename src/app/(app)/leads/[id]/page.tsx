@@ -6,6 +6,7 @@ import { getConfig } from "@/lib/config";
 import { allSequencesFor } from "@/lib/sequences-store";
 import { money, relativeDays } from "@/lib/format";
 import { Card, Avatar, InfoRow, ActivityIcon, EmptyState } from "@/components/ui";
+import { SpeakButton } from "@/components/SpeakButton";
 import { ContactReachOut } from "@/components/ContactReachOut";
 import { ContactInfoEdit } from "@/components/ContactInfoEdit";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -119,9 +120,12 @@ export default async function ContactPage({ params }: { params: { id: string } }
                   <li key={a.id} className="flex gap-3">
                     <ActivityIcon kind={a.kind} />
                     <div className="flex-1">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <span className="text-sm capitalize text-fg">{a.kind.replace("_", " ")}</span>
-                        <span className="text-xs text-muted">{relativeDays(daysAgo(a.occurredAt))}</span>
+                        <div className="flex flex-none items-center gap-1.5">
+                          {a.kind === "call" && a.summary && <SpeakButton text={a.summary} label="" />}
+                          <span className="text-xs text-muted">{relativeDays(daysAgo(a.occurredAt))}</span>
+                        </div>
                       </div>
                       <p className="text-sm text-muted">{a.summary}</p>
                     </div>
