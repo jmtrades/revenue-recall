@@ -72,17 +72,25 @@ interface RawVoice {
   labels?: Record<string, string> | null;
 }
 
-/** Build a short "Female · American · young" style descriptor from labels +
- *  category. Pure so it's unit-tested without a network call. */
-export function describeVoice(raw: RawVoice): string {
-  const labels = raw.labels && typeof raw.labels === "object" ? raw.labels : {};
-  const parts = [labels.gender, labels.accent, labels.age, labels.use_case, labels.descriptive]
+/** Assemble a "Female · American · Young" descriptor from raw attribute parts,
+ *  falling back to a free-text description then the category. Shared by the
+ *  account-voice (labels object) and shared-voice (flat fields) paths so the
+ *  format can never drift between them. Pure. */
+function formatDescriptor(rawParts: Array<string | undefined>, description?: string, category?: string): string {
+  const parts = rawParts
     .map((p) => (typeof p === "string" ? p.trim() : ""))
     .filter(Boolean)
     .map((p) => p.replace(/_/g, " "));
   if (parts.length) return parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(" · ");
-  if (raw.description && raw.description.trim()) return raw.description.trim().slice(0, 80);
-  return raw.category ? raw.category.charAt(0).toUpperCase() + raw.category.slice(1) : "Voice";
+  if (description && description.trim()) return description.trim().slice(0, 80);
+  return category ? category.charAt(0).toUpperCase() + category.slice(1) : "Voice";
+}
+
+/** Build a short "Female · American · young" style descriptor from labels +
+ *  category. Pure so it's unit-tested without a network call. */
+export function describeVoice(raw: RawVoice): string {
+  const labels = raw.labels && typeof raw.labels === "object" ? raw.labels : {};
+  return formatDescriptor([labels.gender, labels.accent, labels.age, labels.use_case, labels.descriptive], raw.description, raw.category);
 }
 
 /** Normalize one provider voice into our shape, or null if it's unusable. Pure. */
@@ -162,4 +170,126 @@ export async function deleteElevenVoice(voiceId: string): Promise<void> {
   if (!/^[A-Za-z0-9]{1,64}$/.test(id)) throw new Error("Invalid voice id");
   const res = await fetch(`${API}/voices/${id}`, { method: "DELETE", headers: { "xi-api-key": k } });
   if (!res.ok) throw new Error(`ElevenLabs delete ${res.status}`);
+}
+
+// ---- the full public library (shared voices) ----
+// GET /v1/voices only returns the account's own voices. The entire ElevenLabs
+// catalog — thousands of community + professional voices — lives behind
+// GET /v1/shared-voices. A user browses it here, then "adds" one to their
+// account (POST /v1/voices/add/{public_owner_id}/{voice_id}); after that it
+// shows up in listElevenVoices() like any other voice and is selectable.
+
+export interface SharedVoice {
+  /** The shared voice id (used with publicOwnerId to add it). */
+  id: string;
+  /** The owner's public user id — required to add the voice. */
+  publicOwnerId: string;
+  name: string;
+  /** Short "Female · American · young" descriptor from the flat shared fields. */
+  description: string;
+  category: string;
+  previewUrl?: string;
+  /** Total uses across ElevenLabs — used to surface popular voices first. */
+  usage: number;
+}
+
+interface RawSharedVoice {
+  voice_id?: string;
+  public_owner_id?: string;
+  name?: string;
+  category?: string;
+  // Shared voices expose these as FLAT fields (not a labels object).
+  gender?: string;
+  accent?: string;
+  age?: string;
+  use_case?: string;
+  descriptive?: string;
+  language?: string;
+  description?: string;
+  preview_url?: string;
+  cloned_by_count?: number;
+  usage_character_count_1y?: number;
+}
+
+/** Build a "Female · American · young" descriptor from a shared voice's flat
+ *  fields (shared voices don't nest these under `labels`). Pure + tested. */
+export function describeSharedVoice(raw: RawSharedVoice): string {
+  return formatDescriptor([raw.gender, raw.accent, raw.age, raw.use_case, raw.descriptive], raw.description, raw.category);
+}
+
+/** Normalize one shared voice, or null if unusable (no id/owner). Pure. */
+export function normalizeSharedVoice(raw: RawSharedVoice): SharedVoice | null {
+  if (!raw || typeof raw.voice_id !== "string" || !raw.voice_id) return null;
+  if (typeof raw.public_owner_id !== "string" || !raw.public_owner_id) return null;
+  return {
+    id: raw.voice_id,
+    publicOwnerId: raw.public_owner_id,
+    name: (raw.name && raw.name.trim()) || "Unnamed voice",
+    description: describeSharedVoice(raw),
+    category: (raw.category ?? "professional").toLowerCase(),
+    previewUrl: typeof raw.preview_url === "string" && raw.preview_url ? raw.preview_url : undefined,
+    // Prefer character usage (even a legitimate 0), then clone count, else 0 —
+    // a `|| ` chain would discard a real 0 and fall through to the other metric,
+    // mixing units and skewing the most-used-first sort.
+    usage:
+      typeof raw.usage_character_count_1y === "number"
+        ? raw.usage_character_count_1y
+        : typeof raw.cloned_by_count === "number"
+          ? raw.cloned_by_count
+          : 0,
+  };
+}
+
+/**
+ * Browse the public ElevenLabs library. Optional free-text `search` and a
+ * page size (clamped). Returns the most-used voices first so the best ones lead.
+ * Throws when unconfigured or the provider errors — routes map that to JSON.
+ */
+export async function listSharedElevenVoices(opts?: { search?: string; limit?: number }): Promise<SharedVoice[]> {
+  const k = key();
+  if (!k) throw new Error("ElevenLabs not configured");
+  const limit = Math.min(Math.max(opts?.limit ?? 30, 1), 100);
+  const params = new URLSearchParams({ page_size: String(limit), featured: "false" });
+  const search = opts?.search?.trim();
+  if (search) params.set("search", search.slice(0, 80));
+  const res = await fetch(`${API}/shared-voices?${params.toString()}`, {
+    headers: { "xi-api-key": k },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`ElevenLabs shared-voices ${res.status}`);
+  const data = (await res.json()) as { voices?: RawSharedVoice[] };
+  const voices = (data.voices ?? [])
+    .map(normalizeSharedVoice)
+    .filter((v): v is SharedVoice => v !== null)
+    .sort((a, b) => b.usage - a.usage);
+  return voices;
+}
+
+/**
+ * Add a public library voice to the account so it can be selected and spoken.
+ * Returns the new (account-local) voice id, ready for elevenSelection().
+ * Both ids are validated against the conservative charset before reaching the URL.
+ */
+export async function addSharedElevenVoice(
+  publicOwnerId: string,
+  voiceId: string,
+  name: string,
+): Promise<{ id: string; name: string }> {
+  const k = key();
+  if (!k) throw new Error("ElevenLabs not configured");
+  if (!/^[A-Za-z0-9]{1,64}$/.test(publicOwnerId)) throw new Error("Invalid owner id");
+  if (!/^[A-Za-z0-9]{1,64}$/.test(voiceId)) throw new Error("Invalid voice id");
+  const newName = (name && name.trim()) || "Library voice";
+  const res = await fetch(`${API}/voices/add/${publicOwnerId}/${voiceId}`, {
+    method: "POST",
+    headers: { "xi-api-key": k, "Content-Type": "application/json" },
+    body: JSON.stringify({ new_name: newName.slice(0, 80) }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`ElevenLabs add ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+  }
+  const data = (await res.json()) as { voice_id?: string; name?: string };
+  if (!data.voice_id) throw new Error("ElevenLabs add: no voice id returned");
+  return { id: data.voice_id, name: data.name || newName };
 }

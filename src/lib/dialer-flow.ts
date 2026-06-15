@@ -66,6 +66,59 @@ export function duplicatePhoneIndexes(queue: { phone: string; contactName: strin
   return dups;
 }
 
+/** Context the live voice agent needs to run a real dialer conversation as the
+ *  rep — the prospect, and (when prepared) the AI brief's talk track + goal. */
+export interface LiveAgentContext {
+  contactName: string;
+  company?: string | null;
+  dealTitle?: string | null;
+  /** From the AI call prep brief, when the rep has generated one. */
+  summary?: string | null;
+  talkingPoints?: string[];
+  goal?: string | null;
+}
+
+function firstName(name: string | null | undefined): string {
+  const n = (name ?? "").trim().split(/\s+/)[0];
+  return n || "there";
+}
+
+/**
+ * The live agent's opening line for a real outbound call — a warm, human
+ * reconnect, not a scripted pitch. Always returns a usable opener, degrading to
+ * a name-less "Hi there, …" when the prospect has no name. Pure + tested.
+ */
+export function liveAgentOpener(ctx: LiveAgentContext): string {
+  return `Hi ${firstName(ctx.contactName)}, thanks for grabbing the phone — do you have a quick minute?`;
+}
+
+/**
+ * Build the live agent's system prompt for a real call: who it's calling, the
+ * brief's talking points, and the single goal — with explicit guardrails to
+ * keep it short, consultative, and never robotic. Pure so it's unit-tested.
+ * Bounded so an over-long brief can't blow the agent's prompt budget.
+ */
+export function liveAgentPrompt(ctx: LiveAgentContext): string {
+  const who = [ctx.contactName?.trim(), ctx.company?.trim() ? `at ${ctx.company.trim()}` : ""]
+    .filter(Boolean)
+    .join(" ");
+  const lines: string[] = [
+    `You are a friendly, sharp outbound sales rep on a live phone call with ${who || "a prospect"}.`,
+    ctx.dealTitle?.trim() ? `The opportunity is: ${ctx.dealTitle.trim()}.` : "",
+    ctx.summary?.trim() ? `Context: ${ctx.summary.trim().slice(0, 600)}` : "",
+  ];
+  const points = (ctx.talkingPoints ?? [])
+    .map((p) => (typeof p === "string" ? p.trim() : ""))
+    .filter(Boolean)
+    .slice(0, 6);
+  if (points.length) lines.push(`Talking points to weave in naturally: ${points.join("; ").slice(0, 600)}.`);
+  if (ctx.goal?.trim()) lines.push(`Your goal for this call: ${ctx.goal.trim().slice(0, 200)}.`);
+  lines.push(
+    "Keep every reply short and conversational — one or two sentences. Ask questions, listen, and react to what they say. Be warm and consultative, never pushy or scripted. If they're not interested, be gracious and offer a lighter next step.",
+  );
+  return lines.filter(Boolean).join(" ");
+}
+
 export type DialerKeyAction =
   | { kind: "call" }
   | { kind: "quick"; outcomeId: string }

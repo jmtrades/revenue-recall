@@ -7,6 +7,8 @@ import {
   describeVoice,
   normalizeElevenVoice,
   sortVoices,
+  describeSharedVoice,
+  normalizeSharedVoice,
   type ElevenVoice,
 } from "@/lib/voice/eleven";
 import { providerVoice, ELEVEN_VOICES, OPENAI_VOICES } from "@/lib/voice/tts";
@@ -62,6 +64,43 @@ describe("voice normalization", () => {
       { id: "2", name: "Mine", category: "cloned", description: "", cloned: true },
     ];
     expect(sortVoices(voices).map((v) => v.id)).toEqual(["2", "1", "3"]);
+  });
+});
+
+describe("shared (public library) voice normalization", () => {
+  it("builds a descriptor from the flat shared fields (not a labels object)", () => {
+    expect(describeSharedVoice({ gender: "female", accent: "british", age: "middle_aged" })).toBe(
+      "Female · British · Middle aged",
+    );
+    expect(describeSharedVoice({ category: "professional" })).toBe("Professional");
+  });
+
+  it("normalizes a shared voice, requiring both a voice id and a public owner id", () => {
+    const v = normalizeSharedVoice({
+      voice_id: "v1",
+      public_owner_id: "owner1",
+      name: "Aria",
+      gender: "female",
+      accent: "american",
+      usage_character_count_1y: 5000,
+      preview_url: "https://x/a.mp3",
+    });
+    expect(v).toMatchObject({ id: "v1", publicOwnerId: "owner1", name: "Aria", usage: 5000, previewUrl: "https://x/a.mp3" });
+    // Both ids are mandatory to be addable.
+    expect(normalizeSharedVoice({ voice_id: "v1" })).toBeNull();
+    expect(normalizeSharedVoice({ public_owner_id: "owner1" })).toBeNull();
+  });
+
+  it("falls back to cloned_by_count for usage and 0 when neither is present", () => {
+    expect(normalizeSharedVoice({ voice_id: "v", public_owner_id: "o", cloned_by_count: 12 })?.usage).toBe(12);
+    expect(normalizeSharedVoice({ voice_id: "v", public_owner_id: "o" })?.usage).toBe(0);
+  });
+
+  it("keeps a real character usage of 0 instead of falling through to clone count", () => {
+    // A `||` chain would discard the legit 0 and return 50, mixing units.
+    expect(
+      normalizeSharedVoice({ voice_id: "v", public_owner_id: "o", usage_character_count_1y: 0, cloned_by_count: 50 })?.usage,
+    ).toBe(0);
   });
 });
 

@@ -27,6 +27,20 @@ export function convaiConfigured(): boolean {
 }
 
 /**
+ * Why the live agent isn't usable, from the three inputs that gate it. Pure so
+ * it's unit-tested without env, and shared by the route's diagnostic. Order
+ * matches the fix order an owner follows: add the key, then the agent id, then
+ * upgrade the plan.
+ */
+export type ConvaiReason = "no_key" | "no_agent" | "not_entitled" | "ok";
+export function convaiReason(hasKey: boolean, hasAgent: boolean, entitled: boolean): ConvaiReason {
+  if (!hasKey) return "no_key";
+  if (!hasAgent) return "no_agent";
+  if (!entitled) return "not_entitled";
+  return "ok";
+}
+
+/**
  * Mint a short-lived WebRTC conversation token the browser uses to open the
  * agent session. Keeps ELEVENLABS_API_KEY server-side; the client only ever
  * sees the token. Throws when unconfigured or the provider errors — the route

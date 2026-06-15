@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons";
+import { VoiceDisabledNotice } from "@/components/VoiceDisabledNotice";
 
 /**
  * ElevenLabs voice library for the hosted read-aloud voice: pick from the whole
@@ -173,16 +174,11 @@ export function ElevenVoiceLibrary() {
     return (
       <div className="mt-5 space-y-2 border-t border-border pt-4">
         <p className="text-sm font-medium text-fg">Read-aloud voice (ElevenLabs)</p>
-        <div className="flex items-start gap-3 rounded-lg border border-warn/40 bg-warn/10 px-4 py-3">
-          <Icon name="volume" size={18} className="mt-0.5 flex-none text-warn" />
-          <div>
-            <p className="text-sm font-medium text-warn">Voice not connected</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted">{msg}</p>
-            <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-medium text-brand hover:underline">
-              Get an ElevenLabs API key →
-            </a>
-          </div>
-        </div>
+        <VoiceDisabledNotice
+          title="Voice not connected"
+          message={msg}
+          link={{ href: "https://elevenlabs.io/app/settings/api-keys", label: "Get an ElevenLabs API key →" }}
+        />
       </div>
     );
   }
@@ -227,6 +223,8 @@ export function ElevenVoiceLibrary() {
       </div>
 
       <CloneVoice onCloned={load} />
+
+      <BrowseLibrary onAdded={load} />
 
       {clones.length > 0 && (
         <VoiceSection
@@ -329,6 +327,178 @@ function VoiceSection({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+interface SharedVoice {
+  id: string;
+  publicOwnerId: string;
+  name: string;
+  description: string;
+  category: string;
+  previewUrl?: string;
+  usage: number;
+}
+
+/**
+ * Browse and add from the FULL public ElevenLabs library (thousands of voices),
+ * not just the account catalogue. Search, preview the provider's sample, and
+ * "Add to my voices" — which copies it into the account so it appears above and
+ * becomes selectable. Voices added this session are marked done; we intentionally
+ * don't dedupe against owned voices by name (common names like "Adam"/"Aria"
+ * collide across distinct voices, which would wrongly block a wanted add).
+ */
+function BrowseLibrary({ onAdded }: { onAdded: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [voices, setVoices] = useState<SharedVoice[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [added, setAdded] = useState<Set<string>>(new Set());
+  const [previewing, setPreviewing] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const search = useCallback(async (q: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const url = q.trim() ? `/api/voice/shared?search=${encodeURIComponent(q.trim())}` : "/api/voice/shared";
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.error) setError(data.error);
+      setVoices(Array.isArray(data.voices) ? data.voices : []);
+    } catch {
+      setError("Couldn't load the library.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open && voices.length === 0) void search("");
+    return () => {
+      audioRef.current?.pause();
+    };
+  }, [open, voices.length, search]);
+
+  async function preview(v: SharedVoice) {
+    audioRef.current?.pause();
+    if (previewing === v.id) return setPreviewing(null);
+    if (!v.previewUrl) return;
+    setPreviewing(v.id);
+    const audio = new Audio(v.previewUrl);
+    audioRef.current = audio;
+    audio.onended = () => setPreviewing((p) => (p === v.id ? null : p));
+    try {
+      await audio.play();
+    } catch {
+      setPreviewing(null);
+    }
+  }
+
+  async function add(v: SharedVoice) {
+    setBusy(v.id);
+    setError(null);
+    try {
+      const res = await fetch("/api/voice/shared", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ publicOwnerId: v.publicOwnerId, voiceId: v.id, name: v.name }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Couldn't add voice");
+      setAdded((prev) => new Set(prev).add(v.id));
+      onAdded();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't add voice");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-fg transition hover:border-brand/40"
+      >
+        <Icon name="search" size={13} className="text-brand" /> Browse the full voice library
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-surface-2/40 p-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-fg">Full ElevenLabs library</p>
+        <button onClick={() => setOpen(false)} className="text-xs text-muted hover:text-fg">Close</button>
+      </div>
+      <p className="mt-1 text-xs text-muted">
+        Thousands of professional voices. Search, preview with ▶, then add the ones you want — they&apos;ll appear in your library above, ready to use.
+      </p>
+      <form
+        onSubmit={(e) => { e.preventDefault(); void search(query); }}
+        className="mt-2 flex gap-2"
+      >
+        <input
+          className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+          placeholder="Search by name, accent, style… (e.g. warm British female)"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          maxLength={80}
+        />
+        <button type="submit" disabled={loading} className="flex-none rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+          {loading ? "…" : "Search"}
+        </button>
+      </form>
+
+      <div className="mt-3 grid max-h-80 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
+        {voices.map((v) => {
+          const isAdded = added.has(v.id);
+          const isPreviewing = previewing === v.id;
+          return (
+            <div key={`${v.publicOwnerId}:${v.id}`} className="flex items-stretch gap-1 rounded-lg border border-border">
+              <div className="min-w-0 flex-1 px-3 py-2">
+                <span className="block truncate text-sm font-medium text-fg">{v.name}</span>
+                <span className="mt-0.5 block truncate text-[11px] text-muted">{v.description}</span>
+              </div>
+              {v.previewUrl && (
+                <button
+                  onClick={() => preview(v)}
+                  aria-label={isPreviewing ? `Stop ${v.name} preview` : `Preview ${v.name}`}
+                  className="grid w-9 flex-none place-items-center border-l border-border text-brand transition-colors hover:bg-brand-soft/40"
+                >
+                  {isPreviewing ? (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden><rect x="6" y="6" width="12" height="12" rx="1.5" /></svg>
+                  ) : (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M8 5v14l11-7z" /></svg>
+                  )}
+                </button>
+              )}
+              <button
+                onClick={() => add(v)}
+                disabled={isAdded || busy === v.id}
+                aria-label={`Add ${v.name} to my voices`}
+                className="grid w-9 flex-none place-items-center rounded-r-lg border-l border-border text-brand transition-colors hover:bg-brand-soft/40 disabled:opacity-40"
+              >
+                {busy === v.id ? (
+                  <span className="text-[10px] text-muted">…</span>
+                ) : isAdded ? (
+                  <Icon name="check" size={14} className="text-success" />
+                ) : (
+                  <Icon name="plus" size={14} />
+                )}
+              </button>
+            </div>
+          );
+        })}
+        {!loading && voices.length === 0 && (
+          <p className="col-span-full py-4 text-center text-xs text-muted">No voices found — try a different search.</p>
+        )}
+      </div>
+      {error && <p className="mt-2 text-sm text-danger">{error}</p>}
     </div>
   );
 }

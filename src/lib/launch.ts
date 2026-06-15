@@ -2,6 +2,7 @@ import { getConfig } from "@/lib/config";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { isAiConfigured } from "@/lib/ai/client";
 import { channelStatus } from "@/lib/comms";
+import { complianceConfig } from "@/lib/compliance";
 
 /**
  * Launch readiness — the single source of truth for "what still needs wiring,"
@@ -28,6 +29,14 @@ export function launchStatus(): LaunchStatus {
   const warnings: string[] = [];
   if (!ch.email.live && !ch.sms.live && !ch.voice.live) warnings.push("No sending channel connected — connect email (Resend) or SMS/voice (Twilio) so outreach can actually send.");
   else if (!ch.email.live) warnings.push("Email sending is off — connect Resend so signup, invite, and outreach emails actually send.");
+  // CAN-SPAM requires a physical postal address in commercial email. The footer
+  // silently omits it when unset, so an org could send non-compliant outreach
+  // unknowingly — surface it the moment email can actually go out. (Per-org
+  // addresses can also satisfy this at send time; this flags the platform default.)
+  const compliance = complianceConfig();
+  if (ch.email.live && compliance.enabled && !compliance.address) {
+    warnings.push("Email is live but no postal address is set — CAN-SPAM requires a physical mailing address in commercial email. Set COMPLIANCE_ADDRESS (or each org's address in Settings).");
+  }
   if (!isAiConfigured()) warnings.push("AI is in template mode — add ANTHROPIC_API_KEY for live, in-your-voice drafting.");
 
   return { ready: blockers.length === 0, blockers, warnings };

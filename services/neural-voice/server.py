@@ -56,10 +56,25 @@ log = logging.getLogger("neural-voice")
 HOST = os.environ.get("NEURAL_VOICE_HOST", "0.0.0.0")
 # Bind $PORT when the host injects one (Render/Railway/Fly), else NEURAL_VOICE_PORT, else 8765.
 PORT = int(os.environ.get("PORT") or os.environ.get("NEURAL_VOICE_PORT") or "8765")
-# Engine: "kokoro" (frontier-class open model, default) or "piper" (lighter fallback).
+# Engine: "kokoro" (frontier-class open model, default), "voxcpm" (OpenBMB
+# VoxCPM — tokenizer-free, highly expressive, native zero-shot cloning + voice
+# design), or "piper" (lighter fallback).
 ENGINE = os.environ.get("VOICE_ENGINE", "kokoro").lower()
+
+
+def _default_voice() -> str:
+    if ENGINE == "kokoro":
+        return "af_heart"
+    if ENGINE == "voxcpm":
+        # VoxCPM has no fixed voice catalogue — it speaks in a neutral default
+        # voice unless given a reference clip ("clone:<id>") or a voice-design
+        # description ("design:<style>"). "default" is just a sentinel here.
+        return "default"
+    return "en_US-amy-medium"
+
+
 # Default voice id per engine; the client may override via `voiceId`.
-DEFAULT_VOICE = os.environ.get("VOICE_ID", "af_heart" if ENGINE == "kokoro" else "en_US-amy-medium")
+DEFAULT_VOICE = os.environ.get("VOICE_ID", _default_voice())
 # ~100ms chunks at the client rate — small chunks = low first-audio latency.
 CHUNK_FRAMES = 2400
 MAX_TEXT = 4000
@@ -126,12 +141,76 @@ def _piper_synth(text: str, voice: str, rate: float) -> tuple[np.ndarray, int]:
     return samples, sr
 
 
+# ─── VoxCPM engine (OpenBMB — expressive, tokenizer-free, zero-shot cloning) ───
+# https://github.com/OpenBMB/VoxCPM  — a MiniCPM-family TTS that produces notably
+# more natural, context-aware prosody than VITS-class models, and clones a voice
+# zero-shot from a few seconds of reference audio. Heavier than Kokoro/Piper
+# (diffusion decoder; GPU strongly recommended), so it's opt-in via VOICE_ENGINE.
+VOXCPM_MODEL = os.environ.get("VOXCPM_MODEL", "openbmb/VoxCPM2")
+VOXCPM_CFG = float(os.environ.get("VOXCPM_CFG", "2.0"))
+VOXCPM_TIMESTEPS = int(os.environ.get("VOXCPM_TIMESTEPS", "10"))
+_voxcpm_sr = 0  # native sample rate, resolved once at load (constant per model)
+
+
+def _load_voxcpm():
+    from voxcpm import VoxCPM
+
+    global _voxcpm_sr
+    log.info("loading VoxCPM model: %s", VOXCPM_MODEL)
+    # load_denoiser=False keeps startup light; enable VOXCPM_DENOISER=1 to clean
+    # noisy reference clips during cloning.
+    denoise = os.environ.get("VOXCPM_DENOISER", "").lower() in ("1", "true", "yes")
+    m = VoxCPM.from_pretrained(VOXCPM_MODEL, load_denoiser=denoise)
+    _voxcpm_sr = _read_voxcpm_sample_rate(m)
+    log.info("VoxCPM loaded; native %d Hz", _voxcpm_sr)
+    return m
+
+
+def _read_voxcpm_sample_rate(model) -> int:
+    """VoxCPM's native sample rate, read defensively across versions. Called once
+    at load; the value is cached in _voxcpm_sr (it's constant per model)."""
+    for getter in (lambda: model.tts_model.sample_rate, lambda: model.sample_rate):
+        try:
+            sr = int(getter())
+            if sr > 0:
+                return sr
+        except Exception:
+            pass
+    return int(os.environ.get("VOXCPM_SAMPLE_RATE", "16000"))
+
+
+def _voxcpm_synth(text: str, voice: str, rate: float) -> tuple[np.ndarray, int]:
+    m = _engine
+    # "design:<style>" exposes VoxCPM's voice-design: the leading "(style)" tells
+    # the model how to sound (e.g. "warm, energetic, professional"). Any other
+    # voiceId falls through to the default voice — VoxCPM has no fixed catalogue.
+    if voice and voice.startswith("design:"):
+        desc = voice[len("design:") :].strip()
+        if desc:
+            text = f"({desc}){text}"
+    wav = m.generate(text=text, cfg_value=VOXCPM_CFG, inference_timesteps=VOXCPM_TIMESTEPS)
+    samples = np.asarray(wav, dtype=np.float32).reshape(-1)
+    # VoxCPM controls its own pacing; server-side `rate` doesn't apply (the client
+    # can still nudge playbackRate). Accepting `rate` keeps the engine interface
+    # uniform across Kokoro/Piper/VoxCPM.
+    _ = rate
+    return samples, _voxcpm_sr or _read_voxcpm_sample_rate(m)
+
+
+def _load_engine():
+    if ENGINE == "kokoro":
+        return _load_kokoro()
+    if ENGINE == "voxcpm":
+        return _load_voxcpm()
+    return _load_piper()
+
+
 def load_voice():
     """Load the configured engine once, lazily, and keep it warm in memory."""
     global _engine
     if _engine is not None:
         return _engine
-    _engine = _load_kokoro() if ENGINE == "kokoro" else _load_piper()
+    _engine = _load_engine()
     return _engine
 
 
@@ -188,6 +267,8 @@ def _synthesize_raw(text: str, rate: float = 1.0, voice: str | None = None) -> t
     load_voice()
     if ENGINE == "kokoro":
         return _kokoro_synth(text, v, rate)
+    if ENGINE == "voxcpm":
+        return _voxcpm_synth(text, v, rate)
     return _piper_synth(text, v, rate)
 
 

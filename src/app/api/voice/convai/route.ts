@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { withGuard } from "@/lib/api/guard";
 import { isEntitled } from "@/lib/billing/enforce";
-import { convaiConfigured, getConvaiToken } from "@/lib/voice/convai";
+import { convaiConfigured, convaiAgentId, convaiReason, getConvaiToken } from "@/lib/voice/convai";
+import { elevenConfigured } from "@/lib/voice/eleven";
 import { getOrgSettings } from "@/lib/org";
 import { parseElevenSelection } from "@/lib/voice/eleven";
+import { voiceCanFix } from "@/lib/voice/diagnostic";
 
 export const dynamic = "force-dynamic";
 
@@ -15,9 +17,16 @@ export const dynamic = "force-dynamic";
  * conversation token that authorizes the session — so an unconfigured or
  * free-plan deploy never even surfaces the agent.
  */
+
 export const GET = withGuard(async () => {
-  const available = convaiConfigured() && (await isEntitled("aiLive"));
-  return NextResponse.json({ available });
+  const entitled = await isEntitled("aiLive");
+  const available = convaiConfigured() && entitled;
+  // Surface WHY it's unavailable so an owner can fix it, not just see it
+  // silently missing (mirrors the voice-library diagnostic). Reps just see the
+  // agent hidden.
+  const canFix = await voiceCanFix();
+  const reason = convaiReason(elevenConfigured(), Boolean(convaiAgentId()), entitled);
+  return NextResponse.json({ available, reason, canFix });
 });
 
 export const POST = withGuard(async () => {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { Icon } from "@/components/icons";
+import { VoiceDisabledNotice } from "@/components/VoiceDisabledNotice";
 
 /**
  * Live ElevenLabs Conversational AI agent — a real two-way spoken conversation
@@ -98,6 +99,9 @@ export function VoiceAgent({
   className = "",
   prompt,
   firstMessage,
+  title,
+  hint,
+  diagnostic = false,
 }: {
   label?: string;
   className?: string;
@@ -105,15 +109,29 @@ export function VoiceAgent({
   prompt?: string;
   /** The agent's opening line, tailored to the scenario. */
   firstMessage?: string;
+  /** Optional section heading + hint, rendered ONLY when something shows below
+   *  (the button, or the owner diagnostic) — so an unavailable agent leaves no
+   *  dangling empty chrome. */
+  title?: string;
+  hint?: string;
+  /** Opt-in: when the agent is unavailable, show owners/admins exactly why and
+   *  how to fix it. Default false so secondary placements (e.g. role-play) stay
+   *  silent and the "not connected" notice appears once, on the primary surface. */
+  diagnostic?: boolean;
 }) {
   const [available, setAvailable] = useState<boolean | null>(null);
+  const [reason, setReason] = useState<string>("ok");
+  const [canFix, setCanFix] = useState(false);
 
   useEffect(() => {
     let live = true;
     fetch("/api/voice/convai")
       .then((r) => (r.ok ? r.json() : { available: false }))
-      .then((j: { available?: boolean }) => {
-        if (live) setAvailable(Boolean(j?.available));
+      .then((j: { available?: boolean; reason?: string; canFix?: boolean }) => {
+        if (!live) return;
+        setAvailable(Boolean(j?.available));
+        setReason(typeof j?.reason === "string" ? j.reason : "ok");
+        setCanFix(Boolean(j?.canFix));
       })
       .catch(() => {
         if (live) setAvailable(false);
@@ -123,10 +141,41 @@ export function VoiceAgent({
     };
   }, []);
 
-  if (!available) return null;
+  const header =
+    title || hint ? (
+      <div className="mb-1.5">
+        {title && <p className="flex items-center gap-1.5 text-xs font-medium text-fg"><Icon name="mic" size={12} className="text-brand" /> {title}</p>}
+        {hint && <p className="mt-0.5 text-[11px] text-muted">{hint}</p>}
+      </div>
+    ) : null;
+
+  if (available === null) return null; // still probing
+
+  // Not available: tell the owner exactly why + how — but only where the caller
+  // opted in (diagnostic), so the notice shows once and reps always see nothing.
+  if (!available) {
+    if (!diagnostic || !canFix) return null;
+    const msg =
+      reason === "not_entitled"
+        ? "The live voice agent is on paid plans — connect billing, or set BILLING_ENFORCE=false to use it now."
+        : reason === "no_agent"
+          ? "ElevenLabs key is set, but no agent. Create a Conversational AI agent in the ElevenLabs dashboard and add its id as ELEVENLABS_AGENT_ID, then redeploy."
+          : "The live voice agent isn't connected. Add ELEVENLABS_API_KEY and ELEVENLABS_AGENT_ID in Vercel, then redeploy.";
+    return (
+      <div className={className}>
+        {header}
+        <VoiceDisabledNotice
+          title="Live voice agent not connected"
+          message={msg}
+          link={reason === "no_agent" ? { href: "https://elevenlabs.io/app/conversational-ai", label: "Create an agent →" } : undefined}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={className}>
+      {header}
       <ConversationProvider>
         <VoiceAgentInner label={label} prompt={prompt} firstMessage={firstMessage} />
       </ConversationProvider>

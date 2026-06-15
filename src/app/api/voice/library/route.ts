@@ -3,8 +3,7 @@ import { withGuard } from "@/lib/api/guard";
 import { isEntitled } from "@/lib/billing/enforce";
 import { elevenConfigured, listElevenVoices } from "@/lib/voice/eleven";
 import { getOrgSettings } from "@/lib/org";
-import { hasRole } from "@/lib/authz";
-import { isAuthRequired } from "@/lib/config";
+import { voiceCanFix } from "@/lib/voice/diagnostic";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +17,7 @@ export const dynamic = "force-dynamic";
 export const GET = withGuard(async () => {
   // Only people who can fix it (owner/admin, or anyone in the open demo) get the
   // diagnostic + env hints; reps just see nothing.
-  const canFix = !isAuthRequired() || (await hasRole("owner", "admin"));
+  const canFix = await voiceCanFix();
   if (!elevenConfigured()) {
     return NextResponse.json({ configured: false, reason: "no_key", canFix, voices: [], selected: null, settings: null });
   }
