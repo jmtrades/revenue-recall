@@ -1,4 +1,5 @@
 import { enforcementOn } from "@/lib/billing/enforce";
+import { publicSiteUrl } from "@/lib/site";
 import { voiceMinutesMeter, estimatedDialsForMinutes } from "@/lib/billing/voice-minutes";
 import { usageMeter } from "@/lib/ai/usage";
 import { topupPacksFor } from "@/lib/billing/topups";
@@ -51,7 +52,7 @@ export interface PoolStatus {
 const n = (v: number) => Math.floor(v).toLocaleString("en-US");
 
 function appLink(path: string): string {
-  const base = process.env.NEXT_PUBLIC_SITE_URL;
+  const base = publicSiteUrl();
   return base ? `${base.replace(/\/$/, "")}${path}` : path;
 }
 

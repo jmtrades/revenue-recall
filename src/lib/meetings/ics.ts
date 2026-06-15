@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { publicSiteUrl } from "@/lib/site";
 
 /**
  * Per-booking "Add to calendar" tokens. The confirmation email links a tiny
@@ -28,7 +29,7 @@ export function verifyBookingIcsToken(orgId: string, bookingId: string, token: s
 
 /** Absolute .ics URL for one booking (null without a public base / secret). */
 export function bookingIcsUrl(orgId: string, bookingId: string): string | null {
-  const base = process.env.NEXT_PUBLIC_SITE_URL;
+  const base = publicSiteUrl();
   const token = bookingIcsToken(orgId, bookingId);
   if (!base || !token) return null;
   return `${base.replace(/\/$/, "")}/api/bookings/ics?org=${encodeURIComponent(orgId)}&id=${encodeURIComponent(bookingId)}&t=${token}`;

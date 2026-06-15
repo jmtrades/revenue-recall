@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { publicSiteUrl } from "@/lib/site";
 
 /**
  * Per-booking "manage" (cancel) tokens. The confirmation email links a cancel
@@ -29,7 +30,7 @@ export function verifyBookingManageToken(orgId: string, bookingId: string, token
 
 /** Absolute cancel URL for one booking (null without a public base / secret). */
 export function bookingCancelUrl(orgId: string, bookingId: string): string | null {
-  const base = process.env.NEXT_PUBLIC_SITE_URL;
+  const base = publicSiteUrl();
   const token = bookingManageToken(orgId, bookingId);
   if (!base || !token) return null;
   return `${base.replace(/\/$/, "")}/api/bookings/cancel?org=${encodeURIComponent(orgId)}&id=${encodeURIComponent(bookingId)}&t=${token}`;

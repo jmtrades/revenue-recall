@@ -1,4 +1,5 @@
 import { logError } from "@/lib/log";
+import { publicSiteUrl } from "@/lib/site";
 
 /**
  * Operational alerting. When the autonomous engine hits a problem the operator
@@ -14,7 +15,7 @@ export async function sendAlert(event: string, detail: Record<string, unknown>):
   logError(`alert.${event}`, detail);
   const url = process.env.ALERT_WEBHOOK_URL;
   if (!url) return;
-  const payload = { event, detail, at: new Date().toISOString(), app: process.env.NEXT_PUBLIC_SITE_URL ?? null };
+  const payload = { event, detail, at: new Date().toISOString(), app: publicSiteUrl() ?? null };
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 5000);
   try {

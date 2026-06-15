@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { publicSiteUrl } from "@/lib/site";
 import { withGuard } from "@/lib/api/guard";
 import { verifyFormToken } from "@/lib/forms";
 import { runWithOrg } from "@/lib/supabase/org-context";
@@ -76,6 +77,6 @@ function done(req: Request, wantsJson: boolean, org: string, token: string): Res
  * header); fall back to the request origin only when it isn't configured.
  */
 function formUrl(req: Request, org: string, token: string, query: string): string {
-  const base = (process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin).replace(/\/$/, "");
+  const base = (publicSiteUrl() || new URL(req.url).origin).replace(/\/$/, "");
   return `${base}/f/${encodeURIComponent(org)}?k=${encodeURIComponent(token)}&${query}`;
 }

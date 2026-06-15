@@ -1,4 +1,5 @@
 import { getConfig } from "@/lib/config";
+import { SITE_URL } from "@/lib/site";
 import { INDUSTRIES, getIndustry } from "@/lib/industries";
 import { getLanguage } from "@/lib/languages";
 import { listIntegrations, resolveProvider } from "@/lib/crm/registry";
@@ -587,7 +588,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
     </Card>
   );
 
-  const leadApiEndpoint = `${(process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "")}/api/v1/leads`;
+  const leadApiEndpoint = `${SITE_URL}/api/v1/leads`;
   const orgFormUrl = org.id ? hostedFormUrl(org.id) : null;
   const orgFormEmbed = org.id ? formEmbedSnippet(org.id) : null;
   const recentCaptures = await getRecentCaptures(8).catch(() => []);

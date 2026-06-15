@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { publicSiteUrl } from "@/lib/site";
 
 /**
  * Public booking-page tokens. The page at /book/[org] is reachable with no
@@ -31,7 +32,7 @@ export function verifyBookingToken(orgId: string, token: string | null | undefin
 }
 
 function base(): string | null {
-  const b = process.env.NEXT_PUBLIC_SITE_URL;
+  const b = publicSiteUrl();
   return b ? b.replace(/\/$/, "") : null;
 }
 

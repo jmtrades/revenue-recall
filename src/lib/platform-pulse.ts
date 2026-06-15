@@ -1,4 +1,5 @@
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { publicSiteUrl } from "@/lib/site";
 import { sendEmail } from "@/lib/comms";
 import { seenInboundEvent } from "@/lib/inbound-dedup";
 import { catalogForPlan } from "@/lib/billing/catalog";
@@ -134,7 +135,7 @@ export async function runPlatformPulse(now: Date = new Date()): Promise<PulseRes
   if (await seenInboundEvent("platform-pulse", isoWeekKey(now))) return "duplicate";
   const stats = await platformStats(now);
   if (!stats) return "no_stats";
-  const base = process.env.NEXT_PUBLIC_SITE_URL;
+  const base = publicSiteUrl();
   const r = await sendEmail(to, "Platform pulse — your week in numbers", pulseBody(stats), {
     internal: true,
     ...(base ? { cta: { label: "Open the dashboard", url: `${base.replace(/\/$/, "")}/dashboard` } } : {}),
