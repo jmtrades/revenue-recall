@@ -7,7 +7,7 @@ import { draftMessage } from "@/lib/ai/draft";
 import { isAiConfigured } from "@/lib/ai/client";
 import { sendEmail, sendSms, placeCall } from "@/lib/comms";
 import { trackLinks, recordSent } from "@/lib/tracking";
-import { sendGate, dailySendCap, containsUnverifiedClaim, type SkipReason } from "@/lib/agent/guardrails";
+import { sendGate, dailySendCap, containsUnverifiedClaim, hasCallConsent, type SkipReason } from "@/lib/agent/guardrails";
 import { outsideCourtesyWindow } from "@/lib/calls/local-time";
 import { compactMoney } from "@/lib/format";
 import { createRun, createOutboxItem, touchTask } from "@/lib/agent/store";
@@ -194,9 +194,17 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
       const risky = containsUnverifiedClaim(`${draft.subject ?? ""} ${draft.body}`);
       const canAuto = autonomy === "auto" && !risky;
 
+      // Consent gate: an AI/artificial voice needs prior express consent (FCC
+      // 2024). Reactivated cold leads are exactly where consent is stale, so the
+      // autonomous agent NEVER auto-dials a contact without a recorded consent
+      // marker — those are handed to the human dialer (a rep confirms consent and
+      // dials). This is the single biggest TCPA risk; default behavior is no
+      // autonomous AI call unless consent is on file.
+      const callConsent = hasCallConsent(contact);
+
       let result: AgentAction["result"] = "drafted";
       if (channel === "call") {
-        if (canAuto && to) {
+        if (canAuto && to && callConsent) {
           // Place the call autonomously (real dial when Twilio is set; logged
           // otherwise) — from THIS org's caller ID, like the SMS branch below.
           const res = await placeCall(to, { from: org.callerId });
@@ -215,7 +223,9 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
             if (t.reason) await recordRecallTouch({ dealId: t.opp.id, contactId: t.opp.contactId, channel: "call", source: "autopilot" });
           }
         } else {
-          result = "queued"; // talk track prepared for the dialer (review mode / no number / claim held)
+          // Review mode / no number / claim held / NO CALL CONSENT → hand the
+          // talk track to the human dialer instead of auto-dialing.
+          result = "queued";
         }
       } else if (autonomy === "auto") {
         if (!to) {
