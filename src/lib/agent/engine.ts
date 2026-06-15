@@ -89,9 +89,13 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
     // Prefetch every target's activities in one batch (avoids N+1 in the loop).
     const actByOpp = await batchActivities(provider, targets.map((t) => t.opp.id));
 
-    // When billing enforcement is on, a plan without autopilot can't auto-send —
-    // it still drafts to Approvals. Compute the effective autonomy once.
-    const autonomy: AgentTask["autonomy"] = task.autonomy === "auto" && !(await isEntitled("autopilot")) ? "review" : task.autonomy;
+    // Effective autonomy, computed once. Two things force review (draft-to-
+    // Approvals, never auto-send): a plan without the autopilot entitlement, and
+    // the org's global "pause all sending" kill switch — the panic brake that
+    // instantly stops every autonomous send without disabling anything else.
+    const autopilotAllowed = await isEntitled("autopilot");
+    const autonomy: AgentTask["autonomy"] =
+      task.autonomy === "auto" && (!autopilotAllowed || org.sendingPaused) ? "review" : task.autonomy;
 
     const actions: AgentAction[] = [];
     const pending: { dealId: string; contactId: string; channel: "email" | "sms"; subject?: string; body: string; source: "ai" | "template"; recall: boolean }[] = [];
