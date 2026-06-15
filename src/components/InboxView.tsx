@@ -7,6 +7,7 @@ import type { InboxThread, InboxMessage } from "@/lib/queries";
 import type { MessageTemplate } from "@/lib/templates";
 import { fillTokens } from "@/lib/templates-fill";
 import { Avatar, ChannelIcon, ChannelBadge, channelLabel, EmptyState, Button } from "@/components/ui";
+import { SpeakButton } from "@/components/SpeakButton";
 
 function timeAgo(iso: string): string {
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
@@ -195,6 +196,7 @@ export function InboxView({
                   placeholder="Type a reply…"
                   className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
                 />
+                {draft.trim() && <SpeakButton text={draft} label="" />}
                 <button onClick={send} disabled={sending || !draft.trim()} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{sending ? "Sending…" : "Send"}</button>
               </div>
               {error && <p className="mt-1.5 text-[11px] text-danger">{error}</p>}
