@@ -248,7 +248,7 @@ export function normalizeSharedVoice(raw: RawSharedVoice): SharedVoice | null {
 export async function listSharedElevenVoices(opts?: { search?: string; limit?: number }): Promise<SharedVoice[]> {
   const k = key();
   if (!k) throw new Error("ElevenLabs not configured");
-  const limit = Math.min(Math.max(opts?.limit ?? 30, 1), 100);
+  const limit = Math.min(Math.max(opts?.limit ?? 60, 1), 100);
   const params = new URLSearchParams({ page_size: String(limit), featured: "false" });
   const search = opts?.search?.trim();
   if (search) params.set("search", search.slice(0, 80));
