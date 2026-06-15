@@ -14,7 +14,9 @@ export interface VoiceSettings {
   expressiveness: number;
 }
 
-export const DEFAULT_VOICE_SETTINGS: VoiceSettings = { rate: 1, expressiveness: 0.5 };
+// Default leans lively (0.6) — a sales voice should sound human and engaged, not
+// flat. Maps to a lower ElevenLabs `stability` for more natural intonation/tone.
+export const DEFAULT_VOICE_SETTINGS: VoiceSettings = { rate: 1, expressiveness: 0.6 };
 
 const clamp = (n: unknown, lo: number, hi: number, dflt: number): number => {
   const v = typeof n === "number" ? n : Number(n);

@@ -101,6 +101,38 @@ export function ElevenVoiceLibrary() {
     }
   }
 
+  // Play a URL through a fresh <audio>, applying the tuned speed only AFTER the
+  // media loads (setting playbackRate before load throws "operation not supported"
+  // in some browsers). Rejects if the source can't be decoded/played so the caller
+  // can fall back.
+  const playUrl = useCallback((vid: string, url: string, revoke: boolean) => {
+    return new Promise<void>((resolve, reject) => {
+      const audio = new Audio();
+      audioRef.current = audio;
+      const cleanup = () => { if (revoke) { try { URL.revokeObjectURL(url); } catch { /* gone */ } } };
+      audio.onloadedmetadata = () => { try { audio.playbackRate = Math.min(1.5, Math.max(0.5, settings.rate)); } catch { /* range */ } };
+      audio.onended = () => { setPreviewing((p) => (p === vid ? null : p)); cleanup(); resolve(); };
+      audio.onerror = () => { cleanup(); reject(new Error("audio error")); };
+      audio.src = url;
+      audio.play().then(resolve, (err) => { cleanup(); reject(err); });
+    });
+  }, [settings.rate]);
+
+  const synthVoice = useCallback(async (vid: string) => {
+    const res = await fetch("/api/voice/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: PREVIEW_LINE, voiceId: sel(vid), emotion: "warm", quality: "max", rate: settings.rate, expressiveness: settings.expressiveness }),
+    });
+    if (!res.ok) {
+      const b = await res.json().catch(() => null);
+      throw new Error(b?.error ?? "The voice service rejected the preview.");
+    }
+    const blob = await res.blob();
+    if (!blob.size) throw new Error("The voice service returned no audio.");
+    await playUrl(vid, URL.createObjectURL(blob), true);
+  }, [settings.rate, settings.expressiveness, sel, playUrl]);
+
   async function preview(v: Voice) {
     audioRef.current?.pause();
     if (previewing === v.id) {
@@ -110,35 +142,21 @@ export function ElevenVoiceLibrary() {
     setPreviewing(v.id);
     setError(null);
     try {
-      // The provider's own sample is instant and free when present; otherwise
-      // synthesize a real opener in this voice so you hear it on a call.
-      let url = v.previewUrl ?? null;
-      let revoke = false;
-      if (!url) {
-        const res = await fetch("/api/voice/tts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: PREVIEW_LINE, voiceId: sel(v.id), emotion: "warm", quality: "max", rate: settings.rate, expressiveness: settings.expressiveness }),
-        });
-        if (!res.ok) {
-          const b = await res.json().catch(() => null);
-          throw new Error(b?.error ?? "Preview failed");
+      // The provider's own sample is instant + free when present. If it can't play
+      // (cross-origin/format quirks — the "operation is not supported" case) OR
+      // there's no sample, synthesize this exact voice via ElevenLabs so you always
+      // hear it, in the tuned voice.
+      if (v.previewUrl) {
+        try {
+          await playUrl(v.id, v.previewUrl, false);
+          return;
+        } catch {
+          /* provider sample wouldn't play — fall through to synthesizing it */
         }
-        url = URL.createObjectURL(await res.blob());
-        revoke = true;
       }
-      const audio = new Audio(url);
-      // ElevenLabs ignores server-side rate; apply the speed at playback so the
-      // preview reflects the chosen speaking speed.
-      audio.playbackRate = Math.min(1.5, Math.max(0.5, settings.rate));
-      audioRef.current = audio;
-      audio.onended = () => {
-        setPreviewing((p) => (p === v.id ? null : p));
-        if (revoke && url) URL.revokeObjectURL(url);
-      };
-      await audio.play();
+      await synthVoice(v.id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Preview failed");
+      setError(e instanceof Error ? e.message : "Couldn't play this voice — try again.");
       setPreviewing(null);
     }
   }
