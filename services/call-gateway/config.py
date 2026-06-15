@@ -65,5 +65,14 @@ CALL_STATUS_WEBHOOK_URL = env("CALL_STATUS_WEBHOOK_URL")
 # Where FreeSWITCH reaches us back for media (audio_fork target).
 PUBLIC_WS_BASE = env("PUBLIC_WS_BASE", "ws://127.0.0.1:8080")
 
+# Spoken at the very top of EVERY outbound AI call — bot/AI disclosure required by
+# state bot-disclosure laws and the FCC's AI-voice rules. Default ON; set
+# CALL_AI_DISCLOSURE="" only if you disclose another way. (The call-recording
+# consent disclosure is separate — configured in the app as CALL_RECORDING_DISCLOSURE.)
+CALL_AI_DISCLOSURE = env(
+    "CALL_AI_DISCLOSURE",
+    "Quick heads up — this is an AI assistant calling on behalf of the team.",
+)
+
 # Telephony media is 8 kHz mono PCM; our neural voice emits 24 kHz (we resample).
 TELEPHONY_SAMPLE_RATE = 8000
