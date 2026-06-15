@@ -16,7 +16,7 @@ import { isWithinActionAllowance } from "@/lib/ai/usage";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { trackLinks, recordSent } from "@/lib/tracking";
 import { createOutboxItem } from "@/lib/agent/store";
-import { hasOptedOut, quietHoursNow } from "@/lib/agent/guardrails";
+import { hasOptedOut, quietHoursNow, dailySendCap, declineCooldownDays, lastSoftDeclineAt } from "@/lib/agent/guardrails";
 import { outsideCourtesyWindow } from "@/lib/calls/local-time";
 import { batchActivities } from "@/lib/crm/activities";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
@@ -339,6 +339,20 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
 
   const result: CadenceTickResult = { due: due.length, processed: 0, sent: 0, queued: 0, completed: 0, stopped: 0, skipped: 0, batched: 0 };
 
+  // Share Autopilot's volume rails so the two senders don't blow past the limit
+  // between them. The daily cap is a ROLLING 24h budget seeded from recent
+  // outbound activity (which includes anything Autopilot just sent this tick), so
+  // a large enrolled sequence can't torch domain reputation in one run. Skipped
+  // entirely when no cap is set (the default) — behavior then unchanged.
+  const cap = dailySendCap();
+  const declineDays = declineCooldownDays();
+  let sent = 0;
+  if (Number.isFinite(cap)) {
+    const dayAgo = Date.now() - 86_400_000;
+    const recent = await provider.listRecentActivities(500).catch(() => []);
+    sent = recent.filter((a) => a.direction === "outbound" && ["email", "sms", "call"].includes(a.kind) && new Date(a.occurredAt).getTime() >= dayAgo).length;
+  }
+
   for (const e of due) {
     const seq = await resolveSequence(e.sequenceId);
     if (!seq || e.stepIndex >= seq.steps.length) {
@@ -379,12 +393,52 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
     const stageLabel = deal ? stageById.get(deal.stageId)?.label ?? "open" : "open";
     const address = addressFor(contact, step.channel);
 
+    // Pause the drip on a soft "not now" — respect the re-engagement cooldown
+    // like Autopilot, so a prospect who declined isn't dripped straight through
+    // it. Don't advance: the step stays due and resumes once the cooldown passes.
+    // (The generic per-deal re-touch cooldown is deliberately NOT applied here —
+    // a sequence's day schedule IS the operator's intended cadence.)
+    if (declineDays > 0) {
+      const softAt = lastSoftDeclineAt(optOutActs);
+      if (softAt !== null && Date.now() - softAt < declineDays * 86_400_000) {
+        result.skipped += 1;
+        continue;
+      }
+    }
+
+    // Shared daily send cap: a real auto-send (email/sms) counts against the same
+    // rolling-24h budget Autopilot uses. Don't advance when capped — the step
+    // retries next tick once back under the cap. Batched/queued drafts don't
+    // actually send, so they're never cap-blocked.
+    const willAutoSend = autoSend && !batchMode && Boolean(address) && (step.channel === "email" || step.channel === "sms");
+    if (willAutoSend && sent >= cap) {
+      result.skipped += 1;
+      continue;
+    }
+
+    // Advance the enrollment BEFORE any external send (idempotency): a crash or
+    // lock-expiry after a successful send then can't re-send this step on the
+    // next tick. The guarantee becomes at-most-once (a rare crash drops one
+    // touch) instead of the far worse at-least-once (double-texting a prospect).
+    // The skips above run first, so a paused/capped step still retries later.
+    const nextIndex = e.stepIndex + 1;
+    if (nextIndex >= seq.steps.length) {
+      await updateEnrollment(e.id, { status: "completed", stepIndex: nextIndex, lastStepAt: now });
+      result.completed += 1;
+    } else {
+      await updateEnrollment(e.id, { stepIndex: nextIndex, lastStepAt: now, nextDueAt: addDays(e.enrolledAt, seq.steps[nextIndex].day) });
+    }
+    result.processed += 1;
+
     if (!address) {
       // No way to reach them on this channel (e.g. a call/SMS step with no phone
-      // on file) — skip the step rather than burn an AI draft or queue a
-      // dead-end message. Advance so the enrollment doesn't get stuck.
+      // on file) — skip rather than burn an AI draft or queue a dead-end message.
+      // Already advanced above so the enrollment doesn't get stuck.
       result.skipped += 1;
-    } else if (step.channel === "call") {
+      continue;
+    }
+
+    if (step.channel === "call") {
       // Calls can't be auto-dialed from a cadence — drop a task on the timeline.
       await provider.logActivity({
         opportunityId: deal?.id,
@@ -396,103 +450,98 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
       // The dropped task IS the cadence's outreach action for a call step (there's
       // no auto-dial, and no later approve→send hook), so attribute it now.
       if (seq.id === "recall") await recordRecallTouch({ dealId: deal?.id, contactId: e.contactId, channel: "call", source: "cadence", occurredAt: now });
-    } else {
-      // Pass the deal's ACTUAL recall reason (no_show / going_cold / stalled / …)
-      // so the draft re-opens it the right way — a no-show gets "we missed each
-      // other, grab another time", not the same nudge as a long-dormant cold deal.
-      // Falls back to a generic re-engagement reason when the deal doesn't
-      // currently score as slipping (e.g. it was recently re-touched).
-      const recallReason =
-        seq.id === "recall"
-          ? (deal ? scoreOpportunity(deal, stageById, { activities: optOutActs }, recallThresholds)?.reason : undefined) ?? "lost_winnable"
-          : undefined;
-      // A no-show wants a reschedule, not a generic nudge: when this step hasn't
-      // declared its own scenario (e.g. the breakup last step), use the tuned
-      // "reschedule" copy/coaching for a ghosted-after-meeting deal.
-      const scenario = step.scenario ?? (recallReason === "no_show" ? "reschedule" : undefined);
-      const draftInput = {
-        channel: step.channel,
-        contactName: name,
-        company: contact?.company,
-        dealTitle: deal?.title ?? name,
-        valueLabel: industry.terminology.value,
-        value: deal?.value ?? 0,
-        currency: deal?.currency ?? org.currency,
-        stageLabel,
-        industryLabel: industry.label,
-        industryId: industry.id,
-        recallReason,
-        daysSinceContact: daysSince(deal?.lastActivityAt),
-        // A step can mark itself a special type — e.g. a gracious "breakup" as the
-        // final recall touch — and a no-show defaults to "reschedule" (above).
-        // Default steps with no scenario stay normal follow-ups.
-        scenario,
-        instruction: `This is step ${e.stepIndex + 1} of the "${seq.name}" cadence. Intent: ${step.body}`,
-        language: contactPreferredLanguage(contact?.attributes, org.language),
-        voice,
-      } as const;
+      continue;
+    }
 
-      if (batchMode) {
-        // Defer the draft to the async batch; it'll be queued to Approvals when
-        // the batch is collected on a later tick. Enrollment still advances.
-        // No recall touch is recorded here — the draft hasn't been sent. It's
-        // attributed only if/when the collected draft is approved & sent, via the
-        // `recall` tag carried on the batch item → outbox item → approve route.
-        batchRequests.push({ item: { customId: `${e.id}_${e.stepIndex}`, dealId: deal?.id, contactId: e.contactId, channel: step.channel, recall: seq.id === "recall" }, input: draftInput });
-        result.batched += 1;
-        const ni = e.stepIndex + 1;
-        if (ni >= seq.steps.length) { await updateEnrollment(e.id, { status: "completed", stepIndex: ni, lastStepAt: now }); result.completed += 1; }
-        else await updateEnrollment(e.id, { stepIndex: ni, lastStepAt: now, nextDueAt: addDays(e.enrolledAt, seq.steps[ni].day) });
-        result.processed += 1;
-        continue;
-      }
+    // Pass the deal's ACTUAL recall reason (no_show / going_cold / stalled / …)
+    // so the draft re-opens it the right way — a no-show gets "we missed each
+    // other, grab another time", not the same nudge as a long-dormant cold deal.
+    // Falls back to a generic re-engagement reason when the deal doesn't
+    // currently score as slipping (e.g. it was recently re-touched).
+    const recallReason =
+      seq.id === "recall"
+        ? (deal ? scoreOpportunity(deal, stageById, { activities: optOutActs }, recallThresholds)?.reason : undefined) ?? "lost_winnable"
+        : undefined;
+    // A no-show wants a reschedule, not a generic nudge: when this step hasn't
+    // declared its own scenario (e.g. the breakup last step), use the tuned
+    // "reschedule" copy/coaching for a ghosted-after-meeting deal.
+    const scenario = step.scenario ?? (recallReason === "no_show" ? "reschedule" : undefined);
+    const draftInput = {
+      channel: step.channel,
+      contactName: name,
+      company: contact?.company,
+      dealTitle: deal?.title ?? name,
+      valueLabel: industry.terminology.value,
+      value: deal?.value ?? 0,
+      currency: deal?.currency ?? org.currency,
+      stageLabel,
+      industryLabel: industry.label,
+      industryId: industry.id,
+      recallReason,
+      daysSinceContact: daysSince(deal?.lastActivityAt),
+      // A step can mark itself a special type — e.g. a gracious "breakup" as the
+      // final recall touch — and a no-show defaults to "reschedule" (above).
+      // Default steps with no scenario stay normal follow-ups.
+      scenario,
+      instruction: `This is step ${e.stepIndex + 1} of the "${seq.name}" cadence. Intent: ${step.body}`,
+      language: contactPreferredLanguage(contact?.attributes, org.language),
+      voice,
+    } as const;
 
-      const draft = await draftMessage(draftInput);
+    if (batchMode) {
+      // Defer the draft to the async batch; it'll be queued to Approvals when the
+      // batch is collected on a later tick (never auto-sent). Enrollment already
+      // advanced above. No recall touch yet — the draft hasn't been sent; it's
+      // attributed only if/when the collected draft is approved & sent, via the
+      // `recall` tag carried on the batch item → outbox item → approve route.
+      batchRequests.push({ item: { customId: `${e.id}_${e.stepIndex}`, dealId: deal?.id, contactId: e.contactId, channel: step.channel, recall: seq.id === "recall" }, input: draftInput });
+      result.batched += 1;
+      continue;
+    }
 
-      // Hold auto-sends during quiet hours — queue for review instead of firing
-      // a message at 2am. Two clocks apply: the org's configured quiet window,
-      // and for SMS the PROSPECT's own 8am–9pm courtesy window read off their
-      // area code (TCPA applies to texts like calls — and the org clock can't
-      // see that 9am in New York is 6am for a San Francisco number). Held
-      // messages queue to Approvals, so nothing is lost. (Outside autopilot we
-      // always queue to Approvals.)
-      const canSend = autoSend && !quietHoursNow(new Date(now), org.timezone) && !(step.channel === "sms" && outsideCourtesyWindow(address, new Date(now)));
-      const res = canSend
-        ? step.channel === "email"
-          ? await sendEmail(address, draft.subject ?? "", trackLinks(draft.body, { orgId: org.id, contactId: e.contactId, dealId: e.dealId, channel: "email" }), { unsubscribeUrl: await unsubscribeUrl(e.contactId), compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address } })
-          : await sendSms(address, trackLinks(draft.body, { orgId: org.id, contactId: e.contactId, dealId: e.dealId, channel: "sms" }), { from: org.callerId })
-        : null;
+    const draft = await draftMessage(draftInput);
 
-      if (res && res.status !== "failed") {
-        await provider.logActivity({
-          opportunityId: deal?.id,
-          contactId: e.contactId,
-          kind: step.channel,
-          summary: draft.subject ? `${draft.subject}\n\n${draft.body}` : draft.body,
-          direction: "outbound",
-          occurredAt: now,
-        });
-        // Attribute the recall effort only on an ACTUAL send.
-        if (seq.id === "recall") await recordRecallTouch({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, source: "cadence", occurredAt: now });
-        void recordSent({ orgId: org.id, contactId: e.contactId, dealId: deal?.id, channel: step.channel });
-        result.sent += 1;
-      } else {
-        // Queued for human approval — don't attribute a touch yet. Tag it so the
-        // approve route records the touch if/when it's actually sent.
-        await createOutboxItem({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, subject: draft.subject, body: draft.body, source: draft.source, recall: seq.id === "recall" });
-        result.queued += 1;
+    // Hold auto-sends during quiet hours — queue for review instead of firing a
+    // message at 2am. Two clocks apply: the org's configured quiet window, and
+    // for SMS the PROSPECT's own 8am–9pm courtesy window read off their area code
+    // (TCPA applies to texts like calls — and the org clock can't see that 9am in
+    // New York is 6am for a San Francisco number). Held messages queue to
+    // Approvals, so nothing is lost. (Outside autopilot we always queue.)
+    const canSend = autoSend && !quietHoursNow(new Date(now), org.timezone) && !(step.channel === "sms" && outsideCourtesyWindow(address, new Date(now)));
+    // A send that THROWS must not crash the run or (now that we've advanced) lose
+    // the step silently — treat it as a failed send and queue to Approvals.
+    let res: { status: string } | null = null;
+    if (canSend) {
+      try {
+        res =
+          step.channel === "email"
+            ? await sendEmail(address, draft.subject ?? "", trackLinks(draft.body, { orgId: org.id, contactId: e.contactId, dealId: e.dealId, channel: "email" }), { unsubscribeUrl: await unsubscribeUrl(e.contactId), compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address } })
+            : await sendSms(address, trackLinks(draft.body, { orgId: org.id, contactId: e.contactId, dealId: e.dealId, channel: "sms" }), { from: org.callerId });
+      } catch {
+        res = { status: "failed" };
       }
     }
 
-    // Advance to the next step (or complete the enrollment).
-    const nextIndex = e.stepIndex + 1;
-    if (nextIndex >= seq.steps.length) {
-      await updateEnrollment(e.id, { status: "completed", stepIndex: nextIndex, lastStepAt: now });
-      result.completed += 1;
+    if (res && res.status !== "failed") {
+      await provider.logActivity({
+        opportunityId: deal?.id,
+        contactId: e.contactId,
+        kind: step.channel,
+        summary: draft.subject ? `${draft.subject}\n\n${draft.body}` : draft.body,
+        direction: "outbound",
+        occurredAt: now,
+      });
+      // Attribute the recall effort only on an ACTUAL send.
+      if (seq.id === "recall") await recordRecallTouch({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, source: "cadence", occurredAt: now });
+      void recordSent({ orgId: org.id, contactId: e.contactId, dealId: deal?.id, channel: step.channel });
+      sent += 1; // count toward the shared daily cap
+      result.sent += 1;
     } else {
-      await updateEnrollment(e.id, { stepIndex: nextIndex, lastStepAt: now, nextDueAt: addDays(e.enrolledAt, seq.steps[nextIndex].day) });
+      // Queued for human approval (held, failed, or threw) — don't attribute a
+      // touch yet. Tag it so the approve route records the touch if/when sent.
+      await createOutboxItem({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, subject: draft.subject, body: draft.body, source: draft.source, recall: seq.id === "recall" });
+      result.queued += 1;
     }
-    result.processed += 1;
   }
 
   // Submit all deferred drafts as one batch (~50% cheaper). Results are queued
