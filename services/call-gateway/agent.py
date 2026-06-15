@@ -5,7 +5,7 @@ import asyncio
 from brain import next_line
 from stt import transcribe
 from tts import synthesize
-from config import TELEPHONY_SAMPLE_RATE
+from config import TELEPHONY_SAMPLE_RATE, CALL_AI_DISCLOSURE
 
 DEFAULT_OPENER = "Hey, it's me — caught you at an okay time?"
 
@@ -19,13 +19,15 @@ WRAP_FALLBACK = "I'll let you go for now — I'll send a quick note and try you 
 
 
 class CallAgent:
-    def __init__(self, context: str = "", voice_id=None, opener: str = DEFAULT_OPENER, voicemail=None):
+    def __init__(self, context: str = "", voice_id=None, opener: str = DEFAULT_OPENER, voicemail=None, disclosure: str = CALL_AI_DISCLOSURE):
         self.turns = []
         self.context = context
         self.voice_id = voice_id
         self.opener = opener
         # Prepared voicemail to leave if the line goes to a machine (see leave_voicemail).
         self.voicemail = voicemail
+        # Spoken first on a live answer — the required AI/bot disclosure. "" disables.
+        self.disclosure = (disclosure or "").strip()
 
     async def _speak(self, text: str, transport):
         async for chunk in synthesize(text, voice_id=self.voice_id, sample_rate=TELEPHONY_SAMPLE_RATE):
@@ -46,6 +48,10 @@ class CallAgent:
 
     async def run(self, transport):
         """Drive the whole conversation until the caller hangs up."""
+        # Required AI disclosure first, before any pitch — then the opener.
+        if self.disclosure:
+            self.turns.append({"role": "rep", "text": self.disclosure})
+            await self._speak(self.disclosure, transport)
         self.turns.append({"role": "rep", "text": self.opener})
         await self._speak(self.opener, transport)
         rep_turns = 1  # the opener counts
