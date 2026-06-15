@@ -6,6 +6,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 import { planAccountDeletion } from "@/lib/account-deletion";
 import { recordAudit } from "@/lib/audit";
+import { purgeOrgRecordings } from "@/lib/calls/recordings";
 import { logInfo, logError, errMessage } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +44,13 @@ export async function POST(req: Request) {
       const plan = planAccountDeletion(member.role, others);
       if (plan.action === "block") return NextResponse.json({ error: plan.reason }, { status: 409 });
       if (plan.action === "delete_org") {
+        // GDPR Art.17 / CCPA: erase the call recordings (audio of an identifiable
+        // person, hosted outside the DB) BEFORE the cascade wipes the only index
+        // of their URLs. Best-effort; an incomplete purge is audited, not silent.
+        const purged = await purgeOrgRecordings(member.org_id).catch(() => null);
+        if (purged && purged.failed.length > 0) {
+          await recordAudit("account.recordings_purge_incomplete", `${purged.failed.length} recordings — see server logs`).catch(() => {});
+        }
         await admin.from("orgs").delete().eq("id", member.org_id); // sole member → cascades their data only
       } else {
         await admin.from("members").delete().eq("auth_user_id", user.id).eq("org_id", member.org_id);
