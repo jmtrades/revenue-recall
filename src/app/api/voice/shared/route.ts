@@ -30,7 +30,7 @@ export const GET = withGuard(async (req: Request) => {
   }
   const url = new URL(req.url);
   const search = url.searchParams.get("search") ?? undefined;
-  const limit = Number(url.searchParams.get("limit") ?? "30");
+  const limit = Number(url.searchParams.get("limit") ?? "60");
   try {
     const voices = await listSharedElevenVoices({ search, limit: Number.isFinite(limit) ? limit : 30 });
     return NextResponse.json({ configured: true, reason: "ok", voices });

@@ -224,7 +224,7 @@ export function ElevenVoiceLibrary() {
 
       <CloneVoice onCloned={load} />
 
-      <BrowseLibrary onAdded={load} />
+      <BrowseLibrary onAdded={load} defaultOpen={stock.length < 8} />
 
       {clones.length > 0 && (
         <VoiceSection
@@ -349,8 +349,8 @@ interface SharedVoice {
  * don't dedupe against owned voices by name (common names like "Adam"/"Aria"
  * collide across distinct voices, which would wrongly block a wanted add).
  */
-function BrowseLibrary({ onAdded }: { onAdded: () => void }) {
-  const [open, setOpen] = useState(false);
+function BrowseLibrary({ onAdded, defaultOpen = false }: { onAdded: () => void; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
   const [query, setQuery] = useState("");
   const [voices, setVoices] = useState<SharedVoice[]>([]);
   const [loading, setLoading] = useState(false);

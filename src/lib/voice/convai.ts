@@ -11,6 +11,8 @@
  * the feature reports unavailable and the UI simply doesn't render it.
  */
 
+import { elevenErrorDetail } from "@/lib/voice/eleven";
+
 function env(name: string): string | undefined {
   const v = process.env[name];
   return v && v.length > 0 ? v : undefined;
@@ -55,7 +57,7 @@ export async function getConvaiToken(): Promise<{ token: string; agentId: string
     `https://api.elevenlabs.io/v1/convai/conversation/token?agent_id=${encodeURIComponent(agentId)}`,
     { headers: { "xi-api-key": key }, cache: "no-store" },
   );
-  if (!res.ok) throw new Error(`ElevenLabs token ${res.status}`);
+  if (!res.ok) throw new Error(`ElevenLabs token ${res.status}${await elevenErrorDetail(res)}`);
   const data = (await res.json()) as { token?: string };
   if (!data.token) throw new Error("ElevenLabs token: missing token");
   return { token: data.token, agentId };

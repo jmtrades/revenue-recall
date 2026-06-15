@@ -15,7 +15,7 @@
 import { resolveProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
 import { seedDataset } from "@/lib/data/seed";
-import { getSessionUser } from "@/lib/auth";
+import { operatorEmails, isOperator } from "@/lib/operator";
 import { isAuthRequired } from "@/lib/config";
 import type { Stage } from "@/lib/crm/types";
 
@@ -24,23 +24,20 @@ const TARGET = { stale: 5, active: 6, closed: 3 } as const;
 // Demo sample data must NEVER land in a real customer's workspace. On a live
 // (auth-on) deploy it's restricted to the operator's own account(s) — every
 // other/new user gets a genuinely clean workspace and never even sees the
-// "load sample data" option. Configurable via SAMPLE_DATA_EMAILS (comma list),
-// falling back to OPERATOR_EMAIL, then the founder's address. With auth off
-// (local/built-in demo) it stays available so the demo works.
-const SAMPLE_DATA_DEFAULT_EMAIL = "jmtrades1990@gmail.com";
+// "load sample data" option (operator allowlist lives in lib/operator.ts). With
+// auth off (local/built-in demo) it stays available so the demo works.
 
+/** Operator allowlist (source of truth in lib/operator.ts). Re-exported here so
+ *  existing callers/tests keep working. */
 export function sampleDataAllowlist(): string[] {
-  const raw = process.env.SAMPLE_DATA_EMAILS || process.env.OPERATOR_EMAIL || SAMPLE_DATA_DEFAULT_EMAIL;
-  return raw.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+  return operatorEmails();
 }
 
 /** True only for accounts allowed to load demo sample data (operator only on a
  *  live deploy; anyone on the open/built-in demo). */
 export async function canUseSampleData(): Promise<boolean> {
   if (!isAuthRequired()) return true; // open demo / built-in store
-  const user = await getSessionUser().catch(() => null);
-  const email = user?.email?.toLowerCase();
-  return !!email && sampleDataAllowlist().includes(email);
+  return isOperator();
 }
 
 /** Map a seed stage onto the org's real pipeline by type + relative position,
