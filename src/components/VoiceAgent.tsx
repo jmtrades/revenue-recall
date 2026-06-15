@@ -16,7 +16,7 @@ import { Icon } from "@/components/icons";
  * and entitled on the current plan — so an unconfigured or free deploy shows no
  * dead button.
  */
-function VoiceAgentInner({ label }: { label: string }) {
+function VoiceAgentInner({ label, prompt, firstMessage }: { label: string; prompt?: string; firstMessage?: string }) {
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
 
@@ -41,19 +41,26 @@ function VoiceAgentInner({ label }: { label: string }) {
         throw new Error(body?.error ?? "Could not start the voice agent.");
       }
       const { token, voiceId } = (await res.json()) as { token: string; voiceId?: string };
+      // Tailor the live conversation to THIS scenario + the org's chosen voice.
+      // Honored when the agent permits overrides in its ElevenLabs security
+      // settings; otherwise the agent's own config is used (never an error).
+      const agent: { prompt?: { prompt: string }; firstMessage?: string } = {};
+      if (prompt) agent.prompt = { prompt };
+      if (firstMessage) agent.firstMessage = firstMessage;
+      const overrides: { tts?: { voiceId: string }; agent?: typeof agent } = {};
+      if (voiceId) overrides.tts = { voiceId };
+      if (agent.prompt || agent.firstMessage) overrides.agent = agent;
       await startSession({
         conversationToken: token,
         connectionType: "webrtc",
-        // Speak in the org's chosen/cloned voice when one is set (honored if the
-        // agent permits voice overrides; otherwise the agent's own voice is used).
-        ...(voiceId ? { overrides: { tts: { voiceId } } } : {}),
+        ...(overrides.tts || overrides.agent ? { overrides } : {}),
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not start the voice agent.");
     } finally {
       setStarting(false);
     }
-  }, [startSession]);
+  }, [startSession, prompt, firstMessage]);
 
   const connected = status === "connected";
   const connecting = status === "connecting" || starting;
@@ -86,7 +93,19 @@ function VoiceAgentInner({ label }: { label: string }) {
   );
 }
 
-export function VoiceAgent({ label = "Talk to agent", className = "" }: { label?: string; className?: string }) {
+export function VoiceAgent({
+  label = "Talk to agent",
+  className = "",
+  prompt,
+  firstMessage,
+}: {
+  label?: string;
+  className?: string;
+  /** System-prompt override so the live agent role-plays THIS scenario. */
+  prompt?: string;
+  /** The agent's opening line, tailored to the scenario. */
+  firstMessage?: string;
+}) {
   const [available, setAvailable] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -109,7 +128,7 @@ export function VoiceAgent({ label = "Talk to agent", className = "" }: { label?
   return (
     <div className={className}>
       <ConversationProvider>
-        <VoiceAgentInner label={label} />
+        <VoiceAgentInner label={label} prompt={prompt} firstMessage={firstMessage} />
       </ConversationProvider>
     </div>
   );
