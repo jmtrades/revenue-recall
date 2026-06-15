@@ -9,6 +9,12 @@ beforeEach(() => {
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   delete process.env.VERCEL_GIT_COMMIT_SHA;
   delete process.env.GIT_COMMIT_SHA;
+  // Voice provider env — cleared so the voice diagnostic is deterministic.
+  delete process.env.ELEVENLABS_API_KEY;
+  delete process.env.ELEVENLABS_AGENT_ID;
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.CARTESIA_API_KEY;
+  delete process.env.VOICE_TTS_PROVIDER;
 });
 afterEach(() => {
   process.env = { ...SAVED };
@@ -84,6 +90,34 @@ describe("health launch-readiness verdict", () => {
     const body = await health();
     expect(body.status).toBe("ok");
     expect(Array.isArray(body.launch.warnings)).toBe(true);
+  });
+});
+
+describe("health voice diagnostic (public ElevenLabs connection check)", () => {
+  it("reports nothing connected with the no_key reason when no key is set", async () => {
+    const body = await health();
+    expect(body.voice.eleven).toBe(false);
+    expect(body.voice.hosted).toBe(false);
+    expect(body.voice.agent).toBe(false);
+    expect(body.voice.agentReason).toBe("no_key");
+  });
+
+  it("with the key set: hosted voice is live on ElevenLabs, agent still needs an agent id", async () => {
+    process.env.ELEVENLABS_API_KEY = "el-test";
+    const body = await health();
+    expect(body.voice.eleven).toBe(true);
+    expect(body.voice.hosted).toBe(true);
+    expect(body.voice.hostedProvider).toBe("elevenlabs");
+    expect(body.voice.agent).toBe(false);
+    expect(body.voice.agentReason).toBe("no_agent");
+  });
+
+  it("with key + agent id: the live agent is fully connected", async () => {
+    process.env.ELEVENLABS_API_KEY = "el-test";
+    process.env.ELEVENLABS_AGENT_ID = "agent_123";
+    const body = await health();
+    expect(body.voice.agent).toBe(true);
+    expect(body.voice.agentReason).toBe("ok");
   });
 });
 

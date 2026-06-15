@@ -3,8 +3,9 @@ import { getConfig } from "@/lib/config";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { isAiConfigured } from "@/lib/ai/client";
 import { channelStatus } from "@/lib/comms";
-import { ttsAvailable } from "@/lib/voice/tts";
-import { convaiConfigured } from "@/lib/voice/convai";
+import { ttsAvailable, ttsProvider } from "@/lib/voice/tts";
+import { convaiConfigured, convaiAgentId, convaiReason } from "@/lib/voice/convai";
+import { elevenConfigured } from "@/lib/voice/eleven";
 import { launchStatus } from "@/lib/launch";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,19 @@ export async function GET() {
     voiceAgent: convaiConfigured(),
   };
 
+  // Voice connection detail — public (no session) so an operator can confirm
+  // ElevenLabs is wired straight from /api/health, with the exact reason it's
+  // not, mirroring the in-app diagnostic. Entitlement isn't checkable without a
+  // session, so this reports CONFIG presence (key/agent) — which is the part an
+  // env-var fix actually changes. `agentReason`: no_key | no_agent | ok.
+  const voice = {
+    hosted: ttsAvailable(),
+    hostedProvider: ttsAvailable() ? ttsProvider() : null,
+    eleven: elevenConfigured(),
+    agent: convaiConfigured(),
+    agentReason: convaiReason(elevenConfigured(), Boolean(convaiAgentId()), true),
+  };
+
   // Launch readiness — shared with the in-app LaunchBanner so they never drift.
   const { ready, blockers, warnings } = launchStatus();
 
@@ -42,6 +56,7 @@ export async function GET() {
     commit: sha ? sha.slice(0, 7) : "dev",
     industry: cfg.industryId,
     capabilities,
+    voice,
     launch: { ready, blockers, warnings },
   });
 }
