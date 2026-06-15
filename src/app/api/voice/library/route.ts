@@ -3,6 +3,8 @@ import { withGuard } from "@/lib/api/guard";
 import { isEntitled } from "@/lib/billing/enforce";
 import { elevenConfigured, listElevenVoices } from "@/lib/voice/eleven";
 import { getOrgSettings } from "@/lib/org";
+import { hasRole } from "@/lib/authz";
+import { isAuthRequired } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -14,19 +16,27 @@ export const dynamic = "force-dynamic";
  * dead surface on a free or unconfigured deploy.
  */
 export const GET = withGuard(async () => {
-  if (!elevenConfigured() || !(await isEntitled("aiLive"))) {
-    return NextResponse.json({ configured: false, voices: [], selected: null });
+  // Only people who can fix it (owner/admin, or anyone in the open demo) get the
+  // diagnostic + env hints; reps just see nothing.
+  const canFix = !isAuthRequired() || (await hasRole("owner", "admin"));
+  if (!elevenConfigured()) {
+    return NextResponse.json({ configured: false, reason: "no_key", canFix, voices: [], selected: null, settings: null });
+  }
+  if (!(await isEntitled("aiLive"))) {
+    return NextResponse.json({ configured: false, reason: "not_entitled", canFix, voices: [], selected: null, settings: null });
   }
   try {
     const [voices, org] = await Promise.all([
       listElevenVoices(),
       getOrgSettings().catch(() => null),
     ]);
-    return NextResponse.json({ configured: true, voices, selected: org?.ttsVoiceId ?? null, settings: org?.voiceSettings ?? null });
+    return NextResponse.json({ configured: true, reason: "ok", canFix, voices, selected: org?.ttsVoiceId ?? null, settings: org?.voiceSettings ?? null });
   } catch (e) {
+    // Key is set but the provider rejected/failed the call (bad key, network,
+    // rate limit). Surface the real reason so it's fixable.
     return NextResponse.json(
-      { configured: true, voices: [], selected: null, error: e instanceof Error ? e.message : "Could not load voices" },
-      { status: 502 },
+      { configured: false, reason: "error", canFix, voices: [], selected: null, settings: null, error: e instanceof Error ? e.message : "Could not reach ElevenLabs" },
+      { status: 200 },
     );
   }
 });

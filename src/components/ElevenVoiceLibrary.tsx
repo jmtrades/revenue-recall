@@ -26,6 +26,8 @@ const PREVIEW_LINE =
 
 export function ElevenVoiceLibrary() {
   const [configured, setConfigured] = useState<boolean | null>(null);
+  const [reason, setReason] = useState<string>("ok");
+  const [canFix, setCanFix] = useState(false);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +42,8 @@ export function ElevenVoiceLibrary() {
       const res = await fetch("/api/voice/library");
       const data = await res.json();
       setConfigured(Boolean(data.configured));
+      setReason(typeof data.reason === "string" ? data.reason : "ok");
+      setCanFix(Boolean(data.canFix));
       setVoices(Array.isArray(data.voices) ? data.voices : []);
       setSelected(data.selected ?? null);
       if (data.settings && typeof data.settings === "object") {
@@ -155,7 +159,33 @@ export function ElevenVoiceLibrary() {
     }
   }
 
-  if (configured === null || configured === false) return null;
+  if (configured === null) return null; // still loading
+
+  // Not connected: tell the owner exactly why + how to fix (reps see nothing).
+  if (configured === false) {
+    if (!canFix) return null;
+    const msg =
+      reason === "not_entitled"
+        ? "Live AI voice is on paid plans — connect billing, or set BILLING_ENFORCE=false to use it now."
+        : reason === "error"
+          ? `ElevenLabs key is set but the connection was rejected${error ? `: ${error}` : ""}. Double-check ELEVENLABS_API_KEY in Vercel is a valid key, then redeploy.`
+          : "ElevenLabs isn't connected. Add ELEVENLABS_API_KEY in Vercel (and ELEVENLABS_AGENT_ID for the live agent), then redeploy.";
+    return (
+      <div className="mt-5 space-y-2 border-t border-border pt-4">
+        <p className="text-sm font-medium text-fg">Read-aloud voice (ElevenLabs)</p>
+        <div className="flex items-start gap-3 rounded-lg border border-warn/40 bg-warn/10 px-4 py-3">
+          <Icon name="volume" size={18} className="mt-0.5 flex-none text-warn" />
+          <div>
+            <p className="text-sm font-medium text-warn">Voice not connected</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted">{msg}</p>
+            <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-medium text-brand hover:underline">
+              Get an ElevenLabs API key →
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const clones = voices.filter((v) => v.cloned);
   const stock = voices.filter((v) => !v.cloned);
