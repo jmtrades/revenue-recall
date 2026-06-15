@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useResource } from "@/lib/useResource";
 
 interface Event {
   id: string;
@@ -22,24 +23,23 @@ const LABELS: Record<string, string> = {
 const labelFor = (a: string) => LABELS[a] ?? a;
 
 /** Account activity trail. The /api/audit endpoint is owner/admin-gated, so for
- *  a rep it returns 403 and this renders nothing. */
+ *  a rep it returns 403 and this renders nothing. Fetched via useResource, which
+ *  aborts on unmount and ignores stale responses. */
 export function AuditLog() {
-  const [events, setEvents] = useState<Event[] | null>(null);
   const [forbidden, setForbidden] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/audit", { cache: "no-store" })
-      .then(async (r) => {
-        if (r.status === 403 || r.status === 401) {
+  const { data: events, loading } = useResource<Event[]>(
+    "/api/audit",
+    (json) => (json as { events?: Event[] }).events ?? [],
+    {
+      onStatus: (s) => {
+        if (s === 403 || s === 401) {
           setForbidden(true);
-          return;
+          return true; // handled — render nothing
         }
-        if (!r.ok) return;
-        const d = (await r.json()) as { events?: Event[] };
-        setEvents(d.events ?? []);
-      })
-      .catch(() => undefined);
-  }, []);
+        return false;
+      },
+    },
+  );
 
   if (forbidden) return null;
 
@@ -47,7 +47,7 @@ export function AuditLog() {
     <div className="space-y-2">
       <p className="stat-label">Audit log</p>
       <p className="text-xs text-muted">Recent account activity — invites, billing, and workspace settings changes.</p>
-      {events === null ? (
+      {loading || events === null ? (
         <p className="text-sm text-muted">Loading…</p>
       ) : events.length === 0 ? (
         <p className="text-sm text-muted">No activity recorded yet.</p>

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { useEscapeKey } from "@/lib/useEscapeKey";
+import { useResource } from "@/lib/useResource";
 
 interface Note { id: string; kind: "reply" | "recall" | "new_lead" | "stage_change"; title: string; detail: string; href: string }
 
@@ -17,16 +18,15 @@ const KIND_LABEL: Record<Note["kind"], string> = {
 export function Notifications() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<Note[]>([]);
-  const [loaded, setLoaded] = useState(false);
   useEscapeKey(open, () => setOpen(false));
 
-  useEffect(() => {
-    fetch("/api/notifications")
-      .then((r) => (r.ok ? r.json() : { items: [] }))
-      .then((d) => { setItems(Array.isArray(d?.items) ? d.items : []); setLoaded(true); })
-      .catch(() => setLoaded(true));
-  }, []);
+  const { data, loading } = useResource<Note[]>(
+    "/api/notifications",
+    (json) => (Array.isArray((json as { items?: unknown })?.items) ? (json as { items: Note[] }).items : []),
+    { cache: "default" },
+  );
+  const items = data ?? [];
+  const loaded = !loading;
 
   return (
     <div className="relative">
