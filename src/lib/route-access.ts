@@ -10,7 +10,7 @@
 // linked from the marketing footer and the signup consent line, and a
 // login-gated privacy policy is a compliance problem. (/reset/update is NOT
 // here — it needs the short recovery session the email link establishes.)
-export const PUBLIC_PAGES = new Set(["/", "/login", "/signup", "/reset", "/pricing", "/privacy", "/terms", "/security", "/status"]);
+export const PUBLIC_PAGES = new Set(["/", "/login", "/signup", "/reset", "/pricing", "/audit", "/privacy", "/terms", "/security", "/status"]);
 
 // Machine-to-machine API endpoints that authenticate by their OWN secret
 // (Stripe signature, CRON_SECRET, INBOUND_TOKEN, COMMS_WEBHOOK_TOKEN,
