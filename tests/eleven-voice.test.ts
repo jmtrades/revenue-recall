@@ -9,6 +9,7 @@ import {
   sortVoices,
   describeSharedVoice,
   normalizeSharedVoice,
+  elevenErrorDetail,
   type ElevenVoice,
 } from "@/lib/voice/eleven";
 import { providerVoice, ELEVEN_VOICES, OPENAI_VOICES } from "@/lib/voice/tts";
@@ -101,6 +102,17 @@ describe("shared (public library) voice normalization", () => {
     expect(
       normalizeSharedVoice({ voice_id: "v", public_owner_id: "o", usage_character_count_1y: 0, cloned_by_count: 50 })?.usage,
     ).toBe(0);
+  });
+});
+
+describe("elevenErrorDetail — surfaces the provider's real failure reason", () => {
+  it("appends the truncated response body so a failure is diagnosable", async () => {
+    expect(await elevenErrorDetail(new Response("invalid_api_key", { status: 401 }))).toBe(": invalid_api_key");
+    expect(await elevenErrorDetail(new Response("a".repeat(500), { status: 422 }))).toBe(`: ${"a".repeat(200)}`);
+  });
+
+  it("returns an empty string when there's no body (never a dangling colon)", async () => {
+    expect(await elevenErrorDetail(new Response("", { status: 500 }))).toBe("");
   });
 });
 

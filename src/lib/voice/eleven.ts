@@ -33,6 +33,17 @@ export function elevenConfigured(): boolean {
   return Boolean(key());
 }
 
+/**
+ * Read an ElevenLabs error response body (truncated) so a failure surfaces the
+ * provider's ACTUAL reason — `invalid_api_key`, `voice_not_found`, quota
+ * exceeded — instead of a bare status code. The difference between a one-glance
+ * fix and an undiagnosable "it just doesn't work". Returns "" when there's no body.
+ */
+export async function elevenErrorDetail(res: Response): Promise<string> {
+  const body = await res.text().catch(() => "");
+  return body ? `: ${body.slice(0, 200)}` : "";
+}
+
 /** Wrap a raw ElevenLabs voice id as a stored org selection. */
 export function elevenSelection(voiceId: string): string {
   return `${ELEVEN_PREFIX}${voiceId}`;
@@ -121,7 +132,7 @@ export async function listElevenVoices(): Promise<ElevenVoice[]> {
   const k = key();
   if (!k) throw new Error("ElevenLabs not configured");
   const res = await fetch(`${API}/voices`, { headers: { "xi-api-key": k }, cache: "no-store" });
-  if (!res.ok) throw new Error(`ElevenLabs voices ${res.status}`);
+  if (!res.ok) throw new Error(`ElevenLabs voices ${res.status}${await elevenErrorDetail(res)}`);
   const data = (await res.json()) as { voices?: RawVoice[] };
   const voices = (data.voices ?? [])
     .map(normalizeElevenVoice)
@@ -169,7 +180,7 @@ export async function deleteElevenVoice(voiceId: string): Promise<void> {
   const id = parseElevenSelection(elevenSelection(voiceId)) ?? voiceId;
   if (!/^[A-Za-z0-9]{1,64}$/.test(id)) throw new Error("Invalid voice id");
   const res = await fetch(`${API}/voices/${id}`, { method: "DELETE", headers: { "xi-api-key": k } });
-  if (!res.ok) throw new Error(`ElevenLabs delete ${res.status}`);
+  if (!res.ok) throw new Error(`ElevenLabs delete ${res.status}${await elevenErrorDetail(res)}`);
 }
 
 // ---- the full public library (shared voices) ----
@@ -256,7 +267,7 @@ export async function listSharedElevenVoices(opts?: { search?: string; limit?: n
     headers: { "xi-api-key": k },
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`ElevenLabs shared-voices ${res.status}`);
+  if (!res.ok) throw new Error(`ElevenLabs shared-voices ${res.status}${await elevenErrorDetail(res)}`);
   const data = (await res.json()) as { voices?: RawSharedVoice[] };
   const voices = (data.voices ?? [])
     .map(normalizeSharedVoice)
@@ -277,7 +288,10 @@ export async function addSharedElevenVoice(
 ): Promise<{ id: string; name: string }> {
   const k = key();
   if (!k) throw new Error("ElevenLabs not configured");
-  if (!/^[A-Za-z0-9]{1,64}$/.test(publicOwnerId)) throw new Error("Invalid owner id");
+  // A public owner id is a long hex string (~64 chars) — a different namespace
+  // than a 20-char voice id, so it gets a roomier bound to avoid rejecting a
+  // valid owner and breaking "Add to my voices" for every library voice.
+  if (!/^[A-Za-z0-9]{1,128}$/.test(publicOwnerId)) throw new Error("Invalid owner id");
   if (!/^[A-Za-z0-9]{1,64}$/.test(voiceId)) throw new Error("Invalid voice id");
   const newName = (name && name.trim()) || "Library voice";
   const res = await fetch(`${API}/voices/add/${publicOwnerId}/${voiceId}`, {
