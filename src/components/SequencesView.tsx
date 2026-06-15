@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Sequence, SeqChannel } from "@/lib/sequences";
 import { ChannelBadge } from "@/components/ui";
+import { SpeakButton } from "@/components/SpeakButton";
 
 interface StepDraft {
   day: string;
@@ -244,6 +245,7 @@ export function SequencesView({ sequences, customIds = [], canAuthor = false }: 
                     <div className="mb-1 flex items-center gap-2">
                       <ChannelBadge channel={step.channel} />
                       <span className="truncate text-sm font-medium text-fg">{step.subject}</span>
+                      <span className="ml-auto"><SpeakButton text={[step.subject, step.body].filter(Boolean).join(". ")} label="" /></span>
                     </div>
                     <p className="text-xs leading-relaxed text-muted">{step.body}</p>
                   </div>

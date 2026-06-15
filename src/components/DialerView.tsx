@@ -482,6 +482,7 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
                   <span className="pill bg-brand-soft text-brand">{OUTCOME_LABEL[summary.outcome] ?? summary.outcome}</span>
                   <span className={`pill ${SENTIMENT[summary.sentiment]}`}>{summary.sentiment}</span>
                   {saved && <span className="inline-flex items-center gap-1 text-xs text-success"><Icon name="check" size={12} strokeWidth={3} /> logged to timeline</span>}
+                  <span className="ml-auto"><SpeakButton text={`${summary.summary} Next: ${summary.nextStep}`} label="Recap" /></span>
                 </div>
                 <p className="text-sm text-fg">{summary.summary}</p>
                 <p className="mt-1 text-xs text-muted">Next: {summary.nextStep}</p>

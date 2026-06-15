@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ReasonBadge, ChannelBadge, ScoreDot } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { SpeakButton } from "@/components/SpeakButton";
 import { money, relativeDays } from "@/lib/format";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 import { useFocusTrap } from "@/lib/useFocusTrap";
@@ -250,7 +251,12 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
           <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="AI draft" className="w-full max-w-lg rounded-xl border border-border bg-surface p-5 shadow-2xl outline-none" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
               <h3 className="flex items-center gap-2 font-semibold text-fg"><Icon name="autopilot" size={15} className="text-brand" /> {draft.row.channel === "call" ? "Call script" : "Drafted outreach"}</h3>
-              <button onClick={() => setDraft(null)} aria-label="Close" className="text-muted transition-colors hover:text-fg"><Icon name="close" size={16} /></button>
+              <div className="flex items-center gap-2">
+                {!draft.busy && draft.source !== "error" && draft.body && (
+                  <SpeakButton text={[draft.subject, draft.body].filter(Boolean).join(". ")} label={draft.row.channel === "call" ? "Hear it" : "Read"} />
+                )}
+                <button onClick={() => setDraft(null)} aria-label="Close" className="text-muted transition-colors hover:text-fg"><Icon name="close" size={16} /></button>
+              </div>
             </div>
             <p className="mb-3 text-xs text-muted">{draft.row.title} · {draft.row.contactLabel}</p>
             {draft.busy ? (
