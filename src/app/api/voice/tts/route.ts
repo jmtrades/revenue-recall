@@ -17,7 +17,11 @@ export const dynamic = "force-dynamic";
  */
 export const GET = withGuard(async () => {
   const available = ttsAvailable() && (await isEntitled("aiLive"));
-  return NextResponse.json({ available, provider: available ? ttsProvider() : null });
+  // Hand the client the org's saved speaking speed so it can apply it at
+  // playback (ElevenLabs ignores server-side rate), making the tuned speed
+  // audible on every read-aloud, not just synthesized previews.
+  const rate = available ? (await getOrgSettings().catch(() => null))?.voiceSettings.rate ?? 1 : 1;
+  return NextResponse.json({ available, provider: available ? ttsProvider() : null, rate });
 });
 
 const Body = z.object({
