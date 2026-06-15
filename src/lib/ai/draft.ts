@@ -14,6 +14,7 @@ import {
   pick,
   seeded,
   sentence,
+  professionalize,
   GREETINGS_EMAIL,
   GREETINGS_SMS,
   EASY_OUT_EMAIL,
@@ -77,7 +78,8 @@ HOW HUMANS ACTUALLY WRITE (do this)
 - Be specific to this prospect and deal. Reference a real detail. Get to the point fast.
 - One clear, low-friction ask. Give an easy out. Never pushy, never salesy.
 - Sound a little informal and imperfect, like a real person — not polished corporate prose.
-- SMS: lowercase-casual is good, under 320 chars, no subject. Email: a short, human subject + 40-90 word body. Call: a 5-bullet talk track in the body, no subject.
+- Use normal sentence case and punctuation — write like a professional texting a client, NOT all-lowercase. (All-lowercase outs the message as a bot and embarrasses the rep with their own clients.) Only drop capitalization if a VOICE PROFILE shows that person actually writes that way.
+- SMS: under 320 chars, no subject. Email: a short, human subject + 40-90 word body. Call: a 5-bullet talk track in the body, no subject.
 
 NEVER (these are instant AI tells)
 - Banned openers: "I hope this email finds you well", "I wanted to reach out", "I'm reaching out", "Just reaching out".
@@ -202,7 +204,7 @@ function breakupSmsFallback(first: string, seed: string): string {
     `${first}, i won't keep bugging you — this is my last one for now. just shout if anything changes.`,
     `all good ${first}, i'll close this out on my end. if it's ever worth picking up, you know where i am.`,
   ];
-  return pick(skeletons, seed, "breakup_sms");
+  return professionalize(pick(skeletons, seed, "breakup_sms"));
 }
 
 type ScenarioKey = "referral" | "recap" | "renewal" | "reschedule";
@@ -273,7 +275,7 @@ function scenarioFallback(input: DraftInput, first: string, seed: string, sigLin
   const copy = SCENARIO_COPY[key];
   const d = input.dealTitle;
   if (input.channel === "sms") {
-    return { body: pick(copy.sms(first, d), seed, `${key}_sms`), source: "template" };
+    return { body: professionalize(pick(copy.sms(first, d), seed, `${key}_sms`)), source: "template" };
   }
   const greet = pick(GREETINGS_EMAIL, seed, "greet")(first);
   const subject = cap(pick(copy.subject(first, d), seed, `${key}_subj`));
@@ -294,7 +296,7 @@ function smsFallback(input: DraftInput, first: string, seed: string, cold: boole
       `${greet} — ${sentence(re)} ${sentence(step)}`,
       `${sentence(re)} ${sentence(step)}`,
     ];
-    return pick(skeletons, seed, "sms_cold");
+    return professionalize(pick(skeletons, seed, "sms_cold"));
   }
 
   const skeletons = [
@@ -303,7 +305,7 @@ function smsFallback(input: DraftInput, first: string, seed: string, cold: boole
     `${sentence(step)}`,
     `${greet}, quick one — ${sentence(step)}`,
   ];
-  return pick(skeletons, seed, "sms_warm");
+  return professionalize(pick(skeletons, seed, "sms_warm"));
 }
 
 function callFallback(input: DraftInput, seed: string): string {
