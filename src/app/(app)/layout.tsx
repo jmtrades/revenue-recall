@@ -5,15 +5,27 @@ import { LaunchBanner } from "@/components/LaunchBanner";
 import { SendingPausedBanner } from "@/components/SendingPause";
 import { SystemTheme } from "@/components/SystemTheme";
 import { NeuralVoice } from "@/components/NeuralVoice";
+import { InviteRequired } from "@/components/InviteRequired";
 import { getIndustry } from "@/lib/industries";
 import { getSessionUser } from "@/lib/auth";
 import { getOrgSettings } from "@/lib/org";
+import { inviteOnlyEnabled } from "@/lib/config";
+import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { accentVars } from "@/lib/theme";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // Neither load may throw here — a layout throw escapes (app)/error.tsx to the
   // root error page. getOrgSettings degrades internally; guard the session too.
   const [org, user] = await Promise.all([getOrgSettings(), getSessionUser().catch(() => null)]);
+
+  // Invite-only deployment: a signed-in user with no workspace was never invited
+  // (provisioning refused to bootstrap one). Show a clear dead-end instead of an
+  // empty app shell. Only runs when the flag is on, so open deployments are
+  // untouched; real members always resolve to their org and never see this.
+  if (user && inviteOnlyEnabled()) {
+    const orgId = await resolveActiveOrgId().catch(() => null);
+    if (!orgId) return <InviteRequired email={user.email} />;
+  }
   const industry = getIndustry(org.industryId);
   const mode = org.theme.mode;
   return (
