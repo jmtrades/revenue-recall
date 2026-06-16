@@ -4,6 +4,7 @@ import { saveSubscriptionForOrg, saveSubscriptionForCustomer, orgIdForCustomer, 
 import { sendPaymentFailedEmail, sendCancellationEmail } from "@/lib/billing/lifecycle";
 import { isPlanId } from "@/lib/billing/plans";
 import { addUsageCredits } from "@/lib/ai/usage";
+import { maybeGrantReferralReward } from "@/lib/referrals-server";
 import { logError, errMessage } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
@@ -75,6 +76,10 @@ export async function POST(req: Request) {
             stripeCustomerId: (obj.customer as string) ?? undefined,
             stripeSubscriptionId: (obj.subscription as string) ?? undefined,
           });
+          // Referral payoff: this is the "became a paying customer" moment, so
+          // credit the referrer (and referee) if this workspace was referred.
+          // Idempotent + best-effort — never blocks the subscription save.
+          await maybeGrantReferralReward(orgId).catch(() => {});
         }
         break;
       }
