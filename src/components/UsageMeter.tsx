@@ -39,7 +39,7 @@ export function UsageMeter({ meter, topups, billingConfigured, planName }: Usage
 
       {meter.unlimited ? (
         <p className="mt-3 flex items-center gap-2 text-sm text-fg"><Icon name="autopilot" size={15} className="text-brand" /> Unlimited AI messages on your plan — send all you like.</p>
-      ) : (
+      ) : low || out ? (
         <div className="mt-3">
           <div className="flex items-end justify-between text-sm">
             <span className="text-fg">{fmt(meter.used)} <span className="text-muted">/ {fmt(meter.limit)} used</span></span>
@@ -59,10 +59,17 @@ export function UsageMeter({ meter, topups, billingConfigured, planName }: Usage
             </p>
           )}
         </div>
+      ) : (
+        // Plenty left — stay calm and out of the way. No counts to ration; the
+        // specifics only appear once it's genuinely worth acting on (low/out).
+        <p className="mt-3 flex items-center gap-2 text-sm text-fg">
+          <Icon name="approvals" size={15} className="text-success" />
+          You&apos;ve got plenty of AI messages this month. <span className="text-muted">Resets on the 1st.</span>
+        </p>
       )}
 
-      {/* Top-ups */}
-      {!meter.unlimited && (
+      {/* Top-ups — only surfaced when it's actually useful (running low / out). */}
+      {!meter.unlimited && (low || out) && (
         <div className="mt-4 border-t border-border/60 pt-4">
           <p className="text-sm font-medium text-fg">{low ? "Running low — top up so nothing stalls" : "Need more this month?"}</p>
           <p className="mt-0.5 text-xs text-muted">Instant, one-time. Extra messages apply to this month — your plan price doesn&apos;t change.</p>

@@ -62,9 +62,9 @@ export function VoiceMinutesMeter({ meter, planName, callsLeft, packs, billingCo
       ) : noPlanMinutes ? (
         <div className="mt-3 rounded-lg bg-surface-2/60 px-3 py-2.5">
           <p className="text-sm text-fg">Your plan doesn&apos;t include live phone calls yet.</p>
-          <p className="mt-0.5 text-xs text-muted">On-device practice &amp; role-play stay free and unlimited. Upgrade to put the AI on real calls — ~100 dials a day on Operator.</p>
+          <p className="mt-0.5 text-xs text-muted">On-device practice &amp; role-play stay free and unlimited. Upgrade to put the AI on real calls — it works your whole list, all day.</p>
         </div>
-      ) : (
+      ) : low || out ? (
         <div className="mt-3">
           <div className="flex items-end justify-between text-sm">
             <span className="text-fg">{fmt(meter.usedMin)} <span className="text-muted">/ {fmt(meter.limitMin)} min used</span></span>
@@ -84,10 +84,17 @@ export function VoiceMinutesMeter({ meter, planName, callsLeft, packs, billingCo
             </p>
           )}
         </div>
+      ) : (
+        // Plenty of calling left — reassure, don't make them ration. Specifics
+        // (and the top-up packs) only appear once it's genuinely worth acting on.
+        <p className="mt-3 flex items-center gap-2 text-sm text-fg">
+          <Icon name="approvals" size={15} className="text-success" />
+          Plenty of calling left this month — enough to keep working your whole list. <span className="text-muted">Resets on the 1st.</span>
+        </p>
       )}
 
-      {/* Minute top-ups — the "never stall a hot streak" path. */}
-      {!meter.unlimited && packs.length > 0 && (
+      {/* Minute top-ups — the "never stall a hot streak" path; shown when low/out. */}
+      {!meter.unlimited && (low || out) && packs.length > 0 && (
         <div className="mt-4 border-t border-border/60 pt-4">
           <p className="text-sm font-medium text-fg">{out ? "Top up and keep dialing" : low ? "Running low — add minutes so the dialer never stops" : "Need more minutes this month?"}</p>
           <p className="mt-0.5 text-xs text-muted">Instant, one-time. Extra minutes apply to this month — your plan price doesn&apos;t change.</p>
