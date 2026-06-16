@@ -212,20 +212,23 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
           // Place the call autonomously (real dial when Twilio is set; logged
           // otherwise) — from THIS org's caller ID, like the SMS branch below.
           // Give the call brain full MEMORY so it never dials blind: who they
-          // are, why now, the recent history, and the AI-drafted talk track as
-          // the opener — spoken in the org's chosen voice.
+          // are, why now, the recent history, and the prepared talk track as
+          // TALKING POINTS (not a literal opener — a call draft is a 5-bullet
+          // track, which must be woven in conversationally, never read aloud).
+          // The gateway opens with a short, natural line; the brain conducts the
+          // rest from this context, in the org's chosen voice.
           const callContext = [
             name ? `Contact: ${name}${contact?.company ? ` at ${contact.company}` : ""}.` : "",
             t.opp.title ? `Deal: ${t.opp.title}.` : "",
             t.reason ? `Why you're calling now: ${t.reason}.` : "",
             history.length ? `Recent history (newest first): ${history.slice(0, 5).join(" | ")}` : "No prior contact logged.",
+            draft.body ? `Talking points to weave in naturally (do NOT read aloud): ${draft.body}` : "",
           ]
             .filter(Boolean)
             .join(" ");
           const res = await placeCall(to, {
             from: org.callerId,
             context: callContext,
-            opener: draft.body || undefined,
             voiceId: org.ttsVoiceId ?? undefined,
           });
           result = res.status === "failed" ? "skipped" : res.status === "sent" ? "sent" : "logged";
