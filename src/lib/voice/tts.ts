@@ -12,7 +12,7 @@
 import { speakable, type Emotion } from "@/lib/voice/speech";
 import { DEFAULT_HOUSE_VOICE } from "@/lib/voice/house";
 import { parseElevenSelection } from "@/lib/voice/eleven";
-import { elevenClient, elevenSdkError, streamToArrayBuffer } from "@/lib/voice/eleven-client";
+import { elevenClient, elevenSdkError, elevenErrorStatus, streamToArrayBuffer } from "@/lib/voice/eleven-client";
 import { expressivenessToStability } from "@/lib/voice/voice-settings";
 
 export type TtsProvider = "cartesia" | "elevenlabs" | "openai";
@@ -226,19 +226,39 @@ export interface SynthesizeInput {
   expressiveness?: number;
 }
 
-/** The ElevenLabs model id for a quality tier (both env-overridable).
- *  - realtime (live calls): Turbo v2.5 — the quality-first real-time model. Same
- *    per-character credit cost as Flash but noticeably richer/more natural, at
- *    ~250 ms latency (vs Flash's ~75 ms) — an imperceptible trade on a call for
- *    a clearly better voice. Pin ELEVENLABS_MODEL=eleven_flash_v2_5 to favor raw
- *    latency over polish.
- *  - max (read-aloud / previews / demo): multilingual_v2 — ElevenLabs' most
- *    natural production model. Set ELEVENLABS_MODEL_HQ=eleven_v3 once your
- *    account has v3 access for the most expressive output. */
+/** Ordered ElevenLabs model candidates for a quality tier (env-overridable).
+ *  - max (read-aloud / previews / demo): prefer eleven_v3 — ElevenLabs' most
+ *    expressive model — but ALWAYS keep eleven_multilingual_v2 as a proven
+ *    fallback, so an account without v3 access (or a request v3 rejects) still
+ *    produces audio. synthesizeSpeech walks this list and remembers any model
+ *    the account can't use, so the best available model wins and read-aloud can
+ *    never break. Pin ELEVENLABS_MODEL_HQ to force a single max-tier model.
+ *  - realtime (live calls): a single model — the latency budget on a live call
+ *    leaves no room for a retry. Turbo v2.5 by default (quality-first; same
+ *    per-character cost as Flash, ~250 ms vs ~75 ms). Pin ELEVENLABS_MODEL=
+ *    eleven_flash_v2_5 to favor raw latency over polish. */
+export function elevenModelChain(quality: "realtime" | "max"): string[] {
+  if (quality === "max") {
+    const hq = env("ELEVENLABS_MODEL_HQ");
+    return hq ? [hq] : ["eleven_v3", "eleven_multilingual_v2"];
+  }
+  return [env("ELEVENLABS_MODEL") ?? "eleven_turbo_v2_5"];
+}
+
+/** The primary model id for a quality tier (the first/best candidate). */
 export function elevenModel(quality: "realtime" | "max" = "realtime"): string {
-  return quality === "max"
-    ? env("ELEVENLABS_MODEL_HQ") ?? "eleven_multilingual_v2"
-    : env("ELEVENLABS_MODEL") ?? "eleven_turbo_v2_5";
+  return elevenModelChain(quality)[0];
+}
+
+/** Whether an ElevenLabs error means "this MODEL isn't usable on this account"
+ *  (try the next candidate) vs. a transient/rate/auth error (don't burn the
+ *  fallback — let the caller degrade to the browser voice). A 4xx that isn't
+ *  401 (auth) or 429 (rate limit) is treated as a model/validation problem.
+ *  Pure + tested. */
+export function elevenModelUnavailable(status: number | undefined): boolean {
+  if (typeof status !== "number") return false;
+  if (status === 401 || status === 429) return false;
+  return status >= 400 && status < 500;
 }
 
 export interface SynthesizedAudio {
@@ -246,6 +266,12 @@ export interface SynthesizedAudio {
   mime: string;
   provider: TtsProvider;
 }
+
+// ElevenLabs models this account has proven it can't use this session (e.g. no
+// eleven_v3 access). Populated lazily by synthesizeSpeech so the very next
+// read-aloud skips the dud and goes straight to the working fallback — the best
+// available model wins, with at most one failed round-trip ever.
+const elevenUnavailableModels = new Set<string>();
 
 /** Synthesize speech with the configured provider. Throws when none is
  *  configured or the provider errors — the route maps that to a clean JSON
@@ -280,28 +306,41 @@ export async function synthesizeSpeech(input: SynthesizeInput): Promise<Synthesi
     if (!client) throw new Error("ElevenLabs not configured");
     const voice = providerVoice("elevenlabs", input.voiceId);
     const s = elevenSettings(input.emotion, input.expressiveness);
-    try {
-      // Realtime (calls) → Flash v2.5 (~75 ms, the model the minute-margin
-      // math is priced on). Max (read-aloud/previews/demo) → multilingual_v2,
-      // ElevenLabs' most natural production model, since latency is invisible
-      // there and fidelity is the whole point. See elevenModel().
-      const audioStream = await client.textToSpeech.convert(voice, {
-        text,
-        modelId: elevenModel(input.quality),
-        outputFormat: "mp3_44100_128",
-        // The SDK takes camelCase settings; our tuner returns the API's
-        // snake_case shape, so map it across here (one place, not per caller).
-        voiceSettings: {
-          stability: s.stability,
-          similarityBoost: s.similarity_boost,
-          style: s.style,
-          useSpeakerBoost: s.use_speaker_boost,
-        },
-      });
-      return { audio: await streamToArrayBuffer(audioStream), mime: "audio/mpeg", provider };
-    } catch (e) {
-      throw new Error(elevenSdkError("ElevenLabs", e));
+    // Walk the quality tier's model candidates (max prefers eleven_v3 → falls
+    // back to multilingual_v2), skipping any this account has already proven it
+    // can't use. The SDK takes camelCase settings; our tuner returns the API's
+    // snake_case shape, so map it across here (one place, not per caller).
+    const candidates = elevenModelChain(input.quality ?? "realtime").filter((m) => !elevenUnavailableModels.has(m));
+    const models = candidates.length ? candidates : ["eleven_multilingual_v2"];
+    let lastErr: unknown;
+    for (let i = 0; i < models.length; i++) {
+      const modelId = models[i];
+      try {
+        const audioStream = await client.textToSpeech.convert(voice, {
+          text,
+          modelId,
+          outputFormat: "mp3_44100_128",
+          voiceSettings: {
+            stability: s.stability,
+            similarityBoost: s.similarity_boost,
+            style: s.style,
+            useSpeakerBoost: s.use_speaker_boost,
+          },
+        });
+        return { audio: await streamToArrayBuffer(audioStream), mime: "audio/mpeg", provider };
+      } catch (e) {
+        lastErr = e;
+        // If this model is the problem (not auth/rate/transient) and there's a
+        // proven fallback left, remember the dud and try it — once per session,
+        // so the next read-aloud goes straight to the working model.
+        if (i < models.length - 1 && elevenModelUnavailable(elevenErrorStatus(e))) {
+          elevenUnavailableModels.add(modelId);
+          continue;
+        }
+        throw new Error(elevenSdkError("ElevenLabs", e));
+      }
     }
+    throw new Error(elevenSdkError("ElevenLabs", lastErr));
   }
 
   const res = await fetch("https://api.openai.com/v1/audio/speech", {
