@@ -89,7 +89,7 @@ export default async function AdminPage() {
     <div className="space-y-6">
       <PageHeader title="Admin" subtitle="Your owner control panel — team, access, and system status in one place." />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Workspace" value={org.name} icon="building" />
         <Stat label="People with access" value={String(members.length)} hint={invites.length ? `${invites.length} pending invite${invites.length === 1 ? "" : "s"}` : "No pending invites"} icon="leads" />
         <Stat label="Access mode" value={inviteOnly ? "Invite-only" : "Open signup"} tone={inviteOnly ? "success" : "warn"} icon="shield" />
@@ -99,7 +99,7 @@ export default async function AdminPage() {
       {m && (
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-fg">Pipeline snapshot</h2>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Stat label="Open pipeline" value={compactMoney(m.openValue, m.currency)} hint={`${m.openCount} open deal${m.openCount === 1 ? "" : "s"}`} icon="pipeline" />
             <Stat label="Weighted forecast" value={compactMoney(m.weightedForecast, m.currency)} icon="forecast" />
             <Stat label="Won" value={compactMoney(m.wonValue, m.currency)} hint={`${m.wonCount} closed`} tone="success" icon="recall" />

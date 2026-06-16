@@ -378,7 +378,7 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
                   key={o.id}
                   onClick={() => quickLog(o)}
                   disabled={Boolean(quickBusy) || Boolean(done[active.dealId])}
-                  className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-fg transition hover:bg-surface-2 disabled:opacity-50"
+                  className="rounded-full border border-border bg-surface px-3 py-2 text-xs font-medium text-fg transition hover:bg-surface-2 disabled:opacity-50"
                 >
                   {quickBusy === o.id ? "Logging…" : o.label}
                   <kbd className="ml-1.5 rounded bg-surface-2 px-1 font-mono text-[10px] text-muted">{i + 1}</kbd>
