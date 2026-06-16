@@ -11,7 +11,8 @@
  */
 import { speakable, type Emotion } from "@/lib/voice/speech";
 import { DEFAULT_HOUSE_VOICE } from "@/lib/voice/house";
-import { parseElevenSelection, elevenErrorDetail } from "@/lib/voice/eleven";
+import { parseElevenSelection } from "@/lib/voice/eleven";
+import { elevenClient, elevenSdkError, streamToArrayBuffer } from "@/lib/voice/eleven-client";
 import { expressivenessToStability } from "@/lib/voice/voice-settings";
 
 export type TtsProvider = "cartesia" | "elevenlabs" | "openai";
@@ -269,22 +270,32 @@ export async function synthesizeSpeech(input: SynthesizeInput): Promise<Synthesi
   }
 
   if (provider === "elevenlabs") {
+    const client = elevenClient();
+    if (!client) throw new Error("ElevenLabs not configured");
     const voice = providerVoice("elevenlabs", input.voiceId);
-    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`, {
-      method: "POST",
-      headers: { "xi-api-key": env("ELEVENLABS_API_KEY")!, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        // Realtime (calls) → Flash v2.5 (~75 ms, the model the minute-margin
-        // math is priced on). Max (read-aloud/previews/demo) → multilingual_v2,
-        // ElevenLabs' most natural production model, since latency is invisible
-        // there and fidelity is the whole point. See elevenModel().
+    const s = elevenSettings(input.emotion, input.expressiveness);
+    try {
+      // Realtime (calls) → Flash v2.5 (~75 ms, the model the minute-margin
+      // math is priced on). Max (read-aloud/previews/demo) → multilingual_v2,
+      // ElevenLabs' most natural production model, since latency is invisible
+      // there and fidelity is the whole point. See elevenModel().
+      const audioStream = await client.textToSpeech.convert(voice, {
         text,
-        model_id: elevenModel(input.quality),
-        voice_settings: elevenSettings(input.emotion, input.expressiveness),
-      }),
-    });
-    if (!res.ok) throw new Error(`ElevenLabs ${res.status}${await elevenErrorDetail(res)}`);
-    return { audio: await res.arrayBuffer(), mime: "audio/mpeg", provider };
+        modelId: elevenModel(input.quality),
+        outputFormat: "mp3_44100_128",
+        // The SDK takes camelCase settings; our tuner returns the API's
+        // snake_case shape, so map it across here (one place, not per caller).
+        voiceSettings: {
+          stability: s.stability,
+          similarityBoost: s.similarity_boost,
+          style: s.style,
+          useSpeakerBoost: s.use_speaker_boost,
+        },
+      });
+      return { audio: await streamToArrayBuffer(audioStream), mime: "audio/mpeg", provider };
+    } catch (e) {
+      throw new Error(elevenSdkError("ElevenLabs", e));
+    }
   }
 
   const res = await fetch("https://api.openai.com/v1/audio/speech", {
