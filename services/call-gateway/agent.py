@@ -2,7 +2,7 @@
 over the STT / brain / TTS seams and a media transport — fully in-house."""
 import asyncio
 
-from brain import next_line
+from brain import stream_lines
 from stt import transcribe
 from tts import synthesize
 from config import TELEPHONY_SAMPLE_RATE, CALL_AI_DISCLOSURE
@@ -34,6 +34,20 @@ class CallAgent:
             if transport.interrupted() or transport.closed():
                 break  # barge-in / hangup: stop talking immediately
             await transport.send_audio(chunk)
+
+    async def _speak_stream(self, sentences, transport) -> str:
+        """Speak the reply as it streams in — synthesize and send each sentence the
+        moment the brain finishes it, so the prospect hears the first words almost
+        immediately instead of after the whole reply is generated (far less dead
+        air). Honors barge-in/hangup between sentences AND mid-sentence. Returns the
+        text actually spoken, for the transcript."""
+        spoken = []
+        async for sentence in sentences:
+            if transport.interrupted() or transport.closed():
+                break
+            await self._speak(sentence, transport)
+            spoken.append(sentence)
+        return " ".join(spoken).strip()
 
     async def leave_voicemail(self, transport) -> bool:
         """Speak the prepared voicemail, then let the call end. Invoked by the
@@ -69,7 +83,9 @@ class CallAgent:
             self.turns.append({"role": "prospect", "text": heard})
             # At the cap, force a graceful close so the call can't loop forever.
             wrap = rep_turns >= MAX_REP_TURNS
-            line = await asyncio.to_thread(next_line, self.turns, self.context, wrap)
+            # Stream the reply straight into TTS so we start speaking on the first
+            # sentence (the brain runs natively async, off the blocking path).
+            line = await self._speak_stream(stream_lines(self.turns, self.context, wrap), transport)
             if not line:
                 # Below the cap, just keep listening. AT the cap we must still close —
                 # otherwise an empty model line would skip the break and the safety
@@ -77,9 +93,9 @@ class CallAgent:
                 if not wrap:
                     continue
                 line = WRAP_FALLBACK
+                await self._speak(line, transport)
             self.turns.append({"role": "rep", "text": line})
             rep_turns += 1
-            await self._speak(line, transport)
             if wrap:
                 break  # delivered the closing line — end the call gracefully
         return self.turns  # full transcript, for logging back to the CRM

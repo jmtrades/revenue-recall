@@ -6,13 +6,13 @@ terminated by an {"type":"end"} frame or socket close. No third-party voice API.
 """
 import json
 
-import websockets
-
 from config import NEURAL_VOICE_URL, TELEPHONY_SAMPLE_RATE
 
 
 async def synthesize(text, voice_id=None, rate=1.0, emotion=None, sample_rate=TELEPHONY_SAMPLE_RATE):
     """Async generator yielding PCM s16le mono chunks for `text` in your voice."""
+    import websockets  # lazy so the orchestration layer imports without the dep
+
     if not NEURAL_VOICE_URL:
         raise RuntimeError("NEURAL_VOICE_URL not set — point at your neural-voice service")
     frame = {
