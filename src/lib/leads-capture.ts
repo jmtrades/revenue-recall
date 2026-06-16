@@ -148,6 +148,13 @@ export async function captureLead(lead: LeadInput): Promise<CaptureResult> {
     await import("@/lib/automations/run-custom")
       .then((m) => m.runCustomLeadAutomations(opp!))
       .catch(() => undefined);
+    // Speed-to-lead: the moment a fresh lead lands (web form, Zapier, API), start
+    // working it immediately instead of waiting for the cron — the single biggest
+    // conversion lever in outbound. Self-gating (only fires if the org enabled an
+    // on_new_lead autopilot task) and best-effort; never blocks the capture.
+    await import("@/lib/agent/speed-to-lead")
+      .then((m) => m.fireSpeedToLead(contact.id))
+      .catch(() => undefined);
   }
 
   return { contactId: contact.id, dealId: opp.id, enrolled, deduped: !newContact && !newDeal };

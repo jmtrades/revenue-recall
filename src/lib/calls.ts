@@ -302,8 +302,21 @@ export async function runCallRetries(now: Date = new Date()): Promise<RetryRunRe
       }
       if (result.placed >= MAX_RETRIES_PER_RUN) break;
 
+      // Give the follow-up call MEMORY too: who they are, that it's a retry, and
+      // the recent history — so the brain follows up correctly instead of opening
+      // cold. Spoken in the org's chosen voice.
+      const retryHistory = acts.filter((x) => x.summary).slice(-5).map((x) => `${x.kind}: ${x.summary}`);
+      const retryContext = [
+        contact.name ? `Contact: ${contact.name}.` : "",
+        `This is a follow-up call (attempt ${attempts + 1} of ${MAX_CALL_ATTEMPTS}) — a previous attempt didn't connect.`,
+        retryHistory.length ? `Recent history: ${retryHistory.join(" | ")}` : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
       const res = await placeCall(phone, {
         from: org.callerId,
+        context: retryContext,
+        voiceId: org.ttsVoiceId ?? undefined,
         meta: signCallMeta({ contactId: contact.id, ...(a.opportunityId ? { dealId: a.opportunityId } : {}), ...(orgIdForMeta ? { orgId: orgIdForMeta } : {}) }),
       }).catch(() => ({ status: "failed" as const }));
       if (res.status === "failed") {
