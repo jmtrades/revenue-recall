@@ -226,10 +226,17 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
           ]
             .filter(Boolean)
             .join(" ");
+          // Most dials hit voicemail — leave a short, AI-disclosed message (with
+          // one easy reason to call back) instead of silence. Template-based, so
+          // it adds no AI cost; the gateway drops it only when AMD flags a machine.
+          const vmFirst = (name || "there").split(" ")[0];
+          const vmSender = voice?.senderName?.trim() || org.name || "the team";
+          const callVoicemail = `Hi ${vmFirst}, this is an AI assistant reaching out on behalf of ${vmSender}${t.opp.title ? ` about ${t.opp.title}` : ""}. Give us a quick call back whenever it's easy — thanks!`;
           const res = await placeCall(to, {
             from: org.callerId,
             context: callContext,
             voiceId: org.ttsVoiceId ?? undefined,
+            voicemail: callVoicemail,
           });
           result = res.status === "failed" ? "skipped" : res.status === "sent" ? "sent" : "logged";
           if (result !== "skipped") {
