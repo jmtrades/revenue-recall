@@ -204,6 +204,18 @@ async def sms(request: Request):
                          "detail": "Wire your SIP-trunk SMS API here."}, status_code=501)
 
 
+async def _conduct(agent: CallAgent, transport, call_id: str) -> None:
+    """Leave a prepared voicemail if Twilio AMD has ALREADY judged this a machine;
+    otherwise run the live conversation. Fail-open: with no machine verdict present
+    (the common case, incl. every live human), this behaves exactly as before — so
+    a real person is never sent to voicemail by a missing or slow AMD signal."""
+    verdict = _amd_results.get(call_id, ("", 0.0))[0] if call_id else ""
+    if verdict and amd.is_machine(verdict) and getattr(agent, "voicemail", None):
+        await agent.leave_voicemail(transport)
+    else:
+        await agent.run(transport)
+
+
 async def _finish_call(call_id: str, ctx: dict, agent: CallAgent, started: float) -> None:
     """Close the loop after any call (FreeSWITCH or Twilio): POST the transcript +
     heuristic outcome back to the app so it lands on the CRM timeline."""
@@ -247,7 +259,7 @@ async def twilio_media(ws: WebSocket):
     agent = CallAgent(context=ctx.get("context", ""), voice_id=ctx.get("voiceId"), opener=ctx.get("opener") or DEFAULT_OPENER, voicemail=ctx.get("voicemail"))
     started = time.monotonic()
     try:
-        await agent.run(transport)
+        await _conduct(agent, transport, call_id)
     except WebSocketDisconnect:
         pass
     except Exception as e:  # pragma: no cover - defensive
@@ -274,7 +286,7 @@ async def media(ws: WebSocket, call_id: str):
     )
     started = time.monotonic()
     try:
-        await agent.run(transport)
+        await _conduct(agent, transport, call_id)
     except WebSocketDisconnect:
         pass
     finally:
