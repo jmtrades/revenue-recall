@@ -96,7 +96,7 @@ describe("health launch-readiness verdict", () => {
 describe("health voice diagnostic (public ElevenLabs connection check)", () => {
   it("reports nothing connected with the no_key reason when no key is set", async () => {
     const body = await health();
-    expect(body.voice.eleven).toBe(false);
+    expect(body.voice.premiumVoice).toBe(false);
     expect(body.voice.hosted).toBe(false);
     expect(body.voice.agent).toBe(false);
     expect(body.voice.agentReason).toBe("no_key");
@@ -105,9 +105,8 @@ describe("health voice diagnostic (public ElevenLabs connection check)", () => {
   it("with the key set: hosted voice is live on ElevenLabs, agent still needs an agent id", async () => {
     process.env.ELEVENLABS_API_KEY = "el-test";
     const body = await health();
-    expect(body.voice.eleven).toBe(true);
+    expect(body.voice.premiumVoice).toBe(true);
     expect(body.voice.hosted).toBe(true);
-    expect(body.voice.hostedProvider).toBe("elevenlabs");
     expect(body.voice.agent).toBe(false);
     expect(body.voice.agentReason).toBe("no_agent");
   });

@@ -36,7 +36,7 @@ export const GET = withGuard(async (req: Request) => {
     return NextResponse.json({ configured: true, reason: "ok", voices });
   } catch (e) {
     return NextResponse.json(
-      { configured: false, reason: "error", voices: [], error: e instanceof Error ? e.message : "Could not reach ElevenLabs" },
+      { configured: false, reason: "error", voices: [], error: e instanceof Error ? e.message : "Could not reach the voice service" },
       { status: 200 },
     );
   }
