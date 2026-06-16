@@ -17,6 +17,10 @@
  * Inert until ELEVENLABS_API_KEY is set — callers gate on elevenConfigured().
  */
 
+import { elevenClient, elevenSdkError } from "@/lib/voice/eleven-client";
+
+// Only the "add a public library voice to my account" call still uses a raw
+// request — the official SDK has no method for POST /v1/voices/add/{owner}/{id}.
 const API = "https://api.elevenlabs.io/v1";
 
 /** Stored-voice scheme: "eleven:<voiceId>" distinguishes an ElevenLabs voice
@@ -129,13 +133,27 @@ export function sortVoices(voices: ElevenVoice[]): ElevenVoice[] {
 /** The account's full voice library (premade + professional + clones). Throws
  *  when unconfigured or the provider errors — routes map that to clean JSON. */
 export async function listElevenVoices(): Promise<ElevenVoice[]> {
-  const k = key();
-  if (!k) throw new Error("ElevenLabs not configured");
-  const res = await fetch(`${API}/voices`, { headers: { "xi-api-key": k }, cache: "no-store" });
-  if (!res.ok) throw new Error(`ElevenLabs voices ${res.status}${await elevenErrorDetail(res)}`);
-  const data = (await res.json()) as { voices?: RawVoice[] };
+  const client = elevenClient();
+  if (!client) throw new Error("ElevenLabs not configured");
+  let data;
+  try {
+    data = await client.voices.getAll();
+  } catch (e) {
+    throw new Error(elevenSdkError("ElevenLabs voices", e));
+  }
+  // Map the SDK's camelCase models back onto our snake_case RawVoice shape so the
+  // pure (unit-tested) normalize/sort helpers below stay the single source of truth.
   const voices = (data.voices ?? [])
-    .map(normalizeElevenVoice)
+    .map((v) =>
+      normalizeElevenVoice({
+        voice_id: v.voiceId,
+        name: v.name,
+        category: v.category,
+        description: v.description,
+        preview_url: v.previewUrl,
+        labels: v.labels,
+      }),
+    )
     .filter((v): v is ElevenVoice => v !== null);
   return sortVoices(voices);
 }
@@ -152,35 +170,34 @@ export interface CloneInput {
  * audio. Returns the new voice id, which can be stored via elevenSelection().
  */
 export async function cloneElevenVoice(input: CloneInput): Promise<{ id: string; name: string }> {
-  const k = key();
-  if (!k) throw new Error("ElevenLabs not configured");
+  const client = elevenClient();
+  if (!client) throw new Error("ElevenLabs not configured");
   if (!input.files.length) throw new Error("Add at least one audio sample to clone a voice.");
-  const form = new FormData();
-  form.append("name", input.name);
-  if (input.description) form.append("description", input.description);
-  for (const f of input.files) form.append("files", f, f.name || "sample.webm");
-  const res = await fetch(`${API}/voices/add`, {
-    method: "POST",
-    headers: { "xi-api-key": k },
-    body: form,
-  });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(`ElevenLabs clone ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+  let data;
+  try {
+    data = await client.voices.ivc.create({
+      name: input.name,
+      files: input.files,
+      ...(input.description ? { description: input.description } : {}),
+    });
+  } catch (e) {
+    throw new Error(elevenSdkError("ElevenLabs clone", e));
   }
-  const data = (await res.json()) as { voice_id?: string; name?: string };
-  if (!data.voice_id) throw new Error("ElevenLabs clone: no voice id returned");
-  return { id: data.voice_id, name: data.name || input.name };
+  if (!data.voiceId) throw new Error("ElevenLabs clone: no voice id returned");
+  return { id: data.voiceId, name: input.name };
 }
 
 /** Delete a voice (used to remove the org's own clones). */
 export async function deleteElevenVoice(voiceId: string): Promise<void> {
-  const k = key();
-  if (!k) throw new Error("ElevenLabs not configured");
+  const client = elevenClient();
+  if (!client) throw new Error("ElevenLabs not configured");
   const id = parseElevenSelection(elevenSelection(voiceId)) ?? voiceId;
   if (!/^[A-Za-z0-9]{1,64}$/.test(id)) throw new Error("Invalid voice id");
-  const res = await fetch(`${API}/voices/${id}`, { method: "DELETE", headers: { "xi-api-key": k } });
-  if (!res.ok) throw new Error(`ElevenLabs delete ${res.status}${await elevenErrorDetail(res)}`);
+  try {
+    await client.voices.delete(id);
+  } catch (e) {
+    throw new Error(elevenSdkError("ElevenLabs delete", e));
+  }
 }
 
 // ---- the full public library (shared voices) ----
@@ -257,20 +274,41 @@ export function normalizeSharedVoice(raw: RawSharedVoice): SharedVoice | null {
  * Throws when unconfigured or the provider errors — routes map that to JSON.
  */
 export async function listSharedElevenVoices(opts?: { search?: string; limit?: number }): Promise<SharedVoice[]> {
-  const k = key();
-  if (!k) throw new Error("ElevenLabs not configured");
+  const client = elevenClient();
+  if (!client) throw new Error("ElevenLabs not configured");
   const limit = Math.min(Math.max(opts?.limit ?? 60, 1), 100);
-  const params = new URLSearchParams({ page_size: String(limit), featured: "false" });
   const search = opts?.search?.trim();
-  if (search) params.set("search", search.slice(0, 80));
-  const res = await fetch(`${API}/shared-voices?${params.toString()}`, {
-    headers: { "xi-api-key": k },
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error(`ElevenLabs shared-voices ${res.status}${await elevenErrorDetail(res)}`);
-  const data = (await res.json()) as { voices?: RawSharedVoice[] };
+  let data;
+  try {
+    data = await client.voices.getShared({
+      pageSize: limit,
+      featured: false,
+      ...(search ? { search: search.slice(0, 80) } : {}),
+    });
+  } catch (e) {
+    throw new Error(elevenSdkError("ElevenLabs shared-voices", e));
+  }
+  // Shared voices expose attributes as FLAT camelCase fields; map them onto our
+  // RawSharedVoice shape so the tested normalize helper handles the rest.
   const voices = (data.voices ?? [])
-    .map(normalizeSharedVoice)
+    .map((v) =>
+      normalizeSharedVoice({
+        voice_id: v.voiceId,
+        public_owner_id: v.publicOwnerId,
+        name: v.name,
+        category: v.category,
+        gender: v.gender,
+        accent: v.accent,
+        age: v.age,
+        use_case: v.useCase,
+        descriptive: v.descriptive,
+        language: v.language,
+        description: v.description,
+        preview_url: v.previewUrl,
+        cloned_by_count: v.clonedByCount,
+        usage_character_count_1y: v.usageCharacterCount1Y,
+      }),
+    )
     .filter((v): v is SharedVoice => v !== null)
     .sort((a, b) => b.usage - a.usage);
   return voices;
