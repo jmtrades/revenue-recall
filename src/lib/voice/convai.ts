@@ -11,7 +11,7 @@
  * the feature reports unavailable and the UI simply doesn't render it.
  */
 
-import { elevenErrorDetail } from "@/lib/voice/eleven";
+import { elevenClient, elevenSdkError } from "@/lib/voice/eleven-client";
 
 function env(name: string): string | undefined {
   const v = process.env[name];
@@ -49,16 +49,16 @@ export function convaiReason(hasKey: boolean, hasAgent: boolean, entitled: boole
  * maps that to a clean JSON error and the client falls back to "unavailable".
  */
 export async function getConvaiToken(): Promise<{ token: string; agentId: string }> {
-  const key = env("ELEVENLABS_API_KEY");
+  const client = elevenClient();
   const agentId = convaiAgentId();
-  if (!key || !agentId) throw new Error("ElevenLabs Conversational AI not configured");
+  if (!client || !agentId) throw new Error("ElevenLabs Conversational AI not configured");
 
-  const res = await fetch(
-    `https://api.elevenlabs.io/v1/convai/conversation/token?agent_id=${encodeURIComponent(agentId)}`,
-    { headers: { "xi-api-key": key }, cache: "no-store" },
-  );
-  if (!res.ok) throw new Error(`ElevenLabs token ${res.status}${await elevenErrorDetail(res)}`);
-  const data = (await res.json()) as { token?: string };
+  let data;
+  try {
+    data = await client.conversationalAi.conversations.getWebrtcToken({ agentId });
+  } catch (e) {
+    throw new Error(elevenSdkError("ElevenLabs token", e));
+  }
   if (!data.token) throw new Error("ElevenLabs token: missing token");
   return { token: data.token, agentId };
 }
