@@ -223,15 +223,16 @@ function hostedSpeak(text: string, opts: SpeakOptions): SpeakHandle {
         if (!stopped) await browserSynth.speak(text, opts).then((h) => h.done);
         return;
       }
-      const provider = res.headers.get("X-RR-TTS-Provider");
+      // The server tells us (vendor-agnostically) whether to apply the speaking
+      // rate at playback: the premium hosted voice ignores server-side rate, so
+      // we apply it here — never both, or the speed compounds. OpenAI honors it
+      // server-side, so we leave playback alone there.
+      const applyClientRate = res.headers.get("X-RR-TTS-Client-Rate") === "1";
       const blob = await res.blob();
       if (stopped) return;
       objectUrl = URL.createObjectURL(blob);
       audio = new Audio(objectUrl);
-      // OpenAI applies `rate` server-side; ElevenLabs ignores it, so apply it
-      // at playback — never both, or the speed compounds. Use the caller's rate
-      // if given, else the org's saved speaking speed from the probe.
-      if (provider === "elevenlabs") {
+      if (applyClientRate) {
         const effectiveRate = typeof opts.rate === "number" && opts.rate !== 1 ? opts.rate : hostedRate;
         if (effectiveRate && effectiveRate !== 1) audio.playbackRate = Math.min(1.5, Math.max(0.5, effectiveRate));
       }

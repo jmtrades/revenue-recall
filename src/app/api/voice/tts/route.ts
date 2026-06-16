@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withGuard } from "@/lib/api/guard";
 import { isEntitled } from "@/lib/billing/enforce";
-import { ttsAvailable, ttsProvider, synthesizeSpeech } from "@/lib/voice/tts";
+import { ttsAvailable, synthesizeSpeech } from "@/lib/voice/tts";
 import { EMOTIONS } from "@/lib/voice/speech";
 import { getOrgSettings } from "@/lib/org";
 
@@ -21,7 +21,8 @@ export const GET = withGuard(async () => {
   // playback (ElevenLabs ignores server-side rate), making the tuned speed
   // audible on every read-aloud, not just synthesized previews.
   const rate = available ? (await getOrgSettings().catch(() => null))?.voiceSettings.rate ?? 1 : 1;
-  return NextResponse.json({ available, provider: available ? ttsProvider() : null, rate });
+  // White-labeled: report only that a premium voice is available, never the vendor.
+  return NextResponse.json({ available, provider: available ? "premium" : null, rate });
 });
 
 const Body = z.object({
@@ -67,7 +68,10 @@ export const POST = withGuard(async (req: Request) => {
       headers: {
         "Content-Type": out.mime,
         "Cache-Control": "no-store",
-        "X-RR-TTS-Provider": out.provider,
+        // White-labeled: don't leak the vendor in a network header. The client
+        // only needs to know whether to apply the speaking rate at playback
+        // (the premium hosted voice ignores server-side rate; OpenAI honors it).
+        "X-RR-TTS-Client-Rate": out.provider === "elevenlabs" ? "1" : "0",
       },
     });
   } catch (e) {

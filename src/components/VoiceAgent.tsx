@@ -159,7 +159,7 @@ export function VoiceAgent({
       reason === "not_entitled"
         ? "The live voice agent is on paid plans — connect billing, or set BILLING_ENFORCE=false to use it now."
         : reason === "no_agent"
-          ? "ElevenLabs key is set, but no agent. Create a Conversational AI agent in the ElevenLabs dashboard and add its id as ELEVENLABS_AGENT_ID, then redeploy."
+          ? "The voice key is set, but no agent. Create a Conversational AI agent in your voice-provider dashboard and add its id as ELEVENLABS_AGENT_ID, then redeploy."
           : "The live voice agent isn't connected. Add ELEVENLABS_API_KEY and ELEVENLABS_AGENT_ID in Vercel, then redeploy.";
     return (
       <div className={className}>
