@@ -12,12 +12,27 @@ import { isAiConfigured } from "@/lib/ai/client";
 import { billingConfigured } from "@/lib/billing/stripe";
 import { ttsAvailable } from "@/lib/voice/tts";
 import { convaiConfigured } from "@/lib/voice/convai";
+import { getReports } from "@/lib/queries";
+import { resolveProvider } from "@/lib/crm/registry";
+import { compactMoney, pct } from "@/lib/format";
+import type { Activity } from "@/lib/crm/types";
 
 export const metadata = { title: "Admin — Revenue Recall" };
 
 // Authenticated, role-gated, and data-driven — must render per request so the
 // owner/admin check always runs and team/status data is never statically cached.
 export const dynamic = "force-dynamic";
+
+/** Compact relative time for the activity feed ("3m ago", "2h ago", "5d ago"). */
+function ago(iso: string): string {
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return "just now";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
 
 /**
  * Owner control panel. A single back-office view — separate from the day-to-day
@@ -31,7 +46,17 @@ export default async function AdminPage() {
   const role = await getSessionRole();
   if (isAuthRequired() && role !== "owner" && role !== "admin") redirect("/dashboard");
 
-  const [members, invites, org] = await Promise.all([listMembers(), listInvites(), getOrgSettings()]);
+  // Team/access data, plus an owner-level business snapshot and recent activity.
+  // The latter two are best-effort: they degrade to hidden/empty rather than
+  // ever breaking the control panel.
+  const [members, invites, org, reports, recent] = await Promise.all([
+    listMembers(),
+    listInvites(),
+    getOrgSettings(),
+    getReports().catch(() => null),
+    resolveProvider().then((p) => p.listRecentActivities(8)).catch(() => [] as Activity[]),
+  ]);
+  const m = reports?.metrics;
   const inviteOnly = inviteOnlyEnabled();
 
   // System health at a glance — each feature lights up only when its key/URL is
@@ -58,6 +83,18 @@ export default async function AdminPage() {
         <Stat label="Your role" value={role ? role[0].toUpperCase() + role.slice(1) : "—"} icon="settings" />
       </div>
 
+      {m && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-fg">Pipeline snapshot</h2>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <Stat label="Open pipeline" value={compactMoney(m.openValue, m.currency)} hint={`${m.openCount} open deal${m.openCount === 1 ? "" : "s"}`} icon="pipeline" />
+            <Stat label="Weighted forecast" value={compactMoney(m.weightedForecast, m.currency)} icon="forecast" />
+            <Stat label="Won" value={compactMoney(m.wonValue, m.currency)} hint={`${m.wonCount} closed`} tone="success" icon="recall" />
+            <Stat label="Win rate" value={pct(m.winRate)} icon="reports" />
+          </div>
+        </div>
+      )}
+
       <Card title="System status">
         <div className="grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">
           {systems.map((s) => (
@@ -70,6 +107,21 @@ export default async function AdminPage() {
             </div>
           ))}
         </div>
+      </Card>
+
+      <Card title="Recent activity">
+        {recent.length === 0 ? (
+          <p className="text-sm text-muted">No activity yet — once outreach starts, it shows up here.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {recent.map((a) => (
+              <li key={a.id} className="flex items-center justify-between gap-3 py-2">
+                <span className="min-w-0 truncate text-sm text-fg">{a.summary}</span>
+                <span className="shrink-0 text-xs text-muted">{ago(a.occurredAt)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
 
       <Card title="Access control">
