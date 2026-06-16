@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { logCallOutcome, scheduleCallRetry, scheduleVoicemailFollowup } from "@/lib/calls";
+import { logCallOutcome, scheduleCallRetry, scheduleVoicemailFollowup, scheduleRequestedCallback } from "@/lib/calls";
+import { parseCallbackTime, callbackLabel } from "@/lib/calls/callback-time";
+import { timezoneForPhone } from "@/lib/calls/local-time";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 import { safeEqual } from "@/lib/safe-compare";
 import { verifyCallMeta } from "@/lib/calls/meta-sig";
@@ -76,8 +78,20 @@ export const POST = withGuard(async (req: Request) => {
       durationSec: b.durationSec,
       recordingUrl: b.recordingUrl,
     });
-    // If the call didn't reach a human, schedule the next dial (best-effort).
-    if (activity) await scheduleCallRetry({ contactId, dealId, outcome: b.outcome });
+    // If the PROSPECT named a callback time ON the call ("call me Thursday at
+    // 10"), book that exact dial in THEIR timezone — the highest-intent follow-up.
+    // Parse only their lines so a rep-proposed time can't trigger it. Falls back
+    // to the generic no-answer retry only when no time was agreed. Best-effort.
+    if (activity) {
+      const tz = b.to ? timezoneForPhone(b.to) ?? undefined : undefined;
+      const prospectText = (b.transcript ?? "")
+        .split("\n")
+        .filter((l) => /^\s*prospect:/i.test(l))
+        .join("\n");
+      const when = prospectText ? parseCallbackTime(prospectText, new Date(), tz) : null;
+      if (when) await scheduleRequestedCallback({ contactId, dealId, when, label: callbackLabel(when, tz) });
+      else await scheduleCallRetry({ contactId, dealId, outcome: b.outcome });
+    }
     // If it hit voicemail, queue a short follow-up text to Approvals (best-effort,
     // non-throwing, opt-out-aware) so they have an easy async reply path.
     if (activity) await scheduleVoicemailFollowup({ contactId, dealId, outcome: b.outcome });
