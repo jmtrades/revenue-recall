@@ -172,6 +172,36 @@ textarea:focus-visible {
 }
 
 @layer utilities {
+  /* ── Mobile comfort (phones ≤ 640px) ──────────────────────────────────────
+     The signed-in product is dense by desktop default; on a phone that reads as
+     cramped and hard to tap. These rules add breathing room and bring primary
+     controls up to the ~44px iOS/Android touch-target guideline. Desktop is
+     untouched (the query only applies ≤640px), and it deliberately targets form
+     fields, the primary button (.cta) and nav rows — not tiny chips/icon buttons
+     — so nothing distorts. */
+  @media (max-width: 640px) {
+    /* Comfortable, tappable form fields. */
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    select,
+    textarea {
+      min-height: 2.75rem;
+      font-size: 1rem; /* ≥16px stops iOS Safari from zooming on focus */
+    }
+    /* Primary buttons + nav rows: easy to hit, with room to breathe. */
+    .cta {
+      min-height: 2.75rem;
+    }
+    .nav-link {
+      @apply py-3;
+    }
+    /* A touch more air inside cards and between stacked sections on a phone. */
+    .card {
+      @apply p-4;
+      padding-top: 1.15rem;
+      padding-bottom: 1.15rem;
+    }
+  }
+
   /* Accent highlight — a confident SOLID accent, not a shimmer gradient
      (the gradient headline is a tired AI-slop tell). Class name kept so all
      existing usages flip to the cleaner treatment automatically. */
