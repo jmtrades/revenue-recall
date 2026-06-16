@@ -35,14 +35,15 @@ describe("voice cost model — the margin math plans are priced on", () => {
     expect(voiceCostPerMinuteUsd("elevenlabs")).toBeCloseTo(0.145, 3);
   });
 
-  it("WORST-CASE margin floors hold at FULL allowance consumption", () => {
-    // Operator: $399 / 1,500 min → COGS $127.50 (32%) → ≥65% floor (~68%).
-    expect(voiceGrossMarginPct(399, 1500, "elevenlabs")).toBeGreaterThan(0.65);
-    // Autopilot: $899 / 4,000 min → COGS $340 (38%) → ≥60% floor (~62%).
-    expect(voiceGrossMarginPct(899, 4000, "elevenlabs")).toBeGreaterThan(0.6);
-    // Cartesia path widens both.
-    expect(voiceGrossMarginPct(399, 1500, "cartesia")).toBeGreaterThan(0.74);
-    expect(voiceGrossMarginPct(899, 4000, "cartesia")).toBeGreaterThan(0.7);
+  it("WORST-CASE voice margin floors hold at FULL allowance consumption (≥70% target)", () => {
+    // Repriced for a ≥70% TOTAL-COGS floor: voice alone is now ~20% of price.
+    // Operator: $599 / 1,500 min → voice COGS $127.50 (21%) → ~79% voice margin.
+    expect(voiceGrossMarginPct(599, 1500, "elevenlabs")).toBeGreaterThan(0.75);
+    // Autopilot: $1,699 / 4,000 min → voice COGS $340 (20%) → ~80% voice margin.
+    expect(voiceGrossMarginPct(1699, 4000, "elevenlabs")).toBeGreaterThan(0.75);
+    // Cartesia path widens both further.
+    expect(voiceGrossMarginPct(599, 1500, "cartesia")).toBeGreaterThan(0.8);
+    expect(voiceGrossMarginPct(1699, 4000, "cartesia")).toBeGreaterThan(0.8);
   });
 
   it("turns minutes into honest call-count copy", () => {

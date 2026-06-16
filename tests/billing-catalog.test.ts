@@ -8,10 +8,10 @@ beforeEach(() => {
 
 describe("billing catalog", () => {
   it("matches the public prices and covers monthly + annual + every top-up", () => {
-    expect(catalogForPlan("growth", "monthly")?.unitAmountCents).toBe(39_900); // $399
-    expect(catalogForPlan("team", "monthly")?.unitAmountCents).toBe(89_900); // $899
-    expect(catalogForPlan("growth", "annual")?.unitAmountCents).toBe(399_000); // 10x
-    expect(catalogForPlan("team", "annual")?.unitAmountCents).toBe(899_000);
+    expect(catalogForPlan("growth", "monthly")?.unitAmountCents).toBe(59_900); // $599
+    expect(catalogForPlan("team", "monthly")?.unitAmountCents).toBe(169_900); // $1,699
+    expect(catalogForPlan("growth", "annual")?.unitAmountCents).toBe(599_000); // 10x
+    expect(catalogForPlan("team", "annual")?.unitAmountCents).toBe(1_699_000);
     expect(catalogForTopup("5k")?.unitAmountCents).toBe(9_900); // $99
   });
   it("uses unique lookup keys (idempotent provisioning)", () => {

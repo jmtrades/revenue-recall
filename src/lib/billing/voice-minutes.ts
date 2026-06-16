@@ -28,10 +28,13 @@ import { ttsProvider, type TtsProvider } from "@/lib/voice/tts";
  *              $0.040 Cartesia · $0.015 OpenAI · $0 browser/none
  *
  * Blended: ~$0.085/min on ElevenLabs (Turbo/Flash v2.5), ~$0.065 Cartesia, ~$0.040 OpenAI.
- * Worst-case (full-allowance) voice margins at the shipped prices — floors
- * enforced by tests, expected margins higher at real utilization:
- *   Operator $399 / 1,500 min → COGS $127.50 = 32% of price → ~68% margin
- *   Autopilot $899 / 4,000 min → COGS $340 = 38% of price → ~62% margin
+ * Worst-case (full-allowance) margins at the shipped prices — designed so TOTAL
+ * COGS (voice + AI + Stripe + infra) stays ≤30% of price, i.e. ≥70% gross margin
+ * even at FULL consumption (and far higher at real utilization):
+ *   Operator  $599 / 1,500 min → voice COGS $127.50 = 21% of price
+ *   Autopilot $1,699 / 4,000 min → voice COGS $340 = 20% of price
+ * AI is the other COGS lever (~$0.018/msg blended, cold→Sonnet); included message
+ * pools (1,500 / 6,000) are sized to keep the combined full-burn COGS under 30%.
  */
 
 const num = (name: string, fallback: number): number => {

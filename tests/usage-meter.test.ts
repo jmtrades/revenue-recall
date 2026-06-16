@@ -15,7 +15,7 @@ describe("plan action allowances", () => {
   it("matches the marketing pools", () => {
     expect(entitlements("free").actionsPerMonth).toBe(50);
     expect(entitlements("growth").actionsPerMonth).toBe(1500);
-    expect(entitlements("team").actionsPerMonth).toBe(10000);
+    expect(entitlements("team").actionsPerMonth).toBe(6000);
     expect(Number.isFinite(entitlements("scale").actionsPerMonth)).toBe(false); // unlimited
   });
 });

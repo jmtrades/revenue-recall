@@ -7,8 +7,8 @@ import { TOPUP_PACKS } from "@/lib/billing/topups";
  * so provisioning is idempotent (re-running reuses the same price) and so prices
  * can be resolved at runtime by key without anyone pasting price ids.
  *
- * Prices mirror the public pricing exactly: Operator $399/mo (per rep),
- * Autopilot $899/mo (flat), annual = 10x monthly (~2 months free), and the
+ * Prices mirror the public pricing exactly: Operator $599/mo (per rep),
+ * Autopilot $1,699/mo (flat), annual = 10x monthly (~2 months free), and the
  * one-time top-up packs. Amounts are in cents.
  *
  * Changing an amount here reprices on the next /api/billing/setup run:
@@ -36,10 +36,10 @@ export interface CatalogPrice {
 const USD = "usd";
 
 export const CATALOG: CatalogPrice[] = [
-  { lookupKey: "rr_operator_monthly", productKey: "rr_operator", productName: "Operator", description: "One autonomous AI rep — per rep / month", unitAmountCents: 39_900, currency: USD, recurring: { interval: "month" }, envVar: "STRIPE_PRICE_GROWTH", kind: "plan", plan: "growth", cycle: "monthly" },
-  { lookupKey: "rr_operator_annual", productKey: "rr_operator", productName: "Operator", description: "Operator — per rep / year (2 months free)", unitAmountCents: 399_000, currency: USD, recurring: { interval: "year" }, envVar: "STRIPE_PRICE_GROWTH_ANNUAL", kind: "plan", plan: "growth", cycle: "annual" },
-  { lookupKey: "rr_autopilot_monthly", productKey: "rr_autopilot", productName: "Autopilot", description: "Autonomous sales team — up to 5 reps / month", unitAmountCents: 89_900, currency: USD, recurring: { interval: "month" }, envVar: "STRIPE_PRICE_TEAM", kind: "plan", plan: "team", cycle: "monthly" },
-  { lookupKey: "rr_autopilot_annual", productKey: "rr_autopilot", productName: "Autopilot", description: "Autopilot — per year (2 months free)", unitAmountCents: 899_000, currency: USD, recurring: { interval: "year" }, envVar: "STRIPE_PRICE_TEAM_ANNUAL", kind: "plan", plan: "team", cycle: "annual" },
+  { lookupKey: "rr_operator_monthly", productKey: "rr_operator", productName: "Operator", description: "One autonomous AI rep — per rep / month", unitAmountCents: 59_900, currency: USD, recurring: { interval: "month" }, envVar: "STRIPE_PRICE_GROWTH", kind: "plan", plan: "growth", cycle: "monthly" },
+  { lookupKey: "rr_operator_annual", productKey: "rr_operator", productName: "Operator", description: "Operator — per rep / year (2 months free)", unitAmountCents: 599_000, currency: USD, recurring: { interval: "year" }, envVar: "STRIPE_PRICE_GROWTH_ANNUAL", kind: "plan", plan: "growth", cycle: "annual" },
+  { lookupKey: "rr_autopilot_monthly", productKey: "rr_autopilot", productName: "Autopilot", description: "Autonomous sales team — up to 5 reps / month", unitAmountCents: 169_900, currency: USD, recurring: { interval: "month" }, envVar: "STRIPE_PRICE_TEAM", kind: "plan", plan: "team", cycle: "monthly" },
+  { lookupKey: "rr_autopilot_annual", productKey: "rr_autopilot", productName: "Autopilot", description: "Autopilot — per year (2 months free)", unitAmountCents: 1_699_000, currency: USD, recurring: { interval: "year" }, envVar: "STRIPE_PRICE_TEAM_ANNUAL", kind: "plan", plan: "team", cycle: "annual" },
   ...TOPUP_PACKS.map((p): CatalogPrice => ({
     lookupKey: `rr_topup_${p.id}`,
     productKey: `rr_topup_${p.id}`,
