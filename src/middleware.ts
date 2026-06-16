@@ -2,6 +2,16 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isAuthRequired } from "@/lib/config";
 import { isPublicRoute, requiresSameOrigin, isSameOriginRequest } from "@/lib/route-access";
+import { REFERRAL_COOKIE, REFERRAL_COOKIE_MAX_AGE, parseReferralCode } from "@/lib/referrals";
+
+/** Remember a valid `?ref=<orgId>` from a shared signup link so the new workspace
+ *  can be credited to its referrer at first provision. Additive + fail-open. */
+function captureReferral(req: NextRequest, res: NextResponse): void {
+  const code = parseReferralCode(req.nextUrl.searchParams.get("ref"));
+  if (code && req.cookies.get(REFERRAL_COOKIE)?.value !== code) {
+    res.cookies.set(REFERRAL_COOKIE, code, { maxAge: REFERRAL_COOKIE_MAX_AGE, httpOnly: true, sameSite: "lax", path: "/" });
+  }
+}
 
 export async function middleware(req: NextRequest) {
   let res = NextResponse.next({ request: req });
@@ -65,6 +75,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(to);
   }
 
+  captureReferral(req, res);
   return res;
 }
 
