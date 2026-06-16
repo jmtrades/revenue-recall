@@ -226,13 +226,19 @@ export interface SynthesizeInput {
   expressiveness?: number;
 }
 
-/** The ElevenLabs model id for a quality tier (both env-overridable). Flash for
- *  realtime calls; multilingual_v2 — ElevenLabs' most natural production model —
- *  for max-quality non-realtime speech. */
+/** The ElevenLabs model id for a quality tier (both env-overridable).
+ *  - realtime (live calls): Turbo v2.5 — the quality-first real-time model. Same
+ *    per-character credit cost as Flash but noticeably richer/more natural, at
+ *    ~250 ms latency (vs Flash's ~75 ms) — an imperceptible trade on a call for
+ *    a clearly better voice. Pin ELEVENLABS_MODEL=eleven_flash_v2_5 to favor raw
+ *    latency over polish.
+ *  - max (read-aloud / previews / demo): multilingual_v2 — ElevenLabs' most
+ *    natural production model. Set ELEVENLABS_MODEL_HQ=eleven_v3 once your
+ *    account has v3 access for the most expressive output. */
 export function elevenModel(quality: "realtime" | "max" = "realtime"): string {
   return quality === "max"
     ? env("ELEVENLABS_MODEL_HQ") ?? "eleven_multilingual_v2"
-    : env("ELEVENLABS_MODEL") ?? "eleven_flash_v2_5";
+    : env("ELEVENLABS_MODEL") ?? "eleven_turbo_v2_5";
 }
 
 export interface SynthesizedAudio {
