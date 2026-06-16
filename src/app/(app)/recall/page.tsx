@@ -82,7 +82,7 @@ export default async function RecallPage() {
       {outcomes.recalled > 0 && (
         <section>
           <p className="stat-label mb-3">Recall results so far</p>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Stat label="Recalled" value={String(outcomes.recalled)} hint="deals worked" countUp />
             <Stat label="Re-engaged" value={String(outcomes.reEngaged)} hint="got a touch" countUp />
             <Stat label="Won back" value={String(outcomes.wonBack)} tone="success" hint="closed after recall" countUp />

@@ -35,7 +35,7 @@ export default async function ForecastPage() {
     <div className="space-y-6">
       <PageHeader title="Forecast" subtitle="Where revenue will land — commit, best case, and full pipeline." />
 
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Commit" value={money(f.commit, f.currency)} tone="success" hint="≥80% probability" />
         <Stat label="Best Case" value={money(f.commit + f.bestCase, f.currency)} hint="commit + likely" />
         <Stat label="Weighted" value={money(f.weighted, f.currency)} hint="probability-adjusted" />
