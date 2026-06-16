@@ -7,7 +7,11 @@ from stt import transcribe
 from tts import synthesize
 from config import TELEPHONY_SAMPLE_RATE, CALL_AI_DISCLOSURE
 
-DEFAULT_OPENER = "Hey, it's me — caught you at an okay time?"
+# Plays right after the spoken AI disclosure, so it must flow honestly from it —
+# warm, brief, and permission-asking (no "it's me" familiarity that would jar
+# against just having said it's an AI). The app normally supplies a tailored
+# opener; this is the fallback.
+DEFAULT_OPENER = "Hi there — I'll keep this quick. Have I caught you at an okay moment?"
 
 # Hard ceiling on rep turns. The brain already wraps a repeated objection on its
 # own; this is the backstop so a live call can NEVER loop indefinitely — at the
