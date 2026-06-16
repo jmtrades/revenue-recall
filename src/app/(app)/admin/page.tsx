@@ -72,6 +72,19 @@ export default async function AdminPage() {
     { label: "Billing", live: billingConfigured() },
   ];
 
+  // Launch readiness — the few things that actually gate "can I go live?", each
+  // with a concrete next step when it's not met. Turns "is it ready?" from a
+  // guess into an at-a-glance checklist the owner can act on.
+  const checklist: { label: string; ok: boolean; hint: string }[] = [
+    { label: "Access locked to your team", ok: inviteOnly, hint: "Turn on invite-only (SIGNUP_INVITE_ONLY=true, then redeploy) so only people you invite can join." },
+    { label: "Email sending connected", ok: ch.email.live, hint: "Connect your email provider and a verified sending domain in Settings → Integrations." },
+    { label: "AI drafting connected", ok: isAiConfigured(), hint: "Add your AI key so the system can write outreach in your voice." },
+    { label: "Caller ID set for calls", ok: Boolean(org.callerId), hint: "Add a phone number in Settings so outbound calls show a real caller ID." },
+    { label: "Billing connected", ok: billingConfigured(), hint: "Connect Stripe if you want plans, usage limits, and top-ups enforced." },
+  ];
+  const readyCount = checklist.filter((c) => c.ok).length;
+  const readyScore = Math.round((readyCount / checklist.length) * 100);
+
   return (
     <div className="space-y-6">
       <PageHeader title="Admin" subtitle="Your owner control panel — team, access, and system status in one place." />
@@ -94,6 +107,27 @@ export default async function AdminPage() {
           </div>
         </div>
       )}
+
+      <Card title="Launch readiness" action={<span className={`text-sm font-semibold ${readyScore === 100 ? "text-success" : readyScore >= 60 ? "text-warn" : "text-danger"}`}>{readyScore}%</span>}>
+        <ul className="space-y-2.5">
+          {checklist.map((c) => (
+            <li key={c.label} className="flex items-start gap-2.5">
+              <span className={`mt-0.5 grid h-4 w-4 flex-none place-items-center rounded-full text-[10px] font-bold ${c.ok ? "bg-success/15 text-success" : "bg-warn/15 text-warn"}`} aria-hidden="true">
+                {c.ok ? "✓" : "!"}
+              </span>
+              <span className="min-w-0">
+                <span className="text-sm text-fg">{c.label}</span>
+                {!c.ok && <span className="block text-xs leading-relaxed text-muted">{c.hint}</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+        {readyScore < 100 && (
+          <p className="mt-4 border-t border-border pt-3 text-xs text-muted">
+            These gate going live. Cold outreach is email-first — calls and SMS need recipient consent, which the system enforces automatically.
+          </p>
+        )}
+      </Card>
 
       <Card title="System status">
         <div className="grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">
