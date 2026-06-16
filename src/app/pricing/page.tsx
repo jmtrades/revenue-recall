@@ -18,7 +18,7 @@ export const dynamic = "force-static";
  */
 
 const DESCRIPTION =
-  "Simple pricing for an autonomous AI sales force: free to start, $599/mo for a rep that does real rep volume — ~100 dials a day, $1,699/mo for the whole desk. No contracts, cancel anytime.";
+  "Simple pricing for an autonomous AI sales force: free to start, $599/mo for a rep that works your whole list around the clock, $1,699/mo for the whole desk. No contracts, cancel anytime.";
 
 export const metadata: Metadata = {
   title: "Pricing",
