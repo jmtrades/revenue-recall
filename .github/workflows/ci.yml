@@ -30,3 +30,19 @@ jobs:
       # server-only crash on a force-dynamic page surfaces only on request).
       - name: Smoke (every route renders)
         run: npm run smoke
+
+  # The Python half of the gate (CLAUDE.md). The call-gateway/neural-voice
+  # services ship in the same repo and deploy as a container, so a Python
+  # regression here must fail CI too — not surface only at deploy time. Heavy
+  # deps are imported lazily, so these checks are stdlib-only (no pip install).
+  python-services:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Python services
+        run: python3 -m py_compile services/call-gateway/*.py services/neural-voice/server.py
+      - name: Call-gateway unit tests
+        run: cd services/call-gateway && python3 -m unittest discover -s tests
