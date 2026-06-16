@@ -9,7 +9,9 @@ import { Card, Avatar, InfoRow, ActivityIcon, EmptyState } from "@/components/ui
 import { SpeakButton } from "@/components/SpeakButton";
 import { ContactReachOut } from "@/components/ContactReachOut";
 import { ContactInfoEdit } from "@/components/ContactInfoEdit";
+import { CallConsentToggle } from "@/components/CallConsentToggle";
 import { DeleteButton } from "@/components/DeleteButton";
+import { hasCallConsent } from "@/lib/agent/guardrails";
 
 export const metadata = { title: "Lead" };
 export const dynamic = "force-dynamic";
@@ -73,6 +75,11 @@ export default async function ContactPage({ params }: { params: { id: string } }
               canWrite={canWrite}
             />
           </Card>
+          {canText && (
+            <Card title="Call consent">
+              <CallConsentToggle contactId={contact.id} initialConsent={hasCallConsent(contact)} canWrite={canWrite} />
+            </Card>
+          )}
           {contact.attributes && Object.keys(contact.attributes).length > 0 && (
             <Card title="Attributes">
               {Object.entries(contact.attributes).map(([k, v]) => (

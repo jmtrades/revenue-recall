@@ -87,6 +87,41 @@ export async function updateContactRecord(id: string, patch: ContactInput): Prom
   return updated;
 }
 
+/**
+ * Record (or revoke) express consent to place autonomous AI calls to a contact —
+ * the gate the autopilot and call-retries enforce before any auto-dial (TCPA /
+ * FCC 2024). Stamps `callConsent` + a dated marker so provenance is on the record,
+ * and merges into existing attributes (never clobbers other fields). Returns null
+ * when the contact's CRM can't store attributes. Caller records the audit.
+ */
+export async function setContactConsent(id: string, consent: boolean): Promise<Contact | null> {
+  const provider = await resolveProvider();
+  if (!provider.updateContact) return null;
+  const existing = await provider.getContact(id);
+  if (!existing) return null;
+  const now = new Date().toISOString();
+  const attributes: Record<string, string | number | boolean | null> = { ...(existing.attributes ?? {}) };
+  if (consent) {
+    attributes.callConsent = true;
+    attributes.callConsentAt = now;
+    attributes.callConsentRevokedAt = null;
+  } else {
+    // Withdrawal is the safe default — clear BOTH the boolean and the dated grant
+    // markers (hasCallConsent treats any callConsentAt/voiceConsentAt string as
+    // consent), then stamp the revocation, so the autonomous dialer stops at once.
+    attributes.callConsent = false;
+    attributes.callConsentAt = null;
+    attributes.voiceConsentAt = null;
+    attributes.consentAt = null;
+    attributes.voiceConsent = false;
+    attributes.consentToCall = false;
+    attributes.callConsentRevokedAt = now;
+  }
+  const updated = await provider.updateContact(id, { attributes });
+  await emitWebhook("contact.updated", serializeContact(updated));
+  return updated;
+}
+
 export type DeleteContactResult = { ok: true } | { ok: false; reason: "unsupported" | "not_found" | "has_deals" };
 
 /**

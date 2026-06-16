@@ -3,7 +3,9 @@ import { resolveProvider } from "@/lib/crm/registry";
 import { z } from "zod";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { setContactStatus } from "@/lib/leads";
-import { updateContactRecord } from "@/lib/contacts";
+import { updateContactRecord, setContactConsent } from "@/lib/contacts";
+import { hasCallConsent } from "@/lib/agent/guardrails";
+import { recordAudit } from "@/lib/audit";
 import { LEAD_STATUSES } from "@/lib/crm/lead-status";
 import { logError, errMessage } from "@/lib/log";
 
@@ -16,6 +18,8 @@ const Body = z.object({
 });
 
 const StatusBody = z.object({ id: z.string().min(1).max(200), status: z.enum(LEAD_STATUSES) });
+
+const ConsentBody = z.object({ id: z.string().min(1).max(200), consent: z.boolean() });
 
 const EditBody = z
   .object({
@@ -62,6 +66,21 @@ export async function PATCH(req: Request) {
     } catch (err) {
       logError("contacts.status.failed", { error: errMessage(err) });
       return NextResponse.json({ error: "Failed to update status" }, { status: 500 });
+    }
+  }
+
+  // Call-consent toggle (the contact page) — the gate autonomous dialing checks.
+  // Audited both ways so consent has provenance on the timeline.
+  const asConsent = ConsentBody.safeParse(raw);
+  if (asConsent.success) {
+    try {
+      const updated = await setContactConsent(asConsent.data.id, asConsent.data.consent);
+      if (!updated) return NextResponse.json({ error: "Couldn't update — this CRM doesn't support editing contacts here." }, { status: 409 });
+      await recordAudit(asConsent.data.consent ? "contact.consent.granted" : "contact.consent.revoked", asConsent.data.id);
+      return NextResponse.json({ ok: true, consent: hasCallConsent(updated) });
+    } catch (err) {
+      logError("contacts.consent.failed", { error: errMessage(err) });
+      return NextResponse.json({ error: "Failed to update consent" }, { status: 500 });
     }
   }
 
