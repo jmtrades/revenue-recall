@@ -43,6 +43,7 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkSeq, setBulkSeq] = useState("");
   const [enrollBusy, setEnrollBusy] = useState(false);
+  const [consentBusy, setConsentBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [views, setViews] = useState<SavedView[]>([]);
@@ -174,6 +175,36 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
       setError("Couldn't update the selected leads — try again.");
     } finally {
       setBulkBusy(false);
+    }
+  }
+
+  async function applyBulkConsent(consent: boolean) {
+    if (selected.size === 0) return;
+    setConsentBusy(true);
+    setError(null);
+    setNote(null);
+    try {
+      const res = await fetch("/api/contacts/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [...selected], consent }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setNote(
+          consent
+            ? `Call consent recorded for ${data.updated ?? selected.size} — the AI can now dial them autonomously.`
+            : `Call consent withdrawn for ${data.updated ?? selected.size} — autonomous dialing stopped.`,
+        );
+        setSelected(new Set());
+        router.refresh();
+      } else {
+        setError("Couldn't update consent for the selected leads — try again.");
+      }
+    } catch {
+      setError("Couldn't update consent for the selected leads — try again.");
+    } finally {
+      setConsentBusy(false);
     }
   }
 
@@ -335,6 +366,23 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
               </button>
             </>
           )}
+          <span className="h-4 w-px bg-border" aria-hidden />
+          <button
+            onClick={() => applyBulkConsent(true)}
+            disabled={consentBusy}
+            title="Record call consent so the AI can dial these contacts autonomously"
+            className="rounded-md border border-border px-3 py-1 text-xs font-medium text-fg transition hover:border-brand disabled:opacity-50"
+          >
+            {consentBusy ? "Saving…" : "Record call consent"}
+          </button>
+          <button
+            onClick={() => applyBulkConsent(false)}
+            disabled={consentBusy}
+            title="Withdraw call consent — stops autonomous dialing for these contacts"
+            className="text-xs text-muted hover:text-fg disabled:opacity-50"
+          >
+            Withdraw
+          </button>
           <button onClick={() => setSelected(new Set())} className="text-xs text-muted hover:text-fg">Clear</button>
         </div>
       )}
