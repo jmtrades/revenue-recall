@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { searchNumbers, buyNumber, listOwnedNumbers, numbersConfigured, numbersProviderId, outboundFromNumber } from "@/lib/numbers";
 import { getOrgSettings, updateOrgSettings } from "@/lib/org";
+import { inboundWebhookUrl } from "@/lib/inbound-routing";
 import { requireRole } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
@@ -57,8 +58,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ results });
     }
     if (!parsed.data.number) return NextResponse.json({ error: "number required" }, { status: 400 });
-    const bought = await buyNumber(parsed.data.number);
-    return NextResponse.json({ bought });
+    // Make the bought number WORK out of the box:
+    //  1. wire inbound webhooks so texts/calls to it route back to THIS org, and
+    //  2. set it as the org caller ID so outbound calls/texts use it immediately.
+    const org = await getOrgSettings().catch(() => null);
+    const smsUrl = org?.id ? inboundWebhookUrl("sms", org.id) ?? undefined : undefined;
+    const voiceUrl = process.env.TWILIO_INBOUND_VOICE_URL || undefined; // gateway TwiML endpoint, if deployed
+    const bought = await buyNumber(parsed.data.number, { smsUrl, voiceUrl });
+    const updated = await updateOrgSettings({ callerId: bought.number }).catch(() => null);
+    return NextResponse.json({ bought, callerId: updated?.callerId ?? bought.number, inboundWired: Boolean(smsUrl) });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Failed" }, { status: 502 });
   }
