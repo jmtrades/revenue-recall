@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { ttsProvider, ttsAvailable, providerVoice, cartesiaVoice, elevenSettings, elevenModel, openaiInstructions, ELEVEN_VOICES, OPENAI_VOICES, synthesizeSpeech } from "@/lib/voice/tts";
+import { ttsProvider, ttsAvailable, providerVoice, cartesiaVoice, elevenSettings, elevenModel, elevenModelChain, elevenModelUnavailable, openaiInstructions, ELEVEN_VOICES, OPENAI_VOICES, synthesizeSpeech } from "@/lib/voice/tts";
 import { HOUSE_VOICES } from "@/lib/voice/house";
 
 const CLEAR = [
@@ -131,17 +131,28 @@ describe("ElevenLabs quality tier", () => {
     expect(elevenModel("realtime")).toBe("eleven_turbo_v2_5");
   });
 
-  it("max uses the highest-quality production model for non-realtime audio", () => {
-    expect(elevenModel("max")).toBe("eleven_multilingual_v2");
+  it("max prefers the most expressive model (v3) but keeps a proven fallback", () => {
+    expect(elevenModel("max")).toBe("eleven_v3"); // best candidate first
+    expect(elevenModelChain("max")).toEqual(["eleven_v3", "eleven_multilingual_v2"]);
   });
 
-  it("both tiers are env-overridable, independently", () => {
+  it("realtime is a single model (no retry budget on a live call)", () => {
+    expect(elevenModelChain("realtime")).toEqual(["eleven_turbo_v2_5"]);
+  });
+
+  it("both tiers are env-overridable; pinning HQ forces a single max-tier model", () => {
     process.env.ELEVENLABS_MODEL = "eleven_turbo_v2_5";
-    process.env.ELEVENLABS_MODEL_HQ = "eleven_v3";
+    process.env.ELEVENLABS_MODEL_HQ = "eleven_multilingual_v2";
     expect(elevenModel("realtime")).toBe("eleven_turbo_v2_5");
-    expect(elevenModel("max")).toBe("eleven_v3");
+    expect(elevenModelChain("max")).toEqual(["eleven_multilingual_v2"]); // pin → no v3 attempt
     delete process.env.ELEVENLABS_MODEL;
     delete process.env.ELEVENLABS_MODEL_HQ;
+  });
+
+  it("treats a model/validation 4xx as 'try the next model', but not auth/rate/transient", () => {
+    for (const s of [400, 403, 404, 422]) expect(elevenModelUnavailable(s)).toBe(true);
+    for (const s of [401, 429, 500, 502, 503]) expect(elevenModelUnavailable(s)).toBe(false);
+    expect(elevenModelUnavailable(undefined)).toBe(false);
   });
 });
 
