@@ -34,16 +34,18 @@ export async function GET(req: Request) {
   const sb = getServerSupabase();
   if (!sb) return NextResponse.redirect(new URL("/login?error=config", url.origin));
 
-  let error = null;
+  // An OAuth (PKCE) exchange failing is a DIFFERENT problem from an expired email
+  // link — usually a Site-URL / redirect-URL mismatch in Supabase that drops the
+  // PKCE verifier cookie, so the user record is created but no session is ever
+  // issued (auth.users.last_sign_in_at stays null). Label it distinctly so it
+  // isn't misdiagnosed as "expired link" and the real fix is findable.
   if (code) {
-    ({ error } = await sb.auth.exchangeCodeForSession(code));
+    const { error } = await sb.auth.exchangeCodeForSession(code);
+    if (error) return NextResponse.redirect(new URL("/login?error=oauth", url.origin));
   } else if (tokenHash && type) {
-    ({ error } = await sb.auth.verifyOtp({ type, token_hash: tokenHash }));
+    const { error } = await sb.auth.verifyOtp({ type, token_hash: tokenHash });
+    if (error) return NextResponse.redirect(new URL("/login?error=link", url.origin));
   } else {
-    return NextResponse.redirect(new URL("/login?error=link", url.origin));
-  }
-
-  if (error) {
     return NextResponse.redirect(new URL("/login?error=link", url.origin));
   }
   return NextResponse.redirect(new URL(next, url.origin));
