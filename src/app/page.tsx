@@ -215,7 +215,7 @@ export default function LandingPage() {
       <section className="border-y border-border bg-surface/30">
         <Stagger className="mx-auto grid max-w-6xl grid-cols-1 divide-y divide-border px-5 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           {METRICS.map((m) => (
-            <StaggerItem key={m.label} className="px-2 py-6 text-center sm:px-8 sm:py-10 sm:text-left">
+            <StaggerItem key={m.label} className="px-4 py-6 text-center sm:px-8 sm:py-10 sm:text-left">
               <div className="font-display text-4xl font-semibold tabular-nums tracking-tight text-fg sm:text-5xl">{m.stat}</div>
               <p className="mt-2 text-sm leading-relaxed text-muted">{m.label}</p>
             </StaggerItem>
