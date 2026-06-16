@@ -23,10 +23,11 @@ import { ttsProvider, type TtsProvider } from "@/lib/voice/tts";
  *   telephony  $0.014   (US outbound, answered time only)
  *   STT        $0.006   (streaming transcription)
  *   LLM        $0.005   (~2 turns/min on a fast model)
- *   TTS        $0.060 ElevenLabs Flash (the shipped call default — see tts.ts)
+ *   TTS        $0.060 ElevenLabs Turbo v2.5 (the shipped call default — see tts.ts;
+ *              Turbo v2.5 and Flash v2.5 are both 0.5 credits/char, so same rate)
  *              $0.040 Cartesia · $0.015 OpenAI · $0 browser/none
  *
- * Blended: ~$0.085/min on ElevenLabs Flash, ~$0.065 Cartesia, ~$0.040 OpenAI.
+ * Blended: ~$0.085/min on ElevenLabs (Turbo/Flash v2.5), ~$0.065 Cartesia, ~$0.040 OpenAI.
  * Worst-case (full-allowance) voice margins at the shipped prices — floors
  * enforced by tests, expected margins higher at real utilization:
  *   Operator $399 / 1,500 min → COGS $127.50 = 32% of price → ~68% margin
@@ -50,8 +51,9 @@ export function llmUsdPerMin(): number {
 export function ttsUsdPerMin(provider: TtsProvider | null): number {
   switch (provider) {
     case "elevenlabs":
-      // Flash v2.5 (the shipped call default in voice/tts.ts) — pinning
-      // ELEVENLABS_MODEL to turbo? Set this to ~0.12 to keep the math honest.
+      // Turbo v2.5 (the shipped call default in voice/tts.ts), billed at the same
+      // 0.5 credits/char as Flash v2.5 — so $0.06/min holds. (eleven_v3 is the
+      // read-aloud-only model and never used on a live call.)
       return num("VOICE_COST_TTS_ELEVENLABS_PER_MIN", 0.06);
     case "cartesia":
       return num("VOICE_COST_TTS_CARTESIA_PER_MIN", 0.04);

@@ -10,6 +10,7 @@ const CALLBACK_ERRORS: Record<string, string> = {
   config: "Authentication isn't fully configured yet. Please contact your admin.",
   provider: "Google sign-in didn't complete — it may not be enabled yet. Use email below, or try again shortly.",
   cancelled: "Google sign-in was cancelled. You can try again, or sign in with email.",
+  oauth: "Google sign-in couldn't finish establishing your session. Please try once more — if it keeps happening, your admin needs to check the sign-in redirect settings.",
 };
 
 export default function LoginPage({ searchParams }: { searchParams: { next?: string; error?: string } }) {
