@@ -125,6 +125,24 @@ export async function revokeInvite(id: string): Promise<void> {
 }
 
 /**
+ * Whether a pending invite exists for this email — used by invite-only mode to
+ * decide, before creating any auth account, if a self-signup should be allowed.
+ * Matches the same lowercased-email + status="pending" criteria as acceptance.
+ */
+export async function hasPendingInvite(email: string): Promise<boolean> {
+  const client = getSupabase();
+  if (!client || !email) return false;
+  const { data } = await client
+    .from("invitations")
+    .select("id")
+    .eq("email", email.toLowerCase())
+    .eq("status", "pending")
+    .limit(1)
+    .maybeSingle();
+  return Boolean(data);
+}
+
+/**
  * If a pending invite matches this user's email, join them to the inviting org
  * as a member and mark the invite accepted — returning that org id. Otherwise
  * null (the caller then provisions a fresh org). Uses the service-role client,

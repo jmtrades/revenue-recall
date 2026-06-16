@@ -37,6 +37,20 @@ export function isAuthRequired(): boolean {
   return process.env.NEXT_PUBLIC_AUTH_REQUIRED === "true";
 }
 
+/**
+ * Private / invite-only mode. When `SIGNUP_INVITE_ONLY=true`, open self-signup is
+ * closed: the only people who can get a workspace are the very first user (the
+ * owner, on a fresh deployment with no org yet) and anyone an admin has invited
+ * by email. Everyone else is turned away — no account, no workspace, no data.
+ *
+ * Default OFF, so connecting a database alone never silently locks people out;
+ * the deployment opts in explicitly. Enforcement lives at the provisioning choke
+ * point (`ensureOrgForUser`), so it covers BOTH password signup and Google OAuth.
+ */
+export function inviteOnlyEnabled(): boolean {
+  return process.env.SIGNUP_INVITE_ONLY === "true";
+}
+
 export function getConfig(): AppConfig {
   return {
     industryId: process.env.NEXT_PUBLIC_INDUSTRY ?? "real_estate",

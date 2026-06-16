@@ -3,9 +3,26 @@ import { getSupabase } from "@/lib/supabase/client";
 import { bootstrapOrg } from "@/lib/supabase/bootstrap";
 import { sendWelcomeEmail } from "@/lib/billing/lifecycle";
 import { acceptPendingInvite } from "@/lib/invites-server";
+import { inviteOnlyEnabled } from "@/lib/config";
 import { REFERRAL_COOKIE, isAttributableReferral, parseReferralCode } from "@/lib/referrals";
 import { logError, errMessage } from "@/lib/log";
 import type { SessionUser } from "@/lib/auth";
+
+/** Does ANY org already exist? In invite-only mode the very first user (no org
+ *  anywhere yet) is allowed through to become the owner; once an org exists, only
+ *  invited people get in. Fail-CLOSED: if we can't tell, assume one exists so we
+ *  never accidentally hand a fresh workspace to an uninvited stranger. */
+export async function anyOrgExists(): Promise<boolean> {
+  const client = getSupabase();
+  if (!client) return true;
+  try {
+    const { count, error } = await client.from("orgs").select("id", { count: "exact", head: true });
+    if (error) return true;
+    return (count ?? 0) > 0;
+  } catch {
+    return true;
+  }
+}
 
 /** Best-effort: stamp the referrer (from the signup-link cookie) onto a brand-new
  *  org so the billing webhook can reward the referral once they upgrade. Wrapped
@@ -49,6 +66,18 @@ export const ensureOrgForUser = cache(async (user: SessionUser): Promise<string 
   // Invited? Join the inviting org as a member instead of getting a fresh one.
   const invitedOrgId = await acceptPendingInvite(user);
   if (invitedOrgId) return invitedOrgId;
+
+  // Invite-only (private) deployment: a user who isn't already a member and has
+  // no pending invite gets NO workspace — except the very first user on a fresh
+  // deployment, who becomes the owner. This is the real enforcement point: it
+  // covers password signup AND Google OAuth (both land here on first request),
+  // so an uninvited stranger never gets an org or any data. Returning null leaves
+  // them signed-in-but-workspace-less; the app shell shows an "invite required"
+  // screen. Default OFF, so normal open deployments are unaffected.
+  if (inviteOnlyEnabled() && (await anyOrgExists())) {
+    logError("provision.invite_only_blocked", { userId: user.id, email: user.email });
+    return null;
+  }
 
   try {
     const res = await bootstrapOrg({
