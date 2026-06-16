@@ -43,6 +43,13 @@ export function elevenSdkError(prefix: string, e: unknown): string {
   return `${prefix}: ${e instanceof Error ? e.message : String(e)}`;
 }
 
+/** The HTTP status behind an SDK error, or undefined when it isn't one (network
+ *  failure, abort). Lets callers distinguish "this model isn't usable" (try the
+ *  next one) from a transient/auth error. */
+export function elevenErrorStatus(e: unknown): number | undefined {
+  return e instanceof ElevenLabsError && typeof e.statusCode === "number" ? e.statusCode : undefined;
+}
+
 /** Collect a byte ReadableStream (what textToSpeech.convert resolves to) into a
  *  single ArrayBuffer for a Response body. Uses a reader rather than async
  *  iteration, which isn't guaranteed on every ReadableStream implementation. */
