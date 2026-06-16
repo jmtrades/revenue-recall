@@ -126,9 +126,9 @@ describe("house voice → provider voice mapping", () => {
 });
 
 describe("ElevenLabs quality tier", () => {
-  it("realtime uses the low-latency Flash model the call margins are priced on", () => {
-    expect(elevenModel()).toBe("eleven_flash_v2_5");
-    expect(elevenModel("realtime")).toBe("eleven_flash_v2_5");
+  it("realtime uses the quality-first real-time model (Turbo v2.5)", () => {
+    expect(elevenModel()).toBe("eleven_turbo_v2_5");
+    expect(elevenModel("realtime")).toBe("eleven_turbo_v2_5");
   });
 
   it("max uses the highest-quality production model for non-realtime audio", () => {

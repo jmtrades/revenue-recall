@@ -207,8 +207,23 @@ def _voxcpm_synth(text: str, voice: str, rate: float) -> tuple[np.ndarray, int]:
 # audio DOES leave to ElevenLabs — that's the trade for top naturalness on calls.
 # Streams raw PCM (no mp3 decoder needed): output_format=pcm_24000 requires a
 # Creator+ ElevenLabs tier; set ELEVENLABS_PCM_FORMAT=pcm_16000 etc. if needed.
-ELEVENLABS_MODEL = os.environ.get("ELEVENLABS_MODEL", "eleven_flash_v2_5")  # low latency for calls
+ELEVENLABS_MODEL = os.environ.get("ELEVENLABS_MODEL", "eleven_turbo_v2_5")  # quality-first real-time model (set eleven_flash_v2_5 for lowest latency)
 ELEVENLABS_PCM_FORMAT = os.environ.get("ELEVENLABS_PCM_FORMAT", "pcm_24000")
+
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return default
+
+
+# Quality-first delivery defaults (env-tunable): lower stability = more emotional
+# range, high similarity + speaker boost = faithful to the chosen voice (the
+# "real person" tell on a call), a touch of style for natural intonation.
+ELEVENLABS_STABILITY = _env_float("ELEVENLABS_STABILITY", 0.45)
+ELEVENLABS_SIMILARITY = _env_float("ELEVENLABS_SIMILARITY", 0.8)
+ELEVENLABS_STYLE = _env_float("ELEVENLABS_STYLE", 0.35)
 _ELEVEN_PCM_RATE = {"pcm_16000": 16000, "pcm_22050": 22050, "pcm_24000": 24000, "pcm_44100": 44100}
 
 
@@ -240,7 +255,7 @@ def _elevenlabs_synth(text: str, voice: str, rate: float) -> tuple[np.ndarray, i
     body = json.dumps({
         "text": text,
         "model_id": ELEVENLABS_MODEL,
-        "voice_settings": {"stability": 0.5, "similarity_boost": 0.75, "style": 0.3, "use_speaker_boost": True},
+        "voice_settings": {"stability": ELEVENLABS_STABILITY, "similarity_boost": ELEVENLABS_SIMILARITY, "style": ELEVENLABS_STYLE, "use_speaker_boost": True},
     }).encode()
     req = urllib.request.Request(url, data=body, headers={"xi-api-key": key, "Content-Type": "application/json"})
     try:
