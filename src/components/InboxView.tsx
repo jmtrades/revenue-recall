@@ -99,8 +99,11 @@ export function InboxView({
     );
   }
 
+  // On mobile use dynamic viewport height (dvh) so the panels don't jump when the
+  // browser chrome shows/hides, and subtract less chrome so the list + thread each
+  // get usable room; desktop keeps the fixed two-pane height.
   return (
-    <div className="grid h-[calc(100vh-12rem)] grid-cols-1 gap-4 md:grid-cols-[320px_1fr]">
+    <div className="grid h-[calc(100dvh-9rem)] grid-cols-1 gap-4 md:h-[calc(100vh-12rem)] md:grid-cols-[320px_1fr]">
       <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface">
         <div className="flex gap-1 border-b border-border p-2">
           {(["all", "unread"] as const).map((f) => (
