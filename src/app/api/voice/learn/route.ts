@@ -38,6 +38,16 @@ export const POST = withGuard(async (req: Request) => {
   if (!hasSomething) {
     return NextResponse.json({ error: "Add your name, a writing sample, or some go-to lines first." }, { status: 400 });
   }
+  // Guard against a junk "voice" trained on a single character (e.g. "b").
+  // The fields that actually teach the voice are the business description and
+  // writing samples — if a business description is given it must be a real
+  // phrase, unless backed by a substantive writing sample. (Name/signature-only
+  // saves still pass: those just shape sign-offs, they don't claim a "voice".)
+  const biz = business?.trim() ?? "";
+  const samp = samples?.trim() ?? "";
+  if (biz && biz.length < 12 && samp.length < 20) {
+    return NextResponse.json({ error: "Tell us a bit more about what your business does (a sentence is plenty), or paste a real message — a single word isn't enough to learn your voice." }, { status: 400 });
+  }
   try {
     const voice = await learnVoice(parsed.data);
     return NextResponse.json(voice);
