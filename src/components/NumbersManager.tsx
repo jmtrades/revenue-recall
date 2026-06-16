@@ -79,7 +79,13 @@ export function NumbersManager({ configured, provider, byoNumber, initialOwned, 
       if (!res.ok) throw new Error(data.error ?? "Purchase failed");
       setOwned((prev) => [data.bought as PhoneNumber, ...prev]);
       setResults((prev) => (prev ? prev.filter((r) => r.number !== number) : prev));
-      setNotice(`${number} added to your numbers.`);
+      // The number is bought AND made live: set as caller ID, inbound wired.
+      if (data.callerId) setCallerId(data.callerId as string);
+      setNotice(
+        data.inboundWired
+          ? `${number} is live — it's now your caller ID and inbound texts route to you.`
+          : `${number} is now your caller ID. Set NEXT_PUBLIC_SITE_URL to route inbound texts to it.`,
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Purchase failed");
     } finally {

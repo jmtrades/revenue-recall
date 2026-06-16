@@ -26,11 +26,21 @@ export interface NumberSearch {
   contains?: string;
 }
 
+/** Webhooks to wire onto a number AT PURCHASE so it actually works the moment
+ *  it's bought: inbound texts/calls route back to this org instead of dead-ending
+ *  on a brand-new, unconfigured number. All optional — a number still buys (and
+ *  works for outbound caller ID) if a public URL isn't configured yet. */
+export interface NumberConfig {
+  smsUrl?: string;
+  voiceUrl?: string;
+  statusCallback?: string;
+}
+
 export interface NumberProvider {
   id: string;
   available(): boolean;
   search(opts: NumberSearch): Promise<PhoneNumber[]>;
-  buy(number: string): Promise<PhoneNumber>;
+  buy(number: string, config?: NumberConfig): Promise<PhoneNumber>;
   listOwned(): Promise<PhoneNumber[]>;
 }
 
@@ -66,8 +76,8 @@ const webhookProvider: NumberProvider = {
   id: "webhook",
   available: () => Boolean(env("NUMBERS_WEBHOOK_URL")),
   search: async (opts) => arr(await postWebhook("search", { ...opts })),
-  buy: async (number) => {
-    const r = (await postWebhook("buy", { number })) as PhoneNumber | { number?: string };
+  buy: async (number, config) => {
+    const r = (await postWebhook("buy", { number, ...(config ? { config } : {}) })) as PhoneNumber | { number?: string };
     return { number: r.number ?? number, status: "owned", ...r } as PhoneNumber;
   },
   listOwned: async () => arr(await postWebhook("list", {})),
@@ -121,8 +131,15 @@ const twilioProvider: NumberProvider = {
     const data = await twilioApi(`AvailablePhoneNumbers/${country}/Local.json?${qs.toString()}`);
     return ((data.available_phone_numbers as TwilioNumberRow[]) ?? []).map((n) => mapTwilioRow(n, "available"));
   },
-  buy: async (number) => {
-    const data = await twilioApi("IncomingPhoneNumbers.json", { PhoneNumber: number });
+  buy: async (number, config) => {
+    // Set the inbound webhooks AT PURCHASE so the number works immediately: texts
+    // hit the org's inbound route and calls reach the voice handler. Twilio
+    // accepts these on the create call — no second request, no race.
+    const form: Record<string, string> = { PhoneNumber: number };
+    if (config?.smsUrl) { form.SmsUrl = config.smsUrl; form.SmsMethod = "POST"; }
+    if (config?.voiceUrl) { form.VoiceUrl = config.voiceUrl; form.VoiceMethod = "POST"; }
+    if (config?.statusCallback) form.StatusCallback = config.statusCallback;
+    const data = await twilioApi("IncomingPhoneNumbers.json", form);
     return mapTwilioRow(data as TwilioNumberRow, "owned");
   },
   listOwned: async () => {
@@ -153,10 +170,10 @@ export async function searchNumbers(opts: NumberSearch): Promise<PhoneNumber[]> 
   return p.search(opts);
 }
 
-export async function buyNumber(number: string): Promise<PhoneNumber> {
+export async function buyNumber(number: string, config?: NumberConfig): Promise<PhoneNumber> {
   const p = resolve();
   if (!p) throw new Error("No number provider connected.");
-  return p.buy(number);
+  return p.buy(number, config);
 }
 
 export async function listOwnedNumbers(): Promise<PhoneNumber[]> {
