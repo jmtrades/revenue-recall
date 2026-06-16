@@ -3,8 +3,25 @@ import { getSupabase } from "@/lib/supabase/client";
 import { bootstrapOrg } from "@/lib/supabase/bootstrap";
 import { sendWelcomeEmail } from "@/lib/billing/lifecycle";
 import { acceptPendingInvite } from "@/lib/invites-server";
+import { REFERRAL_COOKIE, isAttributableReferral, parseReferralCode } from "@/lib/referrals";
 import { logError, errMessage } from "@/lib/log";
 import type { SessionUser } from "@/lib/auth";
+
+/** Best-effort: stamp the referrer (from the signup-link cookie) onto a brand-new
+ *  org so the billing webhook can reward the referral once they upgrade. Wrapped
+ *  so it can NEVER affect provisioning — a referral is nice-to-have, signup is not. */
+async function attributeReferral(orgId: string): Promise<void> {
+  try {
+    const { cookies } = await import("next/headers");
+    const ref = parseReferralCode(cookies().get(REFERRAL_COOKIE)?.value);
+    if (!ref || !isAttributableReferral(ref, orgId)) return;
+    const client = getSupabase();
+    if (!client) return;
+    await client.from("orgs").update({ referred_by: ref }).eq("id", orgId).is("referred_by", null);
+  } catch {
+    /* attribution is optional — never block or fail provisioning on it */
+  }
+}
 
 function workspaceName(email: string): string {
   const domain = email.split("@")[1]?.split(".")[0] ?? "";
@@ -43,6 +60,7 @@ export const ensureOrgForUser = cache(async (user: SessionUser): Promise<string 
     // the race-recovery path below is an EXISTING member, so no email there).
     // Best-effort: provisioning must never fail on a mail hiccup.
     sendWelcomeEmail(user.email, user.name).catch(() => {});
+    await attributeReferral(res.orgId);
     return res.orgId;
   } catch (e) {
     // Bootstrap can fail on a race: a concurrent first request already created

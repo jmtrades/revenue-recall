@@ -52,6 +52,8 @@ import { usageSummary, monthlyBudgetUsd, usageMeter } from "@/lib/ai/usage";
 import { voiceMinutesMeter, estimatedCallsForMinutes } from "@/lib/billing/voice-minutes";
 import { UsageMeter } from "@/components/UsageMeter";
 import { VoiceMinutesMeter } from "@/components/VoiceMinutesMeter";
+import { ReferAndEarn } from "@/components/ReferAndEarn";
+import { referralLink } from "@/lib/referrals";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { ImportCsv } from "@/components/ImportCsv";
 import { TeamInvites } from "@/components/TeamInvites";
@@ -521,6 +523,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       <div className="mt-4">
         <VoiceMinutesMeter meter={voiceMinutesProps} planName={getPlan(subscription.plan).name} callsLeft={callsLeft} packs={minutePacks} billingConfigured={billingConfigured()} />
       </div>
+      {org.id && (
+        <Card title="Refer & earn" className="mt-4">
+          <ReferAndEarn link={referralLink(org.id)} />
+        </Card>
+      )}
       <InvoiceHistory />
       <div className="mt-4 rounded-lg border border-border p-4">
         <p className="text-sm font-medium text-fg">AI usage this month <span className="text-xs font-normal text-muted">(cost &amp; margin)</span></p>
