@@ -187,15 +187,15 @@ export function ElevenVoiceLibrary() {
       reason === "not_entitled"
         ? "Live AI voice is on paid plans — connect billing, or set BILLING_ENFORCE=false to use it now."
         : reason === "error"
-          ? `ElevenLabs key is set but the connection was rejected${error ? `: ${error}` : ""}. Double-check ELEVENLABS_API_KEY in Vercel is a valid key, then redeploy.`
-          : "ElevenLabs isn't connected. Add ELEVENLABS_API_KEY in Vercel (and ELEVENLABS_AGENT_ID for the live agent), then redeploy.";
+          ? `The premium voice service key is set but the connection was rejected${error ? `: ${error}` : ""}. Double-check ELEVENLABS_API_KEY in Vercel is a valid key, then redeploy.`
+          : "The premium voice service isn't connected. Add ELEVENLABS_API_KEY in Vercel (and ELEVENLABS_AGENT_ID for the live agent), then redeploy.";
     return (
       <div className="mt-5 space-y-2 border-t border-border pt-4">
-        <p className="text-sm font-medium text-fg">Read-aloud voice (ElevenLabs)</p>
+        <p className="text-sm font-medium text-fg">Read-aloud voice</p>
         <VoiceDisabledNotice
           title="Voice not connected"
           message={msg}
-          link={{ href: "https://elevenlabs.io/app/settings/api-keys", label: "Get an ElevenLabs API key →" }}
+          link={{ href: "https://elevenlabs.io/app/settings/api-keys", label: "Get a voice API key →" }}
         />
       </div>
     );
@@ -207,7 +207,7 @@ export function ElevenVoiceLibrary() {
   return (
     <div className="mt-5 space-y-3 border-t border-border pt-4">
       <div>
-        <p className="text-sm font-medium text-fg">Read-aloud voice (ElevenLabs)</p>
+        <p className="text-sm font-medium text-fg">Read-aloud voice</p>
         <p className="text-xs text-muted">
           The voice the app speaks in for read-alouds and previews. Pick from the catalogue below, or clone your own — tap ▶ to hear each one.
         </p>
@@ -457,7 +457,7 @@ function BrowseLibrary({ onAdded, defaultOpen = false }: { onAdded: () => void; 
   return (
     <div className="rounded-lg border border-border bg-surface-2/40 p-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-fg">Full ElevenLabs library</p>
+        <p className="text-sm font-medium text-fg">Browse all voices</p>
         <button onClick={() => setOpen(false)} className="text-xs text-muted hover:text-fg">Close</button>
       </div>
       <p className="mt-1 text-xs text-muted">

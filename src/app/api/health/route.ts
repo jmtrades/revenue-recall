@@ -3,7 +3,7 @@ import { getConfig } from "@/lib/config";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { isAiConfigured } from "@/lib/ai/client";
 import { channelStatus } from "@/lib/comms";
-import { ttsAvailable, ttsProvider } from "@/lib/voice/tts";
+import { ttsAvailable } from "@/lib/voice/tts";
 import { convaiConfigured, convaiAgentId, convaiReason } from "@/lib/voice/convai";
 import { elevenConfigured } from "@/lib/voice/eleven";
 import { launchStatus } from "@/lib/launch";
@@ -27,15 +27,15 @@ export async function GET() {
     voiceAgent: convaiConfigured(),
   };
 
-  // Voice connection detail — public (no session) so an operator can confirm
-  // ElevenLabs is wired straight from /api/health, with the exact reason it's
+  // Voice connection detail — public (no session) so an operator can confirm the
+  // premium voice is wired straight from /api/health, with the exact reason it's
   // not, mirroring the in-app diagnostic. Entitlement isn't checkable without a
   // session, so this reports CONFIG presence (key/agent) — which is the part an
-  // env-var fix actually changes. `agentReason`: no_key | no_agent | ok.
+  // env-var fix actually changes. White-labeled: no vendor name is exposed here.
+  // `agentReason`: no_key | no_agent | ok.
   const voice = {
     hosted: ttsAvailable(),
-    hostedProvider: ttsAvailable() ? ttsProvider() : null,
-    eleven: elevenConfigured(),
+    premiumVoice: elevenConfigured(),
     agent: convaiConfigured(),
     agentReason: convaiReason(elevenConfigured(), Boolean(convaiAgentId()), true),
   };

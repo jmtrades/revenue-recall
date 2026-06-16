@@ -140,15 +140,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       link: { href: "https://console.anthropic.com", label: "Open Anthropic" },
     },
     {
-      label: "Lifelike voice (ElevenLabs)", ok: elevenConfigured(), required: false, where: "ElevenLabs + Vercel",
+      label: "Premium lifelike voice", ok: elevenConfigured(), required: false, where: "Voice provider + Vercel",
       detail: "Reads outreach and previews aloud in a real, human-grade voice — and unlocks the voice library + cloning in Settings → Voice. This row is green only when ELEVENLABS_API_KEY is live in this deployment.",
       steps: ["Get an API key at elevenlabs.io", "Add it as ELEVENLABS_API_KEY in the Vercel project serving recall-touch.com", "Redeploy (server vars need a fresh build)", "Settings → Voice: pick a voice or clone your own"],
-      link: { href: "https://elevenlabs.io/app", label: "Open ElevenLabs" },
+      link: { href: "https://elevenlabs.io/app", label: "Open voice provider" },
     },
     {
-      label: "Live voice agent", ok: convaiConfigured(), required: false, where: "ElevenLabs + Vercel",
+      label: "Live voice agent", ok: convaiConfigured(), required: false, where: "Voice provider + Vercel",
       detail: "Turns on the two-way \"Talk to a live AI prospect\" agent — a real spoken conversation, not turn-by-turn.",
-      steps: ["In ElevenLabs, create a Conversational AI agent", "Add its id as ELEVENLABS_AGENT_ID in Vercel (with ELEVENLABS_API_KEY)", "Allow voice overrides in the agent's security settings to use your chosen/cloned voice", "Redeploy"],
+      steps: ["In your voice provider, create a Conversational AI agent", "Add its id as ELEVENLABS_AGENT_ID in Vercel (with ELEVENLABS_API_KEY)", "Allow voice overrides in the agent's security settings to use your chosen/cloned voice", "Redeploy"],
       link: { href: "https://elevenlabs.io/app/conversational-ai", label: "Open Agents" },
     },
     {

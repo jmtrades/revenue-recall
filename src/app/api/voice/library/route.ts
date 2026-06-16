@@ -34,7 +34,7 @@ export const GET = withGuard(async () => {
     // Key is set but the provider rejected/failed the call (bad key, network,
     // rate limit). Surface the real reason so it's fixable.
     return NextResponse.json(
-      { configured: false, reason: "error", canFix, voices: [], selected: null, settings: null, error: e instanceof Error ? e.message : "Could not reach ElevenLabs" },
+      { configured: false, reason: "error", canFix, voices: [], selected: null, settings: null, error: e instanceof Error ? e.message : "Could not reach the voice service" },
       { status: 200 },
     );
   }
