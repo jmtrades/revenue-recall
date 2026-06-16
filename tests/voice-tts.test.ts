@@ -103,12 +103,17 @@ describe("house voice → provider voice mapping", () => {
     }
   });
 
-  it("an unmapped voice falls back within its own gender/accent group, never a mismatch", () => {
-    // af_sky has no exact ElevenLabs map → a female-US default (af_heart/Rachel),
-    // not a male or UK voice.
-    expect(providerVoice("elevenlabs", "af_sky")).toBe(ELEVEN_VOICES.af_heart);
+  it("every curated house voice maps to its OWN distinct ElevenLabs voice (no two collapse)", () => {
+    const ids = HOUSE_VOICES.map((v) => providerVoice("elevenlabs", v.id));
+    expect(new Set(ids).size).toBe(HOUSE_VOICES.length); // all distinct — picks never sound the same
+  });
+
+  it("a voice with no exact map falls back within its own gender/accent group, never a mismatch", () => {
+    // Ids NOT in the curated set still resolve to a same-group default (never a
+    // mismatched gender/accent) — proving the safety net holds.
+    expect(providerVoice("elevenlabs", "af_bella")).toBe(ELEVEN_VOICES.af_heart); // female US → female US
     expect(providerVoice("elevenlabs", "bm_lewis")).toBe(ELEVEN_VOICES.bm_george); // male UK → male UK
-    expect(providerVoice("elevenlabs", "am_fenrir")).toBe(ELEVEN_VOICES.am_adam); // male US → male US
+    expect(providerVoice("elevenlabs", "am_santa")).toBe(ELEVEN_VOICES.am_adam); // male US → male US
     expect(providerVoice("elevenlabs", "bf_alice")).toBe(ELEVEN_VOICES.bf_emma); // female UK → female UK
   });
 

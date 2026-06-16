@@ -63,21 +63,27 @@ export function ttsAvailable(): boolean {
  *  falls back to its group default. The full account catalogue (incl. the org's
  *  own clones) is also selectable live via lib/voice/eleven.ts. */
 export const ELEVEN_VOICES: Record<string, string> = {
-  af_heart: "9BWtsMINqrJLrRacOk9x", // Aria — warm, expressive female US (current default)
-  af_bella: "EXAVITQu4vr4xnSDxMaL", // Sarah — bright female US
-  af_nicole: "FGY2WhTYpPnrIDTdsKH5", // Laura — soft female US
-  af_nova: "XB0fDUnXU5powFXDhCwa", // Charlotte — confident female
-  af_jessica: "cgSgspJ2msm6clMCkdW9", // Jessica — polished female US
-  af_river: "SAz9YHcvj6GT2YYXdXww", // River — calm female US
-  am_adam: "nPczCjzI2devNBz1zQrb", // Brian — deep, natural male US (current)
-  am_michael: "CwhRBWXzGAHq8TQ4Fs17", // Roger — friendly male US (current)
-  am_onyx: "pqHfZKP75CvOlQylNhV4", // Bill — deep male US
-  am_eric: "cjVigY5qzO86Huf0OWal", // Eric — crisp male US
-  am_liam: "TX3LPaxmHKxFdv7VOQHJ", // Liam — approachable male US
-  bf_emma: "Xb7hH8MSUJpSbSDYk0k2", // Alice — female UK
-  bf_lily: "pFZP5JQG7iQjIQuC4Bku", // Lily — soft female UK
-  bm_george: "JBFqnCBsd6RMkjVDRZzb", // George — male UK
-  bm_daniel: "onwK4e9ZLuTAKqWW03F9", // Daniel — refined male UK
+  // 1:1 with HOUSE_VOICES — every id is a DISTINCT premade voice, and the house
+  // label IS this voice's real ElevenLabs name, so picks never sound the same.
+  af_heart: "9BWtsMINqrJLrRacOk9x", // Aria
+  af_sarah: "EXAVITQu4vr4xnSDxMaL", // Sarah
+  af_nicole: "FGY2WhTYpPnrIDTdsKH5", // Laura
+  af_nova: "XB0fDUnXU5powFXDhCwa", // Charlotte
+  af_jessica: "cgSgspJ2msm6clMCkdW9", // Jessica
+  af_river: "SAz9YHcvj6GT2YYXdXww", // River
+  af_sky: "XrExE9yKIg1WjnnlVkGX", // Matilda
+  am_adam: "nPczCjzI2devNBz1zQrb", // Brian
+  am_michael: "CwhRBWXzGAHq8TQ4Fs17", // Roger
+  am_onyx: "pqHfZKP75CvOlQylNhV4", // Bill
+  am_eric: "cjVigY5qzO86Huf0OWal", // Eric
+  am_liam: "TX3LPaxmHKxFdv7VOQHJ", // Liam
+  am_echo: "bIHbv24MWmeRgasZH58o", // Will
+  am_fenrir: "iP95p4xoKVk53GoZ742B", // Chris
+  am_puck: "N2lVS1w4EtoT3dr4eOWO", // Callum
+  bf_emma: "Xb7hH8MSUJpSbSDYk0k2", // Alice
+  bf_lily: "pFZP5JQG7iQjIQuC4Bku", // Lily
+  bm_george: "JBFqnCBsd6RMkjVDRZzb", // George
+  bm_daniel: "onwK4e9ZLuTAKqWW03F9", // Daniel
 };
 
 /** OpenAI TTS voice names (the full house catalog mapped to valid OpenAI
@@ -85,28 +91,24 @@ export const ELEVEN_VOICES: Record<string, string> = {
  *  gender stays matched). */
 export const OPENAI_VOICES: Record<string, string> = {
   af_heart: "coral",
-  af_bella: "shimmer",
+  af_sarah: "shimmer",
   af_nicole: "sage",
   af_nova: "nova",
-  af_sarah: "shimmer",
-  af_sky: "coral",
   af_jessica: "sage",
   af_river: "alloy",
+  af_sky: "coral",
   am_adam: "onyx",
   am_michael: "echo",
   am_onyx: "ash",
-  am_echo: "echo",
   am_eric: "ash",
   am_liam: "verse",
+  am_echo: "echo",
   am_fenrir: "onyx",
   am_puck: "ballad",
-  bf_emma: "ballad",
-  bf_alice: "shimmer",
+  bf_emma: "shimmer",
   bf_lily: "coral",
   bm_george: "fable",
   bm_daniel: "onyx",
-  bm_lewis: "ash",
-  bm_fable: "fable",
 };
 
 /** Gender/accent-aware default within the confidently-mapped set. A house voice
