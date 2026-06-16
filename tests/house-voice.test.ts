@@ -21,7 +21,8 @@ describe("house voices", () => {
   });
 
   it("labels house, clone, and default voices", () => {
-    expect(houseVoiceLabel("af_bella")).toBe("Bella");
+    expect(houseVoiceLabel("af_heart")).toBe("Aria");
+    expect(houseVoiceLabel("am_adam")).toBe("Brian"); // label matches the actual voice
     expect(houseVoiceLabel("clone:abc")).toContain("Cloned");
     expect(houseVoiceLabel(null)).toContain("default");
   });

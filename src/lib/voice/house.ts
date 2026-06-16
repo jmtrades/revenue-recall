@@ -14,34 +14,34 @@ export interface HouseVoice {
   description: string;
 }
 
+// Curated best-of-the-best. Every entry is a DISTINCT, top-tier ElevenLabs voice
+// (1:1 mapping in tts.ts ELEVEN_VOICES — no two share a sound) and the label is
+// that voice's REAL name, so what you pick is exactly what you hear. The id keeps
+// the Kokoro scheme so the self-hosted call-gateway speaks the matching local voice.
 export const HOUSE_VOICES: HouseVoice[] = [
   // US female
-  { id: "af_heart", label: "Aria", description: "Warm female · US" },
-  { id: "af_bella", label: "Bella", description: "Bright female · US" },
-  { id: "af_nicole", label: "Nicole", description: "Soft female · US" },
-  { id: "af_nova", label: "Nova", description: "Confident female · US" },
-  { id: "af_sarah", label: "Sarah", description: "Clear female · US" },
-  { id: "af_sky", label: "Sky", description: "Youthful female · US" },
-  { id: "af_jessica", label: "Jessica", description: "Polished female · US" },
-  { id: "af_river", label: "River", description: "Calm female · US" },
+  { id: "af_heart", label: "Aria", description: "Warm, expressive · US" },
+  { id: "af_sarah", label: "Sarah", description: "Soft, professional · US" },
+  { id: "af_nicole", label: "Laura", description: "Bright, youthful · US" },
+  { id: "af_nova", label: "Charlotte", description: "Confident, smooth · US" },
+  { id: "af_jessica", label: "Jessica", description: "Expressive, lively · US" },
+  { id: "af_river", label: "River", description: "Calm, even · US" },
+  { id: "af_sky", label: "Matilda", description: "Friendly, warm · US" },
   // US male
-  { id: "am_adam", label: "Adam", description: "Steady male · US" },
-  { id: "am_michael", label: "Michael", description: "Friendly male · US" },
-  { id: "am_onyx", label: "Onyx", description: "Deep male · US" },
-  { id: "am_echo", label: "Echo", description: "Even male · US" },
-  { id: "am_eric", label: "Eric", description: "Crisp male · US" },
-  { id: "am_liam", label: "Liam", description: "Approachable male · US" },
-  { id: "am_fenrir", label: "Fenrir", description: "Bold male · US" },
-  { id: "am_puck", label: "Puck", description: "Upbeat male · US" },
+  { id: "am_adam", label: "Brian", description: "Deep, natural · US" },
+  { id: "am_michael", label: "Roger", description: "Easy-going · US" },
+  { id: "am_onyx", label: "Bill", description: "Older, trustworthy · US" },
+  { id: "am_eric", label: "Eric", description: "Smooth, crisp · US" },
+  { id: "am_liam", label: "Liam", description: "Articulate, young · US" },
+  { id: "am_echo", label: "Will", description: "Relaxed, friendly · US" },
+  { id: "am_fenrir", label: "Chris", description: "Casual, natural · US" },
+  { id: "am_puck", label: "Callum", description: "Rich, characterful · transatlantic" },
   // UK female
-  { id: "bf_emma", label: "Emma", description: "Female · UK" },
-  { id: "bf_alice", label: "Alice", description: "Bright female · UK" },
-  { id: "bf_lily", label: "Lily", description: "Soft female · UK" },
+  { id: "bf_emma", label: "Alice", description: "Clear, warm · UK" },
+  { id: "bf_lily", label: "Lily", description: "Soft, gentle · UK" },
   // UK male
-  { id: "bm_george", label: "George", description: "Male · UK" },
-  { id: "bm_daniel", label: "Daniel", description: "Refined male · UK" },
-  { id: "bm_lewis", label: "Lewis", description: "Deep male · UK" },
-  { id: "bm_fable", label: "Fable", description: "Storyteller male · UK" },
+  { id: "bm_george", label: "George", description: "Warm, mature · UK" },
+  { id: "bm_daniel", label: "Daniel", description: "Authoritative · UK" },
 ];
 
 /** The default house voice (matches the gateway's Kokoro default). */
