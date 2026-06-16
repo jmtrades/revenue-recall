@@ -159,10 +159,11 @@ export function CommandSearch() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex w-full min-w-0 max-w-44 items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-muted transition hover:border-brand/50 sm:max-w-72"
+        aria-label="Search"
+        className="flex h-11 w-11 items-center justify-center gap-2 rounded-lg border border-border bg-surface text-sm text-muted transition hover:border-brand/50 sm:h-auto sm:w-full sm:max-w-72 sm:justify-start sm:px-3 sm:py-2"
       >
         <Icon name="search" size={16} className="shrink-0" />
-        <span className="flex-1 truncate text-left">Search…</span>
+        <span className="hidden flex-1 truncate text-left sm:inline">Search…</span>
         <kbd className="hidden rounded border border-border px-1.5 text-[10px] sm:inline">⌘K</kbd>
       </button>
 
