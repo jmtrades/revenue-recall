@@ -33,8 +33,8 @@ export const metadata: Metadata = {
 const BILLING_FAQ = [
   { q: "Do I need a credit card to start?", a: "No. The Starter plan is free forever with no card — you get the built-in CRM, the Revenue Recall engine ranking your at-risk deals by recoverable dollars, and template-AI outreach. Upgrade only when you want the live AI working your pipeline autonomously." },
   { q: "What counts as an AI message?", a: "Every email, text, or call script the live AI writes for you — Operator includes about 1,500 a month per rep, Autopilot pools about 10,000 across the team. Replies it drafts count; messages you write yourself never do." },
-  { q: "What happens if I use up my monthly pool?", a: "You're never blocked mid-campaign. The system degrades gracefully to template-based drafting, and you can top up instantly from $29 (as low as 1.6¢ a message) to put the live AI back on the queue." },
-  { q: "How do call minutes work — and how many dials is that really?", a: "Only connected talk time counts, billed per second. A no-answer costs you nothing, and a voicemail drop is about 30 seconds — so minutes go much further than they sound. Operator's 1,500 talk minutes cover roughly 100 dials every business day at real-world connect rates; Autopilot pools 4,000 minutes — about 6,000 dials a month across the desk. Practice and role-play calls run on-device and are free on every plan, forever. If a hot streak burns through the pool, top up minutes instantly from $59 and keep dialing — email, SMS, and practice never stop either way." },
+  { q: "Will it have enough calling and messaging to work my whole list?", a: "Yes — comfortably. Every plan includes far more outreach than a person could ever do by hand, and you only ever pay for calls that actually connect (a no-answer costs nothing), so it stretches much further than it sounds. It works through your entire list and keeps following up — and if you ever want even more in a busy month, you can add capacity instantly. Practice and role-play calls are always free, on every plan." },
+  { q: "What if I want to run even more in a busy month?", a: "You're never stopped mid-campaign. If you want extra capacity for a big push, you can add it instantly from a few dollars — and email, SMS, and practice calls keep running no matter what." },
   { q: "Is autonomous calling and texting compliant?", a: "The guardrails are built in and always on. Autonomous calls and texts only go out between 8am and 9pm in the prospect's own timezone — the TCPA window, read from their phone number. A one-word STOP opts them out instantly and permanently, every outbound email carries an unsubscribe link, and you can add a spoken recording disclosure for two-party-consent states. Quiet hours, daily caps, and per-deal cooldowns stack on top, and they're all visible on your Autopilot page." },
   { q: "Can I change or cancel my plan anytime?", a: "Yes. Upgrade, downgrade, or cancel anytime — monthly plans have no contract, and annual billing simply gives you about two months free. Your data stays yours either way." },
 ];
@@ -110,8 +110,28 @@ export default function PricingPage() {
       </section>
 
       {/* Plans */}
-      <section className="mx-auto max-w-6xl px-5 pb-20">
+      <section className="mx-auto max-w-6xl px-5 pb-10">
         <PricingPlans />
+      </section>
+
+      {/* Risk reversal — make starting feel like zero risk, all true */}
+      <section className="mx-auto max-w-5xl px-5 pb-16">
+        <div className="rounded-2xl border border-border bg-surface/40 px-6 py-7">
+          <p className="text-center text-xs font-semibold uppercase tracking-wide text-brand">Zero risk to start</p>
+          <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { t: "Start free — no card", d: "Watch it surface the revenue you're losing before you pay a cent." },
+              { t: "Cancel anytime", d: "No contracts, no lock-in — month to month, always." },
+              { t: "Your data is always yours", d: "Export everything whenever you like. It's never held hostage." },
+              { t: "Lock in today's price", d: "Your rate is grandfathered for life. Prices rise; yours won't." },
+            ].map((x) => (
+              <div key={x.t} className="text-center sm:text-left">
+                <p className="text-sm font-semibold text-fg">{x.t}</p>
+                <p className="mt-1 text-sm leading-relaxed text-muted">{x.d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* The math, one line */}
