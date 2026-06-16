@@ -31,6 +31,7 @@ const ROUTES = [
   "/inbox",
   "/dialer",
   "/calendar",
+  "/meetings",
   "/agents",
   "/sequences",
   "/templates",
@@ -38,6 +39,10 @@ const ROUTES = [
   "/reports",
   "/forecast",
   "/settings",
+  "/privacy",
+  "/terms",
+  "/security",
+  "/docs/api",
   "/api/health",
 ];
 
