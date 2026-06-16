@@ -102,7 +102,10 @@ export function Funnel({ stages }: { stages: { label: string; value: number; cou
     <div className="space-y-2">
       {stages.map((s, i) => {
         const w = Math.max(8, (s.value / max) * 100);
-        const conv = i > 0 && stages[i - 1].count > 0 ? Math.round((s.count / stages[i - 1].count) * 100) : null;
+        // Clamp to 100%: a stage can hold more deals than the one before it
+        // (deals skip stages / land directly), but a funnel conversion that
+        // reads "200%" is nonsense — stage-to-stage conversion is ≤100%.
+        const conv = i > 0 && stages[i - 1].count > 0 ? Math.min(100, Math.round((s.count / stages[i - 1].count) * 100)) : null;
         return (
           <div key={s.label} className="flex items-center gap-3">
             <span className="w-32 shrink-0 truncate text-xs text-muted">{s.label}</span>
