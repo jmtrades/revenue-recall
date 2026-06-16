@@ -237,8 +237,21 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     reply = { ...reply, body: `Got it — I'll call you ${bookedLabel}. If another time works better, just reply with it and I'll move things around.` };
   }
 
+  // Loop breaker: an auto-responder on the other side (out-of-office, ticketing
+  // bot, etc.) can ping-pong with our auto-reply forever. Don't auto-SEND if we
+  // already sent this contact something within the cooldown — queue it for a
+  // human instead. A genuine fast reply just waits for one quick approval; a
+  // machine loop is capped to at most one send per cooldown and surfaces in
+  // Approvals where a person breaks it. (priorActs already includes our prior
+  // outbound; the just-logged inbound is direction:"inbound", so excluded.)
+  const cooldownRaw = Number(process.env.REPLY_AUTOPILOT_COOLDOWN_MS);
+  const cooldownMs = Number.isFinite(cooldownRaw) && cooldownRaw >= 0 ? cooldownRaw : 120_000;
+  const sentRecently = priorActs.some(
+    (a) => a.direction === "outbound" && (a.kind === "email" || a.kind === "sms") && Date.now() - new Date(a.occurredAt).getTime() < cooldownMs,
+  );
+
   // Auto-send or queue for approval.
-  if (process.env.REPLY_AUTOPILOT === "true") {
+  if (process.env.REPLY_AUTOPILOT === "true" && !sentRecently) {
     const to = channel === "email" ? contact.points.find((p) => p.channel === "email")?.value : contact.points.find((p) => p.channel === "phone")?.value;
     // Only auto-send a real, non-empty body (the drafter already falls back to a
     // template, so this is a final belt-and-suspenders guard before a live send).
