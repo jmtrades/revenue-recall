@@ -6,7 +6,7 @@ export default function Loading() {
         <div className="h-7 w-40 rounded bg-surface-2" />
         <div className="h-4 w-96 max-w-full rounded bg-surface-2/70" />
       </div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="h-20 rounded-xl bg-surface-2" />
         ))}

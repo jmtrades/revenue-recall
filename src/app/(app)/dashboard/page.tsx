@@ -125,7 +125,7 @@ export default async function DashboardPage() {
         </Link>
       )}
 
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Open Pipeline" value={money(m.openValue, m.currency)} hint={`${m.openCount} open ${o.terminology.opportunity.toLowerCase()}s`} icon="pipeline" countUp />
         <Stat label="Weighted Forecast" value={money(m.weightedForecast, m.currency)} hint="probability-adjusted" icon="forecast" countUp />
         <Stat label="Won This Month" value={money(wonThisMonth, m.currency)} hint="closed-won" tone="success" icon="approvals" countUp />
@@ -134,7 +134,7 @@ export default async function DashboardPage() {
 
       {showOutreach && (
         <Card title="Outreach · last 30 days" action={<Link href="/reports" className="text-sm text-brand hover:underline">Reports →</Link>}>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Stat label="Sent" value={String(engagement.sent)} hint="emails + texts" icon="mail" />
             <Stat label="Reply rate" value={pct(engagement.replyRate)} hint={`${engagement.replied} replies`} tone={engagement.replyRate >= 0.05 ? "success" : "default"} icon="inbox" />
             <Stat label="Meetings ahead" value={String(meetings.upcoming)} hint="confirmed" tone="success" icon="calendar" />

@@ -29,7 +29,7 @@ export default async function ReportsPage() {
     <div className="space-y-6">
       <PageHeader title="Reports" subtitle="Pipeline health, conversion, sources, and team performance." />
 
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Closed Won" value={money(m.wonValue, m.currency)} hint={`${m.wonCount} deals`} tone="success" countUp />
         <Stat label="Avg Deal Size" value={money(m.avgDealSize, m.currency)} countUp />
         <Stat label="Win Rate" value={pct(m.winRate)} hint={`${m.lostCount} lost`} countUp />
@@ -50,7 +50,7 @@ export default async function ReportsPage() {
           <p className="text-sm text-muted">No dials in the last week. The power dialer logs every attempt here — connects, voicemails, and no-answers alike.</p>
         ) : (
           <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Stat label="Dials" value={String(calls.dials)} hint={`${calls.noAnswers} no-answer · ${calls.voicemails} voicemail`} />
               <Stat label="Connects" value={String(calls.connects)} tone="success" hint="reached a person" />
               <Stat label="Connect rate" value={pct(calls.connectRate)} hint="of all dials" />
@@ -74,7 +74,7 @@ export default async function ReportsPage() {
           <p className="text-sm text-muted">No deals recalled yet. Enroll the recall queue to start winning revenue back.</p>
         ) : (
           <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Stat label="Recalled" value={String(r.recallOutcomes.recalled)} hint="deals worked" />
               <Stat label="Re-engaged" value={String(r.recallOutcomes.reEngaged)} hint="got a touch" />
               <Stat label="Won back" value={String(r.recallOutcomes.wonBack)} tone="success" hint="closed after recall" />
@@ -159,7 +159,7 @@ export default async function ReportsPage() {
         {engagement.sent === 0 ? (
           <p className="text-sm text-muted">No outbound sent in the last 30 days. Once the engine emails and texts your pipeline, the sent → replied funnel and your reply rate show up here.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Stat label="Sent" value={String(engagement.sent)} hint="emails + texts" />
             <Stat label="Replied" value={String(engagement.replied)} tone="success" hint={`${engagement.clicked} link clicks`} />
             <Stat label="Reply rate" value={pct(engagement.replyRate)} tone={engagement.replyRate >= 0.05 ? "success" : undefined} hint="replies ÷ sent" />
@@ -173,7 +173,7 @@ export default async function ReportsPage() {
           <p className="text-sm text-muted">No meetings booked yet. Share your booking link (Settings → Scheduling) — meetings booked there land on your pipeline and show up here.</p>
         ) : (
           <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Stat label="Upcoming" value={String(meetings.upcoming)} hint="confirmed ahead" tone="success" />
               <Stat label="Booked" value={String(meetings.booked30d)} hint="last 30 days" />
               <Stat label="Cancel rate" value={pct(meetings.cancelRate)} hint={`${meetings.cancelled30d} cancelled`} tone={meetings.cancelRate > 0.3 ? "warn" : undefined} />

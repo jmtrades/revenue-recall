@@ -142,17 +142,17 @@ export function InboxView({
           <div className="grid flex-1 place-items-center text-sm text-muted">Select a conversation</div>
         ) : (
           <>
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <Avatar name={active.contactName} size={36} />
-                <div>
-                  <div className="text-sm font-medium text-fg">{active.contactName}</div>
-                  <div className="text-xs text-muted">{active.company}</div>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium text-fg">{active.contactName}</div>
+                  <div className="truncate text-xs text-muted">{active.company}</div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex shrink-0 items-center gap-3">
                 <ChannelBadge channel={active.channel} />
-                <Link href={`/leads/${active.contactId}`} className="text-sm text-brand hover:underline">View contact →</Link>
+                <Link href={`/leads/${active.contactId}`} className="shrink-0 text-sm text-brand hover:underline">View contact →</Link>
               </div>
             </div>
             <div className="flex-1 space-y-3 overflow-y-auto p-4">

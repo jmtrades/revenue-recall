@@ -46,7 +46,7 @@ export default async function SequenceDetailPage({ params }: { params: { id: str
 
       <PageHeader title={seq.name} subtitle={seq.goal} />
 
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Steps" value={String(seq.steps.length)} />
         <Stat label="Duration" value={`${span} days`} />
         <Stat label="Channels" value={String(channels.length)} hint={channels.join(" · ")} />
