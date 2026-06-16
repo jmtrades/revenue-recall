@@ -135,7 +135,11 @@ export function computeEngagement(kinds: string[]): Engagement {
     else if (k === "click") clicked++;
     else if (k === "reply") replied++;
   }
-  return { sent, clicked, replied, replyRate: sent > 0 ? replied / sent : 0, clickRate: sent > 0 ? clicked / sent : 0 };
+  // Clamp to 100%: replies/clicks are separate event streams from sends (a
+  // contact can reply more than once, and inbound events can outpace logged
+  // sends), so the raw ratio can exceed 1 — a "200% reply rate" is nonsense to
+  // a buyer. A rate is bounded at 100% by definition.
+  return { sent, clicked, replied, replyRate: sent > 0 ? Math.min(1, replied / sent) : 0, clickRate: sent > 0 ? Math.min(1, clicked / sent) : 0 };
 }
 
 /** The org's outreach engagement funnel over the last 30 days. Never throws. */

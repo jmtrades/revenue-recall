@@ -19,6 +19,16 @@ describe("computeEngagement", () => {
     expect(e.replied).toBe(1);
     expect(e.clicked).toBe(0);
   });
+
+  it("clamps rates at 100% — replies/clicks can outpace sends but a rate can't exceed 1", () => {
+    // 1 send, 2 replies, 3 clicks → raw ratios would be 200% / 300% (nonsense).
+    const e = computeEngagement(["sent", "reply", "reply", "click", "click", "click"]);
+    expect(e.sent).toBe(1);
+    expect(e.replied).toBe(2);
+    expect(e.clicked).toBe(3);
+    expect(e.replyRate).toBe(1);
+    expect(e.clickRate).toBe(1);
+  });
 });
 
 describe("recorders + stats degrade without a database", () => {
