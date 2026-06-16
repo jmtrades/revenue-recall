@@ -264,7 +264,7 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search name, company, email…"
-          className="w-64 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+          className="w-full sm:w-64 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
         />
         <select value={owner} onChange={(e) => setOwner(e.target.value)} className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand">
           <option value="">All owners</option>

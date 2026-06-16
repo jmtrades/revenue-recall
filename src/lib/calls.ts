@@ -1,7 +1,7 @@
 import { resolveProvider } from "@/lib/crm/registry";
 import { planCallRetry, isVoicemailOutcome, MAX_CALL_ATTEMPTS, type RetryPlan } from "@/lib/calls/retry";
 import { outsideCourtesyWindow } from "@/lib/calls/local-time";
-import { hasOptedOut, quietHoursNow } from "@/lib/agent/guardrails";
+import { hasOptedOut, hasCallConsent, quietHoursNow } from "@/lib/agent/guardrails";
 import { listTasks } from "@/lib/agent/store";
 import { isEntitled } from "@/lib/billing/enforce";
 import { recordCallMinutes } from "@/lib/billing/voice-minutes";
@@ -282,7 +282,12 @@ export async function runCallRetries(now: Date = new Date()): Promise<RetryRunRe
       const contact = cById.get(a.contactId);
       const phone = contact?.points.find((p) => p.channel === "phone")?.value;
       const attempts = acts.filter((x) => x.kind === "call" && x.direction === "outbound").length;
-      if (!contact || !phone || attempts >= MAX_CALL_ATTEMPTS || hasOptedOut(contact, undefined, acts)) {
+      // A retry is itself an autonomous AI dial, so it must clear the SAME gates
+      // as the primary autopilot call (engine.ts): a number, attempt budget, no
+      // opt-out, AND express call consent on file. Without the consent check a
+      // contact who withdrew consent between attempts would still be re-dialed —
+      // the single biggest TCPA risk. Consent withdrawal is the safe default.
+      if (!contact || !phone || attempts >= MAX_CALL_ATTEMPTS || hasOptedOut(contact, undefined, acts) || !hasCallConsent(contact)) {
         result.skipped += 1;
         continue;
       }
