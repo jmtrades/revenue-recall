@@ -7,6 +7,9 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { getSupabase } from "@/lib/supabase/client";
 import { channelStatus } from "@/lib/comms";
 import { distributedRateLimit } from "@/lib/ratelimit";
+import { inviteOnlyEnabled } from "@/lib/config";
+import { hasPendingInvite } from "@/lib/invites-server";
+import { anyOrgExists } from "@/lib/supabase/provision";
 
 export interface AuthState {
   error?: string;
@@ -44,6 +47,18 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
   if (password.length < 8) return { error: "Use at least 8 characters for your password." };
+
+  // Invite-only (private) deployment: don't even create an auth account for an
+  // uninvited self-signup — turn them away with a clear message. The first user
+  // on a fresh deployment (no org yet) is allowed through to become the owner.
+  // Provisioning enforces the same rule for Google OAuth; this is just the early,
+  // friendly "you need an invite" feedback for the email/password form.
+  if (inviteOnlyEnabled()) {
+    const [invited, orgExists] = await Promise.all([hasPendingInvite(email), anyOrgExists()]);
+    if (!invited && orgExists) {
+      return { error: "Revenue Recall is invite-only. Ask your admin to send you an invite, then sign in." };
+    }
+  }
 
   // Frictionless onboarding by DEFAULT. Supabase AUTH emails (the confirmation
   // link) use Supabase's own SMTP — separate from the app's Resend — so on the
