@@ -130,4 +130,18 @@ describe("inbound message handling", () => {
     const mine = enrollments.find((e) => e.sequenceId === "new_lead" && e.contactId === res.contactId);
     expect(mine).toBeTruthy(); // the new lead is being worked immediately, not next cron
   });
+
+  it("breaks auto-reply loops: a 2nd auto-reply within the cooldown is queued, not auto-sent", async () => {
+    process.env.REPLY_AUTOPILOT = "true";
+    try {
+      const phone = "+1 (555) 909-1212";
+      await handleInbound("sms", phone, "hi"); // first message creates the contact (no auto-reply on the new-contact path)
+      const first = await handleInbound("sms", phone, "tell me more about what you offer");
+      expect(first.action).not.toBe("queued"); // matched → auto-sent (logged: no live transport in tests)
+      const second = await handleInbound("sms", phone, "and how does onboarding work");
+      expect(second.action).toBe("queued"); // cooldown loop-breaker hands it to a human instead
+    } finally {
+      delete process.env.REPLY_AUTOPILOT;
+    }
+  });
 });
