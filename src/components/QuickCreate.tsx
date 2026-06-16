@@ -51,6 +51,18 @@ export function QuickCreate() {
   useEscapeKey(open, () => setOpen(false));
   const dialogRef = useFocusTrap<HTMLDivElement>(open);
 
+  // Let an empty-state CTA elsewhere (e.g. "Add a lead" on the leads page) open
+  // this modal without prop-drilling — a decoupled window event.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const tab = (e as CustomEvent<{ tab?: "deal" | "contact" }>).detail?.tab;
+      if (tab === "deal" || tab === "contact") setTab(tab);
+      setOpen(true);
+    };
+    window.addEventListener("rr:quick-create", onOpen);
+    return () => window.removeEventListener("rr:quick-create", onOpen);
+  }, []);
+
   function reset() {
     setTitle(""); setValue(""); setName(""); setCompany(""); setEmail(""); setPhone(""); setError(null);
   }
