@@ -113,10 +113,10 @@ export default function AuditPage() {
           <div className="surface-grid absolute inset-0 opacity-30" />
           <div className="relative">
             <span className="grid h-12 w-12 mx-auto place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20"><Icon name="shield" size={24} /></span>
-            <h2 className="mt-5 text-2xl font-semibold tracking-tight text-fg sm:text-3xl">The risk is ours, not yours</h2>
+            <h2 className="mt-5 text-2xl font-semibold tracking-tight text-fg sm:text-3xl">See the value before you pay a cent</h2>
             <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-muted">
-              The audit is free and read-only. You see the recoverable revenue before you spend a cent — and if you turn
-              on the full engine, it&apos;s backed by a 30-day money-back guarantee.
+              The audit is free and read-only. You see the recoverable revenue before you spend a cent — and the full
+              engine starts free too: no card, cancel anytime, and your data is always yours.
             </p>
             <div className="mt-8">
               <Link href="/signup?next=/onboarding" className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-2.5 pl-6 pr-2.5 text-base font-semibold text-white hover:bg-brand/90">

@@ -37,7 +37,7 @@ const BILLING_FAQ = [
   { q: "What if I want to run even more in a busy month?", a: "You're never stopped mid-campaign. If you want extra capacity for a big push, you can add it instantly from a few dollars — and email, SMS, and practice calls keep running no matter what." },
   { q: "Is autonomous calling and texting compliant?", a: "The guardrails are built in and always on. Autonomous calls and texts only go out between 8am and 9pm in the prospect's own timezone — the TCPA window, read from their phone number. A one-word STOP opts them out instantly and permanently, every outbound email carries an unsubscribe link, and you can add a spoken recording disclosure for two-party-consent states. Quiet hours, daily caps, and per-deal cooldowns stack on top, and they're all visible on your Autopilot page." },
   { q: "Can I change or cancel my plan anytime?", a: "Yes. Upgrade, downgrade, or cancel anytime — monthly plans have no contract, and annual billing simply gives you about two months free. Your data stays yours either way." },
-  { q: "What if it's not for me?", a: "You start free with no card, so you can see it work on your own pipeline before paying anything. And every paid plan is backed by a 30-day money-back guarantee — if it's not working for you in your first month, just email us and we'll refund it, no hoops." },
+  { q: "What if it's not for me?", a: "You start free with no card, so you can see it work on your own pipeline before paying anything — and you can cancel anytime, no contract. Your data is always yours to export, either way." },
 ];
 
 const JSON_LD = {
@@ -119,16 +119,6 @@ export default function PricingPage() {
       <section className="mx-auto max-w-5xl px-5 pb-16">
         <div className="rounded-2xl border border-border bg-surface/40 px-6 py-7">
           <p className="text-center text-xs font-semibold uppercase tracking-wide text-brand">Zero risk to start</p>
-          {/* Guarantee — the headline risk reversal */}
-          <div className="mx-auto mt-4 flex max-w-2xl items-center justify-center gap-3 rounded-xl border border-brand/30 bg-brand-soft/15 px-4 py-3 text-center">
-            <span className="grid h-8 w-8 flex-none place-items-center rounded-full bg-brand/15 text-brand">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" /></svg>
-            </span>
-            <p className="text-sm text-fg">
-              <span className="font-semibold">30-day money-back guarantee.</span>{" "}
-              <span className="text-muted">If it&rsquo;s not for you in your first month on a paid plan, email us for a full refund — no hoops.</span>
-            </p>
-          </div>
           <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {[
               { t: "Start free — no card", d: "Watch it surface the revenue you're losing before you pay a cent." },
@@ -201,7 +191,7 @@ export default function PricingPage() {
                 <Arrow className="text-muted" />
               </Link>
             </div>
-            <p className="mt-5 text-sm text-muted">Start free, no card · 30-day money-back guarantee on every paid plan.</p>
+            <p className="mt-5 text-sm text-muted">Start free, no card · cancel anytime, no contract.</p>
           </div>
         </div>
       </section>
