@@ -111,8 +111,8 @@ export function QuickCreate() {
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90">
-        <Icon name="plus" size={16} /> New
+      <button onClick={() => setOpen(true)} aria-label="New" className="inline-flex h-11 w-11 items-center justify-center gap-1.5 rounded-lg bg-brand text-sm font-medium text-white transition hover:bg-brand/90 sm:h-auto sm:w-auto sm:px-3 sm:py-2">
+        <Icon name="plus" size={16} /> <span className="hidden sm:inline">New</span>
       </button>
 
       {open && (
