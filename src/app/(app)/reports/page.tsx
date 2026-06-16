@@ -121,6 +121,7 @@ export default async function ReportsPage() {
           )}
         </Card>
         <Card title="Team leaderboard">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-muted">
@@ -146,6 +147,7 @@ export default async function ReportsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </Card>
       </div>
 
