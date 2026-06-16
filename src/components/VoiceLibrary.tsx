@@ -25,7 +25,7 @@ interface Voice {
 const PREVIEW_LINE =
   "Hi, it's me — I know it's been a minute, but I've got something worth thirty seconds. Is now an okay time?";
 
-export function ElevenVoiceLibrary() {
+export function VoiceLibrary() {
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [reason, setReason] = useState<string>("ok");
   const [canFix, setCanFix] = useState(false);
