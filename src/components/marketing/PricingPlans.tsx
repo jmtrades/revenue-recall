@@ -121,9 +121,10 @@ export function PricingPlans() {
       </Stagger>
       <div className="mt-10 space-y-4 text-center">
         <p className="mx-auto max-w-2xl text-sm text-muted">
-          Every plan includes a monthly pool of <span className="text-fg">AI messages</span> — each email, text, call, or reply it writes for you:{" "}
-          <span className="text-fg">1,500/mo</span> on Operator, <span className="text-fg">10,000</span> pooled on Autopilot, alongside your call minutes.
-          Need more during a big push? <span className="text-fg">Top up instantly from $29</span> (as low as 1.6¢ a message) — you&rsquo;re never blocked mid-campaign.
+          Every plan includes far more outreach than a person could do by hand — the AI writes and sends
+          your emails, texts, and calls, and works your <span className="text-fg">whole list</span>.
+          Want extra capacity for a big push? <span className="text-fg">Add it instantly, anytime</span> —
+          you&rsquo;re never blocked mid-campaign.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted">
           {["No long-term contracts", "Cancel anytime", "Live in minutes", "Your data stays yours"].map((t) => (
