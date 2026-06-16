@@ -37,7 +37,9 @@ export default async function AgentsPage() {
     `Won't re-touch within ${g.cooldownDays}d`,
     "Calls & texts only 8am–9pm the prospect's time",
     ...(g.quietHours ? [`Quiet hours ${g.quietHours}`] : []),
-    g.dailyCap === null ? "No send cap" : `Cap ${g.dailyCap}/run`,
+    // Only surface the daily cap when one is actually set — advertising
+    // "No send cap" framed the ABSENCE of a guardrail as a guardrail.
+    ...(g.dailyCap !== null ? [`Cap ${g.dailyCap}/run`] : []),
   ];
 
   return <AgentsView initialTasks={tasks} initialRuns={runs} stages={stages} summary={summary} guardrails={guardrails} />;
