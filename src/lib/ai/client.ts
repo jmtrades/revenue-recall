@@ -27,12 +27,13 @@ export function aiModel(): string {
   return process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8";
 }
 
-/** A cheaper/faster model for high-volume, low-stakes drafting (cold re-engagement
- *  nudges) so margin doesn't ride the frontier model on every cold dial. Operators
- *  can pin it; defaults to Haiku. The premium model stays the default everywhere
- *  fidelity matters (replies, warm/high-value drafts). */
+/** The model for high-volume, lower-stakes drafting (cold re-engagement nudges).
+ *  Defaults to Sonnet 4.6 — a large quality step over Haiku for cold copy that
+ *  still reads human, at a fraction of Opus's cost so margin holds on volume.
+ *  Operators can pin a cheaper one (ANTHROPIC_MODEL_CHEAP=claude-haiku-4-5) for
+ *  pure scale, or let warm/high-value drafts and replies keep the premium model. */
 export function aiCheapModel(): string {
-  return process.env.ANTHROPIC_MODEL_CHEAP ?? "claude-haiku-4-5-20251001";
+  return process.env.ANTHROPIC_MODEL_CHEAP ?? "claude-sonnet-4-6";
 }
 
 export type EffortLevel = "low" | "medium" | "high" | "xhigh" | "max";

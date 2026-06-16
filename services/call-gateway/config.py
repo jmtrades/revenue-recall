@@ -16,8 +16,11 @@ if not NEURAL_VOICE_URL and env("NEURAL_VOICE_HOST"):
 # Your Opus brain.
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY")
 ANTHROPIC_MODEL = env("ANTHROPIC_MODEL", "claude-opus-4-8")
-# Your speech-to-text (local, open model).
-WHISPER_MODEL = env("WHISPER_MODEL", "base.en")
+# Your speech-to-text (local, open model). small.en is the quality-first default —
+# markedly more accurate than base.en on names, numbers and noisy phone audio (the
+# details that decide a sales call) while still real-time on a modest CPU. On GPU
+# (WHISPER_DEVICE=cuda) step up to WHISPER_MODEL=large-v3 for the best accuracy.
+WHISPER_MODEL = env("WHISPER_MODEL", "small.en")
 WHISPER_DEVICE = env("WHISPER_DEVICE", "cpu")  # "cuda" for GPU
 # Your FreeSWITCH (call control + media).
 FREESWITCH_ESL_HOST = env("FREESWITCH_ESL_HOST", "127.0.0.1")
