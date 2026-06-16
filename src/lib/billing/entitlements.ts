@@ -34,7 +34,7 @@ export interface Entitlements {
 export const PLAN_LIMITS: Record<PlanId, Entitlements> = {
   free: { seats: 1, pipelines: 1, aiLive: false, autopilot: false, integrations: false, actionsPerMonth: 50, voiceMinutesPerMonth: 0 },
   growth: { seats: 1, pipelines: Infinity, aiLive: true, autopilot: true, integrations: true, actionsPerMonth: 1500, voiceMinutesPerMonth: 1500 },
-  team: { seats: 5, pipelines: Infinity, aiLive: true, autopilot: true, integrations: true, actionsPerMonth: 10000, voiceMinutesPerMonth: 4000 },
+  team: { seats: 5, pipelines: Infinity, aiLive: true, autopilot: true, integrations: true, actionsPerMonth: 6000, voiceMinutesPerMonth: 4000 },
   scale: { seats: Infinity, pipelines: Infinity, aiLive: true, autopilot: true, integrations: true, actionsPerMonth: Infinity, voiceMinutesPerMonth: Infinity },
 };
 

@@ -18,7 +18,7 @@ export const dynamic = "force-static";
  */
 
 const DESCRIPTION =
-  "Simple pricing for an autonomous AI sales force: free to start, $399/mo for a rep that does real rep volume — ~100 dials a day, $899/mo for the whole desk. No contracts, cancel anytime.";
+  "Simple pricing for an autonomous AI sales force: free to start, $599/mo for a rep that does real rep volume — ~100 dials a day, $1,699/mo for the whole desk. No contracts, cancel anytime.";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -119,7 +119,7 @@ export default function PricingPage() {
         <div className="mx-auto max-w-3xl px-5 py-12 text-center">
           <p className="text-lg text-body">
             An SDR runs <span className="font-semibold text-fg">$5,000+/mo</span> for eight hours a day. Revenue Recall starts at{" "}
-            <span className="font-semibold text-brand">$399/mo</span> and never clocks out — reactivate one mid-size deal and it&apos;s paid for the year.
+            <span className="font-semibold text-brand">$599/mo</span> and never clocks out — reactivate one mid-size deal and it&apos;s paid for the year.
           </p>
         </div>
       </section>
