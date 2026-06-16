@@ -246,7 +246,8 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
         hint="Import a CSV, connect your CRM or database, or add one by hand. The moment leads land here, Revenue Recall starts surfacing what's slipping."
         action={
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button href="/settings?tab=import" variant="primary" size="sm">Import a CSV</Button>
+            <Button onClick={() => window.dispatchEvent(new CustomEvent("rr:quick-create", { detail: { tab: "contact" } }))} variant="primary" size="sm">Add a lead</Button>
+            <Button href="/settings?tab=import" variant="outline" size="sm">Import a CSV</Button>
             <Button href="/settings?tab=integrations" variant="outline" size="sm">Connect a source</Button>
           </div>
         }
