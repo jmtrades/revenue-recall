@@ -43,7 +43,7 @@ export const NAV_GROUPS: { heading: string; items: { href: string; label: string
   },
 ];
 
-export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+export function NavLinks({ onNavigate, showAdmin = false }: { onNavigate?: () => void; showAdmin?: boolean }) {
   const pathname = usePathname();
   return (
     <nav className="flex flex-1 flex-col gap-4">
@@ -63,7 +63,13 @@ export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
           </div>
         </div>
       ))}
-      <div className="mt-auto">
+      <div className="mt-auto flex flex-col gap-0.5">
+        {showAdmin && (
+          <Link href="/admin" onClick={onNavigate} className={`nav-link ${pathname.startsWith("/admin") ? "nav-link-active" : ""}`}>
+            <Icon name="shield" className="shrink-0" />
+            Admin
+          </Link>
+        )}
         <Link href="/settings" onClick={onNavigate} className={`nav-link ${pathname.startsWith("/settings") ? "nav-link-active" : ""}`}>
           <Icon name="settings" className="shrink-0" />
           Settings

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { LogoBadge } from "@/components/Logo";
 import { NavLinks } from "@/components/nav";
 
-export function Sidebar({ orgName, industryLabel }: { orgName: string; industryLabel: string }) {
+export function Sidebar({ orgName, industryLabel, showAdmin = false }: { orgName: string; industryLabel: string; showAdmin?: boolean }) {
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface px-3 py-5 lg:flex">
       <Link href="/dashboard" className="px-3 pb-6">
@@ -13,7 +13,7 @@ export function Sidebar({ orgName, industryLabel }: { orgName: string; industryL
         <p className="mt-3 truncate text-xs text-muted">{orgName}</p>
         <span className="pill mt-1 bg-brand-soft text-brand">{industryLabel}</span>
       </Link>
-      <NavLinks />
+      <NavLinks showAdmin={showAdmin} />
       <div className="px-3 pt-4 text-[11px] leading-relaxed text-muted">Autonomous outbound — works with any CRM, or none.</div>
     </aside>
   );

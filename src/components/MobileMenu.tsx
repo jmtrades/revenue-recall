@@ -7,7 +7,7 @@ import { NavLinks } from "@/components/nav";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 
-export function MobileMenu({ orgName }: { orgName: string }) {
+export function MobileMenu({ orgName, showAdmin = false }: { orgName: string; showAdmin?: boolean }) {
   const [open, setOpen] = useState(false);
   useEscapeKey(open, () => setOpen(false));
   const drawerRef = useFocusTrap<HTMLElement>(open);
@@ -27,7 +27,7 @@ export function MobileMenu({ orgName }: { orgName: string }) {
               </div>
               <p className="mt-3 truncate text-xs text-muted">{orgName}</p>
             </Link>
-            <NavLinks onNavigate={() => setOpen(false)} />
+            <NavLinks onNavigate={() => setOpen(false)} showAdmin={showAdmin} />
           </aside>
         </div>
       )}

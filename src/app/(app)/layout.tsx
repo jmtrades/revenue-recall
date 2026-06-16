@@ -9,7 +9,8 @@ import { InviteRequired } from "@/components/InviteRequired";
 import { getIndustry } from "@/lib/industries";
 import { getSessionUser } from "@/lib/auth";
 import { getOrgSettings } from "@/lib/org";
-import { inviteOnlyEnabled } from "@/lib/config";
+import { inviteOnlyEnabled, isAuthRequired } from "@/lib/config";
+import { getSessionRole } from "@/lib/authz";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { accentVars } from "@/lib/theme";
 
@@ -26,6 +27,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     const orgId = await resolveActiveOrgId().catch(() => null);
     if (!orgId) return <InviteRequired email={user.email} />;
   }
+  // Owner/admin see the Admin control panel link; everyone else doesn't (the
+  // page enforces this too). Open demo (no auth backend) shows it for discovery.
+  const role = await getSessionRole().catch(() => null);
+  const showAdmin = !isAuthRequired() || role === "owner" || role === "admin";
+
   const industry = getIndustry(org.industryId);
   const mode = org.theme.mode;
   return (
@@ -45,9 +51,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       >
         Skip to content
       </a>
-      <Sidebar orgName={org.name} industryLabel={industry.label} />
+      <Sidebar orgName={org.name} industryLabel={industry.label} showAdmin={showAdmin} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar userName={user?.name ?? "You"} userEmail={user?.email} signedIn={Boolean(user)} orgName={org.name} />
+        <TopBar userName={user?.name ?? "You"} userEmail={user?.email} signedIn={Boolean(user)} orgName={org.name} showAdmin={showAdmin} />
         <LaunchBanner />
         <SendingPausedBanner initialPaused={org.sendingPaused} />
         <BillingBanner />
