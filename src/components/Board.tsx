@@ -55,7 +55,9 @@ export function Board({ pipeline, opportunities, contacts, owners, canWrite }: P
   return (
     <div>
       {error && <p className="mb-3 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
-      <div className={`grid gap-3 ${pending ? "opacity-70" : ""}`} style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(230px, 1fr))` }}>
+      {/* On a phone each stage fills ~80% of the screen (the next one peeks, so
+          it's clearly swipeable); from sm: up it's the full 230px column. */}
+      <div className={`grid gap-3 ${pending ? "opacity-70" : ""}`} style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(min(80vw, 230px), 1fr))` }}>
         {columns.map((stage) => {
           const colItems = items.filter((o) => o.stageId === stage.id);
           const total = colItems.reduce((s, o) => s + o.value, 0);

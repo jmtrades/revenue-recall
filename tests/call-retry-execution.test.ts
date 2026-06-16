@@ -42,7 +42,7 @@ describe("runCallRetries", () => {
 
   it("places a due retry once, then treats it as consumed on the next tick", async () => {
     const p = getProvider();
-    const c = await p.createContact({ name: "Redial Me", points: [{ channel: "phone", value: "+15550100300" }] });
+    const c = await p.createContact({ name: "Redial Me", points: [{ channel: "phone", value: "+15550100300" }], attributes: { callConsent: true } });
     await p.logActivity({ contactId: c.id, kind: "call", direction: "outbound", summary: "no answer", occurredAt: new Date(Date.now() - 7_200_000).toISOString() });
     // A retry scheduled 2h ago that is due NOW (waitHours elapsed).
     await p.logActivity({
@@ -69,7 +69,7 @@ describe("runCallRetries", () => {
   it("holds a due retry at dawn in the PROSPECT's timezone, then places it when their window opens", async () => {
     const p = getProvider();
     // 415 → America/Los_Angeles. The org clock can't see this — that's the point.
-    const c = await p.createContact({ name: "West Coast", points: [{ channel: "phone", value: "+14155550199" }] });
+    const c = await p.createContact({ name: "West Coast", points: [{ channel: "phone", value: "+14155550199" }], attributes: { callConsent: true } });
     await p.logActivity({ contactId: c.id, kind: "call", direction: "outbound", summary: "no answer", occurredAt: "2026-06-12T09:00:00Z" });
     await p.logActivity({
       contactId: c.id,
@@ -89,6 +89,23 @@ describe("runCallRetries", () => {
     expect(open.placed).toBeGreaterThanOrEqual(1);
     acts = await p.listActivitiesByContact!(c.id);
     expect(acts.some((a) => a.summary.includes("Autopilot retry call placed"))).toBe(true);
+  });
+
+  it("never redials a contact without call consent (a retry is an autonomous AI dial)", async () => {
+    const p = getProvider();
+    // No consent attribute → the autonomous retry must be held, same as the
+    // primary autopilot gate, even though they aren't opted out.
+    const c = await p.createContact({ name: "No Consent", points: [{ channel: "phone", value: "+15550100500" }] });
+    await p.logActivity({
+      contactId: c.id,
+      kind: "task",
+      summary: `Retry call — attempt 2 of 4: no pickup last time, best window is the morning (~1h). (due ${new Date(Date.now() - 60_000).toISOString()})`,
+      occurredAt: new Date(Date.now() - 3_600_000).toISOString(),
+    });
+    await createTask({ name: "Auto call retries", goal: "redial no-pickups", trigger: "daily", scope: "recall_queue", channel: "call", autonomy: "auto" });
+    const r = await runCallRetries();
+    expect(r.placed).toBe(0);
+    expect(r.skipped).toBeGreaterThanOrEqual(1);
   });
 
   it("never redials an opted-out contact", async () => {
