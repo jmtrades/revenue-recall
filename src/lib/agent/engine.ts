@@ -211,7 +211,23 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
         if (canAuto && to && callConsent) {
           // Place the call autonomously (real dial when Twilio is set; logged
           // otherwise) — from THIS org's caller ID, like the SMS branch below.
-          const res = await placeCall(to, { from: org.callerId });
+          // Give the call brain full MEMORY so it never dials blind: who they
+          // are, why now, the recent history, and the AI-drafted talk track as
+          // the opener — spoken in the org's chosen voice.
+          const callContext = [
+            name ? `Contact: ${name}${contact?.company ? ` at ${contact.company}` : ""}.` : "",
+            t.opp.title ? `Deal: ${t.opp.title}.` : "",
+            t.reason ? `Why you're calling now: ${t.reason}.` : "",
+            history.length ? `Recent history (newest first): ${history.slice(0, 5).join(" | ")}` : "No prior contact logged.",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          const res = await placeCall(to, {
+            from: org.callerId,
+            context: callContext,
+            opener: draft.body || undefined,
+            voiceId: org.ttsVoiceId ?? undefined,
+          });
           result = res.status === "failed" ? "skipped" : res.status === "sent" ? "sent" : "logged";
           if (result !== "skipped") {
             sent += 1;
