@@ -51,13 +51,13 @@ export const PLANS: Plan[] = [
   },
   {
     name: "Operator",
-    monthly: 399,
+    monthly: 599,
     unit: "/rep/mo",
     tagline: "One autonomous AI rep, working 24/7.",
     cta: "Get started",
     href: "/signup?plan=operator",
     featured: false,
-    anchor: "An SDR costs $5,000+/mo for 8 hrs a day. This is one rep that never clocks out.",
+    anchor: "An SDR costs $5,000+/mo for 8 hrs a day. This is one rep that never clocks out — for about a tenth of the cost.",
     features: [
       "Everything in Starter",
       "Live AI across email, SMS & the phone",
@@ -72,7 +72,7 @@ export const PLANS: Plan[] = [
   },
   {
     name: "Autopilot",
-    monthly: 899,
+    monthly: 1699,
     unit: "/mo",
     tagline: "An autonomous sales team for the whole desk.",
     cta: "Get started",
@@ -81,11 +81,11 @@ export const PLANS: Plan[] = [
     anchor: "Replaces an SDR pod + your sequencer + your dialer — for less than one hire.",
     features: [
       "Everything in Operator",
-      "Up to 5 reps · ~10,000 AI messages / mo pooled",
-      "~6,000 dials a month — 4,000 talk minutes pooled across the desk",
-      "Batch engine — more volume, lower cost",
+      "Up to 5 reps · ~6,000 AI messages / mo pooled across the desk",
+      "~6,000 dials a month — 4,000 talk minutes pooled in a real human voice",
+      "Batch engine — more volume, lower cost per message",
       "Recovered-revenue reporting & team analytics",
-      "Priority queue + advanced automations",
+      "Priority queue + advanced automations & multi-number routing",
     ],
   },
   {

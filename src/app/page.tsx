@@ -452,7 +452,7 @@ export default function LandingPage() {
               <span className="grid h-[18px] w-[18px] flex-none place-items-center rounded-full bg-brand/20 text-brand"><CheckMini /></span>
               Revenue Recall — all of it, autonomous, 24/7
             </span>
-            <span className="shrink-0 font-display text-lg font-semibold text-brand">from $399 / mo</span>
+            <span className="shrink-0 font-display text-lg font-semibold text-brand">from $599 / mo</span>
           </div>
         </ScaleIn>
         <p className="mx-auto mt-6 max-w-2xl text-center text-sm text-muted">
