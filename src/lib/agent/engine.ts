@@ -6,6 +6,7 @@ import { buildRecallQueue } from "@/lib/recall/engine";
 import { draftMessage } from "@/lib/ai/draft";
 import { isAiConfigured } from "@/lib/ai/client";
 import { sendEmail, sendSms, placeCall, sendOutcome } from "@/lib/comms";
+import { signCallMeta } from "@/lib/calls/meta-sig";
 import { trackLinks, recordSent } from "@/lib/tracking";
 import { sendGate, dailySendCap, containsUnverifiedClaim, hasCallConsent, hasSmsConsent, type SkipReason } from "@/lib/agent/guardrails";
 import { complianceConfig, emailDomainVerified, smsA2pRegistered } from "@/lib/compliance";
@@ -243,11 +244,20 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
           const vmFirst = (name || "there").split(" ")[0];
           const vmSender = voice?.senderName?.trim() || org.name || "the team";
           const callVoicemail = `Hi ${vmFirst}, this is an AI assistant reaching out on behalf of ${vmSender}${t.opp.title ? ` about ${t.opp.title}` : ""}. Give us a quick call back whenever it's easy — thanks!`;
+          // Sign per-call meta exactly like the manual dialer so the gateway's
+          // transcript post-back to /api/calls/log attaches to THIS deal/contact
+          // (and the right org) — without it, completed autopilot calls leave no
+          // trace on the timeline and can't be org-attributed.
+          const callMeta: Record<string, string> = {};
+          if (t.opp.contactId) callMeta.contactId = t.opp.contactId;
+          if (t.opp.id) callMeta.dealId = t.opp.id;
+          if (org.id) callMeta.orgId = org.id;
           const res = await placeCall(to, {
             from: org.callerId,
             context: callContext,
             voiceId: org.ttsVoiceId ?? undefined,
             voicemail: callVoicemail,
+            meta: Object.keys(callMeta).length ? signCallMeta(callMeta) : undefined,
           });
           result = sendOutcome(res.status);
           if (result !== "skipped") {
