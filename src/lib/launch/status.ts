@@ -28,7 +28,10 @@ export async function getGoLiveStatus(): Promise<GoLiveStatus> {
     gatewayReachable: diag?.gateway ? diag.gateway.reachable : null,
     gatewayMisdirected: Boolean(diag?.gateway?.misdirected),
     voiceReady: Boolean(org?.voiceId || org?.ttsVoiceId),
-    brainReady: isAiConfigured(),
+    // The live-call conversation brain runs in the call-gateway (its own key), so
+    // trust the gateway's /health report when a gateway is configured; only fall
+    // back to the app's Anthropic key when there's no gateway (direct path).
+    brainReady: diag?.gateway ? Boolean(diag.gateway.brain) : isAiConfigured(),
     leadCount: contacts.length,
     consentCount: contacts.filter((c) => hasCallConsent(c)).length,
     autopilotEntitled,
