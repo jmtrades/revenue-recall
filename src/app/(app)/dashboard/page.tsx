@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getOverview, getActivityFeed, getReports } from "@/lib/queries";
+import { getOverview, getActivityFeed, getReports, getSetupProgress } from "@/lib/queries";
 import { engagementStats } from "@/lib/tracking";
 import { bookingStats } from "@/lib/meetings/stats";
 import { getOrgSettings } from "@/lib/org";
@@ -11,6 +11,7 @@ import { PageHeader, Stat, ReasonBadge, ScoreDot, Card, Avatar, ActivityIcon, Bu
 import { Funnel, ProgressRing, BarChart, Sparkline } from "@/components/charts";
 import { Icon } from "@/components/icons";
 import { DashboardWelcome } from "@/components/DashboardWelcome";
+import { ActivationChecklist } from "@/components/ActivationChecklist";
 import { StartCheckoutWatcher } from "@/components/StartCheckoutWatcher";
 
 export const metadata = { title: "Dashboard" };
@@ -32,7 +33,7 @@ function partOfDay(hour: number): string {
 }
 
 export default async function DashboardPage() {
-  const [o, feed, reports, org, user, sub, engagement, meetings] = await Promise.all([
+  const [o, feed, reports, org, user, sub, engagement, meetings, setup] = await Promise.all([
     getOverview(),
     getActivityFeed(8),
     getReports(),
@@ -41,6 +42,7 @@ export default async function DashboardPage() {
     getSubscription(),
     engagementStats(),
     bookingStats(),
+    getSetupProgress(),
   ]);
   // Only auto-open checkout for someone without a subscription — never
   // re-prompt a customer who's already paying (or mid-dunning).
@@ -72,6 +74,7 @@ export default async function DashboardPage() {
         title={greeting}
         subtitle={o.recallSummary.itemCount > 0 ? "Here's where your revenue stands — and what's slipping out of the pipeline." : "Your pipeline is well tended — here's where things stand today."}
       />
+      {!setup.complete && <ActivationChecklist data={setup} />}
 
       {/* Recoverable-revenue hero — the product's North Star. Lead with the money
           dying in the pipeline and the single action that recovers it, rather than
