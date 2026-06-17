@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { CallQueueItem } from "@/lib/queries";
 import { Icon } from "@/components/icons";
@@ -111,6 +112,10 @@ export function DialerView({ queue, locale, voiceMinutes, objections }: { queue:
   const [summarizing, setSummarizing] = useState(false);
   const [showObjections, setShowObjections] = useState(false);
   const [saved, setSaved] = useState(false);
+  // Stage-advance after a connected call: "idle" | "busy" | "done", per deal.
+  const [advanced, setAdvanced] = useState<Record<string, boolean>>({});
+  const [advancing, setAdvancing] = useState(false);
+  const router = useRouter();
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [briefError, setBriefError] = useState<string | null>(null);
   // The rep's outcome pick ("" = let AI infer from the notes). Overrides the AI
@@ -182,6 +187,27 @@ export function DialerView({ queue, locale, voiceMinutes, objections }: { queue:
     // After an outcome: in Power Mode hop to the next pending deal; otherwise
     // stay put so the rep can review what they logged before moving on.
     if (powerMode && nextIdx >= 0) selectIndex(nextIdx);
+  }
+
+  // Move the deal forward to its next open stage straight from the call wrap-up,
+  // so a good conversation updates the pipeline without a context switch.
+  async function advanceStage() {
+    if (!active?.nextStage || advancing) return;
+    setAdvancing(true);
+    try {
+      const res = await fetch(`/api/opportunities/${active.dealId}/move`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stageId: active.nextStage.id }),
+      });
+      if (!res.ok) throw new Error();
+      setAdvanced((a) => ({ ...a, [active.dealId]: true }));
+      router.refresh();
+    } catch {
+      setSummaryError("Couldn't advance the stage — try again.");
+    } finally {
+      setAdvancing(false);
+    }
   }
 
   // One-tap no-connect outcome — the ~85% case. Logs the deterministic outcome
@@ -511,6 +537,17 @@ export function DialerView({ queue, locale, voiceMinutes, objections }: { queue:
                 </div>
                 <p className="text-sm text-fg">{summary.summary}</p>
                 <p className="mt-1 text-xs text-muted">Next: {summary.nextStep}</p>
+                {saved && active.nextStage && (
+                  <div className="mt-3 border-t border-border/60 pt-2.5">
+                    {advanced[active.dealId] ? (
+                      <span className="inline-flex items-center gap-1 text-xs text-success"><Icon name="check" size={12} strokeWidth={3} /> Advanced to {active.nextStage.label}</span>
+                    ) : (
+                      <button onClick={advanceStage} disabled={advancing} className="rounded-lg border border-border px-3 py-1.5 text-xs text-fg transition hover:border-brand disabled:opacity-50">
+                        {advancing ? "Advancing…" : `Advance to ${active.nextStage.label} →`}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

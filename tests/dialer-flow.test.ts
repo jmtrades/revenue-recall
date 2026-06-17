@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nextPendingIndex, QUICK_OUTCOMES, quickOutcome, dialerKeyAction, phoneKey, duplicatePhoneIndexes, liveAgentPrompt, liveAgentOpener } from "@/lib/dialer-flow";
+import { nextPendingIndex, QUICK_OUTCOMES, quickOutcome, dialerKeyAction, phoneKey, duplicatePhoneIndexes, liveAgentPrompt, liveAgentOpener, nextOpenStage } from "@/lib/dialer-flow";
 import { isRetryableOutcome, isVoicemailOutcome } from "@/lib/calls/retry";
 
 describe("power-dialer queue advance", () => {
@@ -123,5 +123,27 @@ describe("live agent prompt builders", () => {
     const many = liveAgentPrompt({ contactName: "Sam", talkingPoints: Array.from({ length: 20 }, (_, i) => `point ${i}`) });
     expect(many).toContain("point 5");
     expect(many).not.toContain("point 6"); // capped at 6
+  });
+})
+
+describe("nextOpenStage", () => {
+  const stages = [
+    { id: "new", label: "New", type: "open" as const },
+    { id: "working", label: "Working", type: "open" as const },
+    { id: "won", label: "Won", type: "won" as const },
+    { id: "lost", label: "Lost", type: "lost" as const },
+  ];
+
+  it("returns the next open stage after the current one", () => {
+    expect(nextOpenStage(stages, "new")).toEqual({ id: "working", label: "Working" });
+  });
+
+  it("skips closed stages and returns undefined when none follow", () => {
+    expect(nextOpenStage(stages, "working")).toBeUndefined(); // only won/lost after
+  });
+
+  it("returns undefined for a closed or unknown current stage", () => {
+    expect(nextOpenStage(stages, "won")).toBeUndefined();
+    expect(nextOpenStage(stages, "nope")).toBeUndefined();
   });
 })
