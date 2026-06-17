@@ -72,7 +72,9 @@ export default async function ReportsPage() {
         )}
       </Card>
 
-      <Card title="Revenue Recall ROI">
+      <Card title="Revenue Recall ROI" action={r.recallOutcomes.wonBack > 0 ? (
+        <a href="/api/recall/export" className="text-sm text-brand hover:underline" download>Export won-back deals (CSV)</a>
+      ) : undefined}>
         {r.recallOutcomes.recalled === 0 ? (
           <p className="text-sm text-muted">No deals recalled yet. Enroll the recall queue to start winning revenue back.</p>
         ) : (

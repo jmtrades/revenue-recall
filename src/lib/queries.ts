@@ -4,7 +4,7 @@ import { getConfig } from "@/lib/config";
 import { getOrgSettings } from "@/lib/org";
 import { getIndustry, recallThresholdsFor } from "@/lib/industries";
 import { computeMetrics, type PipelineMetrics } from "@/lib/analytics";
-import { buildRecallQueue, summarizeRecall, computeRecallOutcomes, recallByOwner, type RecallItem, type RecallSummary, type RecallOutcomes } from "@/lib/recall/engine";
+import { buildRecallQueue, summarizeRecall, computeRecallOutcomes, recallByOwner, wonBackDeals, type RecallItem, type RecallSummary, type RecallOutcomes, type WonBackDeal } from "@/lib/recall/engine";
 import { MAX_CALL_ATTEMPTS } from "@/lib/calls/retry";
 import { hasOptedOut } from "@/lib/agent/guardrails";
 import { listEnrollments } from "@/lib/cadence";
@@ -178,6 +178,25 @@ export async function getRecallOutcomes(): Promise<RecallOutcomes> {
   const stages = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
   const oppById = new Map(opportunities.map((o) => [o.id, o]));
   return computeRecallOutcomes(enrollments, oppById, stages, opportunities[0]?.currency ?? "USD", earliestTouchByDeal(touches));
+}
+
+/** Won-back deals plus resolved owner names — the case-study proof export. */
+export async function getWonBackDeals(): Promise<Array<WonBackDeal & { ownerName: string }>> {
+  const provider = await resolveProvider();
+  const [pipelines, opportunities, users, enrollments, touches] = await Promise.all([
+    provider.listPipelines(),
+    provider.listOpportunities(),
+    provider.listUsers(),
+    listEnrollments(undefined, 1000),
+    listRecallTouches(),
+  ]);
+  const stages = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
+  const oppById = new Map(opportunities.map((o) => [o.id, o]));
+  const nameById = new Map(users.map((u) => [u.id, u.name]));
+  return wonBackDeals(enrollments, oppById, stages, earliestTouchByDeal(touches)).map((d) => ({
+    ...d,
+    ownerName: (d.ownerId && nameById.get(d.ownerId)) || "Unassigned",
+  }));
 }
 
 export async function getLeads(): Promise<{ contacts: Contact[]; opps: Map<string, Opportunity>; owners: Map<string, User> }> {

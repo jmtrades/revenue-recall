@@ -349,6 +349,70 @@ export function computeRecallOutcomes(
   return { recalled, reEngaged, wonBack, recoveredValue, inProgress, currency };
 }
 
+/** One recovered deal — the proof artifact behind the headline won-back number. */
+export interface WonBackDeal {
+  dealId: string;
+  title: string;
+  value: number;
+  currency: string;
+  ownerId?: string;
+  /** When recall began for this deal (earliest enrollment or first touch). */
+  recallStartedAt: string;
+  /** When it reached a won stage. */
+  wonAt: string;
+}
+
+/**
+ * The list of deals counted as won-back — same dedup + on/after-recall logic as
+ * {@link computeRecallOutcomes}, but emitting each recovered deal so it can be
+ * exported as case-study proof ("here's every deal recall brought back, when we
+ * re-engaged, when it closed"). Sorted by recovered value, descending.
+ */
+export function wonBackDeals(
+  enrollments: RecallEnrollmentRef[],
+  oppById: Map<string, Opportunity>,
+  stages: Map<string, Stage>,
+  touchedAt?: Map<string, string>,
+): WonBackDeal[] {
+  const seenDeals = new Set<string>();
+  const out: WonBackDeal[] = [];
+
+  const credit = (deal: Opportunity, recalledSince: string): void => {
+    const stage = stages.get(deal.stageId);
+    if (stage?.type !== "won") return;
+    const wonAt = deal.closedAt ?? deal.updatedAt;
+    if (wonAt && wonAt < recalledSince) return;
+    out.push({
+      dealId: deal.id,
+      title: deal.title,
+      value: deal.value,
+      currency: deal.currency,
+      ownerId: deal.ownerId,
+      recallStartedAt: recalledSince,
+      wonAt: wonAt ?? recalledSince,
+    });
+  };
+
+  for (const e of [...enrollments].sort((a, b) => (a.enrolledAt < b.enrolledAt ? -1 : 1))) {
+    if (!RECALL_SEQUENCE_IDS.has(e.sequenceId)) continue;
+    const deal = e.dealId ? oppById.get(e.dealId) : undefined;
+    if (!deal || seenDeals.has(deal.id)) continue;
+    seenDeals.add(deal.id);
+    credit(deal, e.enrolledAt);
+  }
+  if (touchedAt) {
+    for (const [dealId, firstTouch] of touchedAt) {
+      if (seenDeals.has(dealId)) continue;
+      const deal = oppById.get(dealId);
+      if (!deal) continue;
+      seenDeals.add(dealId);
+      credit(deal, firstTouch);
+    }
+  }
+
+  return out.sort((a, b) => b.value - a.value);
+}
+
 /** Per-owner slipping-revenue stat for the recall leaderboard. */
 export interface RecallOwnerStat {
   ownerId: string;
