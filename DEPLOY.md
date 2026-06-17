@@ -13,8 +13,13 @@ required to boot — start with a key and add the rest when you're ready to sell
    drafting. (Skip it and the app still runs on high-quality templates.)
 4. **Deploy.** You get a live URL with the entire clickable system.
 
-`vercel.json` already registers the daily cron (`/api/agent/cron`, 13:00 UTC)
-that advances sequences, collects draft batches, and sends digests.
+`vercel.json` registers an **hourly** cron (`/api/agent/cron`, `0 * * * *`) that
+advances sequences, runs autopilot tasks (calls/texts/emails), collects draft
+batches, and sends digests. Hourly is deliberate: the engine only calls/texts
+within each prospect's 8am–9pm local window and holds the rest for "next run", so
+it must tick through the day to actually reach people across time zones — a single
+daily run would skip everyone who's in quiet hours at that moment. (Hourly crons
+need a Vercel Pro plan; Hobby allows one run/day.)
 
 ## 2. Environment variables (by capability)
 
