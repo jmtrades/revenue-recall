@@ -7,18 +7,17 @@
 """
 import asyncio
 import hmac
-import json
 import logging
 import os
 import re
 import time
-import urllib.request
 import uuid
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
 import amd
+import calllog
 import config
 from agent import CallAgent, DEFAULT_OPENER
 from transport import WebSocketMediaTransport
@@ -55,35 +54,13 @@ def _reap_pending() -> None:
 
 def _transcript_text(turns: list[dict]) -> str:
     """Render the agent's turns as a readable transcript for the CRM timeline."""
-    label = {"rep": "Rep", "prospect": "Prospect"}
-    return "\n".join(f"{label.get(t.get('role'), t.get('role', '?'))}: {t.get('text', '')}".strip() for t in turns)
+    return calllog.transcript_text(turns)
 
 
 def _post_call_status(payload: dict) -> None:
     """POST a finished call's transcript + outcome to the app (best-effort, blocking;
-    call via asyncio.to_thread). Uses stdlib only — no extra dependency."""
-    url = config.CALL_STATUS_WEBHOOK_URL
-    if not url:
-        return
-    data = json.dumps(payload).encode("utf-8")
-    headers = {"Content-Type": "application/json"}
-    if config.COMMS_WEBHOOK_TOKEN:
-        headers["Authorization"] = f"Bearer {config.COMMS_WEBHOOK_TOKEN}"
-    # Retry with backoff: the POST is the ONLY path a call's transcript/outcome
-    # reaches the CRM, so a transient blip when the call ends must not lose it.
-    # Runs off the event loop (asyncio.to_thread), so the sleeps are harmless; the
-    # app dedupes a rare double on the call id.
-    for attempt in range(3):
-        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-        try:
-            with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310 (operator-configured URL)
-                resp.read()
-            return
-        except Exception as e:  # never let logging-back break the call
-            log.warning("call status post failed (attempt %d/3): %s", attempt + 1, e)
-            if attempt < 2:
-                time.sleep(2 ** attempt)  # 1s, then 2s
-    log.error("call status permanently undelivered for %s — transcript not logged", payload.get("to"))
+    call via asyncio.to_thread). Delegates to the stdlib-only, unit-tested helper."""
+    calllog.post_call_status(config.CALL_STATUS_WEBHOOK_URL, config.COMMS_WEBHOOK_TOKEN, payload, log=log)
 
 
 def _authorized(request: Request) -> bool:
