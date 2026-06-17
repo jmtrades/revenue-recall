@@ -96,11 +96,11 @@ export function Board({ pipeline, opportunities, contacts, owners, canWrite }: P
                     >
                       <div className="flex items-start justify-between gap-2">
                         <Link href={`/deals/${o.id}`} className="truncate text-sm font-medium text-fg hover:underline">
-                          {c?.name ?? o.title}
+                          {o.title}
                         </Link>
                         {o.ownerId && owners[o.ownerId] && <Avatar name={owners[o.ownerId]} size={20} />}
                       </div>
-                      {c?.company && <div className="truncate text-xs text-muted">{c.company}</div>}
+                      {(c?.name || c?.company) && <div className="truncate text-xs text-muted">{[c?.name, c?.company].filter(Boolean).join(" · ")}</div>}
                       <div className="mt-2 font-display text-sm font-semibold tabular-nums tracking-tight text-brand">{compactMoney(o.value, o.currency)}</div>
                       {/* Touch/keyboard-accessible move control — HTML5 drag doesn't
                           fire on touch devices, so this is the universal way to
@@ -108,7 +108,7 @@ export function Board({ pipeline, opportunities, contacts, owners, canWrite }: P
                           stopPropagation keeps interacting with it from starting a drag. */}
                       {canWrite && (
                         <div className="mt-2.5 border-t border-border/60 pt-2" onMouseDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-                          <label className="sr-only" htmlFor={`move-${o.id}`}>Move {c?.name ?? o.title} to stage</label>
+                          <label className="sr-only" htmlFor={`move-${o.id}`}>Move {o.title} to stage</label>
                           <select
                             id={`move-${o.id}`}
                             value={o.stageId}
