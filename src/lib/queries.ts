@@ -492,6 +492,17 @@ export interface InboxMessage {
   at: string;
 }
 
+/** The contact's most relevant deal, shown inline so a rep has context without
+ *  leaving the thread. Open deals win over closed; ties break on value. */
+export interface InboxDeal {
+  dealId: string;
+  title: string;
+  stage: string;
+  stageType: Stage["type"];
+  value: number;
+  currency: string;
+}
+
 export interface InboxThread {
   contactId: string;
   contactName: string;
@@ -501,6 +512,8 @@ export interface InboxThread {
   snippet: string;
   unread: boolean;
   messages: InboxMessage[];
+  /** The contact's primary deal, if they have one (contact-only DMs won't). */
+  deal?: InboxDeal;
 }
 
 const INBOX_MESSAGE_KINDS = ["email", "sms", "call", "note"];
@@ -518,7 +531,7 @@ function parseInboxChannel(a: Activity): { channel: string; body: string } {
   return { channel: a.kind, body: a.summary };
 }
 
-function buildInboxThread(contact: Contact, acts: Activity[]): InboxThread | null {
+function buildInboxThread(contact: Contact, acts: Activity[], deal?: InboxDeal): InboxThread | null {
   const msgs = acts.filter((a) => INBOX_MESSAGE_KINDS.includes(a.kind));
   if (msgs.length === 0) return null;
   const newestFirst = msgs.slice().sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1));
@@ -540,6 +553,30 @@ function buildInboxThread(contact: Contact, acts: Activity[]): InboxThread | nul
     snippet: lastParsed.body,
     unread: last.direction === "inbound",
     messages,
+    deal,
+  };
+}
+
+/** Pick a contact's primary deal for inbox context: open deals first, then by
+ *  value. Returns undefined for contacts with no deal (e.g. inbound DMs). */
+export function pickInboxDeal(opps: Opportunity[], stages: Map<string, Stage>): InboxDeal | undefined {
+  if (opps.length === 0) return undefined;
+  const best = opps
+    .slice()
+    .sort((a, b) => {
+      const aOpen = stages.get(a.stageId)?.type === "open" ? 1 : 0;
+      const bOpen = stages.get(b.stageId)?.type === "open" ? 1 : 0;
+      if (aOpen !== bOpen) return bOpen - aOpen;
+      return b.value - a.value;
+    })[0];
+  const stage = stages.get(best.stageId);
+  return {
+    dealId: best.id,
+    title: best.title,
+    stage: stage?.label ?? "",
+    stageType: stage?.type ?? "open",
+    value: best.value,
+    currency: best.currency,
   };
 }
 
@@ -553,8 +590,20 @@ function buildInboxThread(contact: Contact, acts: Activity[]): InboxThread | nul
  */
 export async function getInbox(): Promise<InboxThread[]> {
   const provider = (await resolveProvider());
-  const [contacts, acts] = await Promise.all([provider.listContacts(), provider.listRecentActivities(500)]);
+  const [contacts, acts, opportunities, pipelines] = await Promise.all([
+    provider.listContacts(),
+    provider.listRecentActivities(500),
+    provider.listOpportunities(),
+    provider.listPipelines(),
+  ]);
   const cById = new Map(contacts.map((c) => [c.id, c]));
+  const stages = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
+  const oppsByContact = new Map<string, Opportunity[]>();
+  for (const o of opportunities) {
+    const list = oppsByContact.get(o.contactId);
+    if (list) list.push(o);
+    else oppsByContact.set(o.contactId, [o]);
+  }
 
   const byContact = new Map<string, Activity[]>();
   for (const a of acts) {
@@ -568,7 +617,7 @@ export async function getInbox(): Promise<InboxThread[]> {
   for (const [contactId, list] of byContact) {
     const contact = cById.get(contactId);
     if (!contact) continue;
-    const t = buildInboxThread(contact, list);
+    const t = buildInboxThread(contact, list, pickInboxDeal(oppsByContact.get(contactId) ?? [], stages));
     if (t) threads.push(t);
   }
   return threads.sort((a, b) => (a.lastAt < b.lastAt ? 1 : -1)).slice(0, 20);
