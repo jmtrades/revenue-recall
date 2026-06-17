@@ -1,5 +1,5 @@
 import { resolveProvider } from "@/lib/crm/registry";
-import { cachedOpportunities, cachedPipelines, cachedContacts, cachedUsers } from "@/lib/crm/cached";
+import { cachedOpportunities, cachedPipelines, cachedContacts, cachedUsers, cachedRecallTouches } from "@/lib/crm/cached";
 import { getConfig } from "@/lib/config";
 import { getOrgSettings } from "@/lib/org";
 import { getIndustry, recallThresholdsFor } from "@/lib/industries";
@@ -169,12 +169,11 @@ export function dropOptedOutRecall(
 
 /** Recall ROI — did re-engaging cold/lost deals actually win them back? */
 export async function getRecallOutcomes(): Promise<RecallOutcomes> {
-  const provider = (await resolveProvider());
   const [pipelines, opportunities, enrollments, touches] = await Promise.all([
-    provider.listPipelines(),
-    provider.listOpportunities(),
+    cachedPipelines(),
+    cachedOpportunities(),
     listEnrollments(undefined, 1000),
-    listRecallTouches(),
+    cachedRecallTouches(),
   ]);
   const stages = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
   const oppById = new Map(opportunities.map((o) => [o.id, o]));
@@ -183,13 +182,12 @@ export async function getRecallOutcomes(): Promise<RecallOutcomes> {
 
 /** Won-back deals plus resolved owner names — the case-study proof export. */
 export async function getWonBackDeals(): Promise<Array<WonBackDeal & { ownerName: string }>> {
-  const provider = await resolveProvider();
   const [pipelines, opportunities, users, enrollments, touches] = await Promise.all([
-    provider.listPipelines(),
-    provider.listOpportunities(),
-    provider.listUsers(),
+    cachedPipelines(),
+    cachedOpportunities(),
+    cachedUsers(),
     listEnrollments(undefined, 1000),
-    listRecallTouches(),
+    cachedRecallTouches(),
   ]);
   const stages = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
   const oppById = new Map(opportunities.map((o) => [o.id, o]));
@@ -828,7 +826,7 @@ export async function getReports(): Promise<Reports> {
     recoverableValue: s.recoverableValue,
   }));
   const stagesById = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
-  const [enrollments, touches] = await Promise.all([listEnrollments(undefined, 1000), listRecallTouches()]);
+  const [enrollments, touches] = await Promise.all([listEnrollments(undefined, 1000), cachedRecallTouches()]);
   const recallOutcomes = computeRecallOutcomes(enrollments, new Map(opps.map((o) => [o.id, o])), stagesById, metrics.currency, earliestTouchByDeal(touches));
   const recallTrend = touchesByWeek(touches);
 
