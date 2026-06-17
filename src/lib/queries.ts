@@ -6,7 +6,8 @@ import { getIndustry, recallThresholdsFor } from "@/lib/industries";
 import { computeMetrics, type PipelineMetrics } from "@/lib/analytics";
 import { buildRecallQueue, summarizeRecall, computeRecallOutcomes, recallByOwner, wonBackDeals, type RecallItem, type RecallSummary, type RecallOutcomes, type WonBackDeal } from "@/lib/recall/engine";
 import { MAX_CALL_ATTEMPTS } from "@/lib/calls/retry";
-import { hasOptedOut } from "@/lib/agent/guardrails";
+import { hasOptedOut, hasCallConsent } from "@/lib/agent/guardrails";
+import { setupChecklist, type SetupChecklist } from "@/lib/onboarding/checklist";
 import { listEnrollments } from "@/lib/cadence";
 import { listRecallTouches, earliestTouchByDeal, touchesByWeek } from "@/lib/recall/events";
 import { listSnoozedOppIds } from "@/lib/recall/snooze";
@@ -621,6 +622,23 @@ export async function getInbox(): Promise<InboxThread[]> {
     if (t) threads.push(t);
   }
   return threads.sort((a, b) => (a.lastAt < b.lastAt ? 1 : -1)).slice(0, 20);
+}
+
+/** Activation checklist — derive each step's done-state from existing workspace
+ *  signals so the dashboard can guide a new user to their first recall touch. */
+export async function getSetupProgress(): Promise<SetupChecklist> {
+  const provider = await resolveProvider();
+  const [contacts, org, touches] = await Promise.all([
+    provider.listContacts(),
+    getOrgSettings(),
+    listRecallTouches(50),
+  ]);
+  return setupChecklist({
+    hasLeads: contacts.length > 0,
+    voiceConfigured: Boolean(org.voiceId || org.ttsVoiceId),
+    hasCallConsent: contacts.some((c) => hasCallConsent(c)),
+    hasRecallTouch: touches.length > 0,
+  });
 }
 
 export interface CalendarEvent {
