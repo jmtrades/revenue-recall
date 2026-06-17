@@ -154,6 +154,23 @@ export function containsUnverifiedClaim(text: string | null | undefined): boolea
   return CLAIM_RATE.test(text) || CLAIM_TERMS.test(text);
 }
 
+// Buyer-facing copy must sell ABUNDANCE, never divisible arithmetic: "works your
+// whole list", not "1,500 minutes" / "5,000 messages". Match an allowance-sized
+// quantity (3+ digits, or comma-grouped like 1,500) immediately before a
+// consumable unit — so a duration ("live in minutes", "5 minute setup") or a
+// term length ("2 months free") never trips it, only an exposed unit count does.
+const DIVISIBLE_UNITS =
+  /\b(\d{3,}|\d{1,3}(?:,\d{3})+)\s*(minutes|mins|messages|texts|sms|emails|credits|dials|calls)\b/i;
+
+/**
+ * True when text exposes a divisible included-allowance unit count in
+ * buyer-facing copy (the pricing-copy guardrail). Pure + tested.
+ */
+export function exposesDivisibleUnits(text: string | null | undefined): boolean {
+  if (!text) return false;
+  return DIVISIBLE_UNITS.test(text);
+}
+
 /**
  * True when a contact has a recorded consent marker for an AI voice call. Post-2024
  * FCC ruling, an AI/artificial voice needs PRIOR EXPRESS CONSENT — and reactivated
