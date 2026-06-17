@@ -10,6 +10,7 @@ import { signCallMeta } from "@/lib/calls/meta-sig";
 import { trackLinks, recordSent } from "@/lib/tracking";
 import { sendGate, dailySendCap, containsUnverifiedClaim, hasCallConsent, hasSmsConsent, type SkipReason } from "@/lib/agent/guardrails";
 import { complianceConfig, emailDomainVerified, smsA2pRegistered } from "@/lib/compliance";
+import { isEmailBounced } from "@/lib/bounce";
 import { outsideCourtesyWindow } from "@/lib/calls/local-time";
 import { compactMoney } from "@/lib/format";
 import { createRun, createOutboxItem, touchTask } from "@/lib/agent/store";
@@ -153,7 +154,10 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
 
       // What we know about reaching this person (channel they reply on, timing).
       const insights = contactInsights(activities);
-      const emailTo = contact?.points.find((p) => p.channel === "email")?.value;
+      // A hard-bounced address is no address — treat it as unreachable so auto
+      // mode falls back to another channel (or skips), never re-emailing a bounce.
+      // Mirrors the cadence runner's addressFor().
+      const emailTo = isEmailBounced(contact) ? undefined : contact?.points.find((p) => p.channel === "email")?.value;
       const phoneTo = contact?.points.find((p) => p.channel === "phone")?.value;
       const reachOn = (ch: "email" | "sms" | "call") => (ch === "email" ? emailTo : phoneTo);
 
