@@ -15,6 +15,7 @@ import { convaiConfigured } from "@/lib/voice/convai";
 import { getReports } from "@/lib/queries";
 import { resolveProvider } from "@/lib/crm/registry";
 import { compactMoney, pct } from "@/lib/format";
+import { launchStatus } from "@/lib/launch";
 import type { Activity } from "@/lib/crm/types";
 
 export const metadata = { title: "Admin — Revenue Recall" };
@@ -85,6 +86,11 @@ export default async function AdminPage() {
   const readyCount = checklist.filter((c) => c.ok).length;
   const readyScore = Math.round((readyCount / checklist.length) * 100);
 
+  // Platform-level launch gaps from the single source of truth shared with
+  // /api/health and the launch banner — incl. the CAN-SPAM postal-address and
+  // compliance/config warnings — so the owner sees them here, not just globally.
+  const launch = launchStatus();
+
   return (
     <div className="space-y-6">
       <PageHeader title="Admin" subtitle="Your owner control panel — team, access, and system status in one place." />
@@ -122,6 +128,20 @@ export default async function AdminPage() {
             </li>
           ))}
         </ul>
+        {(launch.blockers.length > 0 || launch.warnings.length > 0) && (
+          <div className="mt-4 space-y-1.5 border-t border-border pt-3">
+            {launch.blockers.map((b) => (
+              <p key={b} className="flex items-start gap-2 text-xs leading-relaxed text-danger">
+                <span aria-hidden="true">●</span><span>{b}</span>
+              </p>
+            ))}
+            {launch.warnings.map((w) => (
+              <p key={w} className="flex items-start gap-2 text-xs leading-relaxed text-warn">
+                <span aria-hidden="true">▲</span><span>{w}</span>
+              </p>
+            ))}
+          </div>
+        )}
         {readyScore < 100 && (
           <p className="mt-4 border-t border-border pt-3 text-xs text-muted">
             These gate going live. Cold outreach is email-first — calls and SMS need recipient consent, which the system enforces automatically.
