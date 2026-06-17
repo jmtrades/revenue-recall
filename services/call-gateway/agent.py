@@ -1,6 +1,7 @@
 """The live-call agent: listen → think → speak, with barge-in. Pure orchestration
 over the STT / brain / TTS seams and a media transport — fully in-house."""
 import asyncio
+import logging
 
 from brain import stream_lines
 from stt import transcribe
@@ -20,6 +21,11 @@ MAX_REP_TURNS = 12
 # Spoken if the model returns nothing exactly when we hit the cap, so the close
 # (and hang-up) still happens instead of the loop continuing.
 WRAP_FALLBACK = "I'll let you go for now — I'll send a quick note and try you another time. Take care."
+# Spoken when the brain errors mid-call (transient model/network blip) so the line
+# recovers with a natural nudge instead of dead air or a dropped call.
+BRAIN_RETRY_LINE = "Sorry, I didn't quite catch that — could you say it once more?"
+
+log = logging.getLogger("call-gateway.agent")
 
 
 class CallAgent:
@@ -81,7 +87,14 @@ class CallAgent:
             # blocking — run them OFF the event loop so a concurrent call's media
             # keeps flowing and barge-in stays responsive instead of one call
             # freezing every other call sharing this worker.
-            heard = await asyncio.to_thread(transcribe, pcm, TELEPHONY_SAMPLE_RATE)
+            # A transient STT error must not tear down the call — skip this
+            # utterance and keep listening rather than crashing (and losing the
+            # whole transcript on the way out).
+            try:
+                heard = await asyncio.to_thread(transcribe, pcm, TELEPHONY_SAMPLE_RATE)
+            except Exception:
+                log.warning("STT failed; skipping utterance", exc_info=True)
+                continue
             if not heard:
                 continue
             self.turns.append({"role": "prospect", "text": heard})
@@ -89,7 +102,17 @@ class CallAgent:
             wrap = rep_turns >= MAX_REP_TURNS
             # Stream the reply straight into TTS so we start speaking on the first
             # sentence (the brain runs natively async, off the blocking path).
-            line = await self._speak_stream(stream_lines(self.turns, self.context, wrap), transport)
+            # A brain blip (model/network) recovers in-call instead of dropping it.
+            try:
+                line = await self._speak_stream(stream_lines(self.turns, self.context, wrap), transport)
+            except Exception:
+                log.warning("brain failed; recovering in-call", exc_info=True)
+                if not wrap:
+                    if not (transport.interrupted() or transport.closed()):
+                        await self._speak(BRAIN_RETRY_LINE, transport)
+                        self.turns.append({"role": "rep", "text": BRAIN_RETRY_LINE})
+                    continue  # keep the call alive, wait for them to repeat
+                line = ""  # at the cap → fall through to the graceful wrap close
             if not line:
                 # Below the cap, just keep listening. AT the cap we must still close —
                 # otherwise an empty model line would skip the break and the safety

@@ -100,5 +100,40 @@ class TestAgentRun(unittest.TestCase):
             agent.MAX_REP_TURNS = 12  # restore for other tests
 
 
+class TestAgentResilience(unittest.TestCase):
+    def test_stt_error_skips_the_turn_without_crashing_the_call(self):
+        _install_fakes(["unused"])
+
+        def boom(pcm, sr):
+            raise RuntimeError("stt down")
+
+        agent.transcribe = boom
+        a = agent.CallAgent(opener="Opener.", disclosure="")
+        transport = FakeTransport([b"x", None])
+        turns = asyncio.run(a.run(transport))  # must not raise
+        # Opener still delivered; the failed utterance produced no prospect/reply turn.
+        self.assertIn("Opener.", transport.spoken_text())
+        self.assertEqual([t for t in turns if t["role"] == "prospect"], [])
+
+    def test_brain_error_recovers_in_call_instead_of_dropping(self):
+        _install_fakes([])
+
+        def raising_stream(turns, context="", wrap=False):
+            async def _gen():
+                raise RuntimeError("brain down")
+                yield ""  # pragma: no cover — makes this an async generator
+            return _gen()
+
+        agent.transcribe = lambda pcm, sr: "hello"
+        agent.stream_lines = raising_stream
+        a = agent.CallAgent(opener="Opener.", disclosure="")
+        transport = FakeTransport([b"x", None])
+        turns = asyncio.run(a.run(transport))  # must not raise
+
+        self.assertIn(agent.BRAIN_RETRY_LINE, transport.spoken_text())  # recovery nudge spoken
+        self.assertIn({"role": "prospect", "text": "hello"}, turns)  # transcript preserved
+        self.assertIn({"role": "rep", "text": agent.BRAIN_RETRY_LINE}, turns)
+
+
 if __name__ == "__main__":
     unittest.main()
