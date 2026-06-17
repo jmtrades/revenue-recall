@@ -197,3 +197,31 @@ export function recallJourney(touches: RecallTouch[]): RecallJourney {
     timeline,
   };
 }
+
+/**
+ * Recovered revenue by week — the flywheel's OUTPUT over time, the counterpart
+ * to outreach-by-week. Buckets each won-back deal's value into the week it
+ * closed, oldest-first, for a bar chart. Pure (mirrors touchesByWeek's windowing
+ * so the two charts line up). Caller passes won-back deals with value + wonAt.
+ */
+export function recoveredByWeek(
+  wins: ReadonlyArray<{ value: number; wonAt: string }>,
+  now: Date = new Date(),
+  weeks = 6,
+): { label: string; value: number }[] {
+  const DAY = 86_400_000;
+  const end = now.getTime();
+  const out: { label: string; value: number }[] = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const start = end - (i + 1) * 7 * DAY;
+    const stop = end - i * 7 * DAY;
+    let value = 0;
+    for (const w of wins) {
+      const ts = Date.parse(w.wonAt);
+      if (!Number.isNaN(ts) && ts >= start && ts < stop) value += w.value;
+    }
+    const d = new Date(start);
+    out.push({ label: `${d.getUTCMonth() + 1}/${d.getUTCDate()}`, value });
+  }
+  return out;
+}
