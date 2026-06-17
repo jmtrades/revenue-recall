@@ -1,9 +1,9 @@
-import { getReports } from "@/lib/queries";
+import { getReports, getWonBackDeals } from "@/lib/queries";
 import { clickStats, engagementStats } from "@/lib/tracking";
 import { bookingStats } from "@/lib/meetings/stats";
 import { callStats, bestCallWindow, windowLabel } from "@/lib/calls/analytics";
 import { listRecallTouches } from "@/lib/recall/events";
-import { recallInsights } from "@/lib/recall/insights";
+import { recallInsights, recallWinAttribution } from "@/lib/recall/insights";
 import { getOrgSettings } from "@/lib/org";
 import { resolveProvider } from "@/lib/crm/registry";
 import { compactMoney, money, pct } from "@/lib/format";
@@ -24,7 +24,12 @@ export default async function ReportsPage() {
     getOrgSettings(),
   ]);
   const m = r.metrics;
-  const recall = recallInsights(await listRecallTouches().catch(() => []));
+  const [recallTouches, wonBack] = await Promise.all([
+    listRecallTouches().catch(() => []),
+    getWonBackDeals().catch(() => []),
+  ]);
+  const recall = recallInsights(recallTouches);
+  const attribution = recallWinAttribution(recallTouches, wonBack.map((d) => ({ dealId: d.dealId, value: d.value, wonAt: d.wonAt })));
   const calls = callStats(recentActs);
   const { best: bestWindow } = bestCallWindow(recentActs, 30, new Date(), org.timezone || undefined);
 
@@ -106,6 +111,23 @@ export default async function ReportsPage() {
                   ))}
                 </div>
                 <p className="mt-2 text-xs text-muted">{recall.totalTouches} recall touches across {recall.dealsTouched} deal{recall.dealsTouched === 1 ? "" : "s"}{recall.bySource.length ? ` · mostly ${recall.bySource[0].source}` : ""}.</p>
+              </div>
+            )}
+            {attribution.byChannel.length > 0 && (
+              <div>
+                <p className="stat-label mb-2">What&apos;s winning deals back</p>
+                <div className="space-y-2">
+                  {attribution.byChannel.map((c) => (
+                    <div key={c.channel} className="flex items-center gap-3">
+                      <span className="w-14 shrink-0 text-xs capitalize text-muted">{c.channel}</span>
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-surface-2">
+                        <div className="h-full rounded-full bg-success" style={{ width: `${Math.round(c.share * 100)}%` }} />
+                      </div>
+                      <span className="w-32 shrink-0 text-right text-xs tabular-nums text-muted">{compactMoney(c.recoveredValue, r.currency)} · {c.deals} deal{c.deals === 1 ? "" : "s"}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-muted">Last-touch attribution: the channel that last re-engaged each won-back deal{attribution.unattributedDeals > 0 ? ` · ${attribution.unattributedDeals} won back with no recorded touch` : ""}.</p>
               </div>
             )}
           </div>

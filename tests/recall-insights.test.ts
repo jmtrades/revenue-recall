@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { recallInsights } from "@/lib/recall/insights";
+import { recallInsights, recallWinAttribution, type AttributableWin } from "@/lib/recall/insights";
 import type { RecallTouch } from "@/lib/recall/events";
 
 const t = (over: Partial<RecallTouch>): RecallTouch => ({
@@ -38,5 +38,50 @@ describe("recallInsights", () => {
     expect(r.bySource.map((s) => s.source)).toEqual(["autopilot", "manual"]); // no "cadence"
     expect(r.bySource[0]).toMatchObject({ source: "autopilot", touches: 2 });
     expect(r.byChannel.every((c) => c.touches > 0)).toBe(true);
+  });
+});
+
+describe("recallWinAttribution", () => {
+  const win = (over: Partial<AttributableWin>): AttributableWin => ({ dealId: "d", value: 1000, wonAt: "2026-06-10T00:00:00Z", ...over });
+
+  it("is all-zero on no wins", () => {
+    expect(recallWinAttribution([], [])).toEqual({ byChannel: [], attributedValue: 0, attributedDeals: 0, unattributedDeals: 0 });
+  });
+
+  it("credits the win to the LAST channel touched on/before the win", () => {
+    const touches = [
+      t({ dealId: "d1", channel: "email", occurredAt: "2026-06-01T00:00:00Z" }),
+      t({ dealId: "d1", channel: "call", occurredAt: "2026-06-05T00:00:00Z" }), // last before win
+      t({ dealId: "d1", channel: "sms", occurredAt: "2026-06-20T00:00:00Z" }), // AFTER win — ignored
+    ];
+    const r = recallWinAttribution(touches, [win({ dealId: "d1", value: 5000, wonAt: "2026-06-10T00:00:00Z" })]);
+    expect(r.attributedDeals).toBe(1);
+    expect(r.attributedValue).toBe(5000);
+    expect(r.byChannel).toHaveLength(1);
+    expect(r.byChannel[0]).toMatchObject({ channel: "call", deals: 1, recoveredValue: 5000, share: 1 });
+  });
+
+  it("sums value per channel across deals and sorts by recovered value", () => {
+    const touches = [
+      t({ dealId: "a", channel: "email", occurredAt: "2026-06-01T00:00:00Z" }),
+      t({ dealId: "b", channel: "email", occurredAt: "2026-06-01T00:00:00Z" }),
+      t({ dealId: "c", channel: "call", occurredAt: "2026-06-01T00:00:00Z" }),
+    ];
+    const r = recallWinAttribution(touches, [
+      win({ dealId: "a", value: 2000 }),
+      win({ dealId: "b", value: 3000 }),
+      win({ dealId: "c", value: 9000 }),
+    ]);
+    expect(r.byChannel.map((c) => c.channel)).toEqual(["call", "email"]); // value desc
+    expect(r.byChannel[0]).toMatchObject({ channel: "call", deals: 1, recoveredValue: 9000 });
+    expect(r.byChannel[1]).toMatchObject({ channel: "email", deals: 2, recoveredValue: 5000 });
+    expect(r.attributedValue).toBe(14000);
+  });
+
+  it("counts a win with no qualifying touch as unattributed", () => {
+    const r = recallWinAttribution([t({ dealId: "x", channel: "email", occurredAt: "2026-07-01T00:00:00Z" })], [win({ dealId: "x", value: 1000, wonAt: "2026-06-01T00:00:00Z" })]);
+    expect(r.attributedDeals).toBe(0);
+    expect(r.unattributedDeals).toBe(1);
+    expect(r.byChannel).toEqual([]);
   });
 });
