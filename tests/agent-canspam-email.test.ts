@@ -8,9 +8,11 @@ import type { AgentTask } from "@/lib/agent/types";
 beforeEach(() => {
   delete process.env.ANTHROPIC_API_KEY;
   delete process.env.COMPLIANCE_ADDRESS;
+  delete process.env.EMAIL_DOMAIN_VERIFIED;
 });
 afterEach(() => {
   delete process.env.COMPLIANCE_ADDRESS;
+  delete process.env.EMAIL_DOMAIN_VERIFIED;
 });
 
 function autoEmail(dealId: string): AgentTask {
@@ -25,15 +27,25 @@ async function emailDeal() {
   return provider.createOpportunity({ title: "Reconnect about the listing", pipelineId: pipeline.id, stageId: stage.id, value: 5000, currency: "USD", contactId: contact.id });
 }
 
-describe("autopilot CAN-SPAM email gate", () => {
-  it("holds autonomous email for review when no postal address is on file", async () => {
+describe("autopilot email compliance gates", () => {
+  it("holds autonomous email for review when no postal address is on file (CAN-SPAM)", async () => {
+    process.env.EMAIL_DOMAIN_VERIFIED = "true";
     const opp = await emailDeal();
     const run = await runTask(autoEmail(opp.id));
     expect(run.actions[0].result).toBe("drafted");
   });
 
-  it("sends autonomous email once a postal address is configured", async () => {
+  it("holds autonomous email when the sending domain isn't verified", async () => {
     process.env.COMPLIANCE_ADDRESS = "123 Test St, Austin, TX 78701";
+    // EMAIL_DOMAIN_VERIFIED unset → held even with a postal address
+    const opp = await emailDeal();
+    const run = await runTask(autoEmail(opp.id));
+    expect(run.actions[0].result).toBe("drafted");
+  });
+
+  it("sends autonomous email once address AND domain verification are in place", async () => {
+    process.env.COMPLIANCE_ADDRESS = "123 Test St, Austin, TX 78701";
+    process.env.EMAIL_DOMAIN_VERIFIED = "true";
     const opp = await emailDeal();
     const run = await runTask(autoEmail(opp.id));
     expect(["sent", "logged"]).toContain(run.actions[0].result);

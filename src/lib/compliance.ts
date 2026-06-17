@@ -29,6 +29,27 @@ export function complianceConfig(override?: { orgName?: string; address?: string
   };
 }
 
+/**
+ * Operator attestations — the platform-level deliverability/carrier prerequisites
+ * we can't verify from inside the app (DKIM/DMARC validity, A2P 10DLC brand +
+ * campaign approval). The operator asserts they're done by setting the env flag;
+ * until then autonomous outreach on that channel is held for review rather than
+ * blasted from an unauthenticated domain / unregistered A2P number. A truthy flag
+ * ("true"/"1"/"yes") attests; anything else (incl. unset) is "not yet."
+ */
+function attests(name: string): boolean {
+  const v = (process.env[name] ?? "").trim().toLowerCase();
+  return v === "true" || v === "1" || v === "yes";
+}
+/** SPF/DKIM/DMARC verified for the sending domain (operator attestation). */
+export function emailDomainVerified(): boolean {
+  return attests("EMAIL_DOMAIN_VERIFIED");
+}
+/** A2P 10DLC brand + campaign registered for the SMS sender (operator attestation). */
+export function smsA2pRegistered(): boolean {
+  return attests("SMS_A2P_REGISTERED");
+}
+
 /** Append a CAN-SPAM footer (org name, postal address, unsubscribe) to an email body.
  *  Pass a per-contact unsubscribeUrl for one-click opt-out, else it falls back to reply-based. */
 export function appendEmailCompliance(body: string, unsubscribeUrl?: string | null, cfg: ComplianceConfig = complianceConfig()): string {

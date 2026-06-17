@@ -7,6 +7,7 @@ import { listRecallTouches, __resetRecallEventsForTests } from "@/lib/recall/eve
 beforeEach(() => {
   delete process.env.ANTHROPIC_API_KEY;
   process.env.COMPLIANCE_ADDRESS = "123 Test St, Austin, TX 78701"; // CAN-SPAM address on file so autonomous email can send
+  process.env.EMAIL_DOMAIN_VERIFIED = "true"; // sending domain attested
   __resetRecallEventsForTests();
 });
 
