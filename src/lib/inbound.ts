@@ -15,7 +15,9 @@ import { emitWebhook } from "@/lib/webhooks-out";
 import { hasOptedOut, isHardOptOut } from "@/lib/agent/guardrails";
 import { markDoNotContact } from "@/lib/opt-out";
 import { parseCallbackTime, callbackLabel } from "@/lib/calls/callback-time";
-import { timezoneForPhone } from "@/lib/calls/local-time";
+import { timezoneForPhone, outsideCourtesyWindow } from "@/lib/calls/local-time";
+import { complianceConfig, emailDomainVerified, smsA2pRegistered } from "@/lib/compliance";
+import { inboundAutoSendAllowed } from "@/lib/inbound-gate";
 import { scheduleRequestedCallback, parseRetryTask } from "@/lib/calls";
 import type { Activity, Contact, CrmProvider, Opportunity } from "@/lib/crm/types";
 
@@ -250,8 +252,23 @@ export async function handleInbound(channel: "email" | "sms", from: string, body
     (a) => a.direction === "outbound" && (a.kind === "email" || a.kind === "sms") && Date.now() - new Date(a.occurredAt).getTime() < cooldownMs,
   );
 
+  // Compliance gates — mirror the outbound engine so the reply-autopilot can't
+  // bypass them. Only auto-send when the channel is deliverable+compliant and an
+  // SMS lands inside the prospect's courtesy window; otherwise fall through to
+  // the human-approval queue below. (Inbound = the prospect messaged first, so
+  // per-contact SMS consent isn't required to reply.)
+  const cc = complianceConfig({ address: org.compliance.address });
+  const emailReady = !cc.enabled || (Boolean(cc.address) && emailDomainVerified());
+  const smsPlatformReady = !cc.enabled || smsA2pRegistered();
+  const autoSendOk = inboundAutoSendAllowed({
+    channel,
+    emailReady,
+    smsPlatformReady,
+    smsCourtesyBlocked: channel === "sms" && outsideCourtesyWindow(phone),
+  });
+
   // Auto-send or queue for approval.
-  if (process.env.REPLY_AUTOPILOT === "true" && !sentRecently) {
+  if (process.env.REPLY_AUTOPILOT === "true" && !sentRecently && autoSendOk) {
     const to = channel === "email" ? contact.points.find((p) => p.channel === "email")?.value : contact.points.find((p) => p.channel === "phone")?.value;
     // Only auto-send a real, non-empty body (the drafter already falls back to a
     // template, so this is a final belt-and-suspenders guard before a live send).
