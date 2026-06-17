@@ -73,7 +73,9 @@ export function goLiveStatus(s: GoLiveSignals): GoLiveStatus {
   const consentDetail =
     s.leadCount === 0
       ? "No leads yet — import your list so there's someone to call."
-      : `${s.consentCount} of ${s.leadCount} lead${s.leadCount === 1 ? "" : "s"} cleared to call. The agent only auto-calls leads with recorded consent.`;
+      : s.consentCount === 0
+        ? `0 of ${s.leadCount} leads cleared to call — so the agent is currently skipping all of them. In Leads, select the contacts you have permission to call and click "Record call consent".`
+        : `${s.consentCount} of ${s.leadCount} lead${s.leadCount === 1 ? "" : "s"} cleared to call. The agent only auto-calls leads with recorded consent.`;
 
   const scheduleFresh =
     s.lastRunAt != null &&
@@ -114,7 +116,7 @@ export function goLiveStatus(s: GoLiveSignals): GoLiveStatus {
       title: "Call consent",
       detail: consentDetail,
       state: s.consentCount > 0 ? "live" : s.leadCount > 0 ? "attention" : "off",
-      action: { label: "Review leads", href: "/leads" },
+      action: { label: "Record consent in Leads", href: "/leads" },
     },
     {
       key: "plan",
