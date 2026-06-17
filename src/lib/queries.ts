@@ -11,6 +11,7 @@ import { setupChecklist, type SetupChecklist } from "@/lib/onboarding/checklist"
 import { listEnrollments } from "@/lib/cadence";
 import { listRecallTouches, earliestTouchByDeal, touchesByWeek } from "@/lib/recall/events";
 import { listSnoozedOppIds } from "@/lib/recall/snooze";
+import { nextOpenStage } from "@/lib/dialer-flow";
 import type { Activity, Contact, Opportunity, Pipeline, Stage, User } from "@/lib/crm/types";
 import { normalizeLeadStatus, type LeadStatus } from "@/lib/crm/lead-status";
 
@@ -222,6 +223,9 @@ export interface CallQueueItem {
   recommendation: string;
   /** Prior outbound call attempts to this contact (so the dialer shows "#N"). */
   attempts: number;
+  /** The next open stage to advance the deal to after a connected call (absent
+   *  when it's already in the last open stage). */
+  nextStage?: { id: string; label: string };
 }
 
 export async function getCallQueue(): Promise<CallQueueItem[]> {
@@ -247,6 +251,7 @@ export async function getCallQueue(): Promise<CallQueueItem[]> {
     }
   }
   const recall = buildRecallQueue(opps, pipelines);
+  const stagesByPipeline = new Map(pipelines.map((p) => [p.id, p.stages]));
   const items: CallQueueItem[] = [];
   const queuedContacts = new Set<string>();
   for (const r of recall) {
@@ -275,6 +280,7 @@ export async function getCallQueue(): Promise<CallQueueItem[]> {
       score: r.score,
       recommendation: r.recommendation,
       attempts,
+      nextStage: nextOpenStage(stagesByPipeline.get(opp.pipelineId) ?? [], opp.stageId),
     });
   }
   return items.slice(0, 40);
