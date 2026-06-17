@@ -39,7 +39,7 @@ export default async function AgentsPage() {
     ...(g.quietHours ? [`Quiet hours ${g.quietHours}`] : []),
     // Only surface the daily cap when one is actually set — advertising
     // "No send cap" framed the ABSENCE of a guardrail as a guardrail.
-    ...(g.dailyCap !== null ? [`Cap ${g.dailyCap}/run`] : []),
+    ...(g.dailyCap !== null ? [`Max ${g.dailyCap} sends/day`] : []),
   ];
 
   return <AgentsView initialTasks={tasks} initialRuns={runs} stages={stages} summary={summary} guardrails={guardrails} />;
