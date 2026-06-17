@@ -8,6 +8,7 @@ export const NAV_GROUPS: { heading: string; items: { href: string; label: string
   {
     heading: "Sell",
     items: [
+      { href: "/launch", label: "Go Live", icon: "play" },
       { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
       { href: "/recall", label: "Revenue Recall", icon: "recall" },
       { href: "/pipeline", label: "Pipeline", icon: "pipeline" },
