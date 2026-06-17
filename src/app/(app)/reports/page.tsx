@@ -3,7 +3,7 @@ import { clickStats, engagementStats } from "@/lib/tracking";
 import { bookingStats } from "@/lib/meetings/stats";
 import { callStats, bestCallWindow, windowLabel } from "@/lib/calls/analytics";
 import { listRecallTouches } from "@/lib/recall/events";
-import { recallInsights, recallWinAttribution, recoveredByOwner } from "@/lib/recall/insights";
+import { recallInsights, recallWinAttribution, recoveredByOwner, recoveredByWeek } from "@/lib/recall/insights";
 import { getOrgSettings } from "@/lib/org";
 import { resolveProvider } from "@/lib/crm/registry";
 import { compactMoney, money, pct } from "@/lib/format";
@@ -31,6 +31,7 @@ export default async function ReportsPage() {
   const recall = recallInsights(recallTouches);
   const attribution = recallWinAttribution(recallTouches, wonBack.map((d) => ({ dealId: d.dealId, value: d.value, wonAt: d.wonAt })));
   const recoveredReps = recoveredByOwner(wonBack);
+  const recoveredTrend = recoveredByWeek(wonBack);
   const calls = callStats(recentActs);
   const { best: bestWindow } = bestCallWindow(recentActs, 30, new Date(), org.timezone || undefined);
 
@@ -95,6 +96,12 @@ export default async function ReportsPage() {
               <div>
                 <p className="stat-label mb-2">Recall outreach (6 weeks)</p>
                 <BarChart data={r.recallTrend} height={120} color="rgb(var(--brand-rgb))" />
+              </div>
+            )}
+            {recoveredTrend.some((w) => w.value > 0) && (
+              <div>
+                <p className="stat-label mb-2">Revenue recovered (6 weeks)</p>
+                <BarChart data={recoveredTrend} height={120} color="#34d399" />
               </div>
             )}
             {recall.totalTouches > 0 && (
