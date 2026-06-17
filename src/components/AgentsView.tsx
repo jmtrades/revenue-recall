@@ -237,15 +237,15 @@ export function AgentsView({
             </div>
 
             <div className="mt-3 space-y-2.5">
-              <input className={input} placeholder="Task name (e.g. Re-engage cold deals)" value={name} onChange={(e) => setName(e.target.value)} />
-              <textarea className={`${input} resize-none`} rows={4} placeholder="Instruction — e.g. 'Reach out to deals that have gone quiet, reference our last conversation, and offer a 15-minute call this week.'" value={goal} onChange={(e) => setGoal(e.target.value)} />
+              <input className={input} aria-label="Autopilot task name" placeholder="Task name (e.g. Re-engage cold deals)" value={name} onChange={(e) => setName(e.target.value)} />
+              <textarea className={`${input} resize-none`} rows={4} aria-label="Task instruction" placeholder="Instruction — e.g. 'Reach out to deals that have gone quiet, reference our last conversation, and offer a 15-minute call this week.'" value={goal} onChange={(e) => setGoal(e.target.value)} />
               <div className="grid grid-cols-2 gap-2">
-                <select className={input} value={scope} onChange={(e) => setScope(e.target.value)}>
+                <select className={input} aria-label="Which deals to work" value={scope} onChange={(e) => setScope(e.target.value)}>
                   <option value="recall_queue">Recall queue</option>
                   <option value="all_open">All open deals</option>
                   {stages.map((s) => <option key={s.id} value={`stage:${s.id}`}>Stage: {s.label}</option>)}
                 </select>
-                <select className={input} value={channel} onChange={(e) => setChannel(e.target.value)}>
+                <select className={input} aria-label="Channel" value={channel} onChange={(e) => setChannel(e.target.value)}>
                   <option value="email">Email</option>
                   <option value="sms">SMS</option>
                   <option value="call">Call (talk track)</option>
@@ -253,11 +253,11 @@ export function AgentsView({
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <select className={input} value={autonomy} onChange={(e) => setAutonomy(e.target.value)}>
+                <select className={input} aria-label="Autonomy" value={autonomy} onChange={(e) => setAutonomy(e.target.value)}>
                   <option value="review">Review — I approve</option>
                   <option value="auto">Autonomous — send</option>
                 </select>
-                <select className={input} value={trigger} onChange={(e) => setTrigger(e.target.value)}>
+                <select className={input} aria-label="When to run" value={trigger} onChange={(e) => setTrigger(e.target.value)}>
                   <option value="manual">Run manually</option>
                   <option value="daily">Daily (auto)</option>
                   <option value="on_idle_deal">When a deal goes idle</option>
