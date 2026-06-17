@@ -2,7 +2,7 @@ import { getReports, getWonBackDeals } from "@/lib/queries";
 import { clickStats, engagementStats } from "@/lib/tracking";
 import { bookingStats } from "@/lib/meetings/stats";
 import { callStats, bestCallWindow, windowLabel } from "@/lib/calls/analytics";
-import { listRecallTouches } from "@/lib/recall/events";
+import { cachedRecallTouches } from "@/lib/crm/cached";
 import { recallInsights, recallWinAttribution, recoveredByOwner, recoveredByWeek } from "@/lib/recall/insights";
 import { getOrgSettings } from "@/lib/org";
 import { resolveProvider } from "@/lib/crm/registry";
@@ -25,7 +25,7 @@ export default async function ReportsPage() {
   ]);
   const m = r.metrics;
   const [recallTouches, wonBack] = await Promise.all([
-    listRecallTouches().catch(() => []),
+    cachedRecallTouches().catch(() => []),
     getWonBackDeals().catch(() => []),
   ]);
   const recall = recallInsights(recallTouches);
