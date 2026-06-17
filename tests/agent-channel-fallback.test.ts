@@ -18,8 +18,9 @@ describe("autopilot channel fallback (auto mode)", () => {
     const provider = getProvider();
     const pipeline = (await provider.listPipelines())[0];
     const stage = pipeline.stages.find((s) => s.type === "open")!;
-    // No email on file — only a phone number.
-    const contact = await provider.createContact({ name: "Phone Only", points: [{ channel: "phone", value: "+15551230000" }] });
+    // No email on file — only a phone number. SMS consent on file so this test
+    // isolates CHANNEL FALLBACK (email→SMS), not the SMS consent gate.
+    const contact = await provider.createContact({ name: "Phone Only", points: [{ channel: "phone", value: "+15551230000" }], attributes: { smsConsent: true } as never });
     const opp = await provider.createOpportunity({ title: "Reachable deal", pipelineId: pipeline.id, stageId: stage.id, value: 4200, currency: "USD", contactId: contact.id });
 
     const run = await runTask(await autoTask("email", opp.id));
