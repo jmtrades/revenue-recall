@@ -22,9 +22,16 @@ function ago(iso: string): string {
  * (who it called/texted, the outcome, when), so it's never a black box. Renders
  * an honest empty state when the agent hasn't acted yet.
  */
-export function AgentActivityFeed({ items }: { items: AgentActivityItem[] }) {
+export function AgentActivityFeed({ items, today, week }: { items: AgentActivityItem[]; today?: number; week?: number }) {
+  const counts =
+    today !== undefined ? (
+      <span className="text-sm text-muted">
+        <span className="font-semibold text-fg">{today}</span> call{today === 1 ? "" : "s"} today
+        {week !== undefined && week > 0 ? <span> · {week} in 7 days</span> : null}
+      </span>
+    ) : undefined;
   return (
-    <Card title="What the agent is doing">
+    <Card title="What the agent is doing" action={counts}>
       {items.length === 0 ? (
         <p className="text-sm text-muted">No autopilot activity yet. Once it’s live, every call, text, and email it sends shows up here.</p>
       ) : (
