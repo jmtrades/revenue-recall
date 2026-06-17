@@ -13,6 +13,22 @@ export function nextPendingIndex(length: number, isDone: (i: number) => boolean,
   return -1;
 }
 
+/** The next OPEN stage after the deal's current one — what a connected call
+ *  advances the deal to. Returns undefined when the current stage is the last
+ *  open one, is closed (won/lost), or isn't found, so the dialer only offers a
+ *  forward move that makes sense. Pure; `stages` is the pipeline order. */
+export function nextOpenStage(
+  stages: ReadonlyArray<{ id: string; label: string; type: "open" | "won" | "lost" }>,
+  currentStageId: string,
+): { id: string; label: string } | undefined {
+  const idx = stages.findIndex((s) => s.id === currentStageId);
+  if (idx === -1) return undefined;
+  for (let i = idx + 1; i < stages.length; i++) {
+    if (stages[i].type === "open") return { id: stages[i].id, label: stages[i].label };
+  }
+  return undefined;
+}
+
 export interface QuickOutcome {
   id: string;
   label: string;
