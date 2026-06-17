@@ -8,6 +8,7 @@ import type { MessageTemplate } from "@/lib/templates";
 import { fillTokens } from "@/lib/templates-fill";
 import { Avatar, ChannelIcon, ChannelBadge, channelLabel, EmptyState, Button } from "@/components/ui";
 import { SpeakButton } from "@/components/SpeakButton";
+import { compactMoney } from "@/lib/format";
 
 function timeAgo(iso: string): string {
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
@@ -155,6 +156,18 @@ export function InboxView({
                 <Link href={`/leads/${active.contactId}`} className="shrink-0 text-sm text-brand hover:underline">View contact →</Link>
               </div>
             </div>
+            {active.deal && (
+              <Link
+                href={`/deals/${active.deal.dealId}`}
+                className="flex items-center justify-between gap-3 border-b border-border bg-surface-2/50 px-4 py-2 text-sm hover:bg-surface-2"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate font-medium text-fg">{active.deal.title}</span>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${active.deal.stageType === "open" ? "bg-brand/10 text-brand" : active.deal.stageType === "won" ? "bg-success/10 text-success" : "bg-surface text-muted"}`}>{active.deal.stage}</span>
+                </span>
+                <span className="shrink-0 font-medium tabular-nums text-fg">{compactMoney(active.deal.value, active.deal.currency)}</span>
+              </Link>
+            )}
             <div className="flex-1 space-y-3 overflow-y-auto p-4">
               {messages.map((m) => (
                 <div key={m.id} className={`flex ${m.direction === "outbound" ? "justify-end" : "justify-start"}`}>
