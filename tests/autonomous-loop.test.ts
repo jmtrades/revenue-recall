@@ -12,11 +12,13 @@ beforeEach(() => {
   process.env.AGENT_COOLDOWN_DAYS = "0"; // isolate the decline gate
   process.env.AGENT_DECLINE_COOLDOWN_DAYS = "30";
   process.env.COMPLIANCE_ADDRESS = "123 Test St, Austin, TX 78701"; // CAN-SPAM address on file so autonomous email can send
+  process.env.EMAIL_DOMAIN_VERIFIED = "true"; // sending domain attested
 });
 afterEach(() => {
   delete process.env.AGENT_COOLDOWN_DAYS;
   delete process.env.AGENT_DECLINE_COOLDOWN_DAYS;
   delete process.env.COMPLIANCE_ADDRESS;
+  delete process.env.EMAIL_DOMAIN_VERIFIED;
 });
 
 async function freshDeal(emailLocal: string) {

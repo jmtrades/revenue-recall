@@ -10,9 +10,11 @@ beforeEach(() => {
   delete process.env.BILLING_ENFORCE;
   delete process.env.AGENT_QUIET_START_UTC;
   delete process.env.AGENT_QUIET_END_UTC;
+  process.env.SMS_A2P_REGISTERED = "true"; // platform A2P attested; this suite isolates courtesy hours
 });
 afterEach(() => {
   vi.useRealTimers();
+  delete process.env.SMS_A2P_REGISTERED;
 });
 
 const DAWN_WEST = new Date("2026-06-12T12:00:00Z"); // 5am San Francisco · 8am New York
