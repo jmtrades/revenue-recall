@@ -3,7 +3,7 @@ import { clickStats, engagementStats } from "@/lib/tracking";
 import { bookingStats } from "@/lib/meetings/stats";
 import { callStats, bestCallWindow, windowLabel } from "@/lib/calls/analytics";
 import { listRecallTouches } from "@/lib/recall/events";
-import { recallInsights, recallWinAttribution } from "@/lib/recall/insights";
+import { recallInsights, recallWinAttribution, recoveredByOwner } from "@/lib/recall/insights";
 import { getOrgSettings } from "@/lib/org";
 import { resolveProvider } from "@/lib/crm/registry";
 import { compactMoney, money, pct } from "@/lib/format";
@@ -30,6 +30,7 @@ export default async function ReportsPage() {
   ]);
   const recall = recallInsights(recallTouches);
   const attribution = recallWinAttribution(recallTouches, wonBack.map((d) => ({ dealId: d.dealId, value: d.value, wonAt: d.wonAt })));
+  const recoveredReps = recoveredByOwner(wonBack);
   const calls = callStats(recentActs);
   const { best: bestWindow } = bestCallWindow(recentActs, 30, new Date(), org.timezone || undefined);
 
@@ -133,6 +134,34 @@ export default async function ReportsPage() {
           </div>
         )}
       </Card>
+
+      {recoveredReps.length > 0 && (
+        <Card title="Revenue recovered by rep">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase tracking-wide text-muted">
+                <th className="pb-2 font-medium">Rep</th>
+                <th className="pb-2 text-right font-medium">Won back</th>
+                <th className="pb-2 text-right font-medium">Recovered</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recoveredReps.map((row) => (
+                <tr key={row.name} className="border-t border-border/60">
+                  <td className="py-2.5">
+                    <span className="flex items-center gap-2">
+                      <Avatar name={row.name} size={26} />
+                      <span className="text-fg">{row.name}</span>
+                    </span>
+                  </td>
+                  <td className="py-2.5 text-right tabular-nums text-muted">{row.deals}</td>
+                  <td className="py-2.5 text-right tabular-nums text-success">{compactMoney(row.recoveredValue, m.currency)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card title="Revenue at risk by rep">
