@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { loadSampleData, mapStage, sampleDataAllowlist } from "@/lib/sample-data";
+import { loadSampleData, removeSampleData, hasSampleData, mapStage, sampleDataAllowlist } from "@/lib/sample-data";
+import { resolveProvider } from "@/lib/crm/registry";
 import type { Stage } from "@/lib/crm/types";
 
 afterEach(() => {
@@ -52,5 +53,30 @@ describe("loadSampleData — duplicate guard", () => {
   it("no-ops on a workspace that already has contacts (demo store is pre-seeded)", async () => {
     const res = await loadSampleData();
     expect(res).toEqual({ contacts: 0, deals: 0 });
+  });
+});
+
+describe("removeSampleData — wipes only tagged demo records", () => {
+  it("removes a sample-tagged contact and its deal, and reports it via hasSampleData", async () => {
+    const p = await resolveProvider();
+    const pipelines = await p.listPipelines();
+    const c = await p.createContact({ name: "Demo Sample Lead", points: [], attributes: { sample: true } });
+    await p.createOpportunity({
+      title: "Demo sample deal",
+      pipelineId: pipelines[0].id,
+      stageId: pipelines[0].stages[0].id,
+      value: 1000,
+      currency: "USD",
+      contactId: c.id,
+    });
+    expect(await hasSampleData()).toBe(true);
+
+    const res = await removeSampleData();
+    expect(res.contacts).toBeGreaterThanOrEqual(1);
+    expect(res.deals).toBeGreaterThanOrEqual(1);
+
+    const after = await p.listContacts();
+    expect(after.some((x) => x.id === c.id)).toBe(false); // the tagged contact is gone
+    expect(after.some((x) => x.attributes?.sample === true)).toBe(false); // no sample records remain
   });
 });

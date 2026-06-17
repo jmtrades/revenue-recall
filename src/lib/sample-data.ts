@@ -145,3 +145,56 @@ export async function loadSampleData(): Promise<{ contacts: number; deals: numbe
 
   return { contacts: contactIdMap.size, deals: oppIdMap.size };
 }
+
+/** True when the workspace currently holds any sample (demo) records. */
+export async function hasSampleData(): Promise<boolean> {
+  const provider = await resolveProvider();
+  if (!["builtin", "supabase"].includes(provider.info().id)) return false;
+  const contacts = await provider.listContacts().catch(() => []);
+  return contacts.some((c) => c.attributes?.sample === true);
+}
+
+/**
+ * Wipe every demo record from the workspace — the inverse of loadSampleData, so
+ * a workspace that explored with sample data can return to a clean, real-only
+ * slate in one click. Safe by construction: only deletes contacts tagged
+ * `attributes.sample` and the deals that hang off them; real records are never
+ * touched, and a connected external CRM is refused outright.
+ */
+export async function removeSampleData(): Promise<{ contacts: number; deals: number }> {
+  const provider = await resolveProvider();
+  if (!["builtin", "supabase"].includes(provider.info().id)) {
+    throw new Error("Sample data only ever lives in the built-in workspace — nothing to remove from a connected CRM.");
+  }
+  if (typeof provider.deleteContact !== "function") return { contacts: 0, deals: 0 };
+
+  const contacts = await provider.listContacts();
+  const sampleIds = new Set(contacts.filter((c) => c.attributes?.sample === true).map((c) => c.id));
+  if (sampleIds.size === 0) return { contacts: 0, deals: 0 };
+
+  // Delete the sample deals first (they reference the sample contacts), then the
+  // contacts themselves. Each delete is independent — one failure shouldn't strand the rest.
+  let deals = 0;
+  if (typeof provider.deleteOpportunity === "function") {
+    const opps = await provider.listOpportunities().catch(() => []);
+    for (const o of opps) {
+      if (!sampleIds.has(o.contactId)) continue;
+      try {
+        await provider.deleteOpportunity(o.id);
+        deals += 1;
+      } catch {
+        /* leave the rest to proceed */
+      }
+    }
+  }
+  let removed = 0;
+  for (const id of sampleIds) {
+    try {
+      await provider.deleteContact(id);
+      removed += 1;
+    } catch {
+      /* leave the rest to proceed */
+    }
+  }
+  return { contacts: removed, deals };
+}
