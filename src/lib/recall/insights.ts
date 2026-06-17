@@ -73,3 +73,78 @@ export function recallInsights(touches: RecallTouch[]): RecallInsights {
 
   return { totalTouches: total, dealsTouched: dealsAll.size, byChannel, bySource };
 }
+
+/**
+ * Recall flywheel (v2) — per-channel WIN-BACK attribution. Turns "where effort
+ * goes" into "what actually recovers deals" by crediting each won-back deal to
+ * the channel that last re-engaged it (last-touch: the most recent recall touch
+ * on/before the deal was won). Last-touch is the honest, defensible default —
+ * the channel that closed the loop — without overstating multi-channel assists.
+ * Pure + tested.
+ */
+
+/** A recovered deal, reduced to what attribution needs. */
+export interface AttributableWin {
+  dealId: string;
+  value: number;
+  /** ISO timestamp the deal reached a won stage. */
+  wonAt: string;
+}
+
+export interface RecallChannelWins {
+  channel: RecallTouchChannel;
+  /** Won-back deals last re-engaged on this channel. */
+  deals: number;
+  recoveredValue: number;
+  /** Share of attributed recovered value, 0–1. */
+  share: number;
+}
+
+export interface RecallAttribution {
+  byChannel: RecallChannelWins[];
+  attributedValue: number;
+  attributedDeals: number;
+  /** Won-back deals with no recall touch on/before the win (e.g. enrollment-only). */
+  unattributedDeals: number;
+}
+
+export function recallWinAttribution(touches: RecallTouch[], wins: AttributableWin[]): RecallAttribution {
+  const byDeal = new Map<string, RecallTouch[]>();
+  for (const t of touches) {
+    if (!t.dealId) continue;
+    const list = byDeal.get(t.dealId) ?? [];
+    list.push(t);
+    byDeal.set(t.dealId, list);
+  }
+
+  const dealsByChannel = new Map<RecallTouchChannel, number>();
+  const valueByChannel = new Map<RecallTouchChannel, number>();
+  let attributedValue = 0;
+  let attributedDeals = 0;
+  let unattributedDeals = 0;
+
+  for (const win of wins) {
+    // Last recall touch on/before the win — the channel that closed the loop.
+    const candidates = (byDeal.get(win.dealId) ?? []).filter((t) => t.occurredAt <= win.wonAt);
+    if (candidates.length === 0) {
+      unattributedDeals += 1;
+      continue;
+    }
+    const last = candidates.reduce((a, b) => (a.occurredAt >= b.occurredAt ? a : b));
+    dealsByChannel.set(last.channel, (dealsByChannel.get(last.channel) ?? 0) + 1);
+    valueByChannel.set(last.channel, (valueByChannel.get(last.channel) ?? 0) + win.value);
+    attributedValue += win.value;
+    attributedDeals += 1;
+  }
+
+  const byChannel: RecallChannelWins[] = CHANNELS.map((channel) => ({
+    channel,
+    deals: dealsByChannel.get(channel) ?? 0,
+    recoveredValue: valueByChannel.get(channel) ?? 0,
+    share: attributedValue > 0 ? (valueByChannel.get(channel) ?? 0) / attributedValue : 0,
+  }))
+    .filter((c) => c.deals > 0)
+    .sort((a, b) => b.recoveredValue - a.recoveredValue);
+
+  return { byChannel, attributedValue, attributedDeals, unattributedDeals };
+}
