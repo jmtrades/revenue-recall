@@ -3,6 +3,7 @@ import { getOrgSettings } from "@/lib/org";
 import { localeFor } from "@/lib/languages";
 import { voiceMinutesMeter, estimatedCallsForMinutes } from "@/lib/billing/voice-minutes";
 import { bestCallWindow, windowLabel } from "@/lib/calls/analytics";
+import { objectionGuide } from "@/lib/calls/objection-guide";
 import { resolveProvider } from "@/lib/crm/registry";
 import { pct } from "@/lib/format";
 import { PageHeader } from "@/components/ui";
@@ -37,7 +38,7 @@ export default async function DialerPage() {
           Your best window: <span className="font-medium text-fg">{windowLabel(best.hour)}</span> — {pct(best.connectRate)} connect rate over your last 30 days of dials.
         </p>
       )}
-      <DialerView queue={queue} locale={localeFor(org.language)} voiceMinutes={voiceMinutes} />
+      <DialerView queue={queue} locale={localeFor(org.language)} voiceMinutes={voiceMinutes} objections={objectionGuide(org.industryId)} />
     </div>
   );
 }
