@@ -13,6 +13,8 @@ import { EnrollPicker } from "@/components/EnrollPicker";
 import { AiBrief } from "@/components/AiBrief";
 import { SpeakButton } from "@/components/SpeakButton";
 import { contactInsights } from "@/lib/insights";
+import { listRecallTouches } from "@/lib/recall/events";
+import { recallJourney } from "@/lib/recall/insights";
 import { getLanguage, toLanguageCode } from "@/lib/languages";
 
 export const metadata = { title: "Deal" };
@@ -36,6 +38,8 @@ export default async function DealPage({ params }: { params: { id: string } }) {
   const openStages = pipeline.stages.filter((s) => s.type === "open");
   const currentIdx = openStages.findIndex((s) => s.id === stage?.id);
   const insights = contactInsights(activities);
+  // This deal's recall history — the in-product proof of how recall worked it.
+  const journey = recallJourney((await listRecallTouches().catch(() => [])).filter((t) => t.dealId === opp.id));
   const responsivenessStyle: Record<string, string> = {
     high: "bg-success/15 text-success",
     medium: "bg-brand-soft text-brand",
@@ -103,6 +107,27 @@ export default async function DealPage({ params }: { params: { id: string } }) {
 
         <div className="space-y-6">
           <AiBrief dealId={opp.id} />
+
+          {journey.totalTouches > 0 && (
+            <Card title="Recall journey">
+              <p className="mb-3 text-sm text-muted">
+                {journey.totalTouches} touch{journey.totalTouches === 1 ? "" : "es"}
+                {journey.firstTouchAt ? ` since recall began ${relativeDays(daysAgo(journey.firstTouchAt))}` : ""}
+                {journey.channels.length ? ` · ${journey.channels.join(", ")}` : ""}.
+              </p>
+              <ol className="relative space-y-3 before:absolute before:left-4 before:top-2 before:h-full before:w-px before:bg-border">
+                {journey.timeline.map((tch) => (
+                  <li key={tch.id} className="relative flex gap-3">
+                    <ActivityIcon kind={tch.channel} />
+                    <div className="flex flex-1 items-center justify-between gap-2 pb-1">
+                      <span className="text-sm capitalize text-fg">{tch.channel} · {tch.source}</span>
+                      <span className="flex-none text-xs text-muted">{relativeDays(daysAgo(tch.occurredAt))}</span>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </Card>
+          )}
 
           <Card>
             <DealActions dealId={opp.id} stages={pipeline.stages} currentStageId={opp.stageId} canWrite={canWrite} />
