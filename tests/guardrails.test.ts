@@ -107,6 +107,18 @@ describe("sendGate", () => {
     expect(sendGate({ contact: contact(), opp: opp(), activities: [], autonomy: "auto", sentSoFar: 5, now })).toBe("daily_cap");
     expect(sendGate({ contact: contact(), opp: opp(), activities: [], autonomy: "auto", sentSoFar: 0, now })).toBeNull();
   });
+
+  it("enforces a conservative daily cap BY DEFAULT (no env = not unlimited)", () => {
+    // AGENT_DAILY_SEND_CAP is unset (deleted in beforeEach). Autonomous sending
+    // must still be capped so it can never run away.
+    expect(sendGate({ contact: contact(), opp: opp(), activities: [], autonomy: "auto", sentSoFar: 250, now: new Date("2026-01-01T14:00:00Z") })).toBe("daily_cap");
+    expect(sendGate({ contact: contact(), opp: opp(), activities: [], autonomy: "auto", sentSoFar: 249, now: new Date("2026-01-01T14:00:00Z") })).toBeNull();
+  });
+
+  it("lets an operator opt out of the cap with AGENT_DAILY_SEND_CAP=0", () => {
+    process.env.AGENT_DAILY_SEND_CAP = "0";
+    expect(sendGate({ contact: contact(), opp: opp(), activities: [], autonomy: "auto", sentSoFar: 100000, now: new Date("2026-01-01T14:00:00Z") })).toBeNull();
+  });
 });
 
 describe("containsUnverifiedClaim — claim-guard for autonomous sends", () => {

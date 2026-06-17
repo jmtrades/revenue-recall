@@ -84,10 +84,20 @@ export function quietHoursNow(now: Date = new Date(), tz?: string): boolean {
   return start < end ? h >= start && h < end : h >= start || h < end; // supports windows that wrap midnight
 }
 
-/** Max autonomous sends per run (0/unset = unlimited). */
+/**
+ * Max autonomous sends per rolling 24h (enforced across runs in agent/engine).
+ * Defaults to a conservative ceiling so autonomous sending can NEVER run away —
+ * a safety/deliverability/compliance rail, not "unlimited by default." Operators
+ * raise or lower it with AGENT_DAILY_SEND_CAP (set 0 to opt out entirely).
+ */
+export const DEFAULT_DAILY_SEND_CAP = 250;
 export function dailySendCap(): number {
-  const n = Number(process.env.AGENT_DAILY_SEND_CAP);
-  return Number.isFinite(n) && n > 0 ? n : Infinity;
+  const raw = process.env.AGENT_DAILY_SEND_CAP;
+  if (raw !== undefined && raw.trim() !== "") {
+    const n = Number(raw);
+    if (Number.isFinite(n)) return n > 0 ? n : Infinity; // explicit 0 = opt out (unlimited)
+  }
+  return DEFAULT_DAILY_SEND_CAP;
 }
 
 /** Days to wait before re-touching the same deal (default 3). */
