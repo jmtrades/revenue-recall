@@ -149,6 +149,77 @@ export function recallWinAttribution(touches: RecallTouch[], wins: AttributableW
   return { byChannel, attributedValue, attributedDeals, unattributedDeals };
 }
 
+/**
+ * Autopilot ROI — recovered revenue attributed to the SOURCE that last
+ * re-engaged each won-back deal (autopilot / cadence / manual). Recall touches
+ * are tagged by source, so this answers the honest question "how much did the
+ * AUTOPILOT actually bring back?" with the same last-touch rule as the channel
+ * attribution. Pure + tested.
+ */
+export interface RecallSourceWins {
+  source: RecallTouchSource;
+  deals: number;
+  recoveredValue: number;
+  share: number;
+}
+
+export interface RecallSourceAttribution {
+  bySource: RecallSourceWins[];
+  attributedValue: number;
+  attributedDeals: number;
+  unattributedDeals: number;
+  /** Convenience: recovered value whose last touch was the autonomous agent. */
+  autopilotRecoveredValue: number;
+  autopilotDeals: number;
+}
+
+export function recallWinBySource(touches: RecallTouch[], wins: AttributableWin[]): RecallSourceAttribution {
+  const byDeal = new Map<string, RecallTouch[]>();
+  for (const t of touches) {
+    if (!t.dealId) continue;
+    const list = byDeal.get(t.dealId) ?? [];
+    list.push(t);
+    byDeal.set(t.dealId, list);
+  }
+
+  const dealsBySource = new Map<RecallTouchSource, number>();
+  const valueBySource = new Map<RecallTouchSource, number>();
+  let attributedValue = 0;
+  let attributedDeals = 0;
+  let unattributedDeals = 0;
+
+  for (const win of wins) {
+    const candidates = (byDeal.get(win.dealId) ?? []).filter((t) => t.occurredAt <= win.wonAt);
+    if (candidates.length === 0) {
+      unattributedDeals += 1;
+      continue;
+    }
+    const last = candidates.reduce((a, b) => (a.occurredAt >= b.occurredAt ? a : b));
+    dealsBySource.set(last.source, (dealsBySource.get(last.source) ?? 0) + 1);
+    valueBySource.set(last.source, (valueBySource.get(last.source) ?? 0) + win.value);
+    attributedValue += win.value;
+    attributedDeals += 1;
+  }
+
+  const bySource: RecallSourceWins[] = SOURCES.map((source) => ({
+    source,
+    deals: dealsBySource.get(source) ?? 0,
+    recoveredValue: valueBySource.get(source) ?? 0,
+    share: attributedValue > 0 ? (valueBySource.get(source) ?? 0) / attributedValue : 0,
+  }))
+    .filter((s) => s.deals > 0)
+    .sort((a, b) => b.recoveredValue - a.recoveredValue);
+
+  return {
+    bySource,
+    attributedValue,
+    attributedDeals,
+    unattributedDeals,
+    autopilotRecoveredValue: valueBySource.get("autopilot") ?? 0,
+    autopilotDeals: dealsBySource.get("autopilot") ?? 0,
+  };
+}
+
 /** Who is actually winning revenue back — the recovered-revenue counterpart to
  *  the at-risk-by-rep table. Groups won-back deals by owner, sorted by value. */
 export interface OwnerRecovery {
