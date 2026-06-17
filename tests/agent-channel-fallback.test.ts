@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { getProvider } from "@/lib/crm/registry";
 import { runTask } from "@/lib/agent/engine";
 import type { AgentTask } from "@/lib/agent/types";
@@ -7,6 +7,10 @@ import type { AgentTask } from "@/lib/agent/types";
 beforeEach(() => {
   delete process.env.ANTHROPIC_API_KEY;
   delete process.env.BILLING_ENFORCE;
+  process.env.SMS_A2P_REGISTERED = "true"; // platform A2P attested; this suite isolates channel fallback
+});
+afterEach(() => {
+  delete process.env.SMS_A2P_REGISTERED;
 });
 
 async function autoTask(channel: AgentTask["channel"], dealId: string): Promise<AgentTask> {

@@ -11,11 +11,13 @@ beforeEach(() => {
   delete process.env.BILLING_ENFORCE;
   delete process.env.STRIPE_SECRET_KEY;
   process.env.COMPLIANCE_ADDRESS = "123 Test St, Austin, TX 78701"; // CAN-SPAM address on file so autonomous email can send
+  process.env.EMAIL_DOMAIN_VERIFIED = "true"; // sending domain attested
 });
 afterEach(() => {
   delete process.env.BILLING_ENFORCE;
   delete process.env.STRIPE_SECRET_KEY;
   delete process.env.COMPLIANCE_ADDRESS;
+  delete process.env.EMAIL_DOMAIN_VERIFIED;
 });
 
 describe("billing enforcement flag", () => {

@@ -2,7 +2,7 @@ import { getConfig } from "@/lib/config";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { isAiConfigured } from "@/lib/ai/client";
 import { channelStatus } from "@/lib/comms";
-import { complianceConfig } from "@/lib/compliance";
+import { complianceConfig, emailDomainVerified, smsA2pRegistered } from "@/lib/compliance";
 
 /**
  * Launch readiness — the single source of truth for "what still needs wiring,"
@@ -36,6 +36,14 @@ export function launchStatus(): LaunchStatus {
   const compliance = complianceConfig();
   if (ch.email.live && compliance.enabled && !compliance.address) {
     warnings.push("Email is live but no postal address is set — CAN-SPAM requires a physical mailing address in commercial email. Set COMPLIANCE_ADDRESS (or each org's address in Settings).");
+  }
+  // Operator attestations gate AUTONOMOUS sending (held for review until set), so
+  // surface them the moment the channel is live but the prerequisite isn't met.
+  if (ch.email.live && compliance.enabled && !emailDomainVerified()) {
+    warnings.push("Email domain isn't verified — authenticate your sending domain (SPF/DKIM/DMARC), then set EMAIL_DOMAIN_VERIFIED=true. Until then autonomous emails are held for review.");
+  }
+  if (ch.sms.live && compliance.enabled && !smsA2pRegistered()) {
+    warnings.push("SMS isn't A2P 10DLC registered — register your brand + campaign with your carrier, then set SMS_A2P_REGISTERED=true. Until then autonomous texts are held for review.");
   }
   if (!isAiConfigured()) warnings.push("AI is in template mode — add ANTHROPIC_API_KEY for live, in-your-voice drafting.");
 

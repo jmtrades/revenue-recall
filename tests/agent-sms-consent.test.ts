@@ -13,8 +13,12 @@ beforeEach(() => {
   delete process.env.BILLING_ENFORCE;
   delete process.env.AGENT_QUIET_START_UTC;
   delete process.env.AGENT_QUIET_END_UTC;
+  process.env.SMS_A2P_REGISTERED = "true"; // platform A2P attested; tests isolate per-contact consent
 });
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  delete process.env.SMS_A2P_REGISTERED;
+});
 
 const MIDDAY_ET = new Date("2026-06-12T18:00:00Z"); // 2pm ET — inside the courtesy window
 
@@ -53,11 +57,20 @@ describe("autopilot consent-gates marketing SMS", () => {
     expect(run.actions[0].result).toBe("drafted");
   });
 
-  it("auto-texts when consent is on file", async () => {
+  it("auto-texts when consent is on file (and A2P is registered)", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(MIDDAY_ET);
     const opp = await smsDeal({ smsConsent: true });
     const run = await runTask(autoSms(opp.id));
     expect(["sent", "logged"]).toContain(run.actions[0].result);
+  });
+
+  it("holds even with consent when A2P 10DLC isn't registered", async () => {
+    delete process.env.SMS_A2P_REGISTERED;
+    vi.useFakeTimers();
+    vi.setSystemTime(MIDDAY_ET);
+    const opp = await smsDeal({ smsConsent: true });
+    const run = await runTask(autoSms(opp.id));
+    expect(run.actions[0].result).toBe("drafted");
   });
 });
