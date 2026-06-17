@@ -2,6 +2,8 @@ import { getReports } from "@/lib/queries";
 import { clickStats, engagementStats } from "@/lib/tracking";
 import { bookingStats } from "@/lib/meetings/stats";
 import { callStats, bestCallWindow, windowLabel } from "@/lib/calls/analytics";
+import { listRecallTouches } from "@/lib/recall/events";
+import { recallInsights } from "@/lib/recall/insights";
 import { getOrgSettings } from "@/lib/org";
 import { resolveProvider } from "@/lib/crm/registry";
 import { compactMoney, money, pct } from "@/lib/format";
@@ -22,6 +24,7 @@ export default async function ReportsPage() {
     getOrgSettings(),
   ]);
   const m = r.metrics;
+  const recall = recallInsights(await listRecallTouches().catch(() => []));
   const calls = callStats(recentActs);
   const { best: bestWindow } = bestCallWindow(recentActs, 30, new Date(), org.timezone || undefined);
 
@@ -84,6 +87,23 @@ export default async function ReportsPage() {
               <div>
                 <p className="stat-label mb-2">Recall outreach (6 weeks)</p>
                 <BarChart data={r.recallTrend} height={120} color="rgb(var(--brand-rgb))" />
+              </div>
+            )}
+            {recall.totalTouches > 0 && (
+              <div>
+                <p className="stat-label mb-2">Where recall effort goes</p>
+                <div className="space-y-2">
+                  {recall.byChannel.map((c) => (
+                    <div key={c.channel} className="flex items-center gap-3">
+                      <span className="w-14 shrink-0 text-xs capitalize text-muted">{c.channel}</span>
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-surface-2">
+                        <div className="h-full rounded-full bg-brand" style={{ width: `${Math.round(c.share * 100)}%` }} />
+                      </div>
+                      <span className="w-28 shrink-0 text-right text-xs tabular-nums text-muted">{c.touches} touch{c.touches === 1 ? "" : "es"} · {c.deals} deal{c.deals === 1 ? "" : "s"}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-muted">{recall.totalTouches} recall touches across {recall.dealsTouched} deal{recall.dealsTouched === 1 ? "" : "s"}{recall.bySource.length ? ` · mostly ${recall.bySource[0].source}` : ""}.</p>
               </div>
             )}
           </div>
