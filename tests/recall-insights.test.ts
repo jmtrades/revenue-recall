@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { recallInsights, recallWinAttribution, recoveredByOwner, recallJourney, type AttributableWin } from "@/lib/recall/insights";
+import { recallInsights, recallWinAttribution, recoveredByOwner, recallJourney, recoveredByWeek, type AttributableWin } from "@/lib/recall/insights";
 import type { RecallTouch } from "@/lib/recall/events";
 
 const t = (over: Partial<RecallTouch>): RecallTouch => ({
@@ -120,5 +120,33 @@ describe("recallJourney", () => {
     expect(j.lastTouchAt).toBe("2026-06-10T00:00:00Z");
     expect(j.timeline.map((x) => x.occurredAt)).toEqual(["2026-06-01T00:00:00Z", "2026-06-05T00:00:00Z", "2026-06-10T00:00:00Z"]);
     expect(j.channels).toEqual(["email", "call"]); // email used twice → first
+  });
+});
+
+describe("recoveredByWeek", () => {
+  const now = new Date("2026-06-30T00:00:00Z");
+
+  it("returns one bucket per week, all zero on no wins", () => {
+    const b = recoveredByWeek([], now, 6);
+    expect(b).toHaveLength(6);
+    expect(b.every((x) => x.value === 0)).toBe(true);
+  });
+
+  it("sums won-back value into the week it closed", () => {
+    const b = recoveredByWeek([
+      { value: 5000, wonAt: "2026-06-29T00:00:00Z" }, // this week
+      { value: 2000, wonAt: "2026-06-28T00:00:00Z" }, // this week
+      { value: 9000, wonAt: "2026-06-20T00:00:00Z" }, // prior week
+    ], now, 6);
+    expect(b[b.length - 1].value).toBe(7000); // newest bucket (last 7 days)
+    expect(b[b.length - 2].value).toBe(9000);
+  });
+
+  it("ignores wins outside the window and unparseable dates", () => {
+    const b = recoveredByWeek([
+      { value: 1000, wonAt: "2025-01-01T00:00:00Z" }, // far past
+      { value: 1000, wonAt: "not-a-date" },
+    ], now, 6);
+    expect(b.reduce((s, x) => s + x.value, 0)).toBe(0);
   });
 });
