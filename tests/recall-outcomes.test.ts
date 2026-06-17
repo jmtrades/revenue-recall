@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeRecallOutcomes, recallByOwner, type RecallEnrollmentRef, type RecallItem } from "@/lib/recall/engine";
+import { computeRecallOutcomes, recallByOwner, wonBackDeals, type RecallEnrollmentRef, type RecallItem } from "@/lib/recall/engine";
 import type { Opportunity, Stage } from "@/lib/crm/types";
 
 const stages: Stage[] = [
@@ -93,5 +93,34 @@ describe("recallByOwner", () => {
 
   it("returns an empty list when nothing is at risk", () => {
     expect(recallByOwner([], () => undefined)).toEqual([]);
+  });
+});
+
+describe("wonBackDeals", () => {
+  it("emits each recovered deal once, sorted by value, with recall start + won dates", () => {
+    const opps = new Map<string, Opportunity>([
+      ["small", deal({ id: "small", stageId: "won", value: 3000, ownerId: "u1", closedAt: "2026-02-20T00:00:00Z" })],
+      ["big", deal({ id: "big", stageId: "won", value: 9000, ownerId: "u2", closedAt: "2026-02-25T00:00:00Z" })],
+      ["open1", deal({ id: "open1", stageId: "open" })],
+    ]);
+    const rows = wonBackDeals(
+      [enr({ dealId: "small", enrolledAt: "2026-02-01T00:00:00Z" }), enr({ dealId: "big", enrolledAt: "2026-02-02T00:00:00Z" }), enr({ dealId: "open1" })],
+      opps,
+      stageMap,
+    );
+    expect(rows.map((r) => r.dealId)).toEqual(["big", "small"]); // value desc, open excluded
+    expect(rows[0]).toMatchObject({ dealId: "big", value: 9000, ownerId: "u2", recallStartedAt: "2026-02-02T00:00:00Z", wonAt: "2026-02-25T00:00:00Z" });
+  });
+
+  it("excludes a deal won BEFORE recall began (not attributable)", () => {
+    const opps = new Map<string, Opportunity>([["pre", deal({ id: "pre", stageId: "won", value: 5000, closedAt: "2026-01-10T00:00:00Z" })]]);
+    expect(wonBackDeals([enr({ dealId: "pre", enrolledAt: "2026-02-01T00:00:00Z" })], opps, stageMap)).toEqual([]);
+  });
+
+  it("credits a manual-touch-only recovery via touchedAt", () => {
+    const opps = new Map<string, Opportunity>([["t", deal({ id: "t", stageId: "won", value: 4000, closedAt: "2026-03-05T00:00:00Z" })]]);
+    const rows = wonBackDeals([], opps, stageMap, new Map([["t", "2026-03-01T00:00:00Z"]]));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ dealId: "t", recallStartedAt: "2026-03-01T00:00:00Z" });
   });
 });
