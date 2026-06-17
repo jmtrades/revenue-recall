@@ -12,7 +12,12 @@ import { withGuard } from "@/lib/api/guard";
 
 export const dynamic = "force-dynamic";
 
-const Body = z.object({ action: z.enum(["approve", "dismiss"]) });
+const Body = z.object({
+  action: z.enum(["approve", "dismiss"]),
+  // Optional human edits made in the Approvals queue before sending.
+  subject: z.string().max(300).optional(),
+  body: z.string().max(8000).optional(),
+});
 
 export const POST = withGuard(async (req: Request, { params }: { params: { id: string } }) => {
   const parsed = Body.safeParse(await req.json().catch(() => null));
@@ -50,7 +55,13 @@ export const POST = withGuard(async (req: Request, { params }: { params: { id: s
     return NextResponse.json({ error: "This contact has opted out — not sending." }, { status: 403 });
   }
 
-  const res = await sendReply({ contact, channel: item.channel, subject: item.subject, body: item.body });
+  // Use the human-edited content when the approver tweaked it in the queue,
+  // else the original draft. Empty body is rejected (nothing to send).
+  const sendBody = (parsed.data.body ?? item.body).trim();
+  if (!sendBody) return NextResponse.json({ error: "Message can't be empty" }, { status: 400 });
+  const sendSubject = parsed.data.subject !== undefined ? parsed.data.subject : item.subject;
+
+  const res = await sendReply({ contact, channel: item.channel, subject: sendSubject, body: sendBody });
   if (res.status === "failed") return NextResponse.json({ error: res.detail ?? "Send failed" }, { status: 502 });
 
   const social = isSocialChannel(item.channel);
@@ -62,8 +73,8 @@ export const POST = withGuard(async (req: Request, { params }: { params: { id: s
     contactId: item.contactId,
     kind,
     summary: social
-      ? `[${platformTag(item.channel as SocialPlatform)}] ${item.body}`
-      : item.subject ? `${item.subject}\n\n${item.body}` : item.body,
+      ? `[${platformTag(item.channel as SocialPlatform)}] ${sendBody}`
+      : sendSubject ? `${sendSubject}\n\n${sendBody}` : sendBody,
     direction: "outbound",
     occurredAt: new Date().toISOString(),
   });

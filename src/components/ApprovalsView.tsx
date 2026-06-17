@@ -23,23 +23,31 @@ export function ApprovalsView({ rows }: { rows: ApprovalRow[] }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function act(id: string, action: "approve" | "dismiss") {
-    setBusy(id); setError(null);
+  async function act(item: ApprovalRow, action: "approve" | "dismiss") {
+    setBusy(item.id); setError(null);
     try {
-      const res = await fetch(`/api/agent/outbox/${id}`, {
+      // Send any inline edits along with an approval, so what goes out is exactly
+      // what's on screen.
+      const payload = action === "approve" ? { action, subject: item.subject, body: item.body } : { action };
+      const res = await fetch(`/api/agent/outbox/${item.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify(payload),
       });
       const b = await res.json();
       if (!res.ok) throw new Error(b.error ?? "Failed");
-      setItems((x) => x.filter((i) => i.id !== id));
+      setItems((x) => x.filter((i) => i.id !== item.id));
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setBusy(null);
     }
+  }
+
+  // Inline edits to a queued draft (kept local until approved).
+  function edit(id: string, patch: Partial<ApprovalRow>) {
+    setItems((x) => x.map((i) => (i.id === id ? { ...i, ...patch } : i)));
   }
 
   if (items.length === 0) {
@@ -69,14 +77,29 @@ export function ApprovalsView({ rows }: { rows: ApprovalRow[] }) {
             </div>
             <div className="flex items-center gap-2">
               <SpeakButton text={[it.subject, it.body].filter(Boolean).join(". ")} label="Hear it" />
-              <button onClick={() => act(it.id, "dismiss")} disabled={busy === it.id} className="rounded-lg border border-border px-3 py-1.5 text-sm text-muted hover:text-danger disabled:opacity-50">Dismiss</button>
-              <button onClick={() => act(it.id, "approve")} disabled={busy === it.id} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand/90 disabled:opacity-50">
+              <button onClick={() => act(it, "dismiss")} disabled={busy === it.id} className="rounded-lg border border-border px-3 py-1.5 text-sm text-muted hover:text-danger disabled:opacity-50">Dismiss</button>
+              <button onClick={() => act(it, "approve")} disabled={busy === it.id || !it.body.trim()} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand/90 disabled:opacity-50">
                 {busy === it.id ? "Sending…" : "Approve & send"}
               </button>
             </div>
           </div>
-          {it.subject && <div className="mb-1 text-sm font-medium text-fg">{it.subject}</div>}
-          <pre className="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-lg border border-border bg-surface-2 px-3 py-2.5 font-sans text-sm leading-relaxed text-muted">{it.body}</pre>
+          {/* Editable before sending — tweak the wording, then approve. */}
+          {it.channel === "email" && (
+            <input
+              value={it.subject ?? ""}
+              onChange={(e) => edit(it.id, { subject: e.target.value })}
+              placeholder="Subject"
+              aria-label="Email subject"
+              className="mb-2 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-fg outline-none focus:border-brand"
+            />
+          )}
+          <textarea
+            value={it.body}
+            onChange={(e) => edit(it.id, { body: e.target.value })}
+            aria-label="Message body — edit before sending"
+            rows={Math.min(12, Math.max(4, it.body.split("\n").length + 1))}
+            className="w-full resize-y rounded-lg border border-border bg-surface-2 px-3 py-2.5 font-sans text-sm leading-relaxed text-fg outline-none focus:border-brand"
+          />
         </section>
       ))}
     </div>
