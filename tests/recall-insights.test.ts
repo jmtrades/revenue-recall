@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { recallInsights, recallWinAttribution, recoveredByOwner, recallJourney, recoveredByWeek, type AttributableWin } from "@/lib/recall/insights";
+import { recallInsights, recallWinAttribution, recallWinBySource, recoveredByOwner, recallJourney, recoveredByWeek, type AttributableWin } from "@/lib/recall/insights";
 import type { RecallTouch } from "@/lib/recall/events";
 
 const t = (over: Partial<RecallTouch>): RecallTouch => ({
@@ -38,6 +38,40 @@ describe("recallInsights", () => {
     expect(r.bySource.map((s) => s.source)).toEqual(["autopilot", "manual"]); // no "cadence"
     expect(r.bySource[0]).toMatchObject({ source: "autopilot", touches: 2 });
     expect(r.byChannel.every((c) => c.touches > 0)).toBe(true);
+  });
+});
+
+describe("recallWinBySource (autopilot ROI)", () => {
+  const win = (over: Partial<AttributableWin>): AttributableWin => ({ dealId: "d", value: 1000, wonAt: "2026-06-10T00:00:00Z", ...over });
+
+  it("attributes recovered value to the source of the last touch, with an autopilot rollup", () => {
+    const touches = [
+      t({ dealId: "a", source: "autopilot", occurredAt: "2026-06-01T00:00:00Z" }),
+      t({ dealId: "a", source: "manual", occurredAt: "2026-06-05T00:00:00Z" }), // last before win → manual
+      t({ dealId: "b", source: "autopilot", occurredAt: "2026-06-02T00:00:00Z" }),
+      t({ dealId: "c", source: "autopilot", occurredAt: "2026-06-02T00:00:00Z" }),
+    ];
+    const r = recallWinBySource(touches, [
+      win({ dealId: "a", value: 4000 }),
+      win({ dealId: "b", value: 5000 }),
+      win({ dealId: "c", value: 1000 }),
+    ]);
+    expect(r.attributedValue).toBe(10000);
+    expect(r.autopilotRecoveredValue).toBe(6000); // b + c
+    expect(r.autopilotDeals).toBe(2);
+    expect(r.bySource[0]).toMatchObject({ source: "autopilot", deals: 2, recoveredValue: 6000 });
+    expect(r.bySource.find((s) => s.source === "manual")).toMatchObject({ deals: 1, recoveredValue: 4000 });
+  });
+
+  it("counts a win with no qualifying touch as unattributed", () => {
+    const r = recallWinBySource([t({ dealId: "x", source: "autopilot", occurredAt: "2026-07-01T00:00:00Z" })], [win({ dealId: "x", wonAt: "2026-06-01T00:00:00Z" })]);
+    expect(r.attributedDeals).toBe(0);
+    expect(r.unattributedDeals).toBe(1);
+    expect(r.autopilotRecoveredValue).toBe(0);
+  });
+
+  it("is all-zero on no wins", () => {
+    expect(recallWinBySource([], [])).toMatchObject({ bySource: [], attributedValue: 0, autopilotRecoveredValue: 0, autopilotDeals: 0 });
   });
 });
 

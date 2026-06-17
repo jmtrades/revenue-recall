@@ -3,7 +3,7 @@ import { clickStats, engagementStats } from "@/lib/tracking";
 import { bookingStats } from "@/lib/meetings/stats";
 import { callStats, bestCallWindow, windowLabel } from "@/lib/calls/analytics";
 import { cachedRecallTouches } from "@/lib/crm/cached";
-import { recallInsights, recallWinAttribution, recoveredByOwner, recoveredByWeek } from "@/lib/recall/insights";
+import { recallInsights, recallWinAttribution, recallWinBySource, recoveredByOwner, recoveredByWeek } from "@/lib/recall/insights";
 import { getOrgSettings } from "@/lib/org";
 import { resolveProvider } from "@/lib/crm/registry";
 import { compactMoney, money, pct } from "@/lib/format";
@@ -29,7 +29,9 @@ export default async function ReportsPage() {
     getWonBackDeals().catch(() => []),
   ]);
   const recall = recallInsights(recallTouches);
-  const attribution = recallWinAttribution(recallTouches, wonBack.map((d) => ({ dealId: d.dealId, value: d.value, wonAt: d.wonAt })));
+  const wins = wonBack.map((d) => ({ dealId: d.dealId, value: d.value, wonAt: d.wonAt }));
+  const attribution = recallWinAttribution(recallTouches, wins);
+  const bySource = recallWinBySource(recallTouches, wins);
   const recoveredReps = recoveredByOwner(wonBack);
   const recoveredTrend = recoveredByWeek(wonBack);
   const calls = callStats(recentActs);
@@ -136,6 +138,27 @@ export default async function ReportsPage() {
                   ))}
                 </div>
                 <p className="mt-2 text-xs text-muted">Last-touch attribution: the channel that last re-engaged each won-back deal{attribution.unattributedDeals > 0 ? ` · ${attribution.unattributedDeals} won back with no recorded touch` : ""}.</p>
+              </div>
+            )}
+            {bySource.attributedValue > 0 && (
+              <div>
+                <p className="stat-label mb-2">Autopilot ROI</p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Stat label="Recovered by autopilot" value={compactMoney(bySource.autopilotRecoveredValue, r.currency)} tone="success" hint={`${bySource.autopilotDeals} deal${bySource.autopilotDeals === 1 ? "" : "s"} the AI closed the loop on`} />
+                  <Stat label="Autopilot share" value={pct(bySource.attributedValue > 0 ? bySource.autopilotRecoveredValue / bySource.attributedValue : 0)} hint="of attributed recovered revenue" />
+                </div>
+                <div className="mt-3 space-y-2">
+                  {bySource.bySource.map((s) => (
+                    <div key={s.source} className="flex items-center gap-3">
+                      <span className="w-20 shrink-0 text-xs capitalize text-muted">{s.source}</span>
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-surface-2">
+                        <div className={`h-full rounded-full ${s.source === "autopilot" ? "bg-brand" : "bg-success/60"}`} style={{ width: `${Math.round(s.share * 100)}%` }} />
+                      </div>
+                      <span className="w-32 shrink-0 text-right text-xs tabular-nums text-muted">{compactMoney(s.recoveredValue, r.currency)} · {s.deals} deal{s.deals === 1 ? "" : "s"}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-muted">Recovered revenue by the source that last re-engaged each won-back deal.</p>
               </div>
             )}
           </div>
