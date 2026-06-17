@@ -148,3 +148,22 @@ export function recallWinAttribution(touches: RecallTouch[], wins: AttributableW
 
   return { byChannel, attributedValue, attributedDeals, unattributedDeals };
 }
+
+/** Who is actually winning revenue back — the recovered-revenue counterpart to
+ *  the at-risk-by-rep table. Groups won-back deals by owner, sorted by value. */
+export interface OwnerRecovery {
+  name: string;
+  deals: number;
+  recoveredValue: number;
+}
+
+export function recoveredByOwner(deals: ReadonlyArray<{ ownerName: string; value: number }>): OwnerRecovery[] {
+  const byOwner = new Map<string, OwnerRecovery>();
+  for (const d of deals) {
+    const row = byOwner.get(d.ownerName) ?? { name: d.ownerName, deals: 0, recoveredValue: 0 };
+    row.deals += 1;
+    row.recoveredValue += d.value;
+    byOwner.set(d.ownerName, row);
+  }
+  return [...byOwner.values()].sort((a, b) => b.recoveredValue - a.recoveredValue);
+}

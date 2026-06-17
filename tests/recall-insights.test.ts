@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { recallInsights, recallWinAttribution, type AttributableWin } from "@/lib/recall/insights";
+import { recallInsights, recallWinAttribution, recoveredByOwner, type AttributableWin } from "@/lib/recall/insights";
 import type { RecallTouch } from "@/lib/recall/events";
 
 const t = (over: Partial<RecallTouch>): RecallTouch => ({
@@ -83,5 +83,23 @@ describe("recallWinAttribution", () => {
     expect(r.attributedDeals).toBe(0);
     expect(r.unattributedDeals).toBe(1);
     expect(r.byChannel).toEqual([]);
+  });
+});
+
+describe("recoveredByOwner", () => {
+  it("groups won-back deals by owner and sorts by recovered value", () => {
+    const rows = recoveredByOwner([
+      { ownerName: "Ada", value: 2000 },
+      { ownerName: "Grace", value: 9000 },
+      { ownerName: "Ada", value: 3000 },
+    ]);
+    expect(rows).toEqual([
+      { name: "Grace", deals: 1, recoveredValue: 9000 },
+      { name: "Ada", deals: 2, recoveredValue: 5000 },
+    ]);
+  });
+
+  it("is empty on no deals", () => {
+    expect(recoveredByOwner([])).toEqual([]);
   });
 });
