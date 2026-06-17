@@ -133,6 +133,7 @@ describe("inbound message handling", () => {
 
   it("breaks auto-reply loops: a 2nd auto-reply within the cooldown is queued, not auto-sent", async () => {
     process.env.REPLY_AUTOPILOT = "true";
+    process.env.SMS_A2P_REGISTERED = "true"; // compliance is on by default; attest A2P so the SMS reply may auto-send
     try {
       const phone = "+1 (555) 909-1212";
       await handleInbound("sms", phone, "hi"); // first message creates the contact (no auto-reply on the new-contact path)
@@ -140,6 +141,19 @@ describe("inbound message handling", () => {
       expect(first.action).not.toBe("queued"); // matched → auto-sent (logged: no live transport in tests)
       const second = await handleInbound("sms", phone, "and how does onboarding work");
       expect(second.action).toBe("queued"); // cooldown loop-breaker hands it to a human instead
+    } finally {
+      delete process.env.REPLY_AUTOPILOT;
+      delete process.env.SMS_A2P_REGISTERED;
+    }
+  });
+
+  it("holds an inbound SMS auto-reply for review when A2P isn't attested (compliance gate)", async () => {
+    process.env.REPLY_AUTOPILOT = "true";
+    try {
+      const phone = "+1 (555) 313-4141";
+      await handleInbound("sms", phone, "hi"); // create contact
+      const reply = await handleInbound("sms", phone, "tell me more");
+      expect(reply.action).toBe("queued"); // no SMS_A2P_REGISTERED → mirror outbound: hold for approval
     } finally {
       delete process.env.REPLY_AUTOPILOT;
     }
