@@ -41,7 +41,32 @@ export function InboxView({
   const [error, setError] = useState<string | null>(null);
   // Just-sent messages shown immediately, before the server refresh lands.
   const [optimistic, setOptimistic] = useState<Record<string, InboxMessage[]>>({});
+  // Per-deal recall-enrollment feedback ("Enrolling…" / result), keyed by dealId.
+  const [enrolling, setEnrolling] = useState<string | null>(null);
+  const [enrollMsg, setEnrollMsg] = useState<{ dealId: string; ok: boolean; text: string } | null>(null);
   const router = useRouter();
+
+  async function enrollInRecall(dealId: string) {
+    if (enrolling) return;
+    setEnrolling(dealId);
+    setEnrollMsg(null);
+    try {
+      const res = await fetch("/api/sequences/enroll", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sequenceId: "recall", scope: `deal:${dealId}` }),
+      });
+      const b = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(b.error ?? "Couldn't enroll.");
+      const ok = (typeof b.enrolled === "number" ? b.enrolled : 1) > 0;
+      setEnrollMsg({ dealId, ok: true, text: ok ? "Enrolled — recall touches will send automatically." : "Already in the recall sequence." });
+      router.refresh();
+    } catch (e) {
+      setEnrollMsg({ dealId, ok: false, text: e instanceof Error ? e.message : "Couldn't enroll." });
+    } finally {
+      setEnrolling(null);
+    }
+  }
 
   // Merge optimistic outbound messages with the server's, deduped by
   // direction+body so the real message from the next refresh replaces the
@@ -157,16 +182,29 @@ export function InboxView({
               </div>
             </div>
             {active.deal && (
-              <Link
-                href={`/deals/${active.deal.dealId}`}
-                className="flex items-center justify-between gap-3 border-b border-border bg-surface-2/50 px-4 py-2 text-sm hover:bg-surface-2"
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="truncate font-medium text-fg">{active.deal.title}</span>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${active.deal.stageType === "open" ? "bg-brand/10 text-brand" : active.deal.stageType === "won" ? "bg-success/10 text-success" : "bg-surface text-muted"}`}>{active.deal.stage}</span>
-                </span>
-                <span className="shrink-0 font-medium tabular-nums text-fg">{compactMoney(active.deal.value, active.deal.currency)}</span>
-              </Link>
+              <div className="border-b border-border bg-surface-2/50">
+                <div className="flex items-center justify-between gap-3 px-4 py-2 text-sm">
+                  <Link href={`/deals/${active.deal.dealId}`} className="flex min-w-0 items-center gap-2 hover:underline">
+                    <span className="truncate font-medium text-fg">{active.deal.title}</span>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${active.deal.stageType === "open" ? "bg-brand/10 text-brand" : active.deal.stageType === "won" ? "bg-success/10 text-success" : "bg-surface text-muted"}`}>{active.deal.stage}</span>
+                  </Link>
+                  <div className="flex shrink-0 items-center gap-3">
+                    {active.deal.stageType === "open" && (
+                      <button
+                        onClick={() => enrollInRecall(active.deal!.dealId)}
+                        disabled={enrolling === active.deal.dealId}
+                        className="rounded-lg border border-border px-2.5 py-1 text-xs text-fg transition hover:border-brand disabled:opacity-50"
+                      >
+                        {enrolling === active.deal.dealId ? "Enrolling…" : "Enroll in recall"}
+                      </button>
+                    )}
+                    <span className="font-medium tabular-nums text-fg">{compactMoney(active.deal.value, active.deal.currency)}</span>
+                  </div>
+                </div>
+                {enrollMsg && enrollMsg.dealId === active.deal.dealId && (
+                  <p className={`px-4 pb-2 text-xs ${enrollMsg.ok ? "text-success" : "text-danger"}`}>{enrollMsg.text}</p>
+                )}
+              </div>
             )}
             <div className="flex-1 space-y-3 overflow-y-auto p-4">
               {messages.map((m) => (
