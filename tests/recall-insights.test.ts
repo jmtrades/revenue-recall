@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { recallInsights, recallWinAttribution, recoveredByOwner, type AttributableWin } from "@/lib/recall/insights";
+import { recallInsights, recallWinAttribution, recoveredByOwner, recallJourney, type AttributableWin } from "@/lib/recall/insights";
 import type { RecallTouch } from "@/lib/recall/events";
 
 const t = (over: Partial<RecallTouch>): RecallTouch => ({
@@ -101,5 +101,24 @@ describe("recoveredByOwner", () => {
 
   it("is empty on no deals", () => {
     expect(recoveredByOwner([])).toEqual([]);
+  });
+});
+
+describe("recallJourney", () => {
+  it("is empty/null on no touches", () => {
+    expect(recallJourney([])).toEqual({ totalTouches: 0, firstTouchAt: null, lastTouchAt: null, channels: [], timeline: [] });
+  });
+
+  it("orders the timeline oldest-first and reports first/last + channels by use", () => {
+    const j = recallJourney([
+      t({ channel: "email", occurredAt: "2026-06-05T00:00:00Z" }),
+      t({ channel: "call", occurredAt: "2026-06-01T00:00:00Z" }),
+      t({ channel: "email", occurredAt: "2026-06-10T00:00:00Z" }),
+    ]);
+    expect(j.totalTouches).toBe(3);
+    expect(j.firstTouchAt).toBe("2026-06-01T00:00:00Z");
+    expect(j.lastTouchAt).toBe("2026-06-10T00:00:00Z");
+    expect(j.timeline.map((x) => x.occurredAt)).toEqual(["2026-06-01T00:00:00Z", "2026-06-05T00:00:00Z", "2026-06-10T00:00:00Z"]);
+    expect(j.channels).toEqual(["email", "call"]); // email used twice → first
   });
 });

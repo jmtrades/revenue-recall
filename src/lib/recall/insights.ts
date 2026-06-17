@@ -167,3 +167,33 @@ export function recoveredByOwner(deals: ReadonlyArray<{ ownerName: string; value
   }
   return [...byOwner.values()].sort((a, b) => b.recoveredValue - a.recoveredValue);
 }
+
+/**
+ * A single deal's recall journey — when re-engagement began, every touch in
+ * order, and which channels were used. The in-product proof artifact: open a
+ * deal and see exactly how recall worked it. Pure; the caller pre-filters the
+ * touches to this deal.
+ */
+export interface RecallJourney {
+  totalTouches: number;
+  firstTouchAt: string | null;
+  lastTouchAt: string | null;
+  /** Distinct channels used, most-used first. */
+  channels: RecallTouchChannel[];
+  /** Touches oldest-first. */
+  timeline: RecallTouch[];
+}
+
+export function recallJourney(touches: RecallTouch[]): RecallJourney {
+  const timeline = touches.slice().sort((a, b) => (a.occurredAt < b.occurredAt ? -1 : 1));
+  const counts = new Map<RecallTouchChannel, number>();
+  for (const t of timeline) counts.set(t.channel, (counts.get(t.channel) ?? 0) + 1);
+  const channels = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c);
+  return {
+    totalTouches: timeline.length,
+    firstTouchAt: timeline[0]?.occurredAt ?? null,
+    lastTouchAt: timeline[timeline.length - 1]?.occurredAt ?? null,
+    channels,
+    timeline,
+  };
+}
