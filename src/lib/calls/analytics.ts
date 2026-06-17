@@ -96,6 +96,18 @@ export function callStats(activities: Activity[], days = 7, now: Date = new Date
 // connect-rate lift there is. Hours are bucketed in the org's timezone (the
 // rep's clock), falling back to UTC like the digests do.
 
+/** Outbound calls placed today (calendar day, local time) — the live pulse for
+ *  the Go Live hub. Counts the same call activities everything else logs, so it
+ *  reflects both autopilot and manual dials. Pure. */
+export function callsToday(activities: Activity[], now: Date = new Date()): number {
+  const today = now.toDateString();
+  let n = 0;
+  for (const a of activities) {
+    if (a.kind === "call" && a.direction === "outbound" && a.occurredAt && new Date(a.occurredAt).toDateString() === today) n++;
+  }
+  return n;
+}
+
 export interface CallWindow {
   /** Local hour the window starts (0–23); the window is one hour wide. */
   hour: number;

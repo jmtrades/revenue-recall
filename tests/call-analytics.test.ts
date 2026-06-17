@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { callStats, callOutcomeOf, callSeconds, bestCallWindow, windowLabel, requestedCallbacks, MIN_SAMPLE_DIALS, MIN_WINDOW_DIALS } from "@/lib/calls/analytics";
+import { callStats, callOutcomeOf, callSeconds, bestCallWindow, windowLabel, requestedCallbacks, callsToday, MIN_SAMPLE_DIALS, MIN_WINDOW_DIALS } from "@/lib/calls/analytics";
 import { QUICK_OUTCOMES } from "@/lib/dialer-flow";
 import type { Activity } from "@/lib/crm/types";
 
@@ -190,5 +190,19 @@ describe("requestedCallbacks (the promises the digest must surface)", () => {
       occurredAt: at(2),
     } as Activity;
     expect(requestedCallbacks([retry], NOW, 24)).toHaveLength(0);
+  });
+});
+
+describe("callsToday", () => {
+  it("counts only today's outbound calls (not inbound, other kinds, or other days)", () => {
+    const acts: Activity[] = [
+      call("Call — completed", 1), // today
+      call("Call — completed", 2), // today
+      call("Call — completed", 1, { direction: "inbound" } as Partial<Activity>), // inbound, excluded
+      { ...call("x", 1), kind: "email" } as Activity, // not a call
+      call("Call — completed", 48), // 2 days ago, excluded
+    ];
+    expect(callsToday(acts, NOW)).toBe(2);
+    expect(callsToday([], NOW)).toBe(0);
   });
 });
