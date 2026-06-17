@@ -102,19 +102,31 @@ export async function setContactConsent(id: string, consent: boolean): Promise<C
   const now = new Date().toISOString();
   const attributes: Record<string, string | number | boolean | null> = { ...(existing.attributes ?? {}) };
   if (consent) {
+    // Combined express consent to autonomous CALLS and TEXTS (the standard
+    // opt-in: "by agreeing you consent to be contacted by call and text"). Set
+    // both channels' markers so the call gate (hasCallConsent) and the SMS gate
+    // (hasSmsConsent) are both satisfied from one action.
     attributes.callConsent = true;
     attributes.callConsentAt = now;
+    attributes.smsConsent = true;
+    attributes.smsConsentAt = now;
+    attributes.consentAt = now;
     attributes.callConsentRevokedAt = null;
   } else {
-    // Withdrawal is the safe default — clear BOTH the boolean and the dated grant
-    // markers (hasCallConsent treats any callConsentAt/voiceConsentAt string as
-    // consent), then stamp the revocation, so the autonomous dialer stops at once.
+    // Withdrawal is the safe default — clear every grant marker for BOTH channels
+    // (hasCallConsent/hasSmsConsent treat any dated grant as consent), then stamp
+    // the revocation, so autonomous calling AND texting stop at once.
     attributes.callConsent = false;
     attributes.callConsentAt = null;
     attributes.voiceConsentAt = null;
     attributes.consentAt = null;
     attributes.voiceConsent = false;
     attributes.consentToCall = false;
+    attributes.smsConsent = false;
+    attributes.smsConsentAt = null;
+    attributes.textConsent = false;
+    attributes.consentToText = false;
+    attributes.consentToContact = false;
     attributes.callConsentRevokedAt = now;
   }
   const updated = await provider.updateContact(id, { attributes });

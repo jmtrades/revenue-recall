@@ -66,8 +66,8 @@ export function CallConsentToggle({
       </div>
       <p className="text-xs text-muted">
         {consent
-          ? "The AI may call this contact autonomously. Withdraw anytime — autonomous dialing stops immediately."
-          : "The AI won't auto-dial without consent on file — calls are handed to a person instead. Record consent only when this contact has agreed to be called."}
+          ? "The AI may call and text this contact autonomously. Withdraw anytime — autonomous calling and texting stop immediately."
+          : "The AI won't auto-call or auto-text without consent on file — those are handed to a person instead. Record consent only when this contact has agreed to be contacted by call and text."}
       </p>
       {error && <p className="text-xs text-danger">{error}</p>}
     </div>
