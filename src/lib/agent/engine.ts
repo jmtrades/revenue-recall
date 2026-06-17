@@ -7,7 +7,7 @@ import { draftMessage } from "@/lib/ai/draft";
 import { isAiConfigured } from "@/lib/ai/client";
 import { sendEmail, sendSms, placeCall } from "@/lib/comms";
 import { trackLinks, recordSent } from "@/lib/tracking";
-import { sendGate, dailySendCap, containsUnverifiedClaim, hasCallConsent, type SkipReason } from "@/lib/agent/guardrails";
+import { sendGate, dailySendCap, containsUnverifiedClaim, hasCallConsent, hasSmsConsent, type SkipReason } from "@/lib/agent/guardrails";
 import { outsideCourtesyWindow } from "@/lib/calls/local-time";
 import { compactMoney } from "@/lib/format";
 import { createRun, createOutboxItem, touchTask } from "@/lib/agent/store";
@@ -260,6 +260,11 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
       } else if (autonomy === "auto") {
         if (!to) {
           result = "skipped";
+        } else if (channel === "sms" && !hasSmsConsent(contact)) {
+          // TCPA: marketing SMS needs prior express consent. No consent marker →
+          // hold for human review/approval instead of auto-texting a cold number
+          // (mirrors the call-consent gate, which hands non-consented calls off).
+          result = "drafted";
         } else if (risky) {
           result = "drafted"; // claim-guard: hold the financial claim for human approval
         } else {

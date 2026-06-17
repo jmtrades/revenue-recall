@@ -25,7 +25,8 @@ async function dealWithPhone(phone: string) {
   const provider = getProvider();
   const pipeline = (await provider.listPipelines())[0];
   const stage = pipeline.stages.find((s) => s.type === "open")!;
-  const contact = await provider.createContact({ name: `Prospect ${phone.slice(-4)}`, points: [{ channel: "phone", value: phone }] });
+  // SMS consent on file so this test isolates COURTESY HOURS, not the consent gate.
+  const contact = await provider.createContact({ name: `Prospect ${phone.slice(-4)}`, points: [{ channel: "phone", value: phone }], attributes: { smsConsent: true } as never });
   return provider.createOpportunity({ title: `Deal ${phone.slice(-4)}`, pipelineId: pipeline.id, stageId: stage.id, value: 5000, currency: "USD", contactId: contact.id });
 }
 

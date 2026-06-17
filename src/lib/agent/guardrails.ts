@@ -176,6 +176,25 @@ export function hasCallConsent(contact: Contact | undefined): boolean {
 }
 
 /**
+ * Prior express consent for autonomous MARKETING SMS (TCPA). Mirrors call
+ * consent: the autopilot NEVER auto-texts a contact without a consent marker —
+ * those are held for human review instead, so a cold number is never auto-texted.
+ * Markers (any one): smsConsent/textConsent/messageConsent/consentToText/
+ * consentToContact = true, or a non-empty consent timestamp. Pure + tested.
+ */
+export function hasSmsConsent(contact: Contact | undefined): boolean {
+  const a = contact?.attributes;
+  if (!a) return false;
+  const truthy = (v: unknown) => v === true || v === "true" || v === "yes" || v === 1 || v === "1";
+  if (truthy(a.smsConsent) || truthy(a.textConsent) || truthy(a.messageConsent) || truthy(a.consentToText) || truthy(a.consentToContact)) return true;
+  for (const k of ["smsConsentAt", "textConsentAt", "consentAt"]) {
+    const v = a[k];
+    if (typeof v === "string" && v.trim()) return true;
+  }
+  return false;
+}
+
+/**
  * Single decision point: should the agent send to this target right now? Returns
  * a skip reason or null (clear to send). `autonomy` gates the volume rails;
  * opt-out always applies. A soft decline pauses re-engagement for a cooldown but
