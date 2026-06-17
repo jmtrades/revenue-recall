@@ -348,3 +348,18 @@ textarea:focus-visible {
     scroll-behavior: auto;
   }
 }
+
+/* Catch-all reduced-motion reset (complements the targeted rules above): the
+   targeted blocks only cover our named keyframes, so Tailwind utilities like
+   animate-pulse (skeletons), animate-spin (button spinners), and transition-*
+   would still move. Near-zero durations + a single iteration calm everything
+   without breaking layout — the standard accessible-motion baseline. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
