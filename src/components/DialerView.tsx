@@ -10,6 +10,7 @@ import { SpeakButton } from "@/components/SpeakButton";
 import { VoiceAgent } from "@/components/VoiceAgent";
 import { nextPendingIndex, QUICK_OUTCOMES, quickOutcome, dialerKeyAction, duplicatePhoneIndexes, liveAgentPrompt, liveAgentOpener } from "@/lib/dialer-flow";
 import { prospectLocalTime, outsideCourtesyWindow } from "@/lib/calls/local-time";
+import type { ObjectionGuideEntry } from "@/lib/calls/objection-guide";
 
 interface Brief {
   summary: string;
@@ -94,7 +95,7 @@ export interface DialerVoiceMinutes {
   callsLeft: number;
 }
 
-export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueItem[]; locale?: string; voiceMinutes?: DialerVoiceMinutes }) {
+export function DialerView({ queue, locale, voiceMinutes, objections }: { queue: CallQueueItem[]; locale?: string; voiceMinutes?: DialerVoiceMinutes; objections?: ObjectionGuideEntry[] }) {
   const [idx, setIdx] = useState(0);
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [brief, setBrief] = useState<Brief | null>(null);
@@ -108,6 +109,7 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
   const [notes, setNotes] = useState("");
   const [summary, setSummary] = useState<CallSummary | null>(null);
   const [summarizing, setSummarizing] = useState(false);
+  const [showObjections, setShowObjections] = useState(false);
   const [saved, setSaved] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [briefError, setBriefError] = useState<string | null>(null);
@@ -445,6 +447,29 @@ export function DialerView({ queue, locale, voiceMinutes }: { queue: CallQueueIt
               firstMessage={liveAgentOpener({ contactName: active.contactName })}
             />
           </div>
+
+          {objections && objections.length > 0 && (
+            <div className="card">
+              <button
+                onClick={() => setShowObjections((v) => !v)}
+                className="flex w-full items-center justify-between font-semibold text-fg"
+                aria-expanded={showObjections}
+              >
+                <span className="flex items-center gap-2"><Icon name="dialer" size={16} className="text-brand" /> Objection reference</span>
+                <span className="text-xs text-muted">{showObjections ? "Hide" : "Show"}</span>
+              </button>
+              {showObjections && (
+                <dl className="mt-3 space-y-3">
+                  {objections.map((o) => (
+                    <div key={o.kind}>
+                      <dt className="text-sm font-medium text-fg">“{o.label}”</dt>
+                      <dd className="mt-0.5 text-sm text-muted">→ {o.angle}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </div>
+          )}
 
           <RolePlay contactName={active.contactName} company={active.company} dealTitle={active.title} locale={locale} />
 
