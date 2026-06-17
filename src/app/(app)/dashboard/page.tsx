@@ -12,6 +12,8 @@ import { Funnel, ProgressRing, BarChart, Sparkline } from "@/components/charts";
 import { Icon } from "@/components/icons";
 import { DashboardWelcome } from "@/components/DashboardWelcome";
 import { ActivationChecklist } from "@/components/ActivationChecklist";
+import { RemoveSampleDataBanner } from "@/components/RemoveSampleDataBanner";
+import { hasSampleData } from "@/lib/sample-data";
 import { StartCheckoutWatcher } from "@/components/StartCheckoutWatcher";
 
 export const metadata = { title: "Dashboard" };
@@ -44,6 +46,7 @@ export default async function DashboardPage() {
     bookingStats(),
     getSetupProgress(),
   ]);
+  const sampleData = await hasSampleData().catch(() => false);
   // Only auto-open checkout for someone without a subscription — never
   // re-prompt a customer who's already paying (or mid-dunning).
   const checkoutEligible = sub.status === "none" || sub.status === "canceled";
@@ -74,6 +77,7 @@ export default async function DashboardPage() {
         title={greeting}
         subtitle={o.recallSummary.itemCount > 0 ? "Here's where your revenue stands — and what's slipping out of the pipeline." : "Your pipeline is well tended — here's where things stand today."}
       />
+      {sampleData && <RemoveSampleDataBanner />}
       {!setup.complete && <ActivationChecklist data={setup} />}
 
       {/* Recoverable-revenue hero — the product's North Star. Lead with the money
