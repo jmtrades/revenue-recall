@@ -11,10 +11,12 @@ beforeEach(() => {
   delete process.env.ANTHROPIC_API_KEY;
   process.env.AGENT_COOLDOWN_DAYS = "0"; // isolate the decline gate
   process.env.AGENT_DECLINE_COOLDOWN_DAYS = "30";
+  process.env.COMPLIANCE_ADDRESS = "123 Test St, Austin, TX 78701"; // CAN-SPAM address on file so autonomous email can send
 });
 afterEach(() => {
   delete process.env.AGENT_COOLDOWN_DAYS;
   delete process.env.AGENT_DECLINE_COOLDOWN_DAYS;
+  delete process.env.COMPLIANCE_ADDRESS;
 });
 
 async function freshDeal(emailLocal: string) {
