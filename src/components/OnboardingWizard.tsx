@@ -406,7 +406,7 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
               <div>
                 <h2 className="font-display text-2xl font-semibold tracking-tight text-fg">Invite your team</h2>
                 <p className="mt-1.5 text-sm text-muted">Optional — add teammate emails, one per line. You can skip and do this later.</p>
-                <textarea className={`${input} mt-6`} rows={5} value={invites} onChange={(e) => setInvites(e.target.value)} placeholder={"pat@acme.com\nrobin@acme.com"} />
+                <textarea className={`${input} mt-6`} rows={5} aria-label="Email addresses to invite, one per line" value={invites} onChange={(e) => setInvites(e.target.value)} placeholder={"pat@acme.com\nrobin@acme.com"} />
                 <div className="mt-5 rounded-xl border border-border bg-surface p-4">
                   <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-brand"><Icon name="recall" size={12} /> Ready to go</p>
                   <p className="mt-2 text-sm text-body">

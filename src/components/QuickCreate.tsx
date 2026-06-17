@@ -141,12 +141,12 @@ export function QuickCreate() {
                 </div>
               ) : tab === "deal" ? (
                 <>
-                  <input className={inputCls} placeholder="Deal title" value={title} onChange={(e) => setTitle(e.target.value)} />
+                  <input className={inputCls} aria-label="Deal title" placeholder="Deal title" value={title} onChange={(e) => setTitle(e.target.value)} />
                   <select className={inputCls} value={contactId} onChange={(e) => setContactId(e.target.value)}>
                     {meta.contacts.map((c) => <option key={c.id} value={c.id}>{c.name}{c.company ? ` · ${c.company}` : ""}</option>)}
                   </select>
                   <div className="flex gap-3">
-                    <input className={inputCls} type="number" placeholder={`${meta.terminology.value} (${meta.currency})`} value={value} onChange={(e) => setValue(e.target.value)} />
+                    <input className={inputCls} type="number" aria-label={`${meta.terminology.value} (${meta.currency})`} placeholder={`${meta.terminology.value} (${meta.currency})`} value={value} onChange={(e) => setValue(e.target.value)} />
                     <select className={inputCls} value={stageId} onChange={(e) => setStageId(e.target.value)}>
                       {meta.stages.filter((s) => s.type !== "lost").map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
                     </select>
@@ -163,10 +163,10 @@ export function QuickCreate() {
                 </>
               ) : (
                 <>
-                  <input className={inputCls} placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} />
-                  <input className={inputCls} placeholder="Company" value={company} onChange={(e) => setCompany(e.target.value)} />
-                  <input className={inputCls} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                  <input className={inputCls} placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                  <input className={inputCls} aria-label="Full name" placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} />
+                  <input className={inputCls} aria-label="Company" placeholder="Company" value={company} onChange={(e) => setCompany(e.target.value)} />
+                  <input className={inputCls} type="email" aria-label="Email address" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <input className={inputCls} aria-label="Phone number" placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
                   <button onClick={submitContact} disabled={busy || !name.trim()} className="w-full rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
                     {busy ? "Creating…" : `Create ${meta.terminology.contact}`}
                   </button>

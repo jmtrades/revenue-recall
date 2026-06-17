@@ -88,7 +88,7 @@ export function EmbeddedCheckoutModal({ request, onClose }: { request: CheckoutR
   if (!request) return null;
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="relative max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-border bg-surface p-4 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.7)]" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label="Checkout" className="relative max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-border bg-surface p-4 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.7)]" onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} aria-label="Close" className="absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full bg-surface-2 text-muted transition hover:text-fg">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
         </button>

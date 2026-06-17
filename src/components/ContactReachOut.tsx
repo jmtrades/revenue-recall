@@ -98,11 +98,12 @@ export function ContactReachOut({
             </div>
           )}
           {channel === "email" && (
-            <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject (optional)" className={`${input} mb-2`} />
+            <input value={subject} onChange={(e) => setSubject(e.target.value)} aria-label="Email subject" placeholder="Subject (optional)" className={`${input} mb-2`} />
           )}
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
+            aria-label="Message"
             placeholder={channel === "email" ? "Write a quick email…" : "Write a quick text…"}
             rows={4}
             className={`${input} resize-none`}
@@ -126,7 +127,7 @@ export function ContactReachOut({
         <div className="border-t border-border pt-4">
           <p className="stat-label">Add to a sequence</p>
           <div className="mt-2 flex items-center gap-2">
-            <select value={seqId} onChange={(e) => setSeqId(e.target.value)} className={input}>
+            <select value={seqId} onChange={(e) => setSeqId(e.target.value)} aria-label="Sequence to enroll in" className={input}>
               {sequences.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
