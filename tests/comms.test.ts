@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { channelStatus, sendEmail, sendSms, placeCall, setEmailTransport, setSmsTransport, setVoiceTransport } from "@/lib/comms";
+import { channelStatus, sendEmail, sendSms, placeCall, setEmailTransport, setSmsTransport, setVoiceTransport, sendOutcome } from "@/lib/comms";
 
 const CLEAR = ["RESEND_API_KEY", "SENDGRID_API_KEY", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM_NUMBER", "EMAIL_WEBHOOK_URL", "SMS_WEBHOOK_URL", "VOICE_WEBHOOK_URL", "COMMS_WEBHOOK_TOKEN", "EMAIL_FROM"];
 
@@ -63,5 +63,16 @@ describe("comms transport resolution", () => {
     expect(s.email.provider).toBe("sendgrid");
     expect(s.sms.provider).toBe("twilio");
     expect(s.voice.provider).toBe("twilio");
+  });
+});
+
+describe("sendOutcome — real sends aren't mislabeled as demo logs", () => {
+  it("counts Twilio/webhook 'queued' as a real send", () => {
+    expect(sendOutcome("queued")).toBe("sent"); // the bug: was 'logged'
+    expect(sendOutcome("sent")).toBe("sent");
+  });
+  it("keeps the log fallback as 'logged' and failures as 'skipped'", () => {
+    expect(sendOutcome("logged")).toBe("logged");
+    expect(sendOutcome("failed")).toBe("skipped");
   });
 });

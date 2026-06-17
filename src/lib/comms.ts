@@ -25,6 +25,18 @@ export interface SendResult {
   detail?: string;
 }
 
+/**
+ * Map a transport result to the run-ledger outcome. A real provider (Twilio,
+ * webhook) returns "queued" on accept — that's a genuine send, so it counts as
+ * "sent"; only the log-fallback transport returns "logged" (nothing dialed).
+ * Pure; keeps the autopilot ledger + activity feed honest about real outreach.
+ */
+export function sendOutcome(status: SendResult["status"]): "sent" | "logged" | "skipped" {
+  if (status === "failed") return "skipped";
+  if (status === "logged") return "logged";
+  return "sent"; // "sent" | "queued"
+}
+
 export interface ChannelStatus {
   email: { provider: string; live: boolean };
   sms: { provider: string; live: boolean };

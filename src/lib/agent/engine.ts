@@ -5,7 +5,7 @@ import { getIndustry } from "@/lib/industries";
 import { buildRecallQueue } from "@/lib/recall/engine";
 import { draftMessage } from "@/lib/ai/draft";
 import { isAiConfigured } from "@/lib/ai/client";
-import { sendEmail, sendSms, placeCall } from "@/lib/comms";
+import { sendEmail, sendSms, placeCall, sendOutcome } from "@/lib/comms";
 import { trackLinks, recordSent } from "@/lib/tracking";
 import { sendGate, dailySendCap, containsUnverifiedClaim, hasCallConsent, hasSmsConsent, type SkipReason } from "@/lib/agent/guardrails";
 import { complianceConfig, emailDomainVerified, smsA2pRegistered } from "@/lib/compliance";
@@ -249,7 +249,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
             voiceId: org.ttsVoiceId ?? undefined,
             voicemail: callVoicemail,
           });
-          result = res.status === "failed" ? "skipped" : res.status === "sent" ? "sent" : "logged";
+          result = sendOutcome(res.status);
           if (result !== "skipped") {
             sent += 1;
             await provider.logActivity({
@@ -291,7 +291,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
                   compliance: { orgName: org.compliance.senderName ?? org.name, address: org.compliance.address },
                 })
               : await sendSms(to, tracked, { from: org.callerId });
-          result = res.status === "failed" ? "skipped" : res.status === "sent" ? "sent" : "logged";
+          result = sendOutcome(res.status);
           if (result !== "skipped") {
             sent += 1;
             await provider.logActivity({
