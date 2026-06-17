@@ -51,7 +51,14 @@ export function GoLiveConsole({ status }: { status: GoLiveStatus }) {
             </span>
           </div>
         </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-2">
+        <div
+          className="mt-4 h-2 overflow-hidden rounded-full bg-surface-2"
+          role="progressbar"
+          aria-valuenow={readyCount}
+          aria-valuemin={0}
+          aria-valuemax={total}
+          aria-label={`${readyCount} of ${total} go-live steps ready`}
+        >
           <div className="h-full rounded-full bg-success transition-[width] duration-500" style={{ width: `${Math.round((readyCount / total) * 100)}%` }} />
         </div>
       </Card>
