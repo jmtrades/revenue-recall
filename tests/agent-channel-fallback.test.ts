@@ -45,4 +45,35 @@ describe("autopilot channel fallback (auto mode)", () => {
     const run = await runTask(await autoTask("email", opp.id));
     expect(run.actions[0].result).toBe("skipped");
   });
+
+  it("never re-emails a hard-bounced address: falls back to SMS instead", async () => {
+    const provider = getProvider();
+    const pipeline = (await provider.listPipelines())[0];
+    const stage = pipeline.stages.find((s) => s.type === "open")!;
+    const contact = await provider.createContact({
+      name: "Bounced Email",
+      points: [{ channel: "email", value: "bounced@example.com" }, { channel: "phone", value: "+15551239999" }],
+      attributes: { emailBounced: true, smsConsent: true } as never,
+    });
+    const opp = await provider.createOpportunity({ title: "Bounced deal", pipelineId: pipeline.id, stageId: stage.id, value: 3000, currency: "USD", contactId: contact.id });
+
+    const run = await runTask(await autoTask("email", opp.id));
+    expect(run.actions[0].type).toBe("sms"); // bounce makes email unreachable → fall back
+    expect(run.actions[0].result).not.toBe("skipped");
+  });
+
+  it("skips when the only address on file has hard-bounced", async () => {
+    const provider = getProvider();
+    const pipeline = (await provider.listPipelines())[0];
+    const stage = pipeline.stages.find((s) => s.type === "open")!;
+    const contact = await provider.createContact({
+      name: "Bounced Only",
+      points: [{ channel: "email", value: "gone@example.com" }],
+      attributes: { emailBounced: true } as never,
+    });
+    const opp = await provider.createOpportunity({ title: "Bounced-only deal", pipelineId: pipeline.id, stageId: stage.id, value: 2000, currency: "USD", contactId: contact.id });
+
+    const run = await runTask(await autoTask("email", opp.id));
+    expect(run.actions[0].result).toBe("skipped"); // no reachable channel left
+  });
 });
