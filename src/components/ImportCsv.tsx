@@ -21,6 +21,7 @@ export function ImportCsv({ writable }: { writable: boolean }) {
   const [status, setStatus] = useState<"idle" | "importing" | "done" | "error">("idle");
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [consent, setConsent] = useState(false);
 
   function reset() {
     setPreview(null);
@@ -28,6 +29,7 @@ export function ImportCsv({ writable }: { writable: boolean }) {
     setResult(null);
     setError(null);
     setStatus("idle");
+    setConsent(false);
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -58,7 +60,7 @@ export function ImportCsv({ writable }: { writable: boolean }) {
       const res = await fetch("/api/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows: preview.rows }),
+        body: JSON.stringify({ rows: preview.rows, consent }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error ?? "Import failed");
@@ -132,6 +134,13 @@ export function ImportCsv({ writable }: { writable: boolean }) {
           <p className="mt-1 text-xs text-muted">
             Detected columns: {preview.headers.join(", ") || "—"}. Rows with a value or stage also create a deal.
           </p>
+          <label className="mt-3 flex items-start gap-2.5 rounded-lg border border-border bg-surface p-3 text-sm">
+            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-brand" />
+            <span className="text-muted">
+              <span className="font-medium text-fg">I have prior express consent to call and text these contacts.</span>{" "}
+              Checking this records consent on each lead so the AI can dial them autonomously. Leave it unchecked if you’re not sure — you can record consent later from the Leads page.
+            </span>
+          </label>
           <div className="mt-4 flex items-center gap-3">
             <button
               onClick={runImport}

@@ -4,6 +4,7 @@ import { resolveProvider } from "@/lib/crm/registry";
 import { getOrgSettings } from "@/lib/org";
 import { toLanguageCode } from "@/lib/languages";
 import { dedupeRows } from "@/lib/import/dedupe";
+import { importContactAttributes } from "@/lib/import/attributes";
 import { mapWithConcurrency } from "@/lib/async";
 import { withGuard } from "@/lib/api/guard";
 import { importRateLimit } from "@/lib/ratelimit";
@@ -25,7 +26,13 @@ const Row = z.object({
   language: z.string().max(40).optional(),
 });
 
-const Body = z.object({ rows: z.array(Row).min(1).max(2000) });
+const Body = z.object({
+  rows: z.array(Row).min(1).max(2000),
+  // The importer affirms they hold prior express consent to call/text this list,
+  // so the autopilot can work it without a separate consent step. Deliberate
+  // compliance act — defaults off.
+  consent: z.boolean().optional(),
+});
 
 export const POST = withGuard(async (req: Request) => {
   // One call can create thousands of rows — throttle hard so a runaway loop or
@@ -84,7 +91,7 @@ export const POST = withGuard(async (req: Request) => {
       name: r.name,
       company: r.company,
       points,
-      attributes: r.language ? { preferredLanguage: toLanguageCode(r.language) ?? r.language } : undefined,
+      attributes: importContactAttributes(r.language ? (toLanguageCode(r.language) ?? r.language) : undefined, parsed.data.consent, new Date().toISOString()),
     });
     let deal = false;
     if (r.value !== undefined || r.stage) {
