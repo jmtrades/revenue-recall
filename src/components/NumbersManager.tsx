@@ -136,7 +136,7 @@ export function NumbersManager({ configured, provider, byoNumber, initialOwned, 
         <div>
           <p className="stat-label">Find a new number</p>
           <div className="mt-1 flex items-center gap-2">
-            <input className={`${input} w-28`} value={areaCode} onChange={(e) => setAreaCode(e.target.value)} placeholder="Area code" />
+            <input className={`${input} w-28`} value={areaCode} onChange={(e) => setAreaCode(e.target.value)} aria-label="Area code" placeholder="Area code" />
             <button onClick={search} disabled={busy !== null} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
               {busy === "search" ? "Searching…" : "Search"}
             </button>
