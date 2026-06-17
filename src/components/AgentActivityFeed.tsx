@@ -22,16 +22,33 @@ function ago(iso: string): string {
  * (who it called/texted, the outcome, when), so it's never a black box. Renders
  * an honest empty state when the agent hasn't acted yet.
  */
-export function AgentActivityFeed({ items, today, week }: { items: AgentActivityItem[]; today?: number; week?: number }) {
+interface CallBreakdown {
+  dials: number;
+  connects: number;
+  voicemails: number;
+  noAnswers: number;
+  connectRate: number;
+}
+
+export function AgentActivityFeed({ items, today, stats }: { items: AgentActivityItem[]; today?: number; stats?: CallBreakdown }) {
   const counts =
     today !== undefined ? (
       <span className="text-sm text-muted">
         <span className="font-semibold text-fg">{today}</span> call{today === 1 ? "" : "s"} today
-        {week !== undefined && week > 0 ? <span> · {week} in 7 days</span> : null}
+        {stats && stats.dials > 0 ? <span> · {stats.dials} in 7 days</span> : null}
       </span>
     ) : undefined;
   return (
     <Card title="What the agent is doing" action={counts}>
+      {stats && stats.dials > 0 && (
+        <div className="mb-4 flex flex-wrap gap-x-5 gap-y-1 border-b border-border/60 pb-3 text-sm">
+          <span className="text-muted"><span className="font-semibold text-success">{stats.connects}</span> connected</span>
+          <span className="text-muted"><span className="font-semibold text-fg">{stats.voicemails}</span> voicemail</span>
+          <span className="text-muted"><span className="font-semibold text-fg">{stats.noAnswers}</span> no answer</span>
+          <span className="text-muted"><span className="font-semibold text-fg">{Math.round(stats.connectRate * 100)}%</span> connect rate</span>
+          <span className="text-xs text-muted/70">last 7 days</span>
+        </div>
+      )}
       {items.length === 0 ? (
         <p className="text-sm text-muted">No autopilot activity yet. Once it’s live, every call, text, and email it sends shows up here.</p>
       ) : (

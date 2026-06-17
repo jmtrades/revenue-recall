@@ -22,8 +22,8 @@ export default async function LaunchPage() {
     resolveProvider().then((p) => p.listRecentActivities(500)).catch(() => [] as Activity[]),
   ]);
   const activity = recentAgentActivity(runs);
+  const stats = callStats(acts, 7);
   const today = callsToday(acts);
-  const week = callStats(acts, 7).dials;
   const taskOff = status.steps.find((s) => s.key === "task")?.state !== "live";
   return (
     <div>
@@ -45,7 +45,7 @@ export default async function LaunchPage() {
       )}
       <GoLiveConsole status={status} />
       <div className="mt-6">
-        <AgentActivityFeed items={activity} today={today} week={week} />
+        <AgentActivityFeed items={activity} today={today} stats={stats} />
       </div>
     </div>
   );
