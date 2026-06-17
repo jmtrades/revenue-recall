@@ -8,6 +8,7 @@ import { isAiConfigured } from "@/lib/ai/client";
 import { sendEmail, sendSms, placeCall } from "@/lib/comms";
 import { trackLinks, recordSent } from "@/lib/tracking";
 import { sendGate, dailySendCap, containsUnverifiedClaim, hasCallConsent, hasSmsConsent, type SkipReason } from "@/lib/agent/guardrails";
+import { complianceConfig } from "@/lib/compliance";
 import { outsideCourtesyWindow } from "@/lib/calls/local-time";
 import { compactMoney } from "@/lib/format";
 import { createRun, createOutboxItem, touchTask } from "@/lib/agent/store";
@@ -111,6 +112,11 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
       sent = recent.filter((a) => a.direction === "outbound" && ["email", "sms", "call"].includes(a.kind) && new Date(a.occurredAt).getTime() >= dayAgo).length;
     }
     let drafted = 0;
+    // CAN-SPAM requires a physical postal address in commercial email. If neither
+    // the org nor the platform default has one, autonomous email is held for
+    // review (never auto-sent non-compliant) — set an address to unblock.
+    const cc = complianceConfig({ address: org.compliance.address });
+    const emailNeedsAddress = cc.enabled && !cc.address;
 
     for (const t of targets) {
       recoverable += t.recoverable;
@@ -264,6 +270,10 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
           // TCPA: marketing SMS needs prior express consent. No consent marker →
           // hold for human review/approval instead of auto-texting a cold number
           // (mirrors the call-consent gate, which hands non-consented calls off).
+          result = "drafted";
+        } else if (channel === "email" && emailNeedsAddress) {
+          // CAN-SPAM: no physical postal address on file → hold for review rather
+          // than auto-send non-compliant commercial email.
           result = "drafted";
         } else if (risky) {
           result = "drafted"; // claim-guard: hold the financial claim for human approval

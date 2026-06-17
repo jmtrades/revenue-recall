@@ -6,6 +6,7 @@ import { listRecallTouches, __resetRecallEventsForTests } from "@/lib/recall/eve
 // No AI key + no Supabase env → template drafting + in-memory store (built-in CRM).
 beforeEach(() => {
   delete process.env.ANTHROPIC_API_KEY;
+  process.env.COMPLIANCE_ADDRESS = "123 Test St, Austin, TX 78701"; // CAN-SPAM address on file so autonomous email can send
   __resetRecallEventsForTests();
 });
 

@@ -15,6 +15,7 @@ import type { AgentTask } from "@/lib/agent/types";
 beforeEach(() => {
   delete process.env.ANTHROPIC_API_KEY;
   delete process.env.BILLING_ENFORCE;
+  process.env.COMPLIANCE_ADDRESS = "123 Test St, Austin, TX 78701"; // CAN-SPAM address on file so autonomous email can send
 });
 
 function autoEmail(dealId: string): AgentTask {
