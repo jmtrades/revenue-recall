@@ -631,9 +631,8 @@ export async function getInbox(): Promise<InboxThread[]> {
 /** Activation checklist — derive each step's done-state from existing workspace
  *  signals so the dashboard can guide a new user to their first recall touch. */
 export async function getSetupProgress(): Promise<SetupChecklist> {
-  const provider = await resolveProvider();
   const [contacts, org, touches] = await Promise.all([
-    provider.listContacts(),
+    cachedContacts(),
     getOrgSettings(),
     listRecallTouches(50),
   ]);
