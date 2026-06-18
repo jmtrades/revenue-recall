@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "@/lib/toast";
 
 type Fields = { title: string; value: string; expectedCloseAt: string; ownerId: string };
 
@@ -53,6 +54,7 @@ export function DealInfoEdit({
       const b = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(b.error ?? "Couldn't save the changes.");
       setEditing(false);
+      toast("Changes saved");
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't save the changes.");

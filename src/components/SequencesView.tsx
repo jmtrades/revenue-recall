@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { Sequence, SeqChannel } from "@/lib/sequences";
 import { ChannelBadge } from "@/components/ui";
 import { SpeakButton } from "@/components/SpeakButton";
+import { toast } from "@/lib/toast";
 
 interface StepDraft {
   day: string;
@@ -104,6 +105,7 @@ export function SequencesView({ sequences, customIds = [], canAuthor = false }: 
         return;
       }
       setDraft(null);
+      toast("Sequence saved");
       startTransition(() => router.refresh());
     } catch {
       setError("Couldn't save the sequence — check your connection.");
@@ -119,7 +121,7 @@ export function SequencesView({ sequences, customIds = [], canAuthor = false }: 
     try {
       const res = await fetch("/api/sequences/manage", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
       if (!res.ok) setError((await res.json().catch(() => ({}))).error ?? "Couldn't delete the sequence.");
-      else startTransition(() => router.refresh());
+      else { toast("Sequence deleted"); startTransition(() => router.refresh()); }
     } catch {
       setError("Couldn't delete the sequence — check your connection.");
     } finally {

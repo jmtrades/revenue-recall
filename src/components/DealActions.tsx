@@ -7,6 +7,7 @@ import { Icon } from "@/components/icons";
 import { HumannessMeter } from "@/components/HumannessMeter";
 import { SpeakButton } from "@/components/SpeakButton";
 import { TONES, DEFAULT_TONE, type ToneId } from "@/lib/tones";
+import { toast } from "@/lib/toast";
 
 const KINDS: { id: "note" | "call" | "email" | "sms" | "meeting"; label: string }[] = [
   { id: "note", label: "Note" },
@@ -83,7 +84,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
       body: JSON.stringify({ stageId }),
     });
     if (!res.ok) setError((await res.json().catch(() => ({}))).error ?? "Move failed");
-    else startTransition(() => router.refresh());
+    else { toast("Stage updated"); startTransition(() => router.refresh()); }
   }
 
   async function send() {
@@ -102,6 +103,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
       if (!res.ok) throw new Error(b.error ?? "Send failed");
       setSummary("");
       setSubject("");
+      toast(kind === "email" ? "Email sent" : kind === "sms" ? "Text sent" : "Sent");
       startTransition(() => router.refresh());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Send failed");
@@ -126,6 +128,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Failed");
       setSummary("");
       setSubject("");
+      toast("Activity logged");
       startTransition(() => router.refresh());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");

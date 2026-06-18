@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { MessageTemplate } from "@/lib/templates";
 import { fillTokens } from "@/lib/templates-fill";
 import { ChannelIcon } from "@/components/ui";
+import { toast } from "@/lib/toast";
 
 export interface TemplateSender {
   name?: string;
@@ -69,6 +70,7 @@ export function TemplatesView({
         return;
       }
       setForm(null);
+      toast("Template saved");
       startTransition(() => router.refresh());
     } catch {
       setError("Couldn't save the template — check your connection.");
@@ -84,7 +86,7 @@ export function TemplatesView({
     try {
       const res = await fetch("/api/templates", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
       if (!res.ok) setError((await res.json().catch(() => ({}))).error ?? "Couldn't delete the template.");
-      else startTransition(() => router.refresh());
+      else { toast("Template deleted"); startTransition(() => router.refresh()); }
     } catch {
       setError("Couldn't delete the template — check your connection.");
     } finally {

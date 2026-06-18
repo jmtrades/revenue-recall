@@ -2,6 +2,7 @@ import Link from "next/link";
 import { launchStatus } from "@/lib/launch";
 import { getSessionRole } from "@/lib/authz";
 import { isAuthRequired } from "@/lib/config";
+import { DismissibleBanner } from "@/components/DismissibleBanner";
 
 /**
  * Proactive "finish setup" banner shown across the app when something still
@@ -25,9 +26,9 @@ export async function LaunchBanner() {
 
   const extra = blockers.length + warnings.length - 1;
 
-  return (
-    <div className={`flex items-center justify-between gap-3 px-4 py-2 text-sm sm:px-8 ${urgent ? "bg-danger/15 text-danger" : "bg-warn/15 text-warn"}`}>
-      <span className="min-w-0 truncate">
+  const inner = (
+    <>
+      <span className="min-w-0 flex-1 truncate">
         <span className="font-medium">{urgent ? "Finish setup: " : "Almost there: "}</span>
         {top}
         {extra > 0 ? ` (+${extra} more)` : ""}
@@ -38,6 +39,13 @@ export async function LaunchBanner() {
       >
         Finish setup
       </Link>
-    </div>
+    </>
   );
+
+  // A launch blocker (urgent) stays until fixed; a soft "almost there" warning is
+  // dismissible for the session. Content-keyed, so a new/different issue re-appears.
+  if (urgent) {
+    return <div className="flex items-center gap-3 bg-danger/15 px-4 py-2 text-sm text-danger sm:px-8">{inner}</div>;
+  }
+  return <DismissibleBanner id={`launch:${top}`} className="bg-warn/15 text-warn">{inner}</DismissibleBanner>;
 }

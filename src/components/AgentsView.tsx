@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon, type IconName } from "@/components/icons";
 import { compactMoney } from "@/lib/format";
+import { toast } from "@/lib/toast";
 import type { AgentRun, AgentTask } from "@/lib/agent/types";
 
 const RESULT_STYLE: Record<string, string> = {
@@ -109,6 +110,7 @@ export function AgentsView({
       if (!res.ok) throw new Error(b.error ?? "Failed");
       setTasks((t) => [b.task, ...t]);
       setName(""); setGoal("");
+      toast("Agent created");
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
@@ -133,10 +135,14 @@ export function AgentsView({
   }
 
   async function remove(id: string) {
+    // Deleting an agent is destructive and irreversible — confirm first, matching
+    // the template/sequence/deal delete flows (the dialer/queue keep working either way).
+    if (!window.confirm(`Delete the "${taskName(id)}" agent? It stops for good — this can't be undone.`)) return;
     // Only drop it from the list once the delete actually succeeded, so a failed
     // delete doesn't make the task vanish until the next refresh restores it.
     const res = await fetch(`/api/agent/tasks/${id}`, { method: "DELETE" }).catch(() => null);
-    if (res && res.ok) setTasks((t) => t.filter((x) => x.id !== id));
+    if (res && res.ok) { setTasks((t) => t.filter((x) => x.id !== id)); toast("Agent deleted"); }
+    else setError("Couldn't delete the agent — try again.");
     router.refresh();
   }
 

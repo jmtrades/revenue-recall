@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 import { useFocusTrap } from "@/lib/useFocusTrap";
+import { toast } from "@/lib/toast";
 
 interface Meta {
   defaultStageId: string;
@@ -78,6 +79,7 @@ export function QuickCreate() {
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Failed");
       setOpen(false); reset();
+      toast("Deal created");
       router.push(`/deals/${body.opportunity.id}`);
       router.refresh();
     } catch (e) {
@@ -98,6 +100,7 @@ export function QuickCreate() {
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Failed");
       setOpen(false); reset();
+      toast("Contact added");
       router.push(`/leads/${body.contact.id}`);
       router.refresh();
     } catch (e) {

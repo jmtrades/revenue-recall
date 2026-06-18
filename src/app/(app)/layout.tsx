@@ -5,6 +5,7 @@ import { LaunchBanner } from "@/components/LaunchBanner";
 import { SendingPausedBanner } from "@/components/SendingPause";
 import { SystemTheme } from "@/components/SystemTheme";
 import { NeuralVoice } from "@/components/NeuralVoice";
+import { Toaster } from "@/components/Toaster";
 import { InviteRequired } from "@/components/InviteRequired";
 import { getIndustry } from "@/lib/industries";
 import { getSessionUser } from "@/lib/auth";
@@ -43,6 +44,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     >
       {mode === "system" && <SystemTheme />}
       <NeuralVoice />
+      <Toaster />
       {/* Skip-to-content: keyboard/screen-reader users jump past the sidebar and
           top bar straight to the page (WCAG 2.4.1). Hidden until focused. */}
       <a
