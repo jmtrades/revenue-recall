@@ -3,7 +3,7 @@ import { clickStats, engagementStats } from "@/lib/tracking";
 import { bookingStats } from "@/lib/meetings/stats";
 import { callStats, bestCallWindow, windowLabel } from "@/lib/calls/analytics";
 import { cachedRecallTouches } from "@/lib/crm/cached";
-import { recallInsights, recallWinAttribution, recallWinBySource, recoveredByOwner, recoveredByWeek } from "@/lib/recall/insights";
+import { recallInsights, recallWinAttribution, recallWinBySource, recallWinByCadenceStep, recoveredByOwner, recoveredByWeek } from "@/lib/recall/insights";
 import { getOrgSettings } from "@/lib/org";
 import { resolveProvider } from "@/lib/crm/registry";
 import { compactMoney, money, pct } from "@/lib/format";
@@ -32,6 +32,7 @@ export default async function ReportsPage() {
   const wins = wonBack.map((d) => ({ dealId: d.dealId, value: d.value, wonAt: d.wonAt }));
   const attribution = recallWinAttribution(recallTouches, wins);
   const bySource = recallWinBySource(recallTouches, wins);
+  const byStep = recallWinByCadenceStep(recallTouches, wins);
   const recoveredReps = recoveredByOwner(wonBack);
   const recoveredTrend = recoveredByWeek(wonBack);
   const calls = callStats(recentActs);
@@ -159,6 +160,23 @@ export default async function ReportsPage() {
                   ))}
                 </div>
                 <p className="mt-2 text-xs text-muted">Recovered revenue by the source that last re-engaged each won-back deal.</p>
+              </div>
+            )}
+            {byStep.groups.length > 0 && (
+              <div>
+                <p className="stat-label mb-2">Which step wins deals back</p>
+                <div className="space-y-2">
+                  {byStep.groups.map((g) => (
+                    <div key={g.key} className="flex items-center gap-3">
+                      <span className="w-16 shrink-0 text-xs text-muted">{g.key}</span>
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-surface-2">
+                        <div className="h-full rounded-full bg-brand" style={{ width: `${Math.round(g.share * 100)}%` }} />
+                      </div>
+                      <span className="w-32 shrink-0 text-right text-xs tabular-nums text-muted">{compactMoney(g.recoveredValue, r.currency)} · {g.deals} deal{g.deals === 1 ? "" : "s"}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-muted">Which step in your recall sequence last re-engaged each won-back deal — double down on what closes the loop.</p>
               </div>
             )}
           </div>

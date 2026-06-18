@@ -5,6 +5,7 @@ import { resolveProvider } from "@/lib/crm/registry";
 import { sendReply, isSocialChannel } from "@/lib/outbound";
 import { hasOptedOut } from "@/lib/agent/guardrails";
 import { recordRecallTouch } from "@/lib/recall/events";
+import { getOrgSettings } from "@/lib/org";
 import { platformTag } from "@/lib/social/ingest";
 import type { SocialPlatform } from "@/lib/social/types";
 import type { Activity } from "@/lib/crm/types";
@@ -82,7 +83,8 @@ export const POST = withGuard(async (req: Request, { params }: { params: { id: s
   // send — so a queued-but-never-approved recall draft never inflates recovered
   // revenue. (Recall outreach is email/sms; social drafts aren't recall touches.)
   if (item.recall && (item.channel === "email" || item.channel === "sms")) {
-    await recordRecallTouch({ dealId: item.dealId, contactId: item.contactId, channel: item.channel, source: "manual" });
+    const industry = (await getOrgSettings().catch(() => null))?.industryId;
+    await recordRecallTouch({ dealId: item.dealId, contactId: item.contactId, channel: item.channel, source: "manual", industry });
   }
   await setOutboxStatus(item.id, "sent");
   return NextResponse.json({ ok: true, status: "sent", provider: res.provider });

@@ -135,7 +135,7 @@ export const POST = withGuard(async (req: Request) => {
   });
 
   // Attribute manual recall-queue sends so won-back ROI captures them too.
-  if (parsed.data.recall) await recordRecallTouch({ dealId, contactId, channel, source: "manual" });
+  if (parsed.data.recall) await recordRecallTouch({ dealId, contactId, channel: channel === "email" ? "email" : "sms", source: "manual", industry: orgForSend?.industryId });
 
   return NextResponse.json({ ok: true, ...result });
 });

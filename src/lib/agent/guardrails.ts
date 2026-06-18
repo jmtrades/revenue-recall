@@ -117,6 +117,20 @@ export function recordingDisclosure(): string | null {
   return v.length > 0 ? v : null;
 }
 
+/**
+ * Strict consent mode for MANUAL calls. The autonomous agent always gates on
+ * per-contact call consent (see hasCallConsent); the human power-dialer
+ * deliberately does NOT by default — it relies on the rep's in-the-moment
+ * judgment, and hard-gating it would make the headline feature unusable on cold
+ * lists. An operator who wants the per-contact gate on EVERY call path (the
+ * strictest TCPA posture) sets CALL_REQUIRE_CONSENT=true; then a manual AI call
+ * also requires a recorded consent marker. Off by default. Pure + tested.
+ */
+export function callConsentRequired(): boolean {
+  const v = (process.env.CALL_REQUIRE_CONSENT ?? "").trim().toLowerCase();
+  return v === "true" || v === "1" || v === "yes";
+}
+
 /** Current guardrail configuration, for showing operators what's in effect. */
 export function guardrailConfig(): { cooldownDays: number; declineCooldownDays: number; dailyCap: number | null; quietHours: string | null } {
   const cap = dailySendCap();
