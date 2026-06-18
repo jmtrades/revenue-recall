@@ -123,7 +123,7 @@ export function goLiveStatus(s: GoLiveSignals): GoLiveStatus {
       title: "Autopilot plan",
       detail: s.autopilotEntitled ? "Your plan includes autonomous calling." : "Autonomous calling isn't on your plan yet — calls are held for review instead.",
       state: s.autopilotEntitled ? "live" : "off",
-      action: { label: "View plans", href: "/settings#billing" },
+      action: { label: "View plans", href: "/settings?tab=billing" },
     },
     {
       key: "sending",

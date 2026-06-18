@@ -39,6 +39,7 @@ const ROUTES = [
   "/reports",
   "/forecast",
   "/settings",
+  "/billing",
   "/privacy",
   "/terms",
   "/security",
