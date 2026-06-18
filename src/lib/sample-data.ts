@@ -13,6 +13,7 @@
  * - No-ops (rather than duplicating) if the workspace already has contacts.
  */
 import { resolveProvider } from "@/lib/crm/registry";
+import { cachedContacts } from "@/lib/crm/cached";
 import { getOrgSettings } from "@/lib/org";
 import { seedDataset } from "@/lib/data/seed";
 import { operatorEmails, isOperator } from "@/lib/operator";
@@ -146,11 +147,13 @@ export async function loadSampleData(): Promise<{ contacts: number; deals: numbe
   return { contacts: contactIdMap.size, deals: oppIdMap.size };
 }
 
-/** True when the workspace currently holds any sample (demo) records. */
+/** True when the workspace currently holds any sample (demo) records. Reads via
+ *  the request cache so a page that also loads contacts elsewhere (dashboard,
+ *  Go Live) doesn't pay for a second full-table read. */
 export async function hasSampleData(): Promise<boolean> {
   const provider = await resolveProvider();
   if (!["builtin", "supabase"].includes(provider.info().id)) return false;
-  const contacts = await provider.listContacts().catch(() => []);
+  const contacts = await cachedContacts().catch(() => []);
   return contacts.some((c) => c.attributes?.sample === true);
 }
 
