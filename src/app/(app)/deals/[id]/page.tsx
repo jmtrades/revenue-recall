@@ -106,7 +106,7 @@ export default async function DealPage({ params }: { params: { id: string } }) {
         </div>
 
         <div className="space-y-6">
-          <AiBrief dealId={opp.id} />
+          <AiBrief dealId={opp.id} version={`${opp.stageId}:${opp.value}:${activities.length}`} />
 
           {journey.totalTouches > 0 && (
             <Card title="Recall journey">

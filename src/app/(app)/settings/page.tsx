@@ -71,6 +71,7 @@ import { inboundWebhookUrl, type InboundKind } from "@/lib/inbound-routing";
 import { listInvites } from "@/lib/invites-server";
 import { listMembers } from "@/lib/members-server";
 import { getSessionRole } from "@/lib/authz";
+import { isOperator } from "@/lib/operator";
 import { MembersList } from "@/components/MembersList";
 
 export const metadata = { title: "Settings" };
@@ -81,6 +82,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
   const org = await getOrgSettings();
   const voice = await getStoredVoice();
   const active = getIndustry(org.industryId);
+  // Platform-infra surfaces (env-var wiring, the calling-gateway diagnostics,
+  // raw webhook endpoints) are for whoever runs this deployment — never the
+  // customers signed into it. Operators (and the open demo) see them; everyone
+  // else sees plain-English channel status instead of vendor/infra identifiers.
+  const operator = !isAuthRequired() || (await isOperator());
 
   const ch = channelStatus();
   // One readiness check feeds both these rows and Go Live, and is what the send
@@ -452,22 +458,26 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
         <TestSend />
       </Card>
 
-      <Card className="mt-4">
-        <h2 className="font-semibold text-fg">Calling gateway</h2>
-        <p className="mt-1 text-sm text-muted">
-          A live check that outbound AI calls are wired end to end — it pings your gateway, so a wrong or down URL shows red instead of a false green.
-        </p>
-        <div className="mt-4">
-          <CallingStatus />
-        </div>
-      </Card>
+      {operator && (
+        <Card className="mt-4">
+          <h2 className="font-semibold text-fg">Calling gateway</h2>
+          <p className="mt-1 text-sm text-muted">
+            A live check that outbound AI calls are wired end to end — it pings your gateway, so a wrong or down URL shows red instead of a false green.
+          </p>
+          <div className="mt-4">
+            <CallingStatus />
+          </div>
+        </Card>
+      )}
 
       <Card className="mt-4">
         <h2 className="font-semibold text-fg">Social channels</h2>
         <p className="mt-1 text-sm text-muted">
           One inbox for every platform. Connect your own account below — credentials are encrypted at rest — and inbound DMs flow
-          into your unified inbox; replies go back out on the same channel. Then point each platform&apos;s webhook at{" "}
-          <code className="text-fg">/api/social/&lt;platform&gt;</code>.
+          into your unified inbox; replies go back out on the same channel.
+          {operator && (
+            <> Then point each platform&apos;s webhook at <code className="text-fg">/api/social/&lt;platform&gt;</code>.</>
+          )}
         </p>
         <div className="mt-4">
           <ConnectionsManager initial={connections} encryptionAvailable={encAvailable} kind="social" oauthProviders={oauthProviders} />
@@ -672,7 +682,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       <Tabs
         initial={billingReturn ? "billing" : searchParams.tab}
         tabs={[
-          { id: "setup", label: "Setup", content: setupTab },
+          ...(operator ? [{ id: "setup", label: "Setup", content: setupTab }] : []),
           { id: "general", label: "General", content: general },
           { id: "appearance", label: "Appearance", content: appearanceTab },
           { id: "voice", label: "Voice", content: voiceTab },
