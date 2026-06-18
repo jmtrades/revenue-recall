@@ -6,6 +6,7 @@ import { listIntegrations, resolveProvider } from "@/lib/crm/registry";
 import { isAiConfigured } from "@/lib/ai/client";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { channelStatus } from "@/lib/comms";
+import { getChannelReadiness } from "@/lib/channels/readiness";
 import { sendingDomain, expectedRecords } from "@/lib/deliverability";
 import { DeliverabilitySettings } from "@/components/settings/DeliverabilitySettings";
 import { SuppressionList } from "@/components/settings/SuppressionList";
@@ -82,6 +83,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
   const active = getIndustry(org.industryId);
 
   const ch = channelStatus();
+  // One readiness check feeds both these rows and Go Live, and is what the send
+  // routes gate on — so "Live" here always means real outbound actually dispatches
+  // (verified domain / A2P / a reachable call gateway), never just "a key is set".
+  const channelReadiness = await getChannelReadiness({ address: org.compliance.address });
   // Per-org connections (sanitized: which fields are set, never secret values).
   const connections = (await listConnections().catch(() => [])).map((c) => ({
     provider: c.provider,
@@ -431,16 +436,16 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
         </p>
         <ul className="divide-y divide-border">
           {([
-            ["Email", channels.email],
-            ["SMS", channels.sms],
-            ["Voice / Calls", channels.voice],
-          ] as const).map(([label, c]) => (
-            <li key={label} className="flex items-center justify-between py-3">
-              <div>
+            ["Email", channelReadiness.email],
+            ["SMS", channelReadiness.sms],
+            ["Voice / Calls", channelReadiness.voice],
+          ] as const).map(([label, r]) => (
+            <li key={label} className="flex items-start justify-between gap-4 py-3">
+              <div className="min-w-0">
                 <span className="text-sm font-medium text-fg">{label}</span>
-                <div className="mt-1 text-xs text-muted">Provider: {c.provider}</div>
+                <div className="mt-1 text-xs text-muted">{r.detail}</div>
               </div>
-              <span className={`pill ${c.live ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>{c.live ? "Live" : "Logging only"}</span>
+              <span className={`pill shrink-0 ${r.state === "live" ? "bg-success/15 text-success" : r.state === "setup" ? "bg-warn/15 text-warn" : "bg-surface-2 text-muted"}`}>{r.label}</span>
             </li>
           ))}
         </ul>
