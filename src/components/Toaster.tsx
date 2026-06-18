@@ -38,7 +38,10 @@ export function Toaster() {
     return () => window.removeEventListener("rr:toast", onToast);
   }, []);
 
-  if (items.length === 0) return null;
+  // The live region is ALWAYS mounted (even when empty) so a screen reader
+  // announces the very first toast — a region inserted together with its first
+  // content is usually missed. The empty container is invisible (no bg,
+  // pointer-events-none), so this costs nothing visually.
   return (
     <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[min(92vw,22rem)] flex-col gap-2" role="status" aria-live="polite">
       {items.map((t) => (

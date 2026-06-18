@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { launchStatus } from "@/lib/launch";
-import { getSessionRole } from "@/lib/authz";
+import { isOperator } from "@/lib/operator";
 import { isAuthRequired } from "@/lib/config";
 import { DismissibleBanner } from "@/components/DismissibleBanner";
 
@@ -13,11 +13,11 @@ import { DismissibleBanner } from "@/components/DismissibleBanner";
  * or anyone in the open demo) see it; self-hides once everything's configured.
  */
 export async function LaunchBanner() {
-  // Don't nag reps who can't change settings.
-  if (isAuthRequired()) {
-    const role = await getSessionRole().catch(() => null);
-    if (role !== "owner" && role !== "admin") return null;
-  }
+  // These are deployment-level config (env vars, domain auth, API keys) only the
+  // operator can fix, and the "Finish setup" CTA lands on the operator-only Setup
+  // tab — so show it to the operator (or the open demo), never to tenant
+  // owners/reps who'd just hit a dead link. Matches the Setup-tab gate.
+  if (isAuthRequired() && !(await isOperator())) return null;
 
   const { blockers, warnings } = launchStatus();
   const urgent = blockers.length > 0;
