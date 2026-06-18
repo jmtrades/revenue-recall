@@ -2,7 +2,7 @@ import { gatewayDiagnostics } from "@/lib/calls/diagnostics";
 import { isAiConfigured } from "@/lib/ai/client";
 import { getOrgSettings } from "@/lib/org";
 import { isEntitled } from "@/lib/billing/enforce";
-import { resolveProvider } from "@/lib/crm/registry";
+import { cachedContacts } from "@/lib/crm/cached";
 import { listTasks, listRuns } from "@/lib/agent/store";
 import { hasCallConsent } from "@/lib/agent/guardrails";
 import { goLiveStatus, type GoLiveStatus } from "@/lib/launch/go-live";
@@ -18,7 +18,7 @@ export async function getGoLiveStatus(): Promise<GoLiveStatus> {
     gatewayDiagnostics().catch(() => null),
     getOrgSettings().catch(() => null),
     isEntitled("autopilot").catch(() => false),
-    resolveProvider().then((p) => p.listContacts()).catch(() => []),
+    cachedContacts().catch(() => []),
     listTasks().catch(() => []),
     listRuns(undefined, 1).catch(() => []),
   ]);
