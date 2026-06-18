@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "@/lib/toast";
 
 /**
  * Reusable destructive action: confirm, DELETE the endpoint, then redirect away
@@ -31,6 +32,7 @@ export function DeleteButton({
     try {
       const res = await fetch(endpoint, { method: "DELETE" });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Delete failed");
+      toast("Deleted");
       // Leave the button disabled through the navigation to block a double-submit.
       startTransition(() => {
         router.push(redirectTo);

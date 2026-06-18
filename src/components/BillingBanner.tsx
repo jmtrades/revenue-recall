@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSubscription } from "@/lib/billing/store";
 import { subscriptionStanding } from "@/lib/billing/entitlements";
+import { DismissibleBanner } from "@/components/DismissibleBanner";
 
 /**
  * Account-standing banner shown across the app: urgent (red) for a payment
@@ -13,15 +14,22 @@ export async function BillingBanner() {
   const s = subscriptionStanding(sub.plan, sub.status);
   if (!s.prompt) return null;
 
-  return (
-    <div className={`flex items-center justify-between gap-3 px-4 py-2 text-sm sm:px-8 ${s.urgent ? "bg-danger/15 text-danger" : "bg-brand-soft/30 text-fg"}`}>
-      <span className="min-w-0 truncate">{s.message}</span>
+  const inner = (
+    <>
+      <span className="min-w-0 flex-1 truncate">{s.message}</span>
       <Link
         href="/settings?tab=billing"
         className={`shrink-0 rounded-lg px-3 py-1 text-xs font-medium transition ${s.urgent ? "bg-danger text-white hover:bg-danger/90" : "bg-brand text-white hover:bg-brand/90"}`}
       >
         {s.cta}
       </Link>
-    </div>
+    </>
   );
+
+  // A payment problem (urgent) stays put until resolved; the soft free/trial nudge
+  // is dismissible for the session so it doesn't eat space on every screen.
+  if (s.urgent) {
+    return <div className="flex items-center gap-3 bg-danger/15 px-4 py-2 text-sm text-danger sm:px-8">{inner}</div>;
+  }
+  return <DismissibleBanner id="billing-soft" className="bg-brand-soft/30 text-fg">{inner}</DismissibleBanner>;
 }

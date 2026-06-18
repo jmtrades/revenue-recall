@@ -109,14 +109,18 @@ export function Board({ pipeline, opportunities, contacts, owners, canWrite }: P
                       {canWrite && (
                         <div className="mt-2.5 border-t border-border/60 pt-2" onMouseDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
                           <label className="sr-only" htmlFor={`move-${o.id}`}>Move {o.title} to stage</label>
+                          {/* The card already sits in its stage's column, so this
+                              control doesn't restate the current stage — it's a quiet
+                              "move" affordance listing only the OTHER stages. */}
                           <select
                             id={`move-${o.id}`}
-                            value={o.stageId}
-                            onChange={(e) => { if (e.target.value !== o.stageId) commitMove(o.id, e.target.value); }}
+                            value=""
+                            onChange={(e) => { if (e.target.value && e.target.value !== o.stageId) commitMove(o.id, e.target.value); }}
                             className="w-full rounded-md border border-border bg-surface px-2 py-1 text-xs text-muted outline-none transition focus:border-brand"
                           >
-                            {columns.map((s) => (
-                              <option key={s.id} value={s.id}>{o.stageId === s.id ? `Stage: ${s.label}` : `Move to ${s.label}`}</option>
+                            <option value="" disabled>Move to…</option>
+                            {columns.filter((s) => s.id !== o.stageId).map((s) => (
+                              <option key={s.id} value={s.id}>{s.label}</option>
                             ))}
                           </select>
                         </div>

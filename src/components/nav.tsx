@@ -55,7 +55,7 @@ export function NavLinks({ onNavigate, showAdmin = false }: { onNavigate?: () =>
             {group.items.map((item) => {
               const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
               return (
-                <Link key={item.href} href={item.href} onClick={onNavigate} className={`nav-link ${active ? "nav-link-active" : ""}`}>
+                <Link key={item.href} href={item.href} prefetch={false} onClick={onNavigate} className={`nav-link ${active ? "nav-link-active" : ""}`}>
                   <Icon name={item.icon} className="shrink-0" />
                   {item.label}
                 </Link>
@@ -66,12 +66,12 @@ export function NavLinks({ onNavigate, showAdmin = false }: { onNavigate?: () =>
       ))}
       <div className="mt-auto flex flex-col gap-0.5">
         {showAdmin && (
-          <Link href="/admin" onClick={onNavigate} className={`nav-link ${pathname.startsWith("/admin") ? "nav-link-active" : ""}`}>
+          <Link href="/admin" prefetch={false} onClick={onNavigate} className={`nav-link ${pathname.startsWith("/admin") ? "nav-link-active" : ""}`}>
             <Icon name="shield" className="shrink-0" />
             Admin
           </Link>
         )}
-        <Link href="/settings" onClick={onNavigate} className={`nav-link ${pathname.startsWith("/settings") ? "nav-link-active" : ""}`}>
+        <Link href="/settings" prefetch={false} onClick={onNavigate} className={`nav-link ${pathname.startsWith("/settings") ? "nav-link-active" : ""}`}>
           <Icon name="settings" className="shrink-0" />
           Settings
         </Link>
