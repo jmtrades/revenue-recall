@@ -10,6 +10,7 @@ import type { SocialPlatform } from "@/lib/social/types";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { recordRecallTouch } from "@/lib/recall/events";
 import { hasOptedOut } from "@/lib/agent/guardrails";
+import { sendReadiness } from "@/lib/channels/readiness";
 import { withGuard } from "@/lib/api/guard";
 import type { Activity, Opportunity } from "@/lib/crm/types";
 
@@ -108,6 +109,15 @@ export const POST = withGuard(async (req: Request) => {
   if (isDuplicate(channel, summary)) return NextResponse.json({ ok: true, deduped: true });
 
   const orgForSend = await getOrgSettings().catch(() => null);
+  // Compliance gate (real sends only): when a real sender is connected but the
+  // channel's prerequisites aren't met — no verified domain / postal address
+  // (email) or no A2P 10DLC registration (SMS) — hold the send rather than
+  // dispatch from an unauthenticated domain or unregistered number. Log-mode
+  // (no real transport) and a fully-configured channel both pass through.
+  const readiness = sendReadiness(channel === "email" ? "email" : "sms", orgForSend?.compliance?.address);
+  if (readiness.state === "setup") {
+    return NextResponse.json({ error: readiness.detail, blockers: readiness.blockers }, { status: 403 });
+  }
   const from = channel === "sms" ? orgForSend?.callerId : undefined;
   const tracked = trackLinks(body, { orgId: orgForSend?.id, contactId: contactId ?? undefined, dealId: dealId ?? undefined, channel: channel === "email" ? "email" : "sms" });
   const result = channel === "email" ? await sendEmail(to, subject ?? "", tracked) : await sendSms(to, tracked, { from });
