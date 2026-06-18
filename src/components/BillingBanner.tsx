@@ -31,5 +31,7 @@ export async function BillingBanner() {
   if (s.urgent) {
     return <div className="flex items-center gap-3 bg-danger/15 px-4 py-2 text-sm text-danger sm:px-8">{inner}</div>;
   }
-  return <DismissibleBanner id="billing-soft" className="bg-brand-soft/30 text-fg">{inner}</DismissibleBanner>;
+  // Content-keyed so dismissing one soft nudge (e.g. trial) doesn't suppress a
+  // different one that appears later in the same session (e.g. free-plan upsell).
+  return <DismissibleBanner id={`billing:${s.message}`} className="bg-brand-soft/30 text-fg">{inner}</DismissibleBanner>;
 }

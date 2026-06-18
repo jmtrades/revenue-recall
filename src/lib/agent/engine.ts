@@ -128,8 +128,10 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
     // Voice-minute margin gate: every connected autonomous minute has real COGS,
     // so when billing enforcement is on, autopilot stops auto-dialing once the
     // plan's included minutes are used up — the same gate the manual dialer
-    // honors (calls/place). Only queried for call tasks (zero cost to email/SMS).
-    const voiceMinutesOk = task.channel !== "call" || !enforcementOn() || (await isWithinVoiceMinutes());
+    // honors (calls/place). NOT keyed on task.channel: auto mode can fall back to
+    // a CALL for an email/SMS task when only a phone is on file (see the channel
+    // fallback below), so this is checked once per run whenever enforcement is on.
+    const voiceMinutesOk = !enforcementOn() || (await isWithinVoiceMinutes());
 
     for (const t of targets) {
       recoverable += t.recoverable;
