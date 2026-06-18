@@ -98,6 +98,14 @@ export const AI_TELLS: string[] = [
 ];
 
 /**
+ * The single, honest label for anything produced by the deterministic template
+ * fallback (no AI key connected). One phrasing everywhere — recall drafts, deal
+ * briefs, the approvals queue — so the "connect AI to personalize" upgrade cue
+ * reads consistently instead of four different ways across the app.
+ */
+export const TEMPLATE_FALLBACK_LABEL = "Template — connect AI to personalize";
+
+/**
  * Deterministically pick one item from a list using a string seed (e.g. a deal
  * id). Same seed → same choice, so output is varied across deals but stable for
  * a given deal (and therefore testable). Never repeats like a fixed template.

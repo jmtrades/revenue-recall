@@ -4,7 +4,7 @@ import { NavLinks } from "@/components/nav";
 
 export function Sidebar({ orgName, industryLabel, showAdmin = false }: { orgName: string; industryLabel: string; showAdmin?: boolean }) {
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface px-3 py-5 lg:flex">
+    <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col self-start overflow-y-auto border-r border-border bg-surface px-3 py-5 lg:flex">
       <Link href="/dashboard" className="px-3 pb-6">
         <div className="flex items-center gap-2.5">
           <LogoBadge box={32} />

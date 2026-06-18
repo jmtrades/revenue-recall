@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Avatar, ChannelIcon, channelLabel, EmptyState } from "@/components/ui";
 import { SpeakButton } from "@/components/SpeakButton";
+import { TEMPLATE_FALLBACK_LABEL } from "@/lib/copy";
 import type { OutboxChannel } from "@/lib/agent/types";
 
 export interface ApprovalRow {
@@ -72,7 +73,7 @@ export function ApprovalsView({ rows }: { rows: ApprovalRow[] }) {
               <Avatar name={it.contactName} size={30} />
               <div>
                 {it.dealId ? <Link href={`/deals/${it.dealId}`} className="text-sm font-medium text-fg hover:underline">{it.contactName}</Link> : <span className="text-sm font-medium text-fg">{it.contactName}</span>}
-                <div className="flex items-center gap-1 text-xs text-muted"><ChannelIcon channel={it.channel} size={11} /> {channelLabel(it.channel)} · {it.source === "ai" ? "AI draft" : "template"}</div>
+                <div className="flex items-center gap-1 text-xs text-muted"><ChannelIcon channel={it.channel} size={11} /> {channelLabel(it.channel)} · {it.source === "ai" ? "AI draft" : TEMPLATE_FALLBACK_LABEL}</div>
               </div>
             </div>
             <div className="flex items-center gap-2">
