@@ -8,6 +8,7 @@ import { getOrgSettings } from "@/lib/org";
 import { resolveProvider } from "@/lib/crm/registry";
 import { compactMoney, money, pct } from "@/lib/format";
 import { PageHeader, Stat, Card, Avatar } from "@/components/ui";
+import { ShareResultsButton } from "@/components/ShareResultsButton";
 import { Funnel, Donut, BarChart } from "@/components/charts";
 import type { Activity } from "@/lib/crm/types";
 
@@ -83,7 +84,10 @@ export default async function ReportsPage() {
       </Card>
 
       <Card title="Revenue Recall ROI" action={r.recallOutcomes.wonBack > 0 ? (
-        <a href="/api/recall/export" className="text-sm text-brand hover:underline" download>Export won-back deals (CSV)</a>
+        <div className="flex items-center gap-4">
+          <ShareResultsButton recoveredValue={r.recallOutcomes.recoveredValue} wonBack={r.recallOutcomes.wonBack} currency={r.currency} topChannel={attribution.byChannel[0]?.channel} />
+          <a href="/api/recall/export" className="text-sm text-brand hover:underline" download>Export won-back deals (CSV)</a>
+        </div>
       ) : undefined}>
         {r.recallOutcomes.recalled === 0 ? (
           <p className="text-sm text-muted">No deals recalled yet. Enroll the recall queue to start winning revenue back.</p>
