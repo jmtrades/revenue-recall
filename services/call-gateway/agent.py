@@ -6,6 +6,7 @@ import logging
 from brain import stream_lines
 from stt import transcribe
 from tts import synthesize
+from compliance import is_opt_out
 from config import TELEPHONY_SAMPLE_RATE, CALL_AI_DISCLOSURE
 
 # Plays right after the spoken AI disclosure, so it must flow honestly from it —
@@ -24,6 +25,10 @@ WRAP_FALLBACK = "I'll let you go for now — I'll send a quick note and try you 
 # Spoken when the brain errors mid-call (transient model/network blip) so the line
 # recovers with a natural nudge instead of dead air or a dropped call.
 BRAIN_RETRY_LINE = "Sorry, I didn't quite catch that — could you say it once more?"
+# Spoken when the prospect asks to stop being contacted: acknowledge, promise to
+# remove them, and end the call. The app persists the do-not-contact (see the
+# optOut flag in the post-back) so they're never dialed again.
+OPT_OUT_ACK = "Understood — I'll take you off our list right now and you won't hear from us again. Sorry for the interruption. Take care."
 
 log = logging.getLogger("call-gateway.agent")
 
@@ -38,6 +43,9 @@ class CallAgent:
         self.voicemail = voicemail
         # Spoken first on a live answer — the required AI/bot disclosure. "" disables.
         self.disclosure = (disclosure or "").strip()
+        # Set when the prospect asks to stop being contacted mid-call, so the
+        # post-back can persist a durable do-not-contact.
+        self.opted_out = False
 
     async def _speak(self, text: str, transport):
         async for chunk in synthesize(text, voice_id=self.voice_id, sample_rate=TELEPHONY_SAMPLE_RATE):
@@ -98,6 +106,15 @@ class CallAgent:
             if not heard:
                 continue
             self.turns.append({"role": "prospect", "text": heard})
+            # Compliance backstop: if they ask to stop being contacted, honor it
+            # immediately — acknowledge, flag the opt-out for durable suppression,
+            # and end the call. Never keep pitching past a do-not-contact request.
+            if is_opt_out(heard):
+                self.opted_out = True
+                self.turns.append({"role": "rep", "text": OPT_OUT_ACK})
+                if not transport.closed():
+                    await self._speak(OPT_OUT_ACK, transport)
+                break
             # At the cap, force a graceful close so the call can't loop forever.
             wrap = rep_turns >= MAX_REP_TURNS
             # Stream the reply straight into TTS so we start speaking on the first

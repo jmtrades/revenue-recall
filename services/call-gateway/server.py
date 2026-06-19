@@ -207,6 +207,8 @@ async def _finish_call(call_id: str, ctx: dict, agent: CallAgent, started: float
         "outcome": amd.call_outcome(answered_by, heard_prospect),
         "transcript": _transcript_text(agent.turns),
         "durationSec": round(time.monotonic() - started, 1),
+        # Prospect asked to stop being contacted on the call → app persists DNC.
+        "optOut": bool(getattr(agent, "opted_out", False)),
     }
     log.info("call %s ended (%s, %d turns)", call_id, payload["outcome"], len(agent.turns))
     await asyncio.to_thread(_post_call_status, payload)

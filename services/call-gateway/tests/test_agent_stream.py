@@ -86,6 +86,19 @@ class TestAgentRun(unittest.TestCase):
         # reply must be suppressed once interrupted.
         self.assertNotIn("This should not be heard.", transport.spoken_text())
 
+    def test_opt_out_mid_call_acknowledges_and_ends_without_pitching(self):
+        _install_fakes(["This pitch must not be heard."], heard="please stop calling me")
+        a = agent.CallAgent(opener="Hi.", disclosure="")
+        transport = FakeTransport([b"x", b"y", None])
+        asyncio.run(a.run(transport))
+        # Honored: flagged for durable suppression, acknowledged, and the pitch
+        # the brain queued was never spoken.
+        self.assertTrue(a.opted_out)
+        self.assertIn(agent.OPT_OUT_ACK, transport.spoken_text())
+        self.assertNotIn("This pitch must not be heard.", transport.spoken_text())
+        # Ended immediately on the opt-out rather than draining every utterance.
+        self.assertGreater(len(transport._utts), 0)
+
     def test_turn_cap_forces_close_with_fallback_when_model_silent(self):
         _install_fakes([])  # model returns nothing
         agent.MAX_REP_TURNS = 1  # opener already counts as turn 1 → next turn wraps
