@@ -24,10 +24,10 @@ const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 
 function shell(dir: "ltr" | "rtl", title: string, inner: string, status: number): Response {
   const html = `<!doctype html><html dir="${dir}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title>
-<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0b0e14;color:#e7eaf0;display:grid;place-items:center;min-height:100vh;margin:0}
-.card{max-width:30rem;padding:2rem;text-align:center}h1{font-size:1.25rem;margin:0 0 .75rem}p{color:#8a93a6;line-height:1.5;margin:.25rem 0}
+<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0a0b0a;color:#dfe3df;display:grid;place-items:center;min-height:100vh;margin:0}
+.card{max-width:30rem;padding:2rem;text-align:center;background:#111311;border:1px solid #262a27;border-radius:16px}h1{font-size:1.25rem;margin:0 0 .75rem;color:#fff}p{color:#949a94;line-height:1.5;margin:.25rem 0}
 button,a.btn{display:inline-block;margin-top:1rem;border:0;border-radius:.6rem;padding:.7rem 1.4rem;font-size:.95rem;font-weight:600;cursor:pointer;text-decoration:none}
-.danger{background:#e5484d;color:#fff}.brand{background:#3b82f6;color:#fff}</style></head>
+.danger{background:#f87171;color:#0a0b0a}.brand{background:#059669;color:#fff}</style></head>
 <body><div class="card">${inner}</div></body></html>`;
   return new Response(html, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
