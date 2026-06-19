@@ -176,10 +176,7 @@ textarea:focus-visible,
     /* Real material: hairline top highlight (catches light) + a faint top-down
        sheen + layered ambient shadow. Depth hierarchy, not a flat 1px box. */
     background-image: linear-gradient(rgb(255 255 255 / 0.025), transparent 40%);
-    box-shadow:
-      inset 0 1px 0 0 rgb(255 255 255 / 0.05),
-      0 1px 2px rgb(0 0 0 / 0.25),
-      0 12px 32px -20px rgb(0 0 0 / 0.7);
+    box-shadow: var(--shadow-card);
   }
   .stat-label {
     @apply text-xs font-medium uppercase tracking-wide text-muted;
@@ -268,13 +265,11 @@ textarea:focus-visible,
      brighter core — so the top of the hero feels lit from a real source rather
      than a flat tint. Still restrained money-green, never an aurora. */
   .hero-glow {
-    background:
-      radial-gradient(34rem 16rem at 50% -6rem, rgb(var(--brand-rgb) / 0.10) 0%, transparent 70%),
-      radial-gradient(60rem 28rem at 50% -9rem, rgb(var(--brand-rgb) / 0.06) 0%, transparent 72%);
+    background: var(--hero-glow);
   }
   /* Featured-card emphasis: a crisp accent border + a neutral lift, not a colored halo. */
   .ring-glow {
-    box-shadow: 0 0 0 1px rgb(var(--brand-rgb) / 0.45), 0 30px 60px -34px rgb(0 0 0 / 0.85);
+    box-shadow: var(--shadow-ring-glow);
   }
   /* Faint blueprint grid that FADES out via a radial mask, so it never tiles
      harshly to the edges (that hard repeat is what reads as "itchy"). */
@@ -288,24 +283,19 @@ textarea:focus-visible,
   }
   /* Soft elevation for non-.card surfaces. */
   .shadow-soft {
-    box-shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 12px 32px -18px rgb(0 0 0 / 0.7);
+    box-shadow: var(--shadow-soft);
   }
   /* A surface that reads as a real, lifted material: hairline top highlight
      (catches "light" from above) + layered ambient shadow. The premium tell is
      depth hierarchy, not a flat 1px box. */
   .raised {
     background-image: linear-gradient(rgb(255 255 255 / 0.035), transparent 38%);
-    box-shadow:
-      inset 0 1px 0 0 rgb(255 255 255 / 0.06),
-      0 1px 2px rgb(0 0 0 / 0.3),
-      0 18px 40px -24px rgb(0 0 0 / 0.8);
+    box-shadow: var(--shadow-raised);
   }
   /* Double-bezel outer shell (machined-hardware look): content sits in a tray. */
   .bezel {
     background: rgb(255 255 255 / 0.04);
-    box-shadow:
-      inset 0 1px 0 0 rgb(255 255 255 / 0.07),
-      0 40px 90px -40px rgb(0 0 0 / 0.95);
+    box-shadow: var(--shadow-bezel);
   }
   /* Tasteful card hover lift — gated to fine pointers so touch never sticks. */
   .lift {
@@ -317,10 +307,7 @@ textarea:focus-visible,
   @media (hover: hover) and (pointer: fine) {
     .lift:hover {
       transform: translateY(-3px);
-      box-shadow:
-        inset 0 1px 0 0 rgb(255 255 255 / 0.07),
-        0 1px 2px rgb(0 0 0 / 0.3),
-        0 28px 50px -28px rgb(0 0 0 / 0.85);
+      box-shadow: var(--shadow-lift);
     }
   }
   /* Hairline divider that fades at both ends — softer than a hard 1px rule. */
