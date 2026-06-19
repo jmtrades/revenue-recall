@@ -9,6 +9,7 @@ import { getActiveVoice } from "@/lib/voice";
 import { getIndustry, recallThresholdsFor } from "@/lib/industries";
 import { contactPreferredLanguage } from "@/lib/languages";
 import { buildRecallQueue, scoreOpportunity, type RecallThresholds } from "@/lib/recall/engine";
+import { listSnoozedOppIds } from "@/lib/recall/snooze";
 import { draftMessage } from "@/lib/ai/draft";
 import { isAiConfigured } from "@/lib/ai/client";
 import { enforcementOn, isEntitled } from "@/lib/billing/enforce";
@@ -211,11 +212,13 @@ interface Target {
   contactId: string;
 }
 
-function resolveTargets(scope: string, pipelines: Pipeline[], opps: Opportunity[], thresholds?: RecallThresholds): Target[] {
+function resolveTargets(scope: string, pipelines: Pipeline[], opps: Opportunity[], thresholds?: RecallThresholds, snoozed?: Set<string>): Target[] {
   const stageById = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
   const MAX = 50;
   if (scope === "recall_queue") {
+    // Don't re-enroll a deal a rep has snoozed (filter before slicing).
     return buildRecallQueue(opps, pipelines, undefined, thresholds)
+      .filter((r) => !snoozed?.has(r.opportunityId))
       .slice(0, MAX)
       .map((r) => opps.find((o) => o.id === r.opportunityId))
       .filter((o): o is Opportunity => Boolean(o))
@@ -253,7 +256,8 @@ export async function enroll(sequenceId: string, scope: string): Promise<EnrollR
   const provider = (await resolveProvider());
   const [pipelines, opps] = await Promise.all([provider.listPipelines(), provider.listOpportunities()]);
   const thresholds = recallThresholdsFor((await getOrgSettings()).industryId);
-  const targets = resolveTargets(scope, pipelines, opps, thresholds);
+  const snoozed = scope === "recall_queue" ? await listSnoozedOppIds() : undefined;
+  const targets = resolveTargets(scope, pipelines, opps, thresholds, snoozed);
 
   const active = await listActiveEnrollments();
   const already = new Set(active.filter((e) => e.sequenceId === sequenceId).map((e) => e.dealId ?? e.contactId));

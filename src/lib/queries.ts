@@ -251,10 +251,14 @@ export async function getCallQueue(): Promise<CallQueueItem[]> {
     }
   }
   const recall = buildRecallQueue(opps, pipelines);
+  // Honor a rep's snooze on the dialer too — a deal muted in the recall queue must
+  // not still get auto-dialed (graceful: empty set without a DB / table).
+  const snoozed = await listSnoozedOppIds();
   const stagesByPipeline = new Map(pipelines.map((p) => [p.id, p.stages]));
   const items: CallQueueItem[] = [];
   const queuedContacts = new Set<string>();
   for (const r of recall) {
+    if (snoozed.has(r.opportunityId)) continue;
     const opp = opps.find((o) => o.id === r.opportunityId);
     if (!opp) continue;
     const contact = cById.get(opp.contactId);
