@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, Button } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
 import { SampleDataButton } from "@/components/SampleDataButton";
+import { RecallOrbit } from "@/components/RecallOrbit";
 import { canUseSampleData } from "@/lib/sample-data";
 
 /**
@@ -42,6 +43,12 @@ export async function DashboardWelcome({ greeting }: { greeting: string }) {
     <div className="space-y-6">
       <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-brand-soft/40 to-surface px-7 py-9">
         <div className="surface-grid absolute inset-0 opacity-30" aria-hidden />
+        {/* Signature recall mark — decorative, sits behind the copy on wider screens. */}
+        <RecallOrbit
+          size={300}
+          aria-hidden
+          className="pointer-events-none absolute -right-10 -top-12 hidden opacity-[0.18] lg:block"
+        />
         <div className="relative">
           <span className="eyebrow text-brand">Welcome</span>
           <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight text-fg sm:text-3xl">{greeting} — let&rsquo;s get your pipeline working.</h1>

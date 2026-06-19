@@ -4,8 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Sequence, SeqChannel } from "@/lib/sequences";
-import { ChannelBadge } from "@/components/ui";
 import { SpeakButton } from "@/components/SpeakButton";
+import { SequenceStep } from "@/components/SequenceStep";
 import { toast } from "@/lib/toast";
 
 interface StepDraft {
@@ -236,24 +236,27 @@ export function SequencesView({ sequences, customIds = [], canAuthor = false }: 
               </div>
               <span className="pill bg-surface-2 text-muted">{seq.steps.length} steps</span>
             </div>
-            <ol className="mt-4 space-y-3">
+            {/* Design-system timeline — each node is the sequence's REAL step
+                (channel, day offset, subject → title, body → preview). No status
+                pill: a template step has no per-enrollment status to show. */}
+            <div className="mt-4">
               {seq.steps.map((step, i) => (
-                <li key={i} className="flex gap-3">
-                  <div className="flex w-12 shrink-0 flex-col items-center">
-                    <span className="grid h-7 w-7 place-items-center rounded-full border border-border text-xs text-muted">{i + 1}</span>
-                    <span className="mt-1 text-[10px] uppercase tracking-wide text-muted">Day {step.day}</span>
-                  </div>
-                  <div className="min-w-0 flex-1 rounded-lg border border-border bg-surface-2 p-3">
-                    <div className="mb-1 flex items-center gap-2">
-                      <ChannelBadge channel={step.channel} />
-                      <span className="truncate text-sm font-medium text-fg">{step.subject}</span>
-                      <span className="ml-auto"><SpeakButton text={[step.subject, step.body].filter(Boolean).join(". ")} label="" /></span>
-                    </div>
-                    <p className="text-xs leading-relaxed text-muted">{step.body}</p>
-                  </div>
-                </li>
+                <SequenceStep
+                  key={i}
+                  index={i + 1}
+                  channel={step.channel}
+                  day={step.day}
+                  last={i === seq.steps.length - 1}
+                  title={
+                    <span className="flex items-center gap-2">
+                      <span className="min-w-0 truncate">{step.subject?.trim() || step.body}</span>
+                      <SpeakButton text={[step.subject, step.body].filter(Boolean).join(". ")} label="" />
+                    </span>
+                  }
+                  preview={step.subject?.trim() ? step.body : undefined}
+                />
               ))}
-            </ol>
+            </div>
             <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
               <Link href={`/sequences/${seq.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-brand transition hover:text-brand/80">
                 Start this cadence <span aria-hidden>→</span>
