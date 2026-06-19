@@ -5,6 +5,9 @@ import { resolveProvider } from "@/lib/crm/registry";
 import { getStoredVoice } from "@/lib/voice";
 import { getSubscription } from "@/lib/billing/store";
 import { getOrgSettings } from "@/lib/org";
+import { listBookings } from "@/lib/meetings/store";
+import { listEnrollments } from "@/lib/cadence";
+import { listManualTasks } from "@/lib/tasks/manual";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 import { logInfo, errMessage } from "@/lib/log";
 
@@ -26,7 +29,10 @@ export async function GET(req: Request) {
   await recordAudit("data.exported");
   const provider = (await resolveProvider());
   try {
-    const [org, voice, subscription, contacts, opportunities, activities, pipelines] = await Promise.all([
+    // Auxiliary records (meetings, sequence enrollments, tasks) also hold user /
+    // prospect data, so "export everything" must include them. Each degrades to
+    // [] on its own so one unavailable source never sinks the whole export.
+    const [org, voice, subscription, contacts, opportunities, activities, pipelines, bookings, enrollments, tasks] = await Promise.all([
       getOrgSettings(),
       getStoredVoice(),
       getSubscription(),
@@ -34,6 +40,9 @@ export async function GET(req: Request) {
       provider.listOpportunities(),
       provider.listRecentActivities(10000),
       provider.listPipelines(),
+      listBookings({ limit: 5000 }).catch(() => []),
+      listEnrollments(undefined, 5000).catch(() => []),
+      listManualTasks().catch(() => []),
     ]);
 
     const payload = {
@@ -46,7 +55,10 @@ export async function GET(req: Request) {
       contacts,
       opportunities,
       activities,
-      counts: { contacts: contacts.length, opportunities: opportunities.length, activities: activities.length },
+      bookings,
+      enrollments,
+      tasks,
+      counts: { contacts: contacts.length, opportunities: opportunities.length, activities: activities.length, bookings: bookings.length, enrollments: enrollments.length, tasks: tasks.length },
     };
 
     logInfo("user.export", { contacts: contacts.length, opportunities: opportunities.length });
