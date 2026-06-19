@@ -1,16 +1,22 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 
-const { logCallOutcome, scheduleCallRetry, scheduleVoicemailFollowup, seenInboundEvent } = vi.hoisted(() => ({
+const { logCallOutcome, scheduleCallRetry, scheduleVoicemailFollowup, seenInboundEvent, getContact, markDoNotContact } = vi.hoisted(() => ({
   logCallOutcome: vi.fn(async () => ({ id: "act_1" })),
   scheduleCallRetry: vi.fn(async () => null),
   scheduleVoicemailFollowup: vi.fn(async () => ({ queued: false })),
   seenInboundEvent: vi.fn(async () => false),
+  getContact: vi.fn(async () => ({ id: "c1", name: "Test", points: [] })),
+  markDoNotContact: vi.fn(async () => true),
 }));
 vi.mock("@/lib/calls", () => ({ logCallOutcome, scheduleCallRetry, scheduleVoicemailFollowup }));
 vi.mock("@/lib/supabase/org-context", () => ({
   runWithOrg: vi.fn(async (_orgId: string, fn: () => unknown) => fn()),
 }));
 vi.mock("@/lib/inbound-dedup", () => ({ seenInboundEvent }));
+vi.mock("@/lib/crm/registry", () => ({
+  resolveProvider: vi.fn(async () => ({ getContact, info: () => ({ id: "builtin", capabilities: { write: true } }) })),
+}));
+vi.mock("@/lib/opt-out", () => ({ markDoNotContact }));
 
 import { POST } from "@/app/api/calls/log/route";
 import { runWithOrg } from "@/lib/supabase/org-context";
@@ -44,6 +50,18 @@ describe("calls/log routes the transcript to the owning org", () => {
     const res = await POST(post({ to: "+15551234567", outcome: "completed", meta: { contactId: "c1" } }));
     expect(res.status).toBe(200);
     expect(vi.mocked(runWithOrg)).not.toHaveBeenCalled();
+  });
+
+  it("persists a durable do-not-contact when the prospect opted out on the call", async () => {
+    const res = await POST(post({ to: "+15551234567", outcome: "completed", contactId: "c1", optOut: true }));
+    expect(res.status).toBe(200);
+    expect(markDoNotContact).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not touch do-not-contact on a normal call (no optOut)", async () => {
+    const res = await POST(post({ to: "+15551234567", outcome: "completed", contactId: "c1" }));
+    expect(res.status).toBe(200);
+    expect(markDoNotContact).not.toHaveBeenCalled();
   });
 
   it("no-ops a retried post-back with the same callId (idempotent)", async () => {
