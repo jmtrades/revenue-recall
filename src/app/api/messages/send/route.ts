@@ -11,6 +11,7 @@ import { writeRateLimit } from "@/lib/ratelimit";
 import { recordRecallTouch } from "@/lib/recall/events";
 import { hasOptedOut } from "@/lib/agent/guardrails";
 import { sendReadiness } from "@/lib/channels/readiness";
+import { unsubscribeUrl } from "@/lib/unsubscribe";
 import { withGuard } from "@/lib/api/guard";
 import type { Activity, Opportunity } from "@/lib/crm/types";
 
@@ -120,7 +121,17 @@ export const POST = withGuard(async (req: Request) => {
   }
   const from = channel === "sms" ? orgForSend?.callerId : undefined;
   const tracked = trackLinks(body, { orgId: orgForSend?.id, contactId: contactId ?? undefined, dealId: dealId ?? undefined, channel: channel === "email" ? "email" : "sms" });
-  const result = channel === "email" ? await sendEmail(to, subject ?? "", tracked) : await sendSms(to, tracked, { from });
+  // Email carries the same CAN-SPAM footer the autonomous engine sends: the org's
+  // configured sender name + postal address (from Settings, not just env) and a
+  // per-contact one-click unsubscribe link. Without threading these through, a
+  // manual send would silently drop the address the operator set in Settings.
+  const result =
+    channel === "email"
+      ? await sendEmail(to, subject ?? "", tracked, {
+          unsubscribeUrl: contactId ? await unsubscribeUrl(contactId) : null,
+          compliance: { orgName: orgForSend?.compliance?.senderName ?? orgForSend?.name, address: orgForSend?.compliance?.address },
+        })
+      : await sendSms(to, tracked, { from });
   if (result.status === "failed") {
     return NextResponse.json({ error: result.detail ?? "Send failed", provider: result.provider }, { status: 502 });
   }
