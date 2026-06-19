@@ -59,9 +59,16 @@ describe("unified outbound — reply on the channel it arrived on", () => {
     expect(resolveAddress(c, "email", "override@x.io")).toBe("override@x.io");
   });
 
-  it("routes email replies through the comms email transport", async () => {
+  it("routes email replies through the comms email transport with the CAN-SPAM footer opts", async () => {
     const r = await sendReply({ contact: contact(), channel: "email", subject: "Hi", body: "Hello" });
-    expect(vi.mocked(sendEmail)).toHaveBeenCalledWith("t@x.io", "Hi", "Hello");
+    // Email replies are commercial outreach, so the transport receives the org's
+    // compliance identity + per-contact unsubscribe (4th arg) — not a bare send.
+    expect(vi.mocked(sendEmail)).toHaveBeenCalledWith(
+      "t@x.io",
+      "Hi",
+      "Hello",
+      expect.objectContaining({ compliance: expect.any(Object) }),
+    );
     expect(r).toMatchObject({ status: "sent", provider: "mock-email", id: "e1" });
   });
 

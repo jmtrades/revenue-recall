@@ -4,6 +4,7 @@ import { getSocialChannel } from "@/lib/social/registry";
 import { socialAddress } from "@/lib/social/ingest";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { getOrgSettings } from "@/lib/org";
+import { unsubscribeUrl } from "@/lib/unsubscribe";
 
 /**
  * Unified outbound — reply on whatever channel the conversation arrived on.
@@ -67,7 +68,16 @@ export async function sendReply(reply: OutboundReply): Promise<OutboundResult> {
   }
 
   if (channel === "email") {
-    const r = await sendEmail(address, subject ?? "", body);
+    // Commercial outreach — carry the same CAN-SPAM footer the engine/cadence
+    // send: the org's configured sender name + postal address (from Settings),
+    // and a per-contact one-click unsubscribe link. This path backs the
+    // Approvals "approve & send" flow, so dropping it would ship non-compliant
+    // email from the primary review-mode send route.
+    const org = await getOrgSettings().catch(() => null);
+    const r = await sendEmail(address, subject ?? "", body, {
+      unsubscribeUrl: contact.id ? await unsubscribeUrl(contact.id) : null,
+      compliance: { orgName: org?.compliance?.senderName ?? org?.name, address: org?.compliance?.address },
+    });
     return { status: r.status, provider: r.provider, id: r.id, detail: r.detail };
   }
   if (channel === "sms") {
