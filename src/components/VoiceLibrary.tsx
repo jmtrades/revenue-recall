@@ -223,7 +223,7 @@ export function VoiceLibrary() {
           <input
             type="range" min={0.7} max={1.2} step={0.05} value={settings.rate}
             onChange={(e) => saveSettings({ ...settings, rate: Number(e.target.value) })}
-            className="mt-1.5 w-full accent-[var(--brand,#6366f1)]"
+            className="mt-1.5 w-full accent-[color:var(--color-brand)]"
             aria-label="Speaking speed"
           />
         </label>
@@ -234,7 +234,7 @@ export function VoiceLibrary() {
           <input
             type="range" min={0} max={1} step={0.05} value={settings.expressiveness}
             onChange={(e) => saveSettings({ ...settings, expressiveness: Number(e.target.value) })}
-            className="mt-1.5 w-full accent-[var(--brand,#6366f1)]"
+            className="mt-1.5 w-full accent-[color:var(--color-brand)]"
             aria-label="Expressiveness"
           />
         </label>
