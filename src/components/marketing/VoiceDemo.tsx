@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ensureLocalVoice, localSynth, localVoiceProgress } from "@/lib/voice/local";
 import { browserSynth } from "@/lib/voice/synth";
+import { SignalWave } from "@/components/RecallOrbit";
 import type { SpeakHandle } from "@/lib/voice/speech";
 import type { Emotion } from "@/lib/voice/speech";
 
@@ -145,6 +146,12 @@ export function VoiceDemo({ industryId }: { industryId?: string }) {
           </span>
           <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-border bg-surface-2/60 px-4 py-3">
             <p className="text-[15px] leading-relaxed text-body">{line.text}</p>
+            {status === "speaking" && (
+              <div className="mt-2.5 flex items-center gap-2 text-[11px] font-medium text-brand">
+                <SignalWave bars={9} height={15} />
+                <span>Speaking live</span>
+              </div>
+            )}
           </div>
         </div>
 
