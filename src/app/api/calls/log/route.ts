@@ -8,6 +8,8 @@ import { safeEqual } from "@/lib/safe-compare";
 import { verifyCallMeta } from "@/lib/calls/meta-sig";
 import { runWithOrg } from "@/lib/supabase/org-context";
 import { seenInboundEvent, forgetInboundEvent } from "@/lib/inbound-dedup";
+import { resolveProvider } from "@/lib/crm/registry";
+import { markDoNotContact } from "@/lib/opt-out";
 import { withGuard } from "@/lib/api/guard";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +32,9 @@ const Body = z.object({
   transcript: z.string().max(20000).optional(),
   durationSec: z.number().nonnegative().optional(),
   recordingUrl: z.string().url().max(2000).optional(),
+  // The prospect asked to stop being contacted DURING the call — persist a
+  // durable do-not-contact so the agent never dials/messages them again.
+  optOut: z.boolean().optional(),
 });
 
 /** Bearer check against the shared COMMS_WEBHOOK_TOKEN (same secret the gateway
@@ -95,6 +100,18 @@ export const POST = withGuard(async (req: Request) => {
     // If it hit voicemail, queue a short follow-up text to Approvals (best-effort,
     // non-throwing, opt-out-aware) so they have an easy async reply path.
     if (activity) await scheduleVoicemailFollowup({ contactId, dealId, outcome: b.outcome });
+    // A verbal opt-out on the call → durable do-not-contact, so future outreach
+    // (calls, texts, email) is suppressed for this contact. Best-effort: the
+    // logged call already records the request even if the flag write can't land.
+    if (b.optOut && contactId) {
+      try {
+        const provider = await resolveProvider();
+        const contact = await provider.getContact(contactId);
+        if (contact) await markDoNotContact(provider, contact);
+      } catch {
+        /* best-effort — never fail the call-log post-back on a suppression write */
+      }
+    }
     return activity;
   };
   // Scope the write to the org that placed the call (the webhook has no session,
