@@ -11,6 +11,7 @@ import { fireSpeedToLead } from "@/lib/agent/speed-to-lead";
 import { stopEnrollmentsForContact } from "@/lib/cadence";
 import { hasOptedOut, isHardOptOut } from "@/lib/agent/guardrails";
 import { markDoNotContact } from "@/lib/opt-out";
+import { seenInboundEvent, forgetInboundEvent } from "@/lib/inbound-dedup";
 import type { Activity, Contact } from "@/lib/crm/types";
 import type { InboundSocialMessage, SocialPlatform } from "@/lib/social/types";
 
@@ -53,6 +54,8 @@ export interface SocialIngestResult {
   /** Outbound reply outcome: auto-sent, queued to Approvals, or none. */
   replied?: "sent" | "queued" | false;
   intent?: string;
+  /** True when this message was a webhook redelivery we'd already processed. */
+  duplicate?: boolean;
 }
 
 export async function ingestSocialMessages(messages: InboundSocialMessage[]): Promise<SocialIngestResult[]> {
@@ -63,6 +66,16 @@ export async function ingestSocialMessages(messages: InboundSocialMessage[]): Pr
 
   for (const m of messages) {
     const platform = m.platform;
+    // Idempotency: Meta/WhatsApp (and others) redeliver webhooks on any timeout or
+    // non-2xx, and can duplicate even on success. Without this, a redelivery
+    // re-runs autoReply → a SECOND DM to the prospect, plus a duplicate timeline
+    // entry — exactly what the email/SMS routes guard via seenInboundEvent. Keyed
+    // per-platform by the stable message id; falls open (no id / no DB) so a real
+    // DM is never dropped, and is un-recorded on a processing throw below.
+    if (m.externalMessageId && (await seenInboundEvent(platform, m.externalMessageId))) {
+      results.push({ platform, created: false, logged: false, duplicate: true });
+      continue;
+    }
     const key = socialAttrKey(platform);
     let contact = matchBySocial(contacts, platform, m.from.externalId);
     let created = false;
@@ -136,6 +149,9 @@ export async function ingestSocialMessages(messages: InboundSocialMessage[]): Pr
       replied = optedOut || !m.text.trim() ? false : await autoReply(contact, platform, m.text);
     } catch {
       logged = false;
+      // Processing threw after we recorded the dedup key — un-record it so the
+      // platform's retry can reprocess instead of being silently deduped.
+      if (m.externalMessageId) await forgetInboundEvent(platform, m.externalMessageId);
     }
 
     results.push({ platform, contactId: contact.id, created, logged, replied, intent: detectIntent(m.text) });

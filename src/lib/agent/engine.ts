@@ -21,6 +21,7 @@ import { isEntitled, enforcementOn } from "@/lib/billing/enforce";
 import { isWithinVoiceMinutes } from "@/lib/billing/voice-minutes";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
 import { recordRecallTouch } from "@/lib/recall/events";
+import { listSnoozedOppIds } from "@/lib/recall/snooze";
 import type { AgentAction, AgentRun, AgentTask } from "@/lib/agent/types";
 import type { Contact, Opportunity, Pipeline } from "@/lib/crm/types";
 
@@ -51,7 +52,12 @@ async function resolveTargets(task: AgentTask, pipelines: Pipeline[], opps: Oppo
   const stageById = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
 
   if (task.scope === "recall_queue") {
-    const items = buildRecallQueue(opps, pipelines).slice(0, MAX_ITEMS);
+    // Honor a rep's snooze: a muted deal must not be autonomously worked. Filter
+    // before slicing so snoozed deals don't consume the item budget.
+    const snoozed = await listSnoozedOppIds();
+    const items = buildRecallQueue(opps, pipelines)
+      .filter((r) => !snoozed.has(r.opportunityId))
+      .slice(0, MAX_ITEMS);
     return items
       .map((r): Target | null => {
         const opp = opps.find((o) => o.id === r.opportunityId);
