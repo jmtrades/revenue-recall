@@ -8,7 +8,7 @@ import { getActiveVoice } from "@/lib/voice";
 import { getOrgSettings } from "@/lib/org";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { withGuard } from "@/lib/api/guard";
-import { hasOptedOut, recordingDisclosure } from "@/lib/agent/guardrails";
+import { hasOptedOut, recordingDisclosure, callConsentRequired, hasCallConsent } from "@/lib/agent/guardrails";
 import { enforcementOn } from "@/lib/billing/enforce";
 import { isWithinVoiceMinutes } from "@/lib/billing/voice-minutes";
 import { voicemailScript } from "@/lib/voice/voicemail";
@@ -44,6 +44,17 @@ export const POST = withGuard(async (req: Request) => {
   }
   if (hasOptedOut(contact ?? undefined, opp ?? undefined, activities)) {
     return NextResponse.json({ error: "This contact has opted out or is marked do-not-contact." }, { status: 403 });
+  }
+
+  // Strict consent mode (opt-in via CALL_REQUIRE_CONSENT): even a manual AI call
+  // requires a recorded per-contact consent marker. Off by default — the power
+  // dialer normally relies on rep judgment — so this only blocks when an operator
+  // has chosen the strictest posture.
+  if (callConsentRequired() && !hasCallConsent(contact ?? undefined)) {
+    return NextResponse.json(
+      { error: "Strict consent mode is on: record call consent on this contact before placing an AI call." },
+      { status: 403 },
+    );
   }
 
   // Voice-minutes allowance: every connected minute has real COGS (telephony +

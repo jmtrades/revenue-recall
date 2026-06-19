@@ -220,6 +220,79 @@ export function recallWinBySource(touches: RecallTouch[], wins: AttributableWin[
   };
 }
 
+/**
+ * Recall flywheel (v3) — the durable moat signal. Same last-touch rule as the
+ * channel/source attribution, but grouped by the recovery DIMENSIONS recorded on
+ * each touch: the vertical the org sells into, and (for cadence touches) which
+ * step in the sequence fired. Accumulated over time and across the customer base
+ * this answers "what messaging, at what step, recovers the most revenue in THIS
+ * vertical" — the per-vertical playbook competitors can't copy. Pure + tested.
+ */
+export interface RecallGroupWins {
+  /** The group key — an industry id, or "step N", etc. */
+  key: string;
+  deals: number;
+  recoveredValue: number;
+  share: number;
+}
+
+/** Generic last-touch win-back grouping by an arbitrary key derived from the
+ *  deal's last recall touch. Returns groups sorted by recovered value, plus the
+ *  attributed/unattributed totals. */
+function winsByKey(touches: RecallTouch[], wins: AttributableWin[], keyOf: (t: RecallTouch) => string | undefined): {
+  groups: RecallGroupWins[];
+  attributedValue: number;
+  attributedDeals: number;
+  unattributedDeals: number;
+} {
+  const byDeal = new Map<string, RecallTouch[]>();
+  for (const t of touches) {
+    if (!t.dealId) continue;
+    const list = byDeal.get(t.dealId) ?? [];
+    list.push(t);
+    byDeal.set(t.dealId, list);
+  }
+  const dealsByKey = new Map<string, number>();
+  const valueByKey = new Map<string, number>();
+  let attributedValue = 0;
+  let attributedDeals = 0;
+  let unattributedDeals = 0;
+  for (const win of wins) {
+    const candidates = (byDeal.get(win.dealId) ?? []).filter((t) => t.occurredAt <= win.wonAt);
+    if (candidates.length === 0) {
+      unattributedDeals += 1;
+      continue;
+    }
+    const last = candidates.reduce((a, b) => (a.occurredAt >= b.occurredAt ? a : b));
+    const key = keyOf(last);
+    if (key === undefined) {
+      // Touch carries no value for this dimension (e.g. a pre-flywheel row) — still
+      // a real recovery, just not sliceable here.
+      unattributedDeals += 1;
+      continue;
+    }
+    dealsByKey.set(key, (dealsByKey.get(key) ?? 0) + 1);
+    valueByKey.set(key, (valueByKey.get(key) ?? 0) + win.value);
+    attributedValue += win.value;
+    attributedDeals += 1;
+  }
+  const groups: RecallGroupWins[] = [...valueByKey.keys()]
+    .map((key) => ({ key, deals: dealsByKey.get(key) ?? 0, recoveredValue: valueByKey.get(key) ?? 0, share: attributedValue > 0 ? (valueByKey.get(key) ?? 0) / attributedValue : 0 }))
+    .sort((a, b) => b.recoveredValue - a.recoveredValue);
+  return { groups, attributedValue, attributedDeals, unattributedDeals };
+}
+
+/** Recovered revenue by vertical (the org's industry, captured on each touch). */
+export function recallWinByVertical(touches: RecallTouch[], wins: AttributableWin[]) {
+  return winsByKey(touches, wins, (t) => (t.industry?.trim() ? t.industry.trim() : undefined));
+}
+
+/** Recovered revenue by cadence step — which step in the recall sequence closed
+ *  the loop. Only cadence touches carry a step index. */
+export function recallWinByCadenceStep(touches: RecallTouch[], wins: AttributableWin[]) {
+  return winsByKey(touches, wins, (t) => (typeof t.stepIndex === "number" ? `Step ${t.stepIndex + 1}` : undefined));
+}
+
 /** Who is actually winning revenue back — the recovered-revenue counterpart to
  *  the at-risk-by-rep table. Groups won-back deals by owner, sorted by value. */
 export interface OwnerRecovery {

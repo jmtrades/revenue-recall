@@ -6,6 +6,7 @@ import { listIntegrations, resolveProvider } from "@/lib/crm/registry";
 import { isAiConfigured } from "@/lib/ai/client";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { channelStatus } from "@/lib/comms";
+import { getChannelReadiness } from "@/lib/channels/readiness";
 import { sendingDomain, expectedRecords } from "@/lib/deliverability";
 import { DeliverabilitySettings } from "@/components/settings/DeliverabilitySettings";
 import { SuppressionList } from "@/components/settings/SuppressionList";
@@ -70,6 +71,7 @@ import { inboundWebhookUrl, type InboundKind } from "@/lib/inbound-routing";
 import { listInvites } from "@/lib/invites-server";
 import { listMembers } from "@/lib/members-server";
 import { getSessionRole } from "@/lib/authz";
+import { isOperator } from "@/lib/operator";
 import { MembersList } from "@/components/MembersList";
 
 export const metadata = { title: "Settings" };
@@ -80,8 +82,17 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
   const org = await getOrgSettings();
   const voice = await getStoredVoice();
   const active = getIndustry(org.industryId);
+  // Platform-infra surfaces (env-var wiring, the calling-gateway diagnostics,
+  // raw webhook endpoints) are for whoever runs this deployment — never the
+  // customers signed into it. Operators (and the open demo) see them; everyone
+  // else sees plain-English channel status instead of vendor/infra identifiers.
+  const operator = !isAuthRequired() || (await isOperator());
 
   const ch = channelStatus();
+  // One readiness check feeds both these rows and Go Live, and is what the send
+  // routes gate on — so "Live" here always means real outbound actually dispatches
+  // (verified domain / A2P / a reachable call gateway), never just "a key is set".
+  const channelReadiness = await getChannelReadiness({ address: org.compliance.address });
   // Per-org connections (sanitized: which fields are set, never secret values).
   const connections = (await listConnections().catch(() => [])).map((c) => ({
     provider: c.provider,
@@ -431,38 +442,42 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
         </p>
         <ul className="divide-y divide-border">
           {([
-            ["Email", channels.email],
-            ["SMS", channels.sms],
-            ["Voice / Calls", channels.voice],
-          ] as const).map(([label, c]) => (
-            <li key={label} className="flex items-center justify-between py-3">
-              <div>
+            ["Email", channelReadiness.email],
+            ["SMS", channelReadiness.sms],
+            ["Voice / Calls", channelReadiness.voice],
+          ] as const).map(([label, r]) => (
+            <li key={label} className="flex items-start justify-between gap-4 py-3">
+              <div className="min-w-0">
                 <span className="text-sm font-medium text-fg">{label}</span>
-                <div className="mt-1 text-xs text-muted">Provider: {c.provider}</div>
+                <div className="mt-1 text-xs text-muted">{r.detail}</div>
               </div>
-              <span className={`pill ${c.live ? "bg-success/15 text-success" : "bg-surface-2 text-muted"}`}>{c.live ? "Live" : "Logging only"}</span>
+              <span className={`pill shrink-0 ${r.state === "live" ? "bg-success/15 text-success" : r.state === "setup" ? "bg-warn/15 text-warn" : "bg-surface-2 text-muted"}`}>{r.label}</span>
             </li>
           ))}
         </ul>
         <TestSend />
       </Card>
 
-      <Card className="mt-4">
-        <h2 className="font-semibold text-fg">Calling gateway</h2>
-        <p className="mt-1 text-sm text-muted">
-          A live check that outbound AI calls are wired end to end — it pings your gateway, so a wrong or down URL shows red instead of a false green.
-        </p>
-        <div className="mt-4">
-          <CallingStatus />
-        </div>
-      </Card>
+      {operator && (
+        <Card className="mt-4">
+          <h2 className="font-semibold text-fg">Calling gateway</h2>
+          <p className="mt-1 text-sm text-muted">
+            A live check that outbound AI calls are wired end to end — it pings your gateway, so a wrong or down URL shows red instead of a false green.
+          </p>
+          <div className="mt-4">
+            <CallingStatus />
+          </div>
+        </Card>
+      )}
 
       <Card className="mt-4">
         <h2 className="font-semibold text-fg">Social channels</h2>
         <p className="mt-1 text-sm text-muted">
           One inbox for every platform. Connect your own account below — credentials are encrypted at rest — and inbound DMs flow
-          into your unified inbox; replies go back out on the same channel. Then point each platform&apos;s webhook at{" "}
-          <code className="text-fg">/api/social/&lt;platform&gt;</code>.
+          into your unified inbox; replies go back out on the same channel.
+          {operator && (
+            <> Then point each platform&apos;s webhook at <code className="text-fg">/api/social/&lt;platform&gt;</code>.</>
+          )}
         </p>
         <div className="mt-4">
           <ConnectionsManager initial={connections} encryptionAvailable={encAvailable} kind="social" oauthProviders={oauthProviders} />
@@ -667,7 +682,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
       <Tabs
         initial={billingReturn ? "billing" : searchParams.tab}
         tabs={[
-          { id: "setup", label: "Setup", content: setupTab },
+          ...(operator ? [{ id: "setup", label: "Setup", content: setupTab }] : []),
           { id: "general", label: "General", content: general },
           { id: "appearance", label: "Appearance", content: appearanceTab },
           { id: "voice", label: "Voice", content: voiceTab },

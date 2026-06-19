@@ -1,5 +1,6 @@
 import { AgentsView } from "@/components/AgentsView";
 import { listTasks, listRuns } from "@/lib/agent/store";
+import { summarizeRuns } from "@/lib/agent/summary";
 import { resolveProvider } from "@/lib/crm/registry";
 import { guardrailConfig } from "@/lib/agent/guardrails";
 import { getOrgSettings } from "@/lib/org";
@@ -17,10 +18,10 @@ export default async function AgentsPage() {
   const stages = pipelines[0]?.stages.filter((s) => s.type === "open").map((s) => ({ id: s.id, label: s.label })) ?? [];
   const g = guardrailConfig();
 
-  // Live summary across the run ledger — what the autonomous force has actually done.
-  const actionsTaken = runs.reduce((s, r) => s + r.actions.length, 0);
-  const dealsWorked = runs.reduce((s, r) => s + r.itemsProcessed, 0);
-  const recoverableTouched = runs.reduce((s, r) => s + (r.recoverable ?? 0), 0);
+  // Live summary across the run ledger — what the autonomous force has actually
+  // done. Deduped by deal (see summarizeRuns) so "deals worked" / "recoverable
+  // touched" can't inflate past the real deal count and contradict the recall queue.
+  const { actionsTaken, dealsWorked, recoverableTouched } = summarizeRuns(runs);
   const activeAuto = tasks.filter((t) => t.enabled && t.autonomy === "auto").length;
   const summary = {
     activeTasks: tasks.filter((t) => t.enabled).length,

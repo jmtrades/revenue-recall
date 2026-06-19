@@ -13,6 +13,10 @@
     "supabase": {
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=dclvsvcemzvddivtjjwn"
+    },
+    "composio": {
+      "type": "http",
+      "url": "https://connect.composio.dev/mcp"
     }
   }
 }

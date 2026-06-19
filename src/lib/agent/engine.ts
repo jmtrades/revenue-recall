@@ -17,7 +17,8 @@ import { createRun, createOutboxItem, touchTask } from "@/lib/agent/store";
 import { batchActivities } from "@/lib/crm/activities";
 import { contactInsights, reachHint } from "@/lib/insights";
 import { contactPreferredLanguage } from "@/lib/languages";
-import { isEntitled } from "@/lib/billing/enforce";
+import { isEntitled, enforcementOn } from "@/lib/billing/enforce";
+import { isWithinVoiceMinutes } from "@/lib/billing/voice-minutes";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
 import { recordRecallTouch } from "@/lib/recall/events";
 import type { AgentAction, AgentRun, AgentTask } from "@/lib/agent/types";
@@ -124,6 +125,13 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
     const cc = complianceConfig({ address: org.compliance.address });
     const emailReady = !cc.enabled || (Boolean(cc.address) && emailDomainVerified());
     const smsPlatformReady = !cc.enabled || smsA2pRegistered();
+    // Voice-minute margin gate: every connected autonomous minute has real COGS,
+    // so when billing enforcement is on, autopilot stops auto-dialing once the
+    // plan's included minutes are used up — the same gate the manual dialer
+    // honors (calls/place). NOT keyed on task.channel: auto mode can fall back to
+    // a CALL for an email/SMS task when only a phone is on file (see the channel
+    // fallback below), so this is checked once per run whenever enforcement is on.
+    const voiceMinutesOk = !enforcementOn() || (await isWithinVoiceMinutes());
 
     for (const t of targets) {
       recoverable += t.recoverable;
@@ -224,7 +232,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
 
       let result: AgentAction["result"] = "drafted";
       if (channel === "call") {
-        if (canAuto && to && callConsent) {
+        if (canAuto && to && callConsent && voiceMinutesOk) {
           // Place the call autonomously (real dial when Twilio is set; logged
           // otherwise) — from THIS org's caller ID, like the SMS branch below.
           // Give the call brain full MEMORY so it never dials blind: who they
@@ -275,7 +283,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
               occurredAt: new Date().toISOString(),
             });
             // Attribute autopilot work on an at-risk deal so won-back ROI counts it.
-            if (t.reason) await recordRecallTouch({ dealId: t.opp.id, contactId: t.opp.contactId, channel: "call", source: "autopilot" });
+            if (t.reason) await recordRecallTouch({ dealId: t.opp.id, contactId: t.opp.contactId, channel: "call", source: "autopilot", industry: org.industryId });
           }
         } else {
           // Review mode / no number / claim held / NO CALL CONSENT → hand the
@@ -317,7 +325,7 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
               occurredAt: new Date().toISOString(),
             });
             // Attribute autopilot work on an at-risk deal so won-back ROI counts it.
-            if (t.reason) await recordRecallTouch({ dealId: t.opp.id, contactId: t.opp.contactId, channel, source: "autopilot" });
+            if (t.reason) await recordRecallTouch({ dealId: t.opp.id, contactId: t.opp.contactId, channel, source: "autopilot", industry: org.industryId });
             void recordSent({ orgId: org.id, contactId: t.opp.contactId, dealId: t.opp.id, channel });
           }
         }

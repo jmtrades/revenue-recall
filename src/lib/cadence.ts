@@ -452,7 +452,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
       });
       // The dropped task IS the cadence's outreach action for a call step (there's
       // no auto-dial, and no later approve→send hook), so attribute it now.
-      if (seq.id === "recall") await recordRecallTouch({ dealId: deal?.id, contactId: e.contactId, channel: "call", source: "cadence", occurredAt: now });
+      if (seq.id === "recall") await recordRecallTouch({ dealId: deal?.id, contactId: e.contactId, channel: "call", source: "cadence", occurredAt: now, industry: org.industryId, sequenceId: seq.id, stepIndex: e.stepIndex });
       continue;
     }
 
@@ -539,7 +539,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
         occurredAt: now,
       });
       // Attribute the recall effort only on an ACTUAL send.
-      if (seq.id === "recall") await recordRecallTouch({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, source: "cadence", occurredAt: now });
+      if (seq.id === "recall") await recordRecallTouch({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, source: "cadence", occurredAt: now, industry: org.industryId, sequenceId: seq.id, stepIndex: e.stepIndex });
       void recordSent({ orgId: org.id, contactId: e.contactId, dealId: deal?.id, channel: step.channel });
       sent += 1; // count toward the shared daily cap
       result.sent += 1;

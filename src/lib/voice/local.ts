@@ -14,7 +14,12 @@ import { EMOTIONS, type Emotion, speakable, type SpeakHandle } from "@/lib/voice
 import type { VoiceSynth, SpeakOptions } from "@/lib/voice/synth";
 import { HOUSE_VOICES, DEFAULT_HOUSE_VOICE } from "@/lib/voice/house";
 
-const MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
+// The on-device model weights. Defaults to the Apache-licensed Kokoro on the
+// Hugging Face Hub, but an operator who wants ZERO third-party-CDN dependency can
+// mirror the weights on their own origin and point NEXT_PUBLIC_KOKORO_MODEL at it
+// (a hub repo id or a same-origin base path). Either way a failed load degrades
+// gracefully to the next voice engine (see the catch in preloadLocalVoice).
+const MODEL_ID = process.env.NEXT_PUBLIC_KOKORO_MODEL || "onnx-community/Kokoro-82M-v1.0-ONNX";
 
 interface RawAudioLike {
   audio: Float32Array;
