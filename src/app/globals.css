@@ -18,6 +18,55 @@
   /* Strong custom easings (Emil Kowalski) — the built-in CSS easings lack punch. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Motion durations. */
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 600ms;
+
+  /* Solid color aliases — theme-aware (they read the -rgb triplets above, which
+     the [data-theme] blocks override). Design-system components reference these. */
+  --color-brand: rgb(var(--brand-rgb));
+  --color-brand-soft: rgb(var(--brand-soft-rgb));
+  --color-bg: rgb(var(--bg-rgb));
+  --color-surface: rgb(var(--surface-rgb));
+  --color-surface-2: rgb(var(--surface-2-rgb));
+  --color-border: rgb(var(--border-rgb));
+  --color-muted: rgb(var(--muted-rgb));
+  --color-fg: rgb(var(--fg-rgb));
+  --color-body: rgb(var(--body-rgb));
+
+  /* Semantic status, as CSS vars (fixed across themes) so components can use them
+     directly — same values the Tailwind theme exposes as success/warn/danger. */
+  --success: #34d399;
+  --warn: #fbbf24;
+  --danger: #f87171;
+  --success-rgb: 52 211 153;
+  --warn-rgb: 251 191 36;
+  --danger-rgb: 248 113 113;
+
+  /* Layered ambient shadows — the depth-hierarchy tokens the existing .card /
+     .raised / .lift / .bezel / .ring-glow / .shadow-soft utilities inline; named
+     here so design-system components share one source of truth (values identical). */
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.2), 0 12px 32px -18px rgb(0 0 0 / 0.7);
+  --shadow-card: inset 0 1px 0 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 0 0 / 0.25), 0 12px 32px -20px rgb(0 0 0 / 0.7);
+  --shadow-raised: inset 0 1px 0 0 rgb(255 255 255 / 0.06), 0 1px 2px rgb(0 0 0 / 0.3), 0 18px 40px -24px rgb(0 0 0 / 0.8);
+  --shadow-lift: inset 0 1px 0 0 rgb(255 255 255 / 0.07), 0 1px 2px rgb(0 0 0 / 0.3), 0 28px 50px -28px rgb(0 0 0 / 0.85);
+  --shadow-bezel: inset 0 1px 0 0 rgb(255 255 255 / 0.07), 0 40px 90px -40px rgb(0 0 0 / 0.95);
+  --shadow-ring-glow: 0 0 0 1px rgb(var(--brand-rgb) / 0.45), 0 30px 60px -34px rgb(0 0 0 / 0.85);
+  --highlight-top: inset 0 1px 0 0 rgb(255 255 255 / 0.05);
+  --hero-glow:
+    radial-gradient(34rem 16rem at 50% -6rem, rgb(var(--brand-rgb) / 0.10) 0%, transparent 70%),
+    radial-gradient(60rem 28rem at 50% -9rem, rgb(var(--brand-rgb) / 0.06) 0%, transparent 72%);
+
+  /* Categorical palette — avatars, charts, multi-series. */
+  --cat-1: #5b8cff;
+  --cat-2: #34d399;
+  --cat-3: #fbbf24;
+  --cat-4: #f87171;
+  --cat-5: #a78bfa;
+  --cat-6: #22d3ee;
+  --cat-7: #fb923c;
 }
 
 [data-theme="light"] {
@@ -336,6 +385,72 @@ textarea:focus-visible,
 @keyframes rr-eq {
   0%, 100% { transform: scaleY(0.4); }
   50% { transform: scaleY(1); }
+}
+
+/* ── Design-system: motion primitives + the signature graphic system ──────────
+   Net-new from the Revenue Recall design system. Consumed by RecallOrbit,
+   SignalWave, CallCard, and the live/loading states. The catch-all
+   reduced-motion reset at the end of this file already calms these; the explicit
+   guards below make the intent legible per-class. */
+@keyframes rr-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.82); } }
+@keyframes rr-ping { 0% { transform: scale(1); opacity: 0.7; } 75%, 100% { transform: scale(2.4); opacity: 0; } }
+@keyframes rr-sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes rr-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+@keyframes rr-dialog-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+/* Live status dot — a soft ping behind a solid brand core. */
+.rr-live-dot { position: relative; display: inline-flex; width: 7px; height: 7px; }
+.rr-live-dot::before { content: ""; position: absolute; inset: 0; border-radius: 999px; background: rgb(var(--brand-rgb) / 0.7); animation: rr-ping 2s var(--ease-out) infinite; }
+.rr-live-dot::after { content: ""; position: relative; width: 7px; height: 7px; border-radius: 999px; background: rgb(var(--brand-rgb)); }
+
+/* Skeleton shimmer (loading state). */
+.rr-skeleton {
+  background: linear-gradient(90deg, rgb(var(--surface-2-rgb)) 25%, color-mix(in oklab, rgb(var(--surface-2-rgb)) 60%, #fff 9%) 50%, rgb(var(--surface-2-rgb)) 75%);
+  background-size: 200% 100%;
+  animation: rr-shimmer 1.4s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* Dialog/popover entrance. */
+.rr-dialog-in { animation: rr-dialog-in var(--dur-base) var(--ease-spring) both; }
+
+/* Signature graphic: orbit sweep + breathing pulse (RecallOrbit). */
+.rr-orbit-sweep { transform-origin: center; animation: rr-sweep 14s linear infinite; }
+.rr-orbit-pulse { transform-origin: center; animation: rr-pulse 2.4s var(--ease-in-out) infinite; }
+
+/* Concentric "signal rings" backdrop — the recall pulse radiating out. Tint via
+   `color`; radially masked so it dissolves toward the edges. */
+.rr-rings {
+  background-image:
+    radial-gradient(circle, transparent 0, transparent 38px, currentColor 38px, currentColor 39px, transparent 39px),
+    radial-gradient(circle, transparent 0, transparent 78px, currentColor 78px, currentColor 79px, transparent 79px),
+    radial-gradient(circle, transparent 0, transparent 118px, currentColor 118px, currentColor 119px, transparent 119px),
+    radial-gradient(circle, transparent 0, transparent 158px, currentColor 158px, currentColor 159px, transparent 159px);
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.12;
+  -webkit-mask-image: radial-gradient(circle at center, #000 30%, transparent 72%);
+  mask-image: radial-gradient(circle at center, #000 30%, transparent 72%);
+}
+
+/* Hairline seam that glows toward brand at the center (section dividers). */
+.rr-seam { height: 1px; background: linear-gradient(90deg, transparent, rgb(var(--brand-rgb) / 0.5) 50%, transparent); }
+
+/* Fine film grain over dark surfaces (the parent needs position: relative). */
+.rr-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rr-orbit-sweep, .rr-orbit-pulse, .rr-skeleton, .rr-dialog-in, .rr-live-dot::before { animation: none; }
 }
 
 /* Section scroll-reveals are JS-driven (components/motion/Motion.tsx) so the
