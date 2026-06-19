@@ -65,6 +65,15 @@ const formHeaders = securityHeaders
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  async redirects() {
+    return [
+      // /billing is the memorable URL for plan & payment; the billing UI itself
+      // lives in Settings → Billing. Alias it with a real HTTP redirect so typed
+      // URLs and "Upgrade"/"View plans" links never 404 — and never render the
+      // whole app shell just to bounce.
+      { source: "/billing", destination: "/settings?tab=billing", permanent: false },
+    ];
+  },
   async headers() {
     return [
       // The embeddable form is framable anywhere…

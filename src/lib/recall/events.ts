@@ -22,6 +22,11 @@ export interface RecallTouch {
   channel: RecallTouchChannel;
   source: RecallTouchSource;
   occurredAt: string;
+  /** Flywheel dimensions — which messaging recovered the deal: the vertical the
+   *  org sells into, and (for cadence touches) the sequence + step that fired. */
+  industry?: string;
+  stepIndex?: number;
+  sequenceId?: string;
 }
 
 export interface NewRecallTouch {
@@ -30,6 +35,9 @@ export interface NewRecallTouch {
   channel: RecallTouchChannel;
   source?: RecallTouchSource;
   occurredAt?: string;
+  industry?: string;
+  stepIndex?: number;
+  sequenceId?: string;
 }
 
 const mem: RecallTouch[] = [];
@@ -53,6 +61,9 @@ function mapRow(r: Record<string, unknown>): RecallTouch {
     channel: r.channel as RecallTouchChannel,
     source: (r.source as RecallTouchSource) ?? "cadence",
     occurredAt: r.occurred_at as string,
+    industry: (r.industry as string) ?? undefined,
+    stepIndex: typeof r.step_index === "number" ? r.step_index : undefined,
+    sequenceId: (r.sequence_id as string) ?? undefined,
   };
 }
 
@@ -62,12 +73,12 @@ export async function recordRecallTouch(input: NewRecallTouch): Promise<void> {
   const source = input.source ?? "cadence";
   try {
     if (!isSupabaseConfigured()) {
-      mem.unshift({ id: `rt_${Date.now()}_${mem.length}`, dealId: input.dealId, contactId: input.contactId, channel: input.channel, source, occurredAt });
+      mem.unshift({ id: `rt_${Date.now()}_${mem.length}`, dealId: input.dealId, contactId: input.contactId, channel: input.channel, source, occurredAt, industry: input.industry, stepIndex: input.stepIndex, sequenceId: input.sequenceId });
       return;
     }
     await getSupabase()!
       .from("recall_events")
-      .insert({ org_id: await orgId(), deal_id: input.dealId ?? null, contact_id: input.contactId ?? null, channel: input.channel, source, occurred_at: occurredAt });
+      .insert({ org_id: await orgId(), deal_id: input.dealId ?? null, contact_id: input.contactId ?? null, channel: input.channel, source, occurred_at: occurredAt, industry: input.industry ?? null, step_index: input.stepIndex ?? null, sequence_id: input.sequenceId ?? null });
   } catch {
     // Attribution is non-critical; swallow so a logging failure never blocks outreach.
   }

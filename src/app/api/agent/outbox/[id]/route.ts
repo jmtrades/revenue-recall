@@ -5,6 +5,8 @@ import { resolveProvider } from "@/lib/crm/registry";
 import { sendReply, isSocialChannel } from "@/lib/outbound";
 import { hasOptedOut } from "@/lib/agent/guardrails";
 import { recordRecallTouch } from "@/lib/recall/events";
+import { sendReadiness } from "@/lib/channels/readiness";
+import { getOrgSettings } from "@/lib/org";
 import { platformTag } from "@/lib/social/ingest";
 import type { SocialPlatform } from "@/lib/social/types";
 import type { Activity } from "@/lib/crm/types";
@@ -55,6 +57,20 @@ export const POST = withGuard(async (req: Request, { params }: { params: { id: s
     return NextResponse.json({ error: "This contact has opted out — not sending." }, { status: 403 });
   }
 
+  // Compliance gate (real email/SMS only): the SAME prerequisite check the direct
+  // send route enforces, so approving a queued draft can't bypass it — no sending
+  // from an unverified domain / unregistered A2P number. Social has no such
+  // prerequisite. Left PENDING (not dismissed) so it can be approved once setup is
+  // done. Org is fetched once here and reused for recall attribution below.
+  const isEmailSms = item.channel === "email" || item.channel === "sms";
+  const org = isEmailSms ? await getOrgSettings().catch(() => null) : null;
+  if (isEmailSms) {
+    const readiness = sendReadiness(item.channel as "email" | "sms", org?.compliance?.address);
+    if (readiness.state === "setup") {
+      return NextResponse.json({ error: readiness.detail, blockers: readiness.blockers }, { status: 403 });
+    }
+  }
+
   // Use the human-edited content when the approver tweaked it in the queue,
   // else the original draft. Empty body is rejected (nothing to send).
   const sendBody = (parsed.data.body ?? item.body).trim();
@@ -81,8 +97,8 @@ export const POST = withGuard(async (req: Request, { params }: { params: { id: s
   // A draft that came from a recall effort is attributed only here — on the actual
   // send — so a queued-but-never-approved recall draft never inflates recovered
   // revenue. (Recall outreach is email/sms; social drafts aren't recall touches.)
-  if (item.recall && (item.channel === "email" || item.channel === "sms")) {
-    await recordRecallTouch({ dealId: item.dealId, contactId: item.contactId, channel: item.channel, source: "manual" });
+  if (item.recall && isEmailSms) {
+    await recordRecallTouch({ dealId: item.dealId, contactId: item.contactId, channel: item.channel as "email" | "sms", source: "manual", industry: org?.industryId });
   }
   await setOutboxStatus(item.id, "sent");
   return NextResponse.json({ ok: true, status: "sent", provider: res.provider });

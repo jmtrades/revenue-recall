@@ -66,15 +66,18 @@ export default async function DealPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {/* Stage progress */}
-      {stage?.type === "open" && (
-        <div className="flex items-center gap-1">
-          {openStages.map((s, i) => (
-            <div key={s.id} className="flex flex-1 flex-col gap-1">
-              <div className={`h-1.5 rounded-full ${i <= currentIdx ? "bg-brand" : "bg-surface-2"}`} />
-              <span className={`text-[10px] ${i === currentIdx ? "text-fg" : "text-muted"}`}>{s.label}</span>
-            </div>
-          ))}
+      {/* Stage progress — a passive indicator (a single continuous track, not a
+          per-step stepper that reads as clickable). The stage is changed from the
+          control in the right-hand panel, which is the one interactive affordance. */}
+      {stage?.type === "open" && openStages.length > 0 && (
+        <div>
+          <div className="mb-1.5 flex items-center justify-between text-xs text-muted">
+            <span>Pipeline progress</span>
+            <span>Stage {currentIdx + 1} of {openStages.length} · <span className="text-fg">{openStages[currentIdx]?.label ?? stage?.label}</span></span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
+            <div className="h-full rounded-full bg-brand transition-[width] duration-500" style={{ width: `${((currentIdx + 1) / openStages.length) * 100}%` }} />
+          </div>
         </div>
       )}
 
@@ -106,7 +109,7 @@ export default async function DealPage({ params }: { params: { id: string } }) {
         </div>
 
         <div className="space-y-6">
-          <AiBrief dealId={opp.id} />
+          <AiBrief dealId={opp.id} version={`${opp.stageId}:${opp.value}:${activities.length}`} />
 
           {journey.totalTouches > 0 && (
             <Card title="Recall journey">
