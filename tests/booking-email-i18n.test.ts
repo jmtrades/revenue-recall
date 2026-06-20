@@ -22,6 +22,7 @@ vi.mock("@/lib/meetings/store", () => ({
   getAvailability: vi.fn(async () => open247),
   getMeetingTypeBySlug: vi.fn(async () => null), // default type
   busyIntervals: vi.fn(async () => []),
+  findConfirmedBookingForSlot: vi.fn(async () => null),
   insertBooking: vi.fn(async (row: Record<string, unknown>) => ({ id: "bk_1", status: "confirmed", createdAt: "", ...row })),
 }));
 
