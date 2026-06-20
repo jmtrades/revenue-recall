@@ -76,6 +76,17 @@ describe("rowsToImport / parseImportCsv", () => {
     expect(rows).toEqual([{ name: "Real Person", email: "real@example.com" }]);
   });
 
+  it("imports a BOM-prefixed export cleanly (Excel/Windows write a UTF-8 BOM)", () => {
+    // Without BOM handling the first header would be "﻿name" and never match
+    // an alias, so the Name/Email column would silently fail to map — the classic
+    // "imported my Excel file and half the data is missing". (We rely on trim()
+    // stripping U+FEFF; this pins that so a refactor can't regress it.)
+    const csv = "﻿" + "Name,Email\nJane Doe,jane@acme.com";
+    expect(parseImportCsv(csv).rows).toEqual([{ name: "Jane Doe", email: "jane@acme.com" }]);
+    // And it must really be testing a BOM, not a no-op.
+    expect(csv.charCodeAt(0)).toBe(0xfeff);
+  });
+
   it("parses currency-formatted values into plain numbers", () => {
     const { rows } = parseImportCsv("name,deal value\nA,\"1,234.56\"\nB,€900\nC,n/a");
     expect(rows[0].value).toBe(1234.56);
