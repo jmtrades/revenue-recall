@@ -105,7 +105,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
             phone, following up until they reply. {ind.blurb}
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <Link href="/signup" className="cta rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand/90">Start free</Link>
+            <Link href="/signup" className="cta rounded-full bg-brand-strong px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-strong/90">Start free</Link>
             <Link href="/#how" className="cta rounded-full border border-border px-6 py-3 text-sm font-semibold text-fg transition hover:bg-surface-2">See how it works</Link>
           </div>
         </section>
@@ -219,7 +219,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
         <ScaleIn className="mt-20 rounded-3xl border border-brand/30 bg-brand-soft/20 p-10 text-center">
           <h2 className="text-3xl font-semibold tracking-tight text-fg">Put your {ind.label.toLowerCase()} pipeline on autopilot.</h2>
           <p className="mx-auto mt-3 max-w-xl text-muted">Start free. The system maps your pipeline, learns your voice, and starts recovering revenue the same day.</p>
-          <Link href="/signup" className="cta mt-6 inline-flex rounded-full bg-brand px-7 py-3 text-sm font-semibold text-white transition hover:bg-brand/90">Start free</Link>
+          <Link href="/signup" className="cta mt-6 inline-flex rounded-full bg-brand-strong px-7 py-3 text-sm font-semibold text-white transition hover:bg-brand-strong/90">Start free</Link>
         </ScaleIn>
 
         {/* Cross-links (internal SEO) */}

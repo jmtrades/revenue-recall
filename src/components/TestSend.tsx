@@ -48,7 +48,7 @@ export function TestSend() {
           placeholder={channel === "email" ? "you@example.com" : "+15551234567"}
           className={`${input} flex-1 min-w-[12rem]`}
         />
-        <button onClick={send} disabled={busy || !to.trim()} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
+        <button onClick={send} disabled={busy || !to.trim()} className="rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50">
           {busy ? "Sending…" : "Send test"}
         </button>
       </div>

@@ -105,7 +105,7 @@ export function BillingSettings({ configured, plan, status, seats, currentPeriod
               <button
                 key={c}
                 onClick={() => setCycle(c)}
-                className={`rounded-md px-3 py-1.5 capitalize transition ${cycle === c ? "bg-brand text-white" : "text-muted hover:text-fg"}`}
+                className={`rounded-md px-3 py-1.5 capitalize transition ${cycle === c ? "bg-brand-strong text-white" : "text-muted hover:text-fg"}`}
               >
                 {c}
               </button>
@@ -147,7 +147,7 @@ export function BillingSettings({ configured, plan, status, seats, currentPeriod
                   <button
                     onClick={() => upgrade(p.id)}
                     disabled={!configured || busy !== null}
-                    className="block w-full rounded-lg bg-brand px-3 py-1.5 text-center text-xs font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
+                    className="block w-full rounded-lg bg-brand-strong px-3 py-1.5 text-center text-xs font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50"
                   >
                     {busy === "/api/billing/checkout" ? "Starting…" : `Upgrade to ${p.name}`}
                   </button>

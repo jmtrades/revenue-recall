@@ -37,7 +37,7 @@ export function ReferAndEarn({ link }: { link: string }) {
         />
         <button
           onClick={copy}
-          className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90"
+          className="shrink-0 rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90"
         >
           {copied ? "Copied" : "Copy link"}
         </button>

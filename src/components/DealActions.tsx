@@ -221,7 +221,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
             <button
               key={k.id}
               onClick={() => setKind(k.id)}
-              className={`rounded-lg px-2.5 py-1 text-xs ${kind === k.id ? "bg-brand text-white" : "bg-surface-2 text-muted hover:text-fg"}`}
+              className={`rounded-lg px-2.5 py-1 text-xs ${kind === k.id ? "bg-brand-strong text-white" : "bg-surface-2 text-muted hover:text-fg"}`}
             >
               {k.label}
             </button>
@@ -253,7 +253,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
             <button
               onClick={send}
               disabled={busy || !summary.trim()}
-              className="flex-1 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
+              className="flex-1 rounded-lg bg-brand-strong px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50"
             >
               {busy ? "Sending…" : `Send ${kind === "email" ? "email" : "text"}`}
             </button>
@@ -270,7 +270,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
           <button
             onClick={log}
             disabled={busy || !summary.trim()}
-            className="mt-2 w-full rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
+            className="mt-2 w-full rounded-lg bg-brand-strong px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50"
           >
             {busy ? "Saving…" : "Log activity"}
           </button>

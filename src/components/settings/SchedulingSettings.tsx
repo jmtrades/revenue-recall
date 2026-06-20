@@ -192,7 +192,7 @@ function AvailabilityCard({ availability }: { availability: Availability }) {
 
       {error && <p className="mt-3 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
       <div className="mt-4 flex items-center gap-3">
-        <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
+        <button onClick={save} disabled={busy} className="rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50">
           {busy ? "Saving…" : "Save availability"}
         </button>
         {saved && <span className="text-sm text-success">Saved.</span>}
@@ -255,7 +255,7 @@ function MeetingTypesCard({ meetingTypes }: { meetingTypes: MeetingType[] }) {
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-fg">Meeting types</h2>
         {!form && (
-          <button onClick={() => { setForm(EMPTY_TYPE); setError(null); }} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white transition hover:bg-brand/90">
+          <button onClick={() => { setForm(EMPTY_TYPE); setError(null); }} className="rounded-lg bg-brand-strong px-3 py-1.5 text-sm font-medium text-white transition hover:bg-brand-strong/90">
             New type
           </button>
         )}
@@ -283,7 +283,7 @@ function MeetingTypesCard({ meetingTypes }: { meetingTypes: MeetingType[] }) {
           <input className={field} placeholder="Location detail (optional — dial-in, video link, address)" value={form.locationDetail} onChange={(e) => setForm({ ...form, locationDetail: e.target.value })} aria-label="Location detail" />
           {error && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">{error}</p>}
           <div className="flex gap-2">
-            <button onClick={create} disabled={busy || !form.name.trim()} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
+            <button onClick={create} disabled={busy || !form.name.trim()} className="rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50">
               {busy ? "Saving…" : "Create"}
             </button>
             <button onClick={() => { setForm(null); setError(null); }} className="rounded-lg border border-border px-4 py-2 text-sm text-muted transition hover:text-fg">Cancel</button>

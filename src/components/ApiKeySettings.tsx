@@ -109,7 +109,7 @@ export function ApiKeySettings({ endpoint }: { endpoint: string }) {
             <button
               onClick={generate}
               disabled={busy}
-              className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
+              className="rounded-lg bg-brand-strong px-3 py-1.5 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50"
             >
               {present ? "Regenerate" : "Generate key"}
             </button>

@@ -47,7 +47,7 @@ export function EnrollSequence({ sequenceId }: { sequenceId: string }) {
           </option>
         ))}
       </select>
-      <button onClick={start} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+      <button onClick={start} disabled={busy} className="rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
         {busy ? "Starting…" : "Start cadence"}
       </button>
       {status && <span className="text-sm text-success">{status}</span>}

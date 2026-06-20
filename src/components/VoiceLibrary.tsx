@@ -474,7 +474,7 @@ function BrowseLibrary({ onAdded, defaultOpen = false }: { onAdded: () => void; 
           onChange={(e) => setQuery(e.target.value)}
           maxLength={80}
         />
-        <button type="submit" disabled={loading} className="flex-none rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+        <button type="submit" disabled={loading} className="flex-none rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
           {loading ? "…" : "Search"}
         </button>
       </form>
@@ -642,7 +642,7 @@ function CloneVoice({ onCloned }: { onCloned: () => void }) {
           <button
             onClick={submit}
             disabled={busy || recording}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             {busy ? "Cloning…" : "Create voice"}
           </button>

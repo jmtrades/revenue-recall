@@ -32,7 +32,7 @@ export function SampleDataButton() {
       <button
         onClick={load}
         disabled={pending}
-        className="cta inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-70"
+        className="cta inline-flex items-center gap-2 rounded-full bg-brand-strong px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-strong/90 disabled:opacity-70"
       >
         {pending ? (
           <>

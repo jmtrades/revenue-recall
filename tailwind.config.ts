@@ -15,6 +15,7 @@ const config: Config = {
         body: "rgb(var(--body-rgb) / <alpha-value>)",
         brand: {
           DEFAULT: "rgb(var(--brand-rgb) / <alpha-value>)",
+          strong: "rgb(var(--brand-strong-rgb) / <alpha-value>)",
           soft: "rgb(var(--brand-soft-rgb) / <alpha-value>)",
         },
         success: "#34d399",

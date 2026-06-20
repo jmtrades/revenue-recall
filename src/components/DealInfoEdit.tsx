@@ -98,7 +98,7 @@ export function DealInfoEdit({
       )}
       {error && <p className="text-xs text-danger">{error}</p>}
       <div className="flex gap-2 pt-1">
-        <button onClick={save} disabled={busy || !f.title.trim()} className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
+        <button onClick={save} disabled={busy || !f.title.trim()} className="rounded-lg bg-brand-strong px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50">
           {busy ? "Saving…" : "Save"}
         </button>
         <button onClick={() => { setF(reset()); setError(null); setEditing(false); }} className="rounded-lg border border-border px-3 py-2 text-sm text-muted transition hover:text-fg">

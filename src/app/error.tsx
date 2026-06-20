@@ -22,7 +22,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         <h1 className="mt-5 font-display text-xl font-semibold tracking-tight text-fg">Something went wrong</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">An unexpected error occurred. You can retry, or head back to your dashboard.</p>
         <div className="mt-6 flex justify-center gap-3">
-          <button onClick={reset} className="cta inline-flex items-center gap-1.5 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand/90">
+          <button onClick={reset} className="cta inline-flex items-center gap-1.5 rounded-full bg-brand-strong px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-strong/90">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>
             Try again
           </button>

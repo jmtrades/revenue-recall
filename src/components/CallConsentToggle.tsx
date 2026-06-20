@@ -57,7 +57,7 @@ export function CallConsentToggle({
             className={`rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:opacity-50 ${
               consent
                 ? "border border-border text-muted hover:text-fg"
-                : "bg-brand text-white hover:bg-brand/90"
+                : "bg-brand-strong text-white hover:bg-brand-strong/90"
             }`}
           >
             {busy ? "Saving…" : consent ? "Withdraw consent" : "Record consent"}

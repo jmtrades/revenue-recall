@@ -103,7 +103,7 @@ export function VoiceControls() {
       </div>
 
       <div className="flex items-center gap-3">
-        <button onClick={preview} className="cta inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand/90">
+        <button onClick={preview} className="cta inline-flex items-center gap-1.5 rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white hover:bg-brand-strong/90">
           <Icon name={speaking ? "stop" : "play"} size={12} fill="currentColor" stroke="none" />
           {speaking ? "Stop" : "Preview"}
         </button>
