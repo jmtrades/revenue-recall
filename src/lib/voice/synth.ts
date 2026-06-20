@@ -1,59 +1,60 @@
 import {
-  isSpeechSupported,
-  loadVoices,
-  pickVoice,
-  speak,
   type SpeakHandle,
   type VoicePrefs,
 } from "@/lib/voice/speech";
 
 /**
- * Provider-agnostic speech-synthesis seam. Today the only backend is the
- * browser's built-in engine (in-house, dependency-free). When our own neural
- * voice ships it implements this same interface and registers via setSynth() —
- * every caller (SpeakButton, RolePlay, VoiceControls) keeps working unchanged.
- *
- * See docs/neural-voice.md for the neural backend build plan; this is the exact
- * contract it must satisfy.
+ * Provider-agnostic speech-synthesis seam. Voice is **ElevenLabs-only**: the
+ * hosted ElevenLabs backend (registered via setSynth from neural.ts) is the sole
+ * engine. There is deliberately NO browser-TTS / on-device fallback — when
+ * ElevenLabs isn't configured, getSynth() returns a no-op synth and callers
+ * degrade to silence (or an "unavailable" state) rather than a different,
+ * lower-fidelity voice. Every caller (SpeakButton, RolePlay, VoiceControls) goes
+ * through getSynth(), so this stays the single source of truth.
  */
 
 export type SynthKind = "client" | "neural";
 
 export interface SpeakOptions extends VoicePrefs {
-  /** Voice identity: a preset name, or a cloned rep-voice id (neural backend). */
+  /** Voice identity: a preset name, or a cloned rep-voice id (ElevenLabs). */
   voiceId?: string;
 }
 
 export interface VoiceSynth {
-  /** Stable id for logging/telemetry, e.g. "browser" or "rr-neural-v1". */
+  /** Stable id for logging/telemetry, e.g. "rr-hosted-tts". */
   id: string;
   kind: SynthKind;
-  /** True when usable in the current environment (browser support, keys, etc.). */
+  /** True when usable in the current environment (ElevenLabs key configured). */
   available(): boolean;
   /** Speak the text now; resolves when finished. stop() interrupts immediately. */
   speak(text: string, opts?: SpeakOptions): Promise<SpeakHandle>;
 }
 
-/** The built-in browser engine, wrapped to satisfy the VoiceSynth contract. */
+/**
+ * No-op stand-in for the removed browser-TTS fallback. Voice is ElevenLabs-only,
+ * so when no ElevenLabs backend is available there is nothing to speak with — this
+ * resolves immediately and reports unavailable, keeping callers crash-free without
+ * ever substituting a different voice. (Kept under the `browserSynth` name so the
+ * existing importers keep compiling.)
+ */
 export const browserSynth: VoiceSynth = {
-  id: "browser",
+  id: "none",
   kind: "client",
-  available: () => isSpeechSupported(),
-  async speak(text, opts = {}) {
-    const voices = await loadVoices();
-    const voice = pickVoice(voices, { preferName: opts.voiceId ?? opts.preferName, lang: opts.lang, rate: opts.rate, pitch: opts.pitch });
-    return speak(text, opts, voice);
+  available: () => false,
+  async speak() {
+    return { done: Promise.resolve(), stop: () => {} };
   },
 };
 
 let registered: VoiceSynth | null = null;
 
-/** Register a higher-fidelity backend (e.g. the neural voice) once it exists. */
+/** Register the ElevenLabs backend so getSynth() uses it when configured. */
 export function setSynth(synth: VoiceSynth | null): void {
   registered = synth;
 }
 
-/** Resolve the best available synth: a registered backend if usable, else browser. */
+/** Resolve the speech backend: the registered ElevenLabs synth when usable, else
+ *  the no-op (there is no browser fallback — voice is ElevenLabs-only). */
 export function getSynth(): VoiceSynth {
   if (registered && registered.available()) return registered;
   return browserSynth;

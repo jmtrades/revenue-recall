@@ -56,13 +56,12 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
   const [personalized, setPersonalized] = useState<{ industryLabel: string; sells: string; ai: boolean } | null>(null);
 
   // "Hear how your calls will sound" — the setup-time payoff. Speaks a real
-  // opener (with their own name and company woven in) in the actual on-device
-  // call voice; the browser engine answers only if the model can't run here.
+  // opener (with their own name and company woven in) in the actual ElevenLabs
+  // call voice; stays silent if ElevenLabs isn't configured (no fallback voice).
   const [hearState, setHearState] = useState<"idle" | "warming" | "playing">("idle");
   const hearRef = useRef<SpeakHandle | null>(null);
-  // Register the voice backends (ElevenLabs hosted → Kokoro → browser) so the
-  // "hear your calls" preview uses the best available voice, not just the
-  // on-device fallback. Safe + idempotent; no-op visually.
+  // Register the ElevenLabs voice backend so the "hear your calls" preview speaks.
+  // Safe + idempotent; no-op visually.
   useEffect(() => { enableNeuralVoice(); }, []);
   useEffect(() => () => hearRef.current?.stop(), []);
 
