@@ -109,7 +109,7 @@ export function VoiceDemo({ industryId }: { industryId?: string }) {
 
         {/* the line, as a call bubble */}
         <div className="mt-5 flex gap-3">
-          <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-brand text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.35)]">
+          <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-brand-strong text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.35)]">
             {line.name[0]}
           </span>
           <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-border bg-surface-2/60 px-4 py-3">

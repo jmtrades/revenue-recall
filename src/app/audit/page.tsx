@@ -60,7 +60,7 @@ export default function AuditPage() {
             closeable — then reactivates the best of it, in your voice.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/signup?next=/onboarding" className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-2.5 pl-6 pr-2.5 text-base font-semibold text-white hover:bg-brand/90">
+            <Link href="/signup?next=/onboarding" className="cta group inline-flex items-center gap-2 rounded-full bg-brand-strong py-2.5 pl-6 pr-2.5 text-base font-semibold text-white hover:bg-brand-strong/90">
               Run my free audit
               <span className="grid h-8 w-8 place-items-center rounded-full bg-white/20 transition-transform duration-200 ease-out group-hover:translate-x-0.5"><Arrow /></span>
             </Link>
@@ -119,7 +119,7 @@ export default function AuditPage() {
               engine starts free too: no card, cancel anytime, and your data is always yours.
             </p>
             <div className="mt-8">
-              <Link href="/signup?next=/onboarding" className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-2.5 pl-6 pr-2.5 text-base font-semibold text-white hover:bg-brand/90">
+              <Link href="/signup?next=/onboarding" className="cta group inline-flex items-center gap-2 rounded-full bg-brand-strong py-2.5 pl-6 pr-2.5 text-base font-semibold text-white hover:bg-brand-strong/90">
                 Show me what&apos;s recoverable
                 <span className="grid h-8 w-8 place-items-center rounded-full bg-white/20 transition-transform duration-200 ease-out group-hover:translate-x-0.5"><Arrow /></span>
               </Link>

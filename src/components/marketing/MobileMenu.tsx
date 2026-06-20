@@ -82,7 +82,7 @@ export function MobileMenu() {
               <Link href="/login" onClick={() => setOpen(false)} className="flex-1 rounded-full border border-border px-4 py-2.5 text-center text-sm font-semibold text-fg transition-colors hover:bg-surface-2">
                 Sign in
               </Link>
-              <Link href="/signup" onClick={() => setOpen(false)} className="cta flex-1 rounded-full bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand/90">
+              <Link href="/signup" onClick={() => setOpen(false)} className="cta flex-1 rounded-full bg-brand-strong px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-strong/90">
                 Start free
               </Link>
             </div>

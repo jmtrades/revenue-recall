@@ -83,7 +83,7 @@ export function PipelineStagesEditor({ stages }: { stages: StageView[] }) {
                 <input className={`${input} flex-1`} value={label} onChange={(e) => setLabel(e.target.value)} aria-label="Stage name" />
                 <input className={`${input} w-20`} type="number" min={0} max={100} value={prob} onChange={(e) => setProb(e.target.value)} aria-label="Win probability %" />
                 <span className="text-xs text-muted">%</span>
-                <button onClick={() => saveEdit(s.id)} disabled={busy} className="rounded-lg bg-brand px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-50">Save</button>
+                <button onClick={() => saveEdit(s.id)} disabled={busy} className="rounded-lg bg-brand-strong px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-50">Save</button>
                 <button onClick={() => setEditingId(null)} className="text-xs text-muted hover:text-fg">Cancel</button>
               </span>
             ) : (
@@ -123,7 +123,7 @@ export function PipelineStagesEditor({ stages }: { stages: StageView[] }) {
           placeholder="Add a stage (e.g. Demo scheduled)"
           aria-label="New stage name"
         />
-        <button onClick={add} disabled={busy || !newLabel.trim()} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
+        <button onClick={add} disabled={busy || !newLabel.trim()} className="rounded-lg bg-brand-strong px-3 py-1.5 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50">
           Add stage
         </button>
       </div>

@@ -68,7 +68,7 @@ export function DeliverabilitySettings({ domain, provider, records }: Props) {
               Add these DNS records at your domain registrar so {provider !== "log" ? provider : "your provider"} is authorized to send as {domain}. Authenticated mail is the single biggest factor in landing in the inbox.
             </p>
           </div>
-          <button onClick={check} disabled={checking} className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-60">
+          <button onClick={check} disabled={checking} className="shrink-0 rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-60">
             {checking ? "Checking…" : "Check domain"}
           </button>
         </div>

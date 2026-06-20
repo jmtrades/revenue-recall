@@ -195,7 +195,7 @@ export function BookingWidget({ org, token, brand, meeting, others, slots, s }: 
             <textarea name="notes" rows={2} maxLength={2000} className={field} />
           </div>
           {error && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
-          <button type="submit" disabled={submitting} className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-60">
+          <button type="submit" disabled={submitting} className="w-full rounded-lg bg-brand-strong px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-60">
             {submitting ? s.confirming : s.confirm}
           </button>
           <p className="text-center text-[11px] text-muted">{s.bookingFootnote}</p>

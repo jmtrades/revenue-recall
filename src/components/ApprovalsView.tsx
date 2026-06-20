@@ -57,7 +57,7 @@ export function ApprovalsView({ rows }: { rows: ApprovalRow[] }) {
         iconName="approvals"
         title="Inbox zero — nothing to approve"
         hint="Drafts from review-mode Autopilot tasks land here for one-click send. Create an agent in Autopilot to start the queue."
-        action={<Link href="/agents" className="cta inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90">Open Autopilot</Link>}
+        action={<Link href="/agents" className="cta inline-flex items-center gap-1.5 rounded-full bg-brand-strong px-4 py-2 text-sm font-semibold text-white hover:bg-brand-strong/90">Open Autopilot</Link>}
       />
     );
   }
@@ -79,7 +79,7 @@ export function ApprovalsView({ rows }: { rows: ApprovalRow[] }) {
             <div className="flex items-center gap-2">
               <SpeakButton text={[it.subject, it.body].filter(Boolean).join(". ")} label="Hear it" />
               <button onClick={() => act(it, "dismiss")} disabled={busy === it.id} className="rounded-lg border border-border px-3 py-1.5 text-sm text-muted hover:text-danger disabled:opacity-50">Dismiss</button>
-              <button onClick={() => act(it, "approve")} disabled={busy === it.id || !it.body.trim()} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand/90 disabled:opacity-50">
+              <button onClick={() => act(it, "approve")} disabled={busy === it.id || !it.body.trim()} className="rounded-lg bg-brand-strong px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-strong/90 disabled:opacity-50">
                 {busy === it.id ? "Sending…" : "Approve & send"}
               </button>
             </div>

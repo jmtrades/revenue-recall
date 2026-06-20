@@ -114,7 +114,7 @@ export function QuickCreate() {
 
   return (
     <>
-      <button onClick={() => setOpen(true)} aria-label="New" className="inline-flex h-11 w-11 items-center justify-center gap-1.5 rounded-lg bg-brand text-sm font-medium text-white transition hover:bg-brand/90 sm:h-auto sm:w-auto sm:px-3 sm:py-2">
+      <button onClick={() => setOpen(true)} aria-label="New" className="inline-flex h-11 w-11 items-center justify-center gap-1.5 rounded-lg bg-brand-strong text-sm font-medium text-white transition hover:bg-brand-strong/90 sm:h-auto sm:w-auto sm:px-3 sm:py-2">
         <Icon name="plus" size={16} /> <span className="hidden sm:inline">New</span>
       </button>
 
@@ -138,7 +138,7 @@ export function QuickCreate() {
                 // Guide the user to make their first contact instead of dead-ending.
                 <div className="py-4 text-center">
                   <p className="text-sm text-muted">Every {meta.terminology.opportunity.toLowerCase()} belongs to a {meta.terminology.contact.toLowerCase()}. Add your first one to get started.</p>
-                  <button onClick={() => setTab("contact")} className="mt-3 w-full rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90">
+                  <button onClick={() => setTab("contact")} className="mt-3 w-full rounded-lg bg-brand-strong px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90">
                     Create a {meta.terminology.contact.toLowerCase()} first
                   </button>
                 </div>
@@ -160,7 +160,7 @@ export function QuickCreate() {
                       {meta.owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                     </select>
                   )}
-                  <button onClick={submitDeal} disabled={busy || !title.trim() || !contactId} className="w-full rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
+                  <button onClick={submitDeal} disabled={busy || !title.trim() || !contactId} className="w-full rounded-lg bg-brand-strong px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
                     {busy ? "Creating…" : `Create ${meta.terminology.opportunity}`}
                   </button>
                 </>
@@ -170,7 +170,7 @@ export function QuickCreate() {
                   <input className={inputCls} aria-label="Company" placeholder="Company" value={company} onChange={(e) => setCompany(e.target.value)} />
                   <input className={inputCls} type="email" aria-label="Email address" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
                   <input className={inputCls} aria-label="Phone number" placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-                  <button onClick={submitContact} disabled={busy || !name.trim()} className="w-full rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
+                  <button onClick={submitContact} disabled={busy || !name.trim()} className="w-full rounded-lg bg-brand-strong px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
                     {busy ? "Creating…" : `Create ${meta.terminology.contact}`}
                   </button>
                 </>

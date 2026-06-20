@@ -258,7 +258,7 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
                     </div>
                     <p className="mt-3 text-xs text-muted">It&apos;s all set and editable anytime in Settings — your voice, team, and integrations included.</p>
                     <div className="mt-5 flex flex-wrap items-center gap-3">
-                      <button onClick={finish} disabled={finishing} className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-2.5 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-70">
+                      <button onClick={finish} disabled={finishing} className="cta group inline-flex items-center gap-2 rounded-full bg-brand-strong py-2.5 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand-strong/90 disabled:opacity-70">
                         {finishing ? (
                           <span className="inline-flex items-center gap-2 pr-3"><svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round" /></svg> Building your workspace…</span>
                         ) : (
@@ -273,7 +273,7 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
                     <button
                       onClick={personalize}
                       disabled={!describe.trim() || thinking}
-                      className="cta inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand/90 disabled:opacity-50"
+                      className="cta inline-flex items-center gap-2 rounded-full bg-brand-strong px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-strong/90 disabled:opacity-50"
                     >
                       {thinking ? (
                         <><svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round" /></svg> Personalizing…</>
@@ -300,7 +300,7 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
                         onClick={() => setIndustry(ind.id)}
                         className={`group flex items-start gap-3 rounded-xl border p-4 text-left transition duration-150 ${active ? "border-brand bg-brand-soft/20 ring-1 ring-inset ring-brand/30" : "border-border bg-surface hover:-translate-y-0.5 hover:border-brand/40"}`}
                       >
-                        <span className={`grid h-9 w-9 flex-none place-items-center rounded-xl ring-1 ring-inset transition ${active ? "bg-brand text-white ring-white/15" : "bg-brand-soft text-brand ring-brand/20"}`}>
+                        <span className={`grid h-9 w-9 flex-none place-items-center rounded-xl ring-1 ring-inset transition ${active ? "bg-brand-strong text-white ring-white/15" : "bg-brand-soft text-brand ring-brand/20"}`}>
                           <Icon name={INDUSTRY_ICONS[ind.id] ?? "pipeline"} size={18} />
                         </span>
                         <span className="min-w-0">
@@ -429,7 +429,7 @@ export function OnboardingWizard({ industries }: { industries: IndustryOption[] 
         {step === 0 ? (
           <span /> /* step 0 has its own Personalize / Skip actions */
         ) : (
-          <button onClick={next} disabled={finishing} className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-2 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-70">
+          <button onClick={next} disabled={finishing} className="cta group inline-flex items-center gap-2 rounded-full bg-brand-strong py-2 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand-strong/90 disabled:opacity-70">
             {finishing ? (
               <span className="inline-flex items-center gap-2 pr-3">
                 <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round" /></svg>

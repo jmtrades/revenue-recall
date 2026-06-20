@@ -294,7 +294,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { b
           <div key={ind.id} className={`rounded-lg border p-3 ${ind.id === cfg.industryId ? "border-brand bg-brand-soft/30" : "border-border bg-surface-2"}`}>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-fg">{ind.label}</span>
-              {ind.id === cfg.industryId && <span className="pill bg-brand text-white">Active</span>}
+              {ind.id === cfg.industryId && <span className="pill bg-brand-strong text-white">Active</span>}
             </div>
             <p className="mt-1 text-xs text-muted">{ind.blurb}</p>
             <code className="mt-2 block text-[11px] text-muted">{ind.id}</code>

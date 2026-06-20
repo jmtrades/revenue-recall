@@ -42,7 +42,7 @@ export default function ApiDocsPage() {
             <LogoBadge box={32} />
             <span className="font-display text-[15px] font-semibold text-fg">Revenue Recall</span>
           </Link>
-          <Link href="/signup" className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white transition hover:bg-brand/90">Start free</Link>
+          <Link href="/signup" className="rounded-lg bg-brand-strong px-3 py-1.5 text-sm font-medium text-white transition hover:bg-brand-strong/90">Start free</Link>
         </div>
       </header>
 

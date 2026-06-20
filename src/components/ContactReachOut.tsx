@@ -85,7 +85,7 @@ export function ContactReachOut({
   }
 
   const input = "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand";
-  const tab = (active: boolean) => `rounded-lg px-2.5 py-1 text-xs ${active ? "bg-brand text-white" : "bg-surface-2 text-muted hover:text-fg"}`;
+  const tab = (active: boolean) => `rounded-lg px-2.5 py-1 text-xs ${active ? "bg-brand-strong text-white" : "bg-surface-2 text-muted hover:text-fg"}`;
 
   return (
     <div className="space-y-5">
@@ -112,7 +112,7 @@ export function ContactReachOut({
             <button
               onClick={send}
               disabled={sending || !body.trim()}
-              className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
+              className="rounded-lg bg-brand-strong px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50"
             >
               {sending ? "Sending…" : `Send ${channel === "email" ? "email" : "text"}`}
             </button>

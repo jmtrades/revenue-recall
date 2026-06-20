@@ -132,7 +132,7 @@ function ConnectionCard({
         {oauth && (
           <a
             href={`/api/oauth/${spec.provider}/start`}
-            className={`rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white transition hover:bg-brand/90 ${disabled ? "pointer-events-none opacity-50" : ""}`}
+            className={`rounded-lg bg-brand-strong px-3 py-1.5 text-xs font-medium text-white transition hover:bg-brand-strong/90 ${disabled ? "pointer-events-none opacity-50" : ""}`}
           >
             {connected ? `Reconnect ${spec.label}` : `Connect with ${spec.label}`}
           </a>
@@ -168,7 +168,7 @@ function ConnectionCard({
             </label>
           ))}
           {error && <p className="text-xs text-danger">{error}</p>}
-          <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
+          <button onClick={save} disabled={busy} className="rounded-lg bg-brand-strong px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50">
             {busy ? "Saving…" : "Save connection"}
           </button>
         </div>

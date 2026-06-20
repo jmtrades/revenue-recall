@@ -270,7 +270,7 @@ export function AgentsView({
                   <option value="on_new_lead">When a lead is created</option>
                 </select>
               </div>
-              <button onClick={create} disabled={creating || !name.trim() || !goal.trim()} className="cta w-full rounded-lg bg-brand px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+              <button onClick={create} disabled={creating || !name.trim() || !goal.trim()} className="cta w-full rounded-lg bg-brand-strong px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
                 {creating ? "Creating…" : "Create task"}
               </button>
             </div>
@@ -302,7 +302,7 @@ export function AgentsView({
                     </div>
                     <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted">{t.goal}</p>
                     <div className="mt-3 flex items-center gap-2">
-                      <button onClick={() => run(t.id)} disabled={busy === t.id} className="cta inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+                      <button onClick={() => run(t.id)} disabled={busy === t.id} className="cta inline-flex items-center gap-1.5 rounded-lg bg-brand-strong px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
                         {busy === t.id ? "Running…" : <><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg> Run now</>}
                       </button>
                       <button onClick={() => toggle(t.id, !t.enabled)} className="rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted transition-colors hover:text-fg" title={t.enabled ? "Pause this agent (stops it running without deleting it)" : "Resume this agent"}>{t.enabled ? "Pause" : "Resume"}</button>

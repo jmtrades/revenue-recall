@@ -180,7 +180,7 @@ export default function PricingPage() {
             <h2 className="text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Cheaper than the stack it replaces.</h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-muted">The SDR, the sequencer, and the dialer — one autonomous system, live in two minutes.</p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
-              <Link href="/signup" className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-2 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand/90">
+              <Link href="/signup" className="cta group inline-flex items-center gap-2 rounded-full bg-brand-strong py-2 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand-strong/90">
                 Start free
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20 transition-transform duration-200 ease-out group-hover:translate-x-0.5">
                   <Arrow />

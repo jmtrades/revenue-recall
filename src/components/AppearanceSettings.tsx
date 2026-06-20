@@ -78,7 +78,7 @@ export function AppearanceSettings({
               aria-pressed={mode === m.value}
               title={m.hint}
               className={`rounded-md px-3 py-1.5 text-sm transition disabled:opacity-60 ${
-                mode === m.value ? "bg-brand text-white" : "text-muted hover:text-fg"
+                mode === m.value ? "bg-brand-strong text-white" : "text-muted hover:text-fg"
               }`}
             >
               {m.label}
