@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { enroll, runDueSteps } from "@/lib/cadence";
 import { listOutbox } from "@/lib/agent/store";
 import { getProvider } from "@/lib/crm/registry";
@@ -8,6 +8,13 @@ import { getProvider } from "@/lib/crm/registry";
 beforeEach(() => {
   delete process.env.ANTHROPIC_API_KEY;
   process.env.SEQUENCE_AUTOPILOT = "true";
+  // Isolate the courtesy-window logic from the (separately tested) TCPA gate:
+  // attest A2P here and put consent on each contact, so the ONLY thing that can
+  // hold a text is the prospect's local hour.
+  process.env.SMS_A2P_REGISTERED = "true";
+});
+afterEach(() => {
+  delete process.env.SMS_A2P_REGISTERED;
 });
 
 // Tomorrow at 13:00 UTC — due for a day-0 step enrolled now, and season-proof:
@@ -19,7 +26,7 @@ async function enrollDealWithPhone(phone: string, title: string) {
   const provider = getProvider();
   const pipeline = (await provider.listPipelines())[0];
   const stage = pipeline.stages.find((s) => s.type === "open")!;
-  const contact = await provider.createContact({ name: title, points: [{ channel: "phone", value: phone }] });
+  const contact = await provider.createContact({ name: title, points: [{ channel: "phone", value: phone }], attributes: { smsConsent: true } as never });
   const opp = await provider.createOpportunity({ title, pipelineId: pipeline.id, stageId: stage.id, value: 3000, currency: "USD", contactId: contact.id });
   // new_lead: step 0 is a day-0 call (drops a task), step 1 is a day-0 SMS —
   // so the SECOND tick exercises the autonomous SMS path.

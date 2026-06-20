@@ -27,12 +27,19 @@ describe("cadence quiet-hours hold", () => {
   beforeEach(() => {
     delete process.env.ANTHROPIC_API_KEY;
     process.env.SEQUENCE_AUTOPILOT = "true";
+    // This block tests the quiet-hours hold, not the send-compliance gate (covered
+    // in cadence-compliance.test.ts) — attest CAN-SPAM readiness so the recall
+    // email is sendable and quiet hours is the only variable.
+    process.env.COMPLIANCE_ADDRESS = "123 Market St, San Francisco, CA 94105";
+    process.env.EMAIL_DOMAIN_VERIFIED = "true";
     __resetEnrollmentsForTests();
   });
   afterEach(() => {
     delete process.env.SEQUENCE_AUTOPILOT;
     delete process.env.AGENT_QUIET_START_UTC;
     delete process.env.AGENT_QUIET_END_UTC;
+    delete process.env.COMPLIANCE_ADDRESS;
+    delete process.env.EMAIL_DOMAIN_VERIFIED;
   });
 
   // A future timestamp at 10:00 UTC, so day-0 steps are due and we control the hour.
