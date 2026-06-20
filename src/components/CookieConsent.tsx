@@ -35,7 +35,7 @@ export function CookieConsent() {
 
   return (
     <div
-      role="dialog"
+      role="region"
       aria-label="Cookie notice"
       className="fixed inset-x-3 bottom-3 z-[60] mx-auto max-w-2xl rounded-xl border border-border bg-surface/95 p-4 shadow-lg backdrop-blur sm:flex sm:items-center sm:gap-4"
     >
