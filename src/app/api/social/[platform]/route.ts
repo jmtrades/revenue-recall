@@ -4,6 +4,8 @@ import { ingestSocialMessages } from "@/lib/social/ingest";
 import { findOrgIdByAccount } from "@/lib/connections/store";
 import { runWithOrg } from "@/lib/supabase/org-context";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
+import { logError, errMessage } from "@/lib/log";
+import { sendAlert } from "@/lib/alert";
 import type { InboundSocialMessage, SocialPlatform } from "@/lib/social/types";
 
 export const dynamic = "force-dynamic";
@@ -90,8 +92,17 @@ export async function POST(req: Request, { params }: { params: { platform: strin
         else await ingestSocialMessages(group); // default/single-tenant resolution
       }
     }
-  } catch {
-    // Never make the platform retry forever over our own ingest hiccup.
+  } catch (err) {
+    // A real prospect reply (WhatsApp/IG/Messenger) must NOT vanish on a transient
+    // ingest failure. Log + alert, and return 5xx so the platform REDELIVERS —
+    // ingestSocialMessages is idempotent (dedupes on externalMessageId and
+    // un-records the key on error), so a retry can't double-insert. Previously this
+    // swallowed the error and 200'd, silently losing the lead with no signal.
+    logError("social.ingest_failed", { platform, error: errMessage(err) });
+    if (rateLimit(`alert:social.ingest:${platform}`, 1, 300_000).ok) {
+      void sendAlert("social.ingest_failed", { platform, error: errMessage(err) });
+    }
+    return NextResponse.json({ error: "ingest failed; will retry" }, { status: 500 });
   }
   return NextResponse.json({ ok: true, received: messages.length });
 }
