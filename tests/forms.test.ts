@@ -84,6 +84,37 @@ describe("POST /api/forms/submit", () => {
     expect(contacts.some((c) => c.name === name)).toBe(false);
   });
 
+  it("caps over-long fields server-side (client maxLength is bypassable by a direct POST)", async () => {
+    const email = `cap-${Date.now()}@acme.com`;
+    const res = await submit(formPost({ org: "org_1", token: formToken("org_1"), name: "A".repeat(500), email, website: "" }));
+    expect(res.status).toBe(303);
+    const c = (await getProvider().listContacts()).find((x) => x.points.some((p) => p.value === email));
+    expect(c).toBeTruthy();
+    expect(c!.name.length).toBe(200); // truncated, not the 500 submitted
+  });
+
+  it("drops a malformed email and rejects when no valid contact method remains (JSON 400)", async () => {
+    const res = await submit(
+      new Request("http://x/api/forms/submit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ org: "org_1", token: formToken("org_1") ?? "", name: "Bad Email", email: "not-an-email" }),
+      }),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects an oversized body before parsing (413)", async () => {
+    const res = await submit(
+      new Request("http://x/api/forms/submit", {
+        method: "POST",
+        headers: { "content-type": "application/json", "content-length": String(100 * 1024) },
+        body: JSON.stringify({ org: "org_1", token: formToken("org_1") ?? "", name: "X", email: "x@y.com" }),
+      }),
+    );
+    expect(res.status).toBe(413);
+  });
+
   it("returns JSON for a programmatic JSON submission", async () => {
     const res = await submit(
       new Request("http://x/api/forms/submit", {
