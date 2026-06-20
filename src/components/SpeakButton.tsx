@@ -9,9 +9,9 @@ import { loadVoicePrefs, toVoicePrefs } from "@/lib/voice/prefs";
 /**
  * Read any text aloud with the rep's tuned voice. One component so the same
  * voice powers every surface — briefs, drafts, call prep, role-play. Resolves
- * the active backend through getSynth(): the in-house neural voice when it's
- * registered and healthy, otherwise the browser engine. Nothing about the UI
- * changes when the backend upgrades.
+ * the active backend through getSynth(): the ElevenLabs voice when it's
+ * registered and healthy; otherwise it stays disabled (there is no browser
+ * fallback voice). Nothing about the UI changes when the backend is configured.
  */
 export function SpeakButton({ text, label = "Listen", className = "" }: { text: string; label?: string; className?: string }) {
   const [speaking, setSpeaking] = useState(false);
