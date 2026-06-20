@@ -102,7 +102,7 @@ async function postWebhook(url: string, payload: Record<string, unknown>): Promi
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const token = env("COMMS_WEBHOOK_TOKEN");
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(payload) });
+  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(payload), signal: AbortSignal.timeout(15_000) });
   const json = (await res.json().catch(() => ({}))) as { id?: string; status?: string; message?: string };
   if (!res.ok) throw new Error(json.message ?? `webhook ${res.status}`);
   return { id: json.id, status: json.status };
@@ -134,6 +134,7 @@ const resendEmail: EmailTransport = {
         method: "POST",
         headers: { Authorization: `Bearer ${env("RESEND_API_KEY")}`, "Content-Type": "application/json" },
         body: JSON.stringify({ from: from ?? configuredEmailFrom(), to, subject, text: body, ...(html ? { html } : {}) }),
+        signal: AbortSignal.timeout(15_000),
       });
       const json = (await res.json().catch(() => ({}))) as { id?: string; message?: string };
       if (!res.ok) throw new Error(json.message ?? `Resend ${res.status}`);
@@ -154,6 +155,7 @@ const sendgridEmail: EmailTransport = {
         headers: { Authorization: `Bearer ${env("SENDGRID_API_KEY")}`, "Content-Type": "application/json" },
         // SendGrid requires text/plain before text/html in the content array.
         body: JSON.stringify({ personalizations: [{ to: [{ email: to }] }], from: { email: from ?? configuredEmailFrom() }, subject, content: [{ type: "text/plain", value: body }, ...(html ? [{ type: "text/html", value: html }] : [])] }),
+        signal: AbortSignal.timeout(15_000),
       });
       if (!res.ok) throw new Error(`SendGrid ${res.status}`);
       return { id: res.headers.get("x-message-id") ?? "sendgrid", status: "sent", provider: "sendgrid" };
@@ -187,6 +189,7 @@ async function twilioRequest(path: string, form: Record<string, string>): Promis
     method: "POST",
     headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams(form).toString(),
+    signal: AbortSignal.timeout(15_000),
   });
   const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok) throw new Error((json.message as string) ?? `Twilio ${res.status}`);

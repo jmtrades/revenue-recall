@@ -65,7 +65,7 @@ async function postWebhook(action: string, payload: Record<string, unknown>): Pr
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const token = env("NUMBERS_WEBHOOK_TOKEN") ?? env("COMMS_WEBHOOK_TOKEN");
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify({ action, ...payload }) });
+  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify({ action, ...payload }), signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`numbers webhook ${res.status}`);
   return res.json().catch(() => ({}));
 }
@@ -106,6 +106,7 @@ async function twilioApi(path: string, form?: Record<string, string>): Promise<R
     method: form ? "POST" : "GET",
     headers: { Authorization: `Basic ${auth}`, ...(form ? { "Content-Type": "application/x-www-form-urlencoded" } : {}) },
     body: form ? new URLSearchParams(form).toString() : undefined,
+    signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) throw new Error(`Twilio numbers API ${res.status}`);
   return (await res.json()) as Record<string, unknown>;

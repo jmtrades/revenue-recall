@@ -37,7 +37,7 @@ export async function exchangeCodeForToken(
       redirect_uri: redirectUri,
       code,
     });
-    res = await fetch(`${p.tokenUrl}?${qs.toString()}`, { method: "GET" });
+    res = await fetch(`${p.tokenUrl}?${qs.toString()}`, { method: "GET", signal: AbortSignal.timeout(15_000) });
   } else if (platform === "x") {
     // X: POST form with PKCE verifier + Basic auth.
     const body = new URLSearchParams({
@@ -52,6 +52,7 @@ export async function exchangeCodeForToken(
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded", Authorization: `Basic ${basic}` },
       body: body.toString(),
+      signal: AbortSignal.timeout(15_000),
     });
   } else {
     // LinkedIn (and OAuth2-standard): POST form with client_secret.
@@ -66,6 +67,7 @@ export async function exchangeCodeForToken(
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: body.toString(),
+      signal: AbortSignal.timeout(15_000),
     });
   }
 
@@ -105,6 +107,7 @@ export async function fetchMetaPageToken(userToken: string): Promise<MetaPage | 
   try {
     const res = await fetch(
       `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${encodeURIComponent(userToken)}`,
+      { signal: AbortSignal.timeout(15_000) },
     );
     const json = (await res.json().catch(() => ({}))) as {
       data?: { id?: string; name?: string; access_token?: string; instagram_business_account?: { id?: string } }[];

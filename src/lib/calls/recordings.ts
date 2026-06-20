@@ -48,7 +48,7 @@ async function deleteOneRecording(url: string): Promise<boolean> {
   const twilioPath = twilioRecordingPath(url);
   if (twilioPath && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
     const auth = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString("base64");
-    const res = await fetch(`https://api.twilio.com/2010-04-01/${twilioPath}.json`, { method: "DELETE", headers: { Authorization: `Basic ${auth}` } });
+    const res = await fetch(`https://api.twilio.com/2010-04-01/${twilioPath}.json`, { method: "DELETE", headers: { Authorization: `Basic ${auth}` }, signal: AbortSignal.timeout(10_000) });
     // 404 = already gone — erased is erased.
     return res.ok || res.status === 404;
   }
