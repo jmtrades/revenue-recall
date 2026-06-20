@@ -1,4 +1,5 @@
 export function money(value: number, currency = "USD"): string {
+  if (!Number.isFinite(value)) value = 0; // never render "$NaN" on a bad input
   // ≥$1M: use the hydration-safe manual compact formatter. Intl's compact
   // notation renders differently under Node ICU vs browser ICU ("$0" vs "$0.0"),
   // which throws a React hydration mismatch in the client components that render
@@ -47,5 +48,5 @@ export function relativeDays(days: number): string {
 }
 
 export function pct(n: number): string {
-  return `${Math.round(n * 100)}%`;
+  return `${Number.isFinite(n) ? Math.round(n * 100) : 0}%`;
 }
