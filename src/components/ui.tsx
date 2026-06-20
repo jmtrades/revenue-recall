@@ -188,6 +188,7 @@ const REASON_STYLES: Record<string, { label: string; cls: string }> = {
   stalled: { label: "Stalled", cls: "bg-danger/15 text-danger" },
   lost_winnable: { label: "Winnable loss", cls: "bg-brand-soft text-brand" },
   no_activity: { label: "Untouched", cls: "bg-surface-2 text-muted" },
+  new_lead: { label: "New lead", cls: "bg-success/15 text-success" },
 };
 
 export function ReasonBadge({ reason }: { reason: string }) {
