@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withGuard } from "@/lib/api/guard";
+import { aiRateLimit } from "@/lib/ratelimit";
 import { isEntitled } from "@/lib/billing/enforce";
 import { ttsAvailable, synthesizeSpeech } from "@/lib/voice/tts";
 import { EMOTIONS } from "@/lib/voice/speech";
@@ -45,6 +46,10 @@ export const POST = withGuard(async (req: Request) => {
   if (!(await isEntitled("aiLive"))) {
     return NextResponse.json({ error: "Live AI voice is available on paid plans." }, { status: 403 });
   }
+  // Per-client cap: synthesis spends ElevenLabs money, so a scripted/looping
+  // client must not be able to burn the monthly budget in a burst (the monthly cap
+  // bounds total spend; this bounds the rate). Same limiter the other AI routes use.
+  if (!(await aiRateLimit(req, "voice-tts")).ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   // Fill unset fields from the org's saved voice: the chosen ElevenLabs voice,

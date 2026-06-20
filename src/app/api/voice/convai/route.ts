@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { withGuard } from "@/lib/api/guard";
+import { aiRateLimit } from "@/lib/ratelimit";
 import { isEntitled } from "@/lib/billing/enforce";
 import { convaiConfigured, convaiAgentId, convaiReason, getConvaiToken } from "@/lib/voice/convai";
 import { elevenConfigured } from "@/lib/voice/eleven";
@@ -29,13 +30,16 @@ export const GET = withGuard(async () => {
   return NextResponse.json({ available, reason, canFix });
 });
 
-export const POST = withGuard(async () => {
+export const POST = withGuard(async (req: Request) => {
   if (!convaiConfigured()) {
     return NextResponse.json({ error: "Voice agent not configured" }, { status: 503 });
   }
   if (!(await isEntitled("aiLive"))) {
     return NextResponse.json({ error: "The live voice agent is available on paid plans." }, { status: 403 });
   }
+  // Minting a conversation token opens a metered real-time voice session — cap the
+  // rate so a client can't spin up sessions in a loop.
+  if (!(await aiRateLimit(req, "convai")).ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   try {
     const { token, agentId } = await getConvaiToken();
     // Speak the live agent in the org's chosen ElevenLabs voice (a stock voice
