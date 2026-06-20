@@ -203,12 +203,12 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
           </section>
         )}
 
-        {/* Hear the voice — the same live, on-device demo as the homepage,
-            opened on the line closest to how this vertical sells. */}
+        {/* Hear the voice — the same demo as the homepage, opened on the line
+            closest to how this vertical sells. */}
         <section className="mt-10 sm:mt-16">
           <Reveal>
             <h2 className="text-2xl font-semibold text-fg">Hear it work a {ind.label.toLowerCase()} deal</h2>
-            <p className="mt-2 max-w-xl text-muted">Tap a rep — the line is generated live on your device by the same voice that makes the calls. No signup, nothing uploaded.</p>
+            <p className="mt-2 max-w-xl text-muted">Tap a rep — you&rsquo;ll hear the exact same ElevenLabs voice the AI uses on real calls. No signup needed.</p>
           </Reveal>
           <Reveal delay={0.08} className="mt-6">
             <VoiceDemo industryId={ind.id} />

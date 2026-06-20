@@ -1,47 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ensureLocalVoice, localSynth, localVoiceProgress } from "@/lib/voice/local";
-import { browserSynth } from "@/lib/voice/synth";
 import { SignalWave } from "@/components/RecallOrbit";
-import type { SpeakHandle } from "@/lib/voice/speech";
-import type { Emotion } from "@/lib/voice/speech";
+import { DEMO_LINES } from "@/lib/voice/demo-lines";
 
-// Real outbound lines — what the AI would actually say working a slipping deal.
-// Each is paired with the voice + delivery that fits it, so a click sounds like
-// a person on a call, not a TTS demo reading a paragraph.
-const LINES: { voiceId: string; name: string; tone: string; emotion: Emotion; text: string }[] = [
-  {
-    voiceId: "af_heart",
-    name: "Aria",
-    tone: "Warm · US",
-    emotion: "warm",
-    text: "Hey Jordan, it's Aria over at Northwind. That corner unit you'd looked at in the spring just came back on — and at a better number this time. Worth a quick look this weekend?",
-  },
-  {
-    voiceId: "am_adam",
-    name: "Adam",
-    tone: "Steady · US",
-    emotion: "confident",
-    text: "Hi Sam, Adam here. I know rates were the holdup last time we spoke. They've moved since then, so I re-ran your numbers — I think you'll like where it lands. Have two minutes?",
-  },
-  {
-    voiceId: "af_nova",
-    name: "Nova",
-    tone: "Confident · US",
-    emotion: "energetic",
-    text: "Morning! It's Nova following up on your quote. It expires Friday, but I can lock today's pricing for you right now if you're still interested. Want me to hold it?",
-  },
-  {
-    voiceId: "bm_george",
-    name: "George",
-    tone: "British · UK",
-    emotion: "calm",
-    text: "Hello, it's George. We never did close the loop on your project — completely my fault for letting it go quiet. If the timing's better now, I'd love to pick it back up.",
-  },
-];
-
-type Status = "idle" | "warming" | "speaking";
+type Status = "idle" | "loading" | "speaking";
 
 // Which demo line leads on a per-industry lander — the scenario closest to how
 // that vertical actually sells (Aria=listing recall, Adam=rate callback,
@@ -57,75 +20,80 @@ const INDUSTRY_LINE: Record<string, number> = {
 };
 
 /**
- * Landing "hear it" demo. Synthesizes a real sales line with the SAME on-device
- * neural voice the product uses — live, in the visitor's browser, free, no
- * signup. First click loads the model (with a friendly progress beat); after
- * that every line is instant. Honest fallback: if the device can't run it, we
- * say so rather than play a worse voice and pretend.
+ * Landing "hear it" demo. Plays a real sales line in the SAME ElevenLabs voice the
+ * product uses on calls — synthesized server-side via /api/voice/preview (the key
+ * never touches the browser) from a fixed, cached set of lines. Honest fallback:
+ * if ElevenLabs isn't configured the route returns 503 and we say the preview is
+ * offline rather than play a different, lesser voice (voice is ElevenLabs-only).
  */
 export function VoiceDemo({ industryId }: { industryId?: string }) {
   const [active, setActive] = useState(industryId ? INDUSTRY_LINE[industryId] ?? 0 : 0);
   const [status, setStatus] = useState<Status>("idle");
-  const [pct, setPct] = useState(0);
-  const [unsupported, setUnsupported] = useState(false);
-  const handleRef = useRef<SpeakHandle | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const urlRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    return () => {
-      handleRef.current?.stop();
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, []);
-
+  function cleanup() {
+    if (urlRef.current) {
+      try { URL.revokeObjectURL(urlRef.current); } catch { /* gone */ }
+      urlRef.current = null;
+    }
+  }
   function stop() {
-    handleRef.current?.stop();
-    handleRef.current = null;
-    if (pollRef.current) clearInterval(pollRef.current);
+    try { audioRef.current?.pause(); } catch { /* already stopped */ }
+    audioRef.current = null;
+    cleanup();
     setStatus("idle");
   }
+
+  // Unmount cleanup — inlined (not via stop()) so it needs no deps and never
+  // setState after unmount.
+  useEffect(() => {
+    return () => {
+      try { audioRef.current?.pause(); } catch { /* noop */ }
+      if (urlRef.current) {
+        try { URL.revokeObjectURL(urlRef.current); } catch { /* noop */ }
+      }
+    };
+  }, []);
 
   async function play(i: number) {
     // Clicking the playing card stops it; clicking another switches to it.
     if (status === "speaking" && i === active) return stop();
-    handleRef.current?.stop();
+    try { audioRef.current?.pause(); } catch { /* noop */ }
+    cleanup();
     setActive(i);
-
-    setStatus("warming");
-    const ok = await ensureLocalVoice();
-    // Track download progress until ready.
-    if (!ok) {
-      // Couldn't run the neural model here — be honest, don't fake it with the
-      // robotic browser voice. (Most modern browsers DO run it.)
-      setUnsupported(true);
-      setStatus("idle");
-      return;
-    }
-    if (pollRef.current) clearInterval(pollRef.current);
-
-    setStatus("speaking");
-    const line = LINES[i];
-    const synth = localSynth.available() ? localSynth : browserSynth;
-    const handle = await synth.speak(line.text, { voiceId: line.voiceId, emotion: line.emotion });
-    handleRef.current = handle;
-    handle.done.then(() => {
-      if (handleRef.current === handle) {
-        handleRef.current = null;
+    setUnavailable(false);
+    setStatus("loading");
+    try {
+      const res = await fetch(`/api/voice/preview?line=${i}`);
+      if (!res.ok) {
+        setUnavailable(true);
         setStatus("idle");
+        return;
       }
-    });
+      const url = URL.createObjectURL(await res.blob());
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      urlRef.current = url;
+      const end = () => {
+        if (audioRef.current === audio) {
+          cleanup();
+          audioRef.current = null;
+          setStatus("idle");
+        }
+      };
+      audio.onended = end;
+      audio.onerror = end;
+      setStatus("speaking");
+      await audio.play().catch(() => end());
+    } catch {
+      setUnavailable(true);
+      setStatus("idle");
+    }
   }
 
-  // While warming, surface the model download as a friendly percentage.
-  useEffect(() => {
-    if (status !== "warming") return;
-    pollRef.current = setInterval(() => setPct(Math.round(localVoiceProgress() * 100)), 120);
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, [status]);
-
-  const line = LINES[active];
+  const line = DEMO_LINES[active];
 
   return (
     <div className="bezel relative overflow-hidden rounded-[1.5rem] p-2">
@@ -135,7 +103,7 @@ export function VoiceDemo({ industryId }: { industryId?: string }) {
           <span className="eyebrow">Hear it</span>
           <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted">
             <span className="h-1.5 w-1.5 rounded-full bg-success" />
-            Runs free, on your device
+            The voice it calls in
           </span>
         </div>
 
@@ -157,7 +125,7 @@ export function VoiceDemo({ industryId }: { industryId?: string }) {
 
         {/* controls */}
         <div className="mt-5 flex flex-wrap items-center gap-2">
-          {LINES.map((l, i) => {
+          {DEMO_LINES.map((l, i) => {
             const isActive = i === active;
             const isPlaying = status === "speaking" && isActive;
             return (
@@ -177,7 +145,7 @@ export function VoiceDemo({ industryId }: { industryId?: string }) {
                       <span className="w-[3px] animate-[rr-eq_0.9s_ease-in-out_0.15s_infinite] rounded-full bg-brand" style={{ height: 13 }} />
                       <span className="w-[3px] animate-[rr-eq_0.9s_ease-in-out_0.3s_infinite] rounded-full bg-brand" style={{ height: 9 }} />
                     </span>
-                  ) : status === "warming" && isActive ? (
+                  ) : status === "loading" && isActive ? (
                     <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden><path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round" /></svg>
                   ) : (
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M8 5v14l11-7z" /></svg>
@@ -194,13 +162,13 @@ export function VoiceDemo({ industryId }: { industryId?: string }) {
 
         {/* status line */}
         <p className="mt-4 h-4 text-xs text-muted" aria-live="polite">
-          {status === "warming"
-            ? `Warming up the voice… ${pct > 0 ? `${pct}%` : ""} (≈90 MB once, then it's instant)`
+          {status === "loading"
+            ? "Generating the preview…"
             : status === "speaking"
               ? "Speaking — this is the exact voice it uses on calls."
-              : unsupported
-                ? "Your browser can't preview the voice here — it runs in the app on Chrome, Edge, and Safari."
-                : "Tap a voice. The audio is generated live on your device — nothing uploaded."}
+              : unavailable
+                ? "Voice preview is offline right now — it's live in the app."
+                : "Tap a voice to hear a real call line in its actual voice."}
         </p>
       </div>
     </div>
