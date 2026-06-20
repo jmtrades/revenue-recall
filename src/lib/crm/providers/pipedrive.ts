@@ -13,6 +13,7 @@ import type {
   User,
 } from "@/lib/crm/types";
 import { fetchWithRetry } from "@/lib/crm/net";
+import { assertSafeOutboundUrl } from "@/lib/net/ssrf-guard";
 
 /**
  * Pipedrive CRM adapter (https://developers.pipedrive.com/docs/api/v1). Reads an
@@ -124,8 +125,13 @@ export class PipedriveProvider implements CrmProvider {
     const url = new URL(`${this.base}${path}`);
     url.searchParams.set("api_token", this.token);
     for (const [k, v] of Object.entries(init?.query ?? {})) url.searchParams.set(k, v);
+    // SSRF guard: `base` (apiBase) is tenant connection config — block
+    // private/loopback/metadata hosts, require https, and refuse redirects to
+    // internal addresses. Same posture as the database CRM adapter.
+    assertSafeOutboundUrl(url.toString());
     const res = await fetchWithRetry(url.toString(), {
       method: init?.method ?? "GET",
+      redirect: "manual",
       headers: { Accept: "application/json", ...(init?.body !== undefined ? { "Content-Type": "application/json" } : {}) },
       body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
       cache: "no-store",
