@@ -103,11 +103,11 @@ export function OrgSettingsForm({
         <div className="mt-3 space-y-3">
           <div>
             <label className="stat-label">Sender name</label>
-            <input className={`${input} mt-1`} value={senderName} disabled={!persisted} placeholder={name} onChange={(e) => { setSenderName(e.target.value); touched(); }} />
+            <input className={`${input} mt-1`} aria-label="Sender name" value={senderName} disabled={!persisted} placeholder={name} onChange={(e) => { setSenderName(e.target.value); touched(); }} />
           </div>
           <div>
             <label className="stat-label">Postal address</label>
-            <input className={`${input} mt-1`} value={address} disabled={!persisted} placeholder="123 Main St, Springfield, IL 62701" onChange={(e) => { setAddress(e.target.value); touched(); }} />
+            <input className={`${input} mt-1`} aria-label="Postal address" value={address} disabled={!persisted} placeholder="123 Main St, Springfield, IL 62701" onChange={(e) => { setAddress(e.target.value); touched(); }} />
           </div>
         </div>
       </div>

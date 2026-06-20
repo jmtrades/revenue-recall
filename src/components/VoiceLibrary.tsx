@@ -614,7 +614,7 @@ function CloneVoice({ onCloned }: { onCloned: () => void }) {
         Record ~30 seconds of clear speech (or upload a clip) and we&apos;ll create a private voice that sounds like you. Only clone a voice you have the right to use.
       </p>
       <div className="mt-2 space-y-2">
-        <input className={input} placeholder="Voice name (e.g. Sam — my voice)" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
+        <input className={input} aria-label="Voice name" placeholder="Voice name (e.g. Sam — my voice)" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
         <div className="flex flex-wrap items-center gap-2">
           {canRecord && (
             <button
