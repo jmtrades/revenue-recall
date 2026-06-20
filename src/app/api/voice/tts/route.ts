@@ -10,11 +10,11 @@ import { getOrgSettings } from "@/lib/org";
 export const dynamic = "force-dynamic";
 
 /**
- * Hosted neural text-to-speech. Session-gated by the middleware (it spends
+ * Hosted ElevenLabs text-to-speech. Session-gated by the middleware (it spends
  * provider money), and live-AI entitlement applies like every other live AI
  * feature. The client probes GET once and registers the hosted synth only when
- * it's genuinely usable — so an unconfigured deploy keeps the browser voice
- * with zero errors anywhere.
+ * it's genuinely usable — so an unconfigured deploy degrades cleanly to the
+ * written voice (there is no browser/on-device fallback), with zero errors.
  */
 export const GET = withGuard(async () => {
   const available = ttsAvailable() && (await isEntitled("aiLive"));

@@ -124,7 +124,7 @@ export function CallingStatus() {
             )}
             {g?.reachable && !g.misdirected && (
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-                <Sub ok={Boolean(g.voice)} label="neural voice" />
+                <Sub ok={Boolean(g.voice)} label="AI voice" />
                 <Sub ok={Boolean(g.brain)} label="brain" />
                 <Sub ok={Boolean(g.twilio)} label="Twilio trunk" />
                 {g.transport && <span className="text-xs text-muted">· {g.transport}</span>}

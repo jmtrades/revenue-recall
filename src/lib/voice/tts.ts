@@ -230,9 +230,9 @@ export function elevenModel(quality: "realtime" | "max" = "realtime"): string {
 }
 
 /** Whether an ElevenLabs error means "this MODEL isn't usable on this account"
- *  (try the next candidate) vs. a transient/rate/auth error (don't burn the
- *  fallback — let the caller degrade to the browser voice). A 4xx that isn't
- *  401 (auth) or 429 (rate limit) is treated as a model/validation problem.
+ *  (try the next candidate) vs. a transient/rate/auth error (a blip shouldn't
+ *  skip to a lower-quality model or disable the voice). A 4xx that isn't 401
+ *  (auth) or 429 (rate limit) is treated as a model/validation problem.
  *  Pure + tested. */
 export function elevenModelUnavailable(status: number | undefined): boolean {
   if (typeof status !== "number") return false;
