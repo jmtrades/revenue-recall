@@ -17,7 +17,8 @@ import { isWithinActionAllowance } from "@/lib/ai/usage";
 import { sendEmail, sendSms } from "@/lib/comms";
 import { trackLinks, recordSent } from "@/lib/tracking";
 import { createOutboxItem } from "@/lib/agent/store";
-import { hasOptedOut, quietHoursNow, dailySendCap, declineCooldownDays, lastSoftDeclineAt, containsUnverifiedClaim } from "@/lib/agent/guardrails";
+import { hasOptedOut, quietHoursNow, dailySendCap, declineCooldownDays, lastSoftDeclineAt, containsUnverifiedClaim, hasSmsConsent } from "@/lib/agent/guardrails";
+import { complianceConfig, emailDomainVerified, smsA2pRegistered } from "@/lib/compliance";
 import { outsideCourtesyWindow } from "@/lib/calls/local-time";
 import { batchActivities } from "@/lib/crm/activities";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
@@ -317,6 +318,19 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
   // instead of sending — the same "pause all autonomous sending" brake the
   // autopilot honors. Off by default; flip it and nothing goes out.
   const autoSend = process.env.SEQUENCE_AUTOPILOT === "true" && !org.sendingPaused;
+  // Autonomous-send compliance prerequisites — IDENTICAL to the agent engine
+  // (engine.ts), evaluated once per run. The cadence runner previously enforced
+  // neither, so an autopiloted SMS step could cold-text a contact with no prior
+  // express consent / from an unregistered A2P number (TCPA), and an email step
+  // could blast commercial mail with no physical postal address (CAN-SPAM). Now,
+  // missing either gate holds the step for human review instead of auto-sending.
+  //  • Email: CAN-SPAM postal address AND a verified sending domain.
+  //  • SMS: A2P 10DLC registered (platform) — on top of the per-contact consent
+  //    check applied at send time below.
+  // The OUTBOUND_COMPLIANCE master switch (cc.enabled) turns all of this off.
+  const cc = complianceConfig({ address: org.compliance.address });
+  const emailReady = !cc.enabled || (Boolean(cc.address) && emailDomainVerified());
+  const smsPlatformReady = !cc.enabled || smsA2pRegistered();
   // Opt-in: defer drafts to the Anthropic Batches API (~50% cheaper, async).
   // Batched drafts are always queued to Approvals on collect — never auto-sent —
   // since opt-out/quiet-hours were evaluated at submit time, not collect time.
@@ -518,7 +532,15 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
     // comps, rate, valuation) is never auto-sent — it queues to Approvals for a
     // human, even on autopilot. Same rule as the autonomous agent.
     const claimHeld = containsUnverifiedClaim(`${draft.subject ?? ""} ${draft.body}`);
-    const canSend = autoSend && !claimHeld && !quietHoursNow(new Date(now), org.timezone) && !(step.channel === "sms" && outsideCourtesyWindow(address, new Date(now)));
+    // Channel compliance gate — same rule as the autonomous agent (engine.ts):
+    // SMS needs per-contact express consent AND A2P registration; email needs the
+    // CAN-SPAM postal address + verified domain. Missing either → fall through to
+    // Approvals (createOutboxItem) rather than auto-send.
+    const channelCompliant =
+      step.channel === "sms" ? hasSmsConsent(contact) && smsPlatformReady
+      : step.channel === "email" ? emailReady
+      : true;
+    const canSend = autoSend && channelCompliant && !claimHeld && !quietHoursNow(new Date(now), org.timezone) && !(step.channel === "sms" && outsideCourtesyWindow(address, new Date(now)));
     // A send that THROWS must not crash the run or (now that we've advanced) lose
     // the step silently — treat it as a failed send and queue to Approvals.
     let res: { status: string } | null = null;
