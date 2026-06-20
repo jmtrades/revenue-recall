@@ -336,6 +336,7 @@ export async function addSharedElevenVoice(
     method: "POST",
     headers: { "xi-api-key": k, "Content-Type": "application/json" },
     body: JSON.stringify({ new_name: newName.slice(0, 80) }),
+    signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
