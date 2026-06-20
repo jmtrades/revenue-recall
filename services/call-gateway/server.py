@@ -20,6 +20,7 @@ import amd
 import calllog
 import config
 from agent import CallAgent, DEFAULT_OPENER
+from gateway_auth import media_authorized
 from transport import WebSocketMediaTransport
 from twilio_media import TwilioMediaTransport
 
@@ -234,6 +235,13 @@ async def twilio_media(ws: WebSocket):
             break
         if ev.get("event") == "stop":
             return
+    # Auth: only a call WE originated (whose id we handed to Twilio in the TwiML
+    # <Parameter>) is in _pending. An unknown/empty id is an unauthenticated stream —
+    # close it before spinning up a paid live agent (STT → Opus → ElevenLabs).
+    if not media_authorized(call_id, _pending):
+        log.warning("rejected twilio media WS for unknown call %r", call_id)
+        await ws.close(code=4401)
+        return
     ctx = _pending.pop(call_id, {}) if call_id else {}
     agent = CallAgent(context=ctx.get("context", ""), voice_id=ctx.get("voiceId"), opener=ctx.get("opener") or DEFAULT_OPENER, voicemail=ctx.get("voicemail"))
     started = time.monotonic()
@@ -253,7 +261,15 @@ async def twilio_media(ws: WebSocket):
 
 @app.websocket("/media/{call_id}")
 async def media(ws: WebSocket, call_id: str):
-    """FreeSWITCH (mod_audio_fork) streams call audio here; we run the agent."""
+    """FreeSWITCH (mod_audio_fork) streams call audio here; we run the agent.
+
+    Auth: the call_id is a 128-bit random token we minted in /voice and handed only
+    to the carrier, so only a call we actually originated is in _pending. Reject an
+    unknown id BEFORE accepting — never run a paid live agent for an anonymous WS."""
+    if not media_authorized(call_id, _pending):
+        log.warning("rejected media WS for unknown call %r", call_id)
+        await ws.close(code=4401)
+        return
     await ws.accept()
     ctx = _pending.pop(call_id, {})
     transport = WebSocketMediaTransport(ws)
