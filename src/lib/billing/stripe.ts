@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { getPlan, type PlanId } from "@/lib/billing/plans";
 import { getTopupPack } from "@/lib/billing/topups";
-import { catalogForPlan, catalogForTopup } from "@/lib/billing/catalog";
+import { catalogForPlan, catalogForTopup, CATALOG } from "@/lib/billing/catalog";
 
 /**
  * Stripe integration over the REST API (no SDK dependency — same fetch pattern
@@ -108,6 +108,23 @@ export async function priceIdByLookupKey(lookupKey: string): Promise<string | un
   } catch {
     return undefined;
   }
+}
+
+/** Price id → plan, resolving via env pins first, then the catalog's stable
+ *  lookup keys — how auto-provisioned prices (no pasted STRIPE_PRICE_*) resolve.
+ *  Use this anywhere a Stripe price must map to a plan (webhook + reconcile), so
+ *  a portal up/downgrade is never silently dropped just because the operator runs
+ *  the zero-env, auto-provisioned setup. */
+export async function planForPriceResolved(priceId: string | undefined): Promise<PlanId | undefined> {
+  if (!priceId) return undefined;
+  const pinned = planForPrice(priceId);
+  if (pinned) return pinned;
+  for (const entry of CATALOG) {
+    if (entry.kind !== "plan" || !entry.plan) continue;
+    const resolved = await priceIdByLookupKey(entry.lookupKey).catch(() => undefined);
+    if (resolved && resolved === priceId) return entry.plan;
+  }
+  return undefined;
 }
 
 /** Clear the lookup cache (after provisioning creates/updates prices). */
