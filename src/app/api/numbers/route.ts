@@ -4,14 +4,16 @@ import { searchNumbers, buyNumber, listOwnedNumbers, numbersConfigured, numbersP
 import { getOrgSettings, updateOrgSettings } from "@/lib/org";
 import { inboundWebhookUrl } from "@/lib/inbound-routing";
 import { requireRole } from "@/lib/authz";
+import { withGuard } from "@/lib/api/guard";
+import { rateLimit, clientKey } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
 /** Owned numbers + provider status + this org's current caller ID. */
-export async function GET() {
+export const GET = withGuard(async () => {
   const [owned, org] = await Promise.all([listOwnedNumbers().catch(() => []), getOrgSettings().catch(() => null)]);
   return NextResponse.json({ configured: numbersConfigured(), provider: numbersProviderId(), byoNumber: outboundFromNumber() ?? null, callerId: org?.callerId ?? null, owned });
-}
+});
 
 const Body = z.object({
   action: z.enum(["search", "buy", "set_caller_id"]),
@@ -21,7 +23,7 @@ const Body = z.object({
   number: z.string().max(20).optional(),
 });
 
-export async function POST(req: Request) {
+export const POST = withGuard(async (req: Request) => {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 
@@ -30,6 +32,12 @@ export async function POST(req: Request) {
   if (parsed.data.action !== "search") {
     const denied = await requireRole("owner", "admin");
     if (denied) return denied;
+  }
+
+  // Buying a number is a recurring monthly cost — cap it tightly so a scripted
+  // loop can't provision a pile of paid numbers.
+  if (parsed.data.action === "buy" && !rateLimit(clientKey(req, "number-buy"), 5, 60_000).ok) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   // Choosing this org's caller-ID number just stores it on the org — no provider needed.
@@ -70,4 +78,4 @@ export async function POST(req: Request) {
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Failed" }, { status: 502 });
   }
-}
+});
