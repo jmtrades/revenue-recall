@@ -47,10 +47,6 @@ export function isPublicRoute(path: string): boolean {
   if (path === "/twitter-image" || path.endsWith("/twitter-image")) return true;
   if (path === "/apple-icon" || path === "/icon") return true;
   if (path.startsWith("/.well-known/")) return true; // security.txt & friends
-  // Staged public assets (e.g. the on-device voice engine the logged-out
-  // landing demo loads). The middleware matcher only skips image extensions,
-  // so /public JS must be allowlisted here or it redirects to /login.
-  if (path.startsWith("/vendor/")) return true;
   if (path.startsWith("/auth/")) return true; // OAuth / email-confirm callback
   if (path.startsWith("/f/")) return true; // hosted lead-capture form (token-authed page)
   if (path.startsWith("/book/")) return true; // hosted booking page (token-authed page)

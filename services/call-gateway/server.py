@@ -89,7 +89,7 @@ def _valid_number(to: str) -> bool:
 async def health():
     return {
         "status": "ok",
-        "voice": bool(config.NEURAL_VOICE_URL),
+        "voice": bool(config.ELEVENLABS_API_KEY),
         "brain": bool(config.ANTHROPIC_API_KEY),
         "trunk": bool(config.SIP_TRUNK_GATEWAY),
         "twilio": config.twilio_ready(),
