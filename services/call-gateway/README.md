@@ -2,38 +2,39 @@
 
 The self-hosted telephony brain for Revenue Recall. It lets the product place
 and hold **real phone calls** where the AI listens and speaks — with **your**
-speech-to-text, **your** Opus brain, and **your** neural voice — running on
-**your** hardware. No voice vendor, no per-minute platform markup. The honest
-meaning of "in-house": every layer is yours except the wholesale dial-tone.
+speech-to-text and **your** Opus brain running on **your** hardware, speaking in
+a natural **ElevenLabs** voice (a stock voice or each rep's own clone). The honest
+meaning of "in-house": the listening, the thinking, and the call control are yours;
+the voice is ElevenLabs and the dial-tone is a wholesale trunk.
 
 ```
  Revenue Recall app ──(webhook: place call)──▶  call-gateway
                                                    │
                           ┌────────────────────────┼─────────────────────────┐
                           ▼                         ▼                          ▼
-                   FreeSWITCH / SIP          STT (faster-whisper)      TTS (your neural-voice
-                   ↕ media (RTP)             — hears the prospect       service over WebSocket)
+                   FreeSWITCH / SIP          STT (faster-whisper)      TTS (ElevenLabs,
+                   or Twilio · media          — hears the prospect       Turbo v2.5, streamed)
                           │                         │                          ▲
                           └──────────▶ agent loop: STT ▶ Opus (brain) ▶ TTS ───┘
                                                    │
-                                          SIP trunk (dial-tone) ──▶ ☎ real phone
+                                       trunk / Twilio (dial-tone) ──▶ ☎ real phone
 ```
 
-## What's yours vs the one unavoidable outside line
-| Layer | In-house? |
+## What's yours vs the outside pieces
+| Layer | Where it runs |
 |---|---|
-| Speech-to-text (listening) | ✅ `faster-whisper`, your hardware, open model |
-| Brain (what to say) | ✅ Opus via your `ANTHROPIC_API_KEY` (you chose Opus) |
-| Voice (speaking) | ✅ your `neural-voice` service (your weights, your cloning) |
-| Call control + media | ✅ self-hosted **FreeSWITCH** (open-source, MPL) |
-| **Reaching a real phone number** | ⚠️ a **SIP trunk** — wholesale dial-tone. *Physics + telecom law: no one can originate a PSTN call without carrier interconnect.* Commodity (≈¢/min), not a software/voice vendor. |
+| Speech-to-text (listening) | ✅ in-house — `faster-whisper`, your hardware, open model |
+| Brain (what to say) | ✅ in-house — Opus via your `ANTHROPIC_API_KEY` |
+| Voice (speaking) | 🗣️ **ElevenLabs** (Turbo v2.5) via your `ELEVENLABS_API_KEY` — a stock voice or each rep's own clone; per-character, top-tier quality |
+| Call control + media | ✅ self-hosted **FreeSWITCH** (open-source, MPL) — or Twilio Media Streams |
+| **Reaching a real phone number** | ⚠️ a **SIP trunk / Twilio** — wholesale dial-tone. *No one can originate a PSTN call without carrier interconnect.* Commodity (≈¢/min). |
 
-So: you own the AI, the voice, the logic, the media server. The only thing you
-"pay outside" for is the phone line itself — and that's true for everyone,
-including the big platforms (they resell the same trunks with a markup you skip).
+So: you own the listening, the thinking, the logic, and the media server. You pay
+outside for the voice (ElevenLabs) and the phone line (a trunk) — the AI agent
+itself (listen→think→speak→log) is the part vendors don't give you.
 
 ## Honest status (read this)
-- **AI voice-agent core — real and built here:** the STT → Opus → neural-voice
+- **AI voice-agent core — real and built here:** the STT → Opus → ElevenLabs
   turn-taking loop (`agent.py`, `stt.py`, `brain.py`, `tts.py`) and the app
   webhook contract (`server.py`) are real, importable Python.
 - **Live PSTN media — your stand-up:** the SIP/RTP bridge (`sip.py`) drives
@@ -84,10 +85,10 @@ Pure logic (`amd.py`, `twilio_out.call_params`) is covered by
 cd services/call-gateway
 pip install -r requirements.txt
 
-# point at your own services + trunk (see config.py for all vars):
-export NEURAL_VOICE_URL=ws://localhost:8765          # your neural-voice service
+# point at your keys + trunk (see config.py for all vars):
+export ELEVENLABS_API_KEY="<your ElevenLabs key>"    # the voice (required)
 export ANTHROPIC_API_KEY="<your Opus key>"           # your Opus brain
-export FREESWITCH_ESL_HOST=127.0.0.1                 # your FreeSWITCH
+export FREESWITCH_ESL_HOST=127.0.0.1                 # your FreeSWITCH (or use the Twilio path)
 export SIP_TRUNK_GATEWAY=my_trunk                    # your SIP trunk (in FreeSWITCH)
 export COMMS_WEBHOOK_TOKEN=<shared secret>
 
@@ -96,7 +97,8 @@ uvicorn server:app --host 0.0.0.0 --port 8080
 `docker build -t rr-call-gateway . && docker run -p 8080:8080 rr-call-gateway`
 
 ## Why this beats a managed platform for you
-- **Your voice, unlimited** — clone each rep, no per-character bill.
-- **Your data** — call audio never leaves your infra (STT + TTS are local).
-- **Your economics** — wholesale trunk minutes, no platform markup on voice/AI.
-- **Your control** — swap the STT/voice/brain models freely; the seams are stable.
+- **Your agent** — the full listen→think→speak→log loop is yours, not a vendor's black box.
+- **Local STT + brain** — the prospect's audio is transcribed on your hardware, and the brain is Opus on your Anthropic key.
+- **Top-tier voice with cloning** — ElevenLabs (Turbo v2.5), with each rep's own cloned voice; per-character, not a per-minute platform markup on the whole call.
+- **Your economics** — wholesale trunk minutes (or Twilio at cost); no platform reselling you the trunk + AI + voice as one marked-up bundle.
+- **Your control** — swap the STT/brain models and the ElevenLabs voice freely; the seams (`tts.py`, `voices.py`) are stable.

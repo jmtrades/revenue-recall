@@ -71,7 +71,7 @@ and `cd services/call-gateway && python3 -m unittest discover -s tests` (stdlib-
 ## Conventions & guardrails (don't regress these)
 
 - **Provider-agnostic + inert-without-config:** features light up when a key/URL is set
-  and degrade cleanly (templates / browser voice / "logged") when not. Never hard-require config.
+  and degrade cleanly (templates / written voice / "logged") when not. Never hard-require config.
 - **Compliance is load-bearing:** autonomous calls are **consent-gated** (`hasCallConsent`)
   and quiet-hours/opt-out gated. Don't bypass these.
 - **No unverified claims:** the product blocks unverified claims in outreach
