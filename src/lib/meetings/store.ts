@@ -347,6 +347,25 @@ export async function listBookings(opts?: { upcomingOnly?: boolean; limit?: numb
   return ((data as BookingRow[] | null) ?? []).map(toBooking);
 }
 
+/** An existing CONFIRMED booking for this invitee + exact slot, or null. Used to
+ *  make booking idempotent: a double-submit / retry returns the same booking
+ *  instead of creating a duplicate (+ duplicate confirmation email + webhook). */
+export async function findConfirmedBookingForSlot(contactId: string, startsAt: string): Promise<Booking | null> {
+  const client = getSupabase();
+  if (!client || !contactId) return null;
+  const orgId = await resolveActiveOrgId().catch(() => null);
+  if (!orgId) return null;
+  const { data } = await client
+    .from("bookings")
+    .select(BK_COLS)
+    .eq("org_id", orgId)
+    .eq("contact_id", contactId)
+    .eq("starts_at", startsAt)
+    .eq("status", "confirmed")
+    .maybeSingle();
+  return data ? toBooking(data as BookingRow) : null;
+}
+
 export interface NewBookingRow {
   meetingTypeId: string | null;
   meetingName: string;
