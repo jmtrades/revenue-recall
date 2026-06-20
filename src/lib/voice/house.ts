@@ -1,9 +1,9 @@
 /**
- * Curated in-house "house voices" — Kokoro (ONNX) voice ids the call-gateway
- * speaks in. Self-hosted: the weights run on your own infra, no vendor in the
- * call path. A `clone:<id>` voice (a consented, watermarked signature voice)
- * also works anywhere a house voice id does. Shared by the settings picker and
- * the per-org call-voice validation.
+ * Curated "house voices" — stable ids that map 1:1 to distinct ElevenLabs voices
+ * (see ELEVEN_VOICES in tts.ts). The app and the call-gateway both speak them via
+ * ElevenLabs. A `clone:<id>` voice (a consented, watermarked signature voice) also
+ * works anywhere a house voice id does. Shared by the settings picker and the
+ * per-org call-voice validation.
  */
 
 export interface HouseVoice {
@@ -16,8 +16,8 @@ export interface HouseVoice {
 
 // Curated best-of-the-best. Every entry is a DISTINCT, top-tier ElevenLabs voice
 // (1:1 mapping in tts.ts ELEVEN_VOICES — no two share a sound) and the label is
-// that voice's REAL name, so what you pick is exactly what you hear. The id keeps
-// the Kokoro scheme so the self-hosted call-gateway speaks the matching local voice.
+// that voice's REAL name, so what you pick is exactly what you hear. The call
+// gateway maps each id to its matching ElevenLabs voice (services/call-gateway/voices.py).
 export const HOUSE_VOICES: HouseVoice[] = [
   // US female
   { id: "af_heart", label: "Aria", description: "Warm, expressive · US" },
@@ -44,7 +44,7 @@ export const HOUSE_VOICES: HouseVoice[] = [
   { id: "bm_daniel", label: "Daniel", description: "Authoritative · UK" },
 ];
 
-/** The default house voice (matches the gateway's Kokoro default). */
+/** The default house voice (Aria — maps to the gateway's default ElevenLabs voice). */
 export const DEFAULT_HOUSE_VOICE = "af_heart";
 
 /** A selectable call voice id: a known house voice, or a `clone:<id>` signature

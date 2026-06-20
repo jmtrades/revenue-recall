@@ -18,12 +18,9 @@ const isDev = process.env.NODE_ENV !== "production";
 // covered by the broad connect-src below.
 const STRIPE_SCRIPT = "https://js.stripe.com";
 const STRIPE_FRAME = "https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com";
-// 'wasm-unsafe-eval' permits WebAssembly compilation ONLY (not JS eval) — the
-// on-device neural voice (Kokoro via onnxruntime-web) needs it to instantiate
-// its WASM backend under this otherwise-strict policy.
 const scriptSrc = isDev
-  ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' ${STRIPE_SCRIPT}`
-  : `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' ${STRIPE_SCRIPT}`;
+  ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${STRIPE_SCRIPT}`
+  : `script-src 'self' 'unsafe-inline' ${STRIPE_SCRIPT}`;
 const csp = [
   "default-src 'self'",
   scriptSrc,

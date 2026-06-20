@@ -23,8 +23,8 @@ import { elevenClient, elevenSdkError } from "@/lib/voice/eleven-client";
 // request — the official SDK has no method for POST /v1/voices/add/{owner}/{id}.
 const API = "https://api.elevenlabs.io/v1";
 
-/** Stored-voice scheme: "eleven:<voiceId>" distinguishes an ElevenLabs voice
- *  (stock or clone) from an in-house Kokoro id. */
+/** Stored-voice scheme: "eleven:<voiceId>" marks a directly-chosen ElevenLabs
+ *  voice (stock or clone), vs. a house voice id that maps to one. */
 export const ELEVEN_PREFIX = "eleven:";
 
 function key(): string | undefined {

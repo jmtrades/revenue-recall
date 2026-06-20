@@ -1,21 +1,19 @@
-# In-house voice stack: the call-gateway (AI agent) + your neural-voice service.
+# The call-gateway (AI phone agent). Voice is ElevenLabs-only, so there's no
+# separate voice service to run — set ELEVENLABS_API_KEY and it speaks.
 # Pick ONE telephony path (see DEPLOY.md):
 #   • Twilio Media Streams (fastest, no FreeSWITCH) — set the TWILIO_* + PUBLIC_WSS_BASE vars
 #   • FreeSWITCH + SIP trunk (fully in-house) — set the FREESWITCH_* + SIP_TRUNK_GATEWAY vars
 # Bring real values via a .env file next to this one.  docker compose up -d --build
 services:
-  neural-voice:
-    build: ../../neural-voice          # the in-house TTS service (your voices)
-    restart: unless-stopped
-    # No host port needed; the gateway reaches it on the internal network.
-
   call-gateway:
     build: ..                          # services/call-gateway (this service)
     restart: unless-stopped
     ports:
       - "8080:8080"                    # /voice, /sms, /media, /twilio/media, /health
     environment:
-      NEURAL_VOICE_URL: ws://neural-voice:8765
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:?required}
+      ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-}
+      ELEVENLABS_MODEL: ${ELEVENLABS_MODEL:-eleven_turbo_v2_5}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?required}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
       WHISPER_MODEL: ${WHISPER_MODEL:-base.en}
@@ -34,5 +32,3 @@ services:
       SIP_TRUNK_GATEWAY: ${SIP_TRUNK_GATEWAY:-}
       OUTBOUND_FROM_NUMBER: ${OUTBOUND_FROM_NUMBER:-}
       PUBLIC_WS_BASE: ${PUBLIC_WS_BASE:-ws://call-gateway:8080}
-    depends_on:
-      - neural-voice

@@ -44,7 +44,7 @@ npm run build       # next build
 npm run smoke       # node scripts/smoke.mjs — every route renders
 npm run scan:secrets
 ```
-For the Python services: `python3 -m py_compile services/call-gateway/*.py services/neural-voice/server.py`
+For the Python services: `python3 -m py_compile services/call-gateway/*.py`
 and `cd services/call-gateway && python3 -m unittest discover -s tests` (stdlib-only tests).
 
 ## Architecture
@@ -61,9 +61,10 @@ and `cd services/call-gateway && python3 -m unittest discover -s tests` (stdlib-
   SDK (`eleven-client.ts`); house voices map 1:1 to distinct ElevenLabs voices in
   `tts.ts` (`ELEVEN_VOICES`); read-aloud auto-prefers `eleven_v3` with a self-healing
   fallback; live calls use Turbo v2.5.
-- **Python services** (self-hosted, optional): `services/neural-voice` (TTS engines) and
-  `services/call-gateway` (live phone agent: STT → Opus brain → TTS, with barge-in and
-  streamed replies). Heavy deps imported lazily so the orchestration layer/tests load clean.
+- **Python service** (self-hosted, optional): `services/call-gateway` (live phone agent:
+  local Whisper STT → Opus brain → **ElevenLabs** TTS, with barge-in and streamed replies).
+  Heavy deps imported lazily so the orchestration layer/tests load clean. (Voice is
+  ElevenLabs-only — there is no in-house/on-device TTS service.)
 - **LLM:** Anthropic. Opus 4.8 for replies/warm drafts/the call brain; Sonnet 4.6 for
   high-volume cold outreach (`src/lib/ai/client.ts`). Cost model in `src/lib/ai/cost.ts`.
 

@@ -7,12 +7,13 @@ def env(name, default=None):
     return v if v not in (None, "") else default
 
 
-# Your in-house voice (the neural-voice service) — WebSocket URL. If NEURAL_VOICE_URL
-# isn't set directly, build it from NEURAL_VOICE_HOST/PORT (lets Render's
-# fromService auto-wire the gateway to the private neural-voice service).
-NEURAL_VOICE_URL = env("NEURAL_VOICE_URL")
-if not NEURAL_VOICE_URL and env("NEURAL_VOICE_HOST"):
-    NEURAL_VOICE_URL = f"ws://{env('NEURAL_VOICE_HOST')}:{env('NEURAL_VOICE_PORT', '8765')}"
+# Voice — ElevenLabs only. The gateway speaks every call line via ElevenLabs
+# (streamed PCM, downsampled to telephony 8 kHz). ELEVENLABS_VOICE_ID is the
+# default voice when a call doesn't specify one; the realtime model favors low
+# latency for live calls.
+ELEVENLABS_API_KEY = env("ELEVENLABS_API_KEY")
+ELEVENLABS_VOICE_ID = env("ELEVENLABS_VOICE_ID")
+ELEVENLABS_MODEL = env("ELEVENLABS_MODEL", "eleven_turbo_v2_5")
 # Your Opus brain.
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY")
 ANTHROPIC_MODEL = env("ANTHROPIC_MODEL", "claude-opus-4-8")
