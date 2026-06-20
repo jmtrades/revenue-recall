@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { Footer } from "@/components/marketing/Footer";
-import { Hero3D } from "@/components/marketing/Hero3D";
+import { HeroPreview } from "@/components/marketing/HeroPreview";
+import { RecallOrbit } from "@/components/RecallOrbit";
 import { StickyCTA } from "@/components/marketing/StickyCTA";
 import { PricingPlans } from "@/components/marketing/PricingPlans";
 import { BrandLogos } from "@/components/marketing/BrandLogos";
@@ -177,6 +178,8 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="hero-glow relative overflow-hidden">
         <div className="surface-grid absolute inset-0 opacity-40" />
+        {/* Signature recall mark — bleeds off the top-right, behind the content. */}
+        <RecallOrbit size={560} aria-hidden className="pointer-events-none absolute -right-16 -top-12 hidden opacity-60 lg:block" />
         <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-8 px-5 pb-12 pt-10 sm:gap-12 sm:pb-20 sm:pt-14 lg:grid-cols-2 lg:items-center lg:pb-28 lg:pt-20">
           <div className="min-w-0 animate-fade-up">
             <span className="eyebrow">Autonomous outbound · every industry, any size</span>
@@ -206,7 +209,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="min-w-0 animate-fade-up [animation-delay:120ms]">
-            <Hero3D />
+            <HeroPreview />
           </div>
         </div>
       </section>
