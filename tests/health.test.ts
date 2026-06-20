@@ -9,6 +9,9 @@ beforeEach(() => {
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   delete process.env.VERCEL_GIT_COMMIT_SHA;
   delete process.env.GIT_COMMIT_SHA;
+  // The detailed blocker/warning TEXT is operator-gated; the helper authenticates
+  // by default so these assertions see it (one case below checks the anon view).
+  process.env.ADMIN_TOKEN = "tok_test_admin";
   // Voice provider env — cleared so the voice diagnostic is deterministic.
   delete process.env.ELEVENLABS_API_KEY;
   delete process.env.ELEVENLABS_AGENT_ID;
@@ -20,9 +23,11 @@ afterEach(() => {
   process.env = { ...SAVED };
 });
 
-async function health() {
+async function health(opts: { anon?: boolean } = {}) {
   const { GET } = await import("@/app/api/health/route");
-  const res = await GET();
+  const headers: Record<string, string> = {};
+  if (!opts.anon) headers.authorization = `Bearer ${process.env.ADMIN_TOKEN}`;
+  const res = await GET(new Request("http://localhost/api/health", { headers }));
   return res.json();
 }
 
@@ -90,6 +95,16 @@ describe("health launch-readiness verdict", () => {
     const body = await health();
     expect(body.status).toBe("ok");
     expect(Array.isArray(body.launch.warnings)).toBe(true);
+  });
+
+  it("withholds the blocker/warning TEXT from an anonymous request (counts only)", async () => {
+    // A live public deployment must not broadcast its setup gaps. Anonymous gets
+    // the verdict + counts (fine for an uptime/status check) but not the text.
+    const body = await health({ anon: true });
+    expect(body.status).toBe("ok");
+    expect(body.launch.ready).toBe(false);
+    expect(typeof body.launch.blockers).toBe("number"); // count, not the text array
+    expect(typeof body.launch.warnings).toBe("number");
   });
 });
 

@@ -24,3 +24,13 @@ export function requireAdmin(req: Request, scope: string): NextResponse | null {
   logInfo("admin.authorized", { scope });
   return null;
 }
+
+/** Boolean form for endpoints that stay PUBLIC but reveal extra detail to an
+ *  operator (e.g. /api/health shows setup-gap text only with the token). Pure +
+ *  constant-time; no rate-limit or logging since it gates detail, not access. */
+export function isAdminRequest(req: Request): boolean {
+  const expected = process.env.ADMIN_TOKEN;
+  const header = req.headers.get("authorization") ?? "";
+  const provided = header.startsWith("Bearer ") ? header.slice(7) : "";
+  return Boolean(expected && provided && safeEqual(provided, expected));
+}
