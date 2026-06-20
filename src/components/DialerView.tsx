@@ -314,9 +314,9 @@ export function DialerView({ queue, locale, voiceMinutes, objections }: { queue:
         <RecallOrbit size={168} className="mb-1 opacity-90" aria-hidden />
         <EmptyState
           iconName="dialer"
-          title="No calls queued"
-          hint="The power dialer pulls deals with phone numbers from your Revenue Recall queue. When deals go cold, they line up here for back-to-back calling with AI prep."
-          action={<Link href="/recall" className="cta inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90">View recall queue</Link>}
+          title="No one to call yet"
+          hint="The Power Dialer lines up every lead with a phone number — your cold/slipping deals first, then your open leads — for back-to-back calling with AI prep. Add leads with phone numbers and they show up here."
+          action={<Link href="/leads" className="cta inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90">Add or import leads</Link>}
         />
       </div>
     );

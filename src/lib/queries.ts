@@ -287,7 +287,59 @@ export async function getCallQueue(): Promise<CallQueueItem[]> {
       nextStage: nextOpenStage(stagesByPipeline.get(opp.pipelineId) ?? [], opp.stageId),
     });
   }
+
+  // Fresh-workspace fallback: a just-onboarded org has leads but nothing has gone
+  // "cold" yet, so the recall-scored queue is empty — which made the Power Dialer a
+  // dead end ("where do I start calling?"). When there's no recall queue, surface
+  // the org's callable OPEN deals so there's ALWAYS someone to call.
+  if (items.length === 0) {
+    return callableOpenLeads(opps, cById, stagesByPipeline, { actsByContact, callAttempts, alreadyQueued: queuedContacts });
+  }
   return items.slice(0, 40);
+}
+
+/**
+ * Callable OPEN leads for the Power Dialer's fresh-workspace fallback (highest
+ * value first), with the same guards the recall queue uses: an open stage, a
+ * phone on file, not opted out, under the per-contact attempt cap, one card per
+ * person. Pure (no I/O) so the fallback is deterministically testable.
+ */
+export function callableOpenLeads(
+  opps: Opportunity[],
+  contactById: Map<string, Contact>,
+  stagesByPipeline: Map<string, Stage[]>,
+  ctx: { actsByContact: Map<string, Activity[]>; callAttempts: Map<string, number>; alreadyQueued?: Set<string> },
+  limit = 40,
+): CallQueueItem[] {
+  const items: CallQueueItem[] = [];
+  const taken = new Set(ctx.alreadyQueued ?? []);
+  const openByValue = opps
+    .filter((o) => (stagesByPipeline.get(o.pipelineId) ?? []).find((s) => s.id === o.stageId)?.type === "open")
+    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+  for (const opp of openByValue) {
+    if (items.length >= limit) break;
+    const contact = contactById.get(opp.contactId);
+    const phone = contact?.points.find((p) => p.channel === "phone")?.value;
+    if (!contact || !phone || taken.has(contact.id)) continue;
+    if (hasOptedOut(contact, opp, ctx.actsByContact.get(contact.id) ?? [])) continue;
+    const attempts = ctx.callAttempts.get(contact.id) ?? 0;
+    if (attempts >= MAX_CALL_ATTEMPTS) continue;
+    taken.add(contact.id);
+    items.push({
+      dealId: opp.id,
+      contactId: contact.id,
+      contactName: contact.name,
+      company: contact.company ?? "",
+      phone,
+      title: opp.title,
+      reason: "new_lead",
+      score: 0,
+      recommendation: "Fresh lead — open with a warm intro and find what they need.",
+      attempts,
+      nextStage: nextOpenStage(stagesByPipeline.get(opp.pipelineId) ?? [], opp.stageId),
+    });
+  }
+  return items;
 }
 
 export async function getTeamAndPipeline(): Promise<{ users: User[]; pipeline: Pipeline }> {

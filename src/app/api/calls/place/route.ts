@@ -6,7 +6,7 @@ import { resolveProvider } from "@/lib/crm/registry";
 import { placeCall } from "@/lib/comms";
 import { getActiveVoice } from "@/lib/voice";
 import { getOrgSettings } from "@/lib/org";
-import { writeRateLimit } from "@/lib/ratelimit";
+import { writeRateLimit, distributedRateLimit } from "@/lib/ratelimit";
 import { withGuard } from "@/lib/api/guard";
 import { hasOptedOut, recordingDisclosure, callConsentRequired, hasCallConsent } from "@/lib/agent/guardrails";
 import { enforcementOn } from "@/lib/billing/enforce";
@@ -17,6 +17,14 @@ import type { Activity } from "@/lib/crm/types";
 export const dynamic = "force-dynamic";
 
 const Body = z.object({ dealId: z.string().optional(), contactId: z.string().optional(), to: z.string().optional() });
+
+/** Idempotency window for placing a call (ms). A fast duplicate within this
+ *  window is collapsed into one dial; a deliberate redial after it goes through.
+ *  Tune with CALL_DEDUP_WINDOW_MS (default 15s). */
+function callDedupWindowMs(): number {
+  const n = Number(process.env.CALL_DEDUP_WINDOW_MS);
+  return Number.isFinite(n) && n > 0 ? n : 15_000;
+}
 
 export const POST = withGuard(async (req: Request) => {
   if (!writeRateLimit(req, "call").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -71,6 +79,17 @@ export const POST = withGuard(async (req: Request) => {
   // This org's settings, fetched once: caller-ID + org id for the gateway echo
   // below, and the industry that grounds the voicemail's call-back hook.
   const org = await getOrgSettings().catch(() => null);
+
+  // Idempotency: collapse a double-submit / network retry into ONE real dial. The
+  // unit is the destination number per org — you can't place two simultaneous
+  // calls to the same line anyway, and a fast duplicate would otherwise be a
+  // second BILLABLE call (telephony + STT + premium voice + the model). Short
+  // window, so a deliberate redial a bit later still goes through. Cross-instance
+  // (Supabase-backed) so it holds across serverless instances; fails OPEN if the
+  // limiter's store hiccups (never block a legitimate call over a limiter blip).
+  if (!(await distributedRateLimit(`dial:${org?.id ?? "_"}:${to}`, 1, callDedupWindowMs())).ok) {
+    return NextResponse.json({ ok: true, deduped: true, to }, { status: 200 });
+  }
 
   // never let context-building block the call.
   let context: string | undefined;
