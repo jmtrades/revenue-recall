@@ -7,11 +7,12 @@ import { ttsAvailable } from "@/lib/voice/tts";
 import { convaiConfigured, convaiAgentId, convaiReason } from "@/lib/voice/convai";
 import { elevenConfigured } from "@/lib/voice/eleven";
 import { launchStatus } from "@/lib/launch";
+import { isAdminRequest } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
 /** Liveness + capability probe for uptime checks and ops dashboards. */
-export async function GET() {
+export async function GET(req: Request) {
   const cfg = getConfig();
   const ch = channelStatus();
 
@@ -42,6 +43,12 @@ export async function GET() {
 
   // Launch readiness — shared with the in-app LaunchBanner so they never drift.
   const { ready, blockers, warnings } = launchStatus();
+  // The detailed blocker/warning TEXT names env vars and specific setup gaps
+  // ("domain isn't verified", "not A2P registered") — operator-internal. Keep the
+  // verdict + counts public (enough for an uptime/status check), but only reveal
+  // the text to a request carrying ADMIN_TOKEN, so a live deployment doesn't
+  // broadcast its unfinished setup to the anonymous internet.
+  const operator = isAdminRequest(req);
 
   // Which build is actually serving. Vercel injects the commit SHA at build
   // time (GIT_COMMIT_SHA covers other hosts), so an outside probe can prove a
@@ -57,6 +64,8 @@ export async function GET() {
     industry: cfg.industryId,
     capabilities,
     voice,
-    launch: { ready, blockers, warnings },
+    launch: operator
+      ? { ready, blockers, warnings }
+      : { ready, blockers: blockers.length, warnings: warnings.length },
   });
 }
