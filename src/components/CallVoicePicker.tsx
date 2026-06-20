@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { HOUSE_VOICES, DEFAULT_HOUSE_VOICE } from "@/lib/voice/house";
-import { ensureLocalVoice, localSynth } from "@/lib/voice/local";
-import { browserSynth } from "@/lib/voice/synth";
+import { getSynth } from "@/lib/voice/synth";
 import type { SpeakHandle } from "@/lib/voice/speech";
 
 // What a voice says when previewed — a real call opener, so "how it sounds on
@@ -22,8 +21,8 @@ const VOICE_GROUPS: { prefix: string; label: string }[] = [
 /**
  * Per-org outbound CALL voice. Unlike VoiceControls (on-device read-aloud), this
  * persists to the org and is the voice the AI actually speaks in on real calls —
- * threaded through /api/calls/place → the gateway. Self-hosted Kokoro voices,
- * which is also what the ▶ preview plays, so what you hear is what you get.
+ * threaded through /api/calls/place → the gateway. The ▶ preview plays the same
+ * ElevenLabs voice the AI uses on calls, so what you hear is what you get.
  */
 export function CallVoicePicker({ initialVoiceId }: { initialVoiceId: string | null }) {
   const [voiceId, setVoiceId] = useState<string>(initialVoiceId ?? "");
@@ -67,9 +66,13 @@ export function CallVoicePicker({ initialVoiceId }: { initialVoiceId: string | n
     }
     handleRef.current?.stop();
     setWarming(id);
-    const ok = await ensureLocalVoice();
+    // Preview through the ElevenLabs hosted synth (server-side /api/voice/tts).
+    const synth = getSynth();
     setWarming(null);
-    const synth = ok && localSynth.available() ? localSynth : browserSynth;
+    if (!synth.available()) {
+      setError("Add an ElevenLabs key to preview and use the call voice.");
+      return;
+    }
     setPreviewing(id);
     const handle = await synth.speak(PREVIEW_LINE.replace("{name}", label), { voiceId: id, emotion: "warm" });
     handleRef.current = handle;

@@ -33,6 +33,7 @@ export const PUBLIC_API = [
   "/api/bookings/", // public booking submit — self-authed by an HMAC booking token
   "/api/t", // tracked-link redirect — self-authed by an HMAC click token
   "/api/client-error", // browser-error intake — rate-limited, schema-clamped, always 204 (errors on logged-out pages matter too)
+  "/api/voice/preview", // public landing voice demo — fixed lines only, rate-limited, cached
   "/api/health",
 ];
 

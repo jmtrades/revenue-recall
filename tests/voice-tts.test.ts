@@ -29,9 +29,14 @@ describe("hosted TTS provider chain", () => {
     expect(ttsAvailable()).toBe(false);
   });
 
-  it("prefers ElevenLabs over OpenAI when both are set", () => {
+  it("is ElevenLabs-only — no other vendor key selects a provider", () => {
+    // Cartesia/OpenAI keys present but ElevenLabs absent → no voice at all.
     process.env.OPENAI_API_KEY = "sk-x";
-    expect(ttsProvider()).toBe("openai");
+    process.env.CARTESIA_API_KEY = "ca-x";
+    process.env.CARTESIA_VOICE_ID = "uuid-1";
+    expect(ttsProvider()).toBeNull();
+    expect(ttsAvailable()).toBe(false);
+    // The ElevenLabs key is the only thing that lights up voice.
     process.env.ELEVENLABS_API_KEY = "el-x";
     expect(ttsProvider()).toBe("elevenlabs");
   });
@@ -40,30 +45,12 @@ describe("hosted TTS provider chain", () => {
     await expect(synthesizeSpeech({ text: "hi" })).rejects.toThrow(/No hosted TTS provider/);
   });
 
-  it("ElevenLabs tops the ladder — the best voice wins when configured", () => {
-    process.env.CARTESIA_API_KEY = "ca-x";
-    process.env.CARTESIA_VOICE_ID = "uuid-1";
-    expect(ttsProvider()).toBe("cartesia"); // fully-configured Cartesia answers…
+  it("ignores VOICE_TTS_PROVIDER — you can't pin away from ElevenLabs", () => {
+    process.env.OPENAI_API_KEY = "sk-x";
+    process.env.VOICE_TTS_PROVIDER = "openai"; // pin to OpenAI is ignored
+    expect(ttsProvider()).toBeNull();
     process.env.ELEVENLABS_API_KEY = "el-x";
-    expect(ttsProvider()).toBe("elevenlabs"); // …until the premium voice exists
-  });
-
-  it("Cartesia needs BOTH key and voice id to be usable", () => {
-    process.env.CARTESIA_API_KEY = "ca-x"; // key alone is not usable
-    process.env.OPENAI_API_KEY = "sk-x";
-    expect(ttsProvider()).toBe("openai");
-    process.env.CARTESIA_VOICE_ID = "uuid-1";
-    expect(ttsProvider()).toBe("cartesia");
-  });
-
-  it("VOICE_TTS_PROVIDER pins a provider — but only if it's configured", () => {
-    process.env.CARTESIA_API_KEY = "ca-x";
-    process.env.CARTESIA_VOICE_ID = "uuid-1";
-    process.env.OPENAI_API_KEY = "sk-x";
-    process.env.VOICE_TTS_PROVIDER = "openai";
-    expect(ttsProvider()).toBe("openai"); // pin honored
-    process.env.VOICE_TTS_PROVIDER = "elevenlabs"; // pinned but NOT configured
-    expect(ttsProvider()).toBe("cartesia"); // falls back to the ladder
+    expect(ttsProvider()).toBe("elevenlabs");
   });
 });
 

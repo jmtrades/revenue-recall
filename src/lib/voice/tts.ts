@@ -1,13 +1,9 @@
 /**
- * Hosted neural TTS — the "sounds like a real person TODAY" path. Same
- * philosophy as the comms layer: provider-agnostic, nothing required, the
- * feature lights up the moment ONE key is set and degrades to the browser
- * engine when none is. Priority: ElevenLabs (most human) → OpenAI.
- *
- * This is the hot-path complement to docs/neural-voice.md: the in-house
- * streaming model (NEXT_PUBLIC_NEURAL_VOICE_URL) stays the end-state and takes
- * priority on the client when it exists; this route makes every spoken surface
- * human-grade in the meantime with zero caller changes.
+ * Hosted neural TTS — the product's voice. Voice is **ElevenLabs-only**: it lights
+ * up the moment ELEVENLABS_API_KEY is set and is unavailable otherwise (there is no
+ * on-device, self-hosted, or browser-TTS fallback). House voices map 1:1 to real
+ * ElevenLabs voices (ELEVEN_VOICES below); the org's own clones are selectable live
+ * via lib/voice/eleven.ts.
  */
 import { speakable, type Emotion } from "@/lib/voice/speech";
 import { DEFAULT_HOUSE_VOICE } from "@/lib/voice/house";
@@ -22,31 +18,12 @@ function env(name: string): string | undefined {
   return v && v.length > 0 ? v : undefined;
 }
 
-function cartesiaReady(): boolean {
-  // Cartesia addresses voices by UUID (no stable public catalog to hand-map),
-  // so it needs BOTH the key and a default voice id to be usable.
-  return Boolean(env("CARTESIA_API_KEY") && env("CARTESIA_VOICE_ID"));
-}
-
-/** Which hosted provider answers. `VOICE_TTS_PROVIDER` pins one explicitly
- *  (honored only if that provider is actually configured); otherwise priority
- *  is QUALITY-first: ElevenLabs (the most human voice on the market — the
- *  make-or-break of a sales call, priced into every plan's minute allowance,
- *  see billing/voice-minutes.ts) → Cartesia (excellent latency, ~half the
- *  cost) → OpenAI. Pin VOICE_TTS_PROVIDER=cartesia to trade a little polish
- *  for margin. */
+/** The hosted TTS provider. Voice is **ElevenLabs-only** — ElevenLabs is the sole
+ *  provider, available the moment ELEVENLABS_API_KEY is set, else null (no voice;
+ *  there is no other vendor and no on-device/browser fallback). The Cartesia/OpenAI
+ *  branches further down are retained as inert/unreachable code only. */
 export function ttsProvider(): TtsProvider | null {
-  const ready: Record<TtsProvider, boolean> = {
-    cartesia: cartesiaReady(),
-    elevenlabs: Boolean(env("ELEVENLABS_API_KEY")),
-    openai: Boolean(env("OPENAI_API_KEY") || env("OPENAI_TTS_API_KEY")),
-  };
-  const pin = env("VOICE_TTS_PROVIDER") as TtsProvider | undefined;
-  if (pin && ready[pin]) return pin;
-  if (ready.elevenlabs) return "elevenlabs";
-  if (ready.cartesia) return "cartesia";
-  if (ready.openai) return "openai";
-  return null;
+  return env("ELEVENLABS_API_KEY") ? "elevenlabs" : null;
 }
 
 export function ttsAvailable(): boolean {
