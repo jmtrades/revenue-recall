@@ -47,7 +47,7 @@ export function CalendarSubscribe({ feedUrl }: { feedUrl: string }) {
               href={google}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white transition hover:bg-brand/90"
+              className="rounded-lg bg-brand-strong px-3 py-1.5 text-sm font-medium text-white transition hover:bg-brand-strong/90"
             >
               Google Calendar
             </a>

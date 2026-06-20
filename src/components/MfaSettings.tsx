@@ -118,7 +118,7 @@ export function MfaSettings() {
           <img src={enroll.qr} alt="2FA QR code" className="my-3 h-40 w-40 rounded bg-white p-2" />
           <div className="flex items-center gap-2">
             <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" aria-label="Verification code" placeholder="123456" className="w-28 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand" />
-            <button onClick={confirmEnroll} disabled={busy || code.trim().length < 6} className={`${btn} bg-brand text-white hover:bg-brand/90`}>{busy ? "Verifying…" : "Verify & enable"}</button>
+            <button onClick={confirmEnroll} disabled={busy || code.trim().length < 6} className={`${btn} bg-brand-strong text-white hover:bg-brand-strong/90`}>{busy ? "Verifying…" : "Verify & enable"}</button>
             <button onClick={() => { setEnroll(null); setCode(""); }} className="text-xs text-muted hover:text-fg">Cancel</button>
           </div>
         </div>

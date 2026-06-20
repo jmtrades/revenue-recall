@@ -95,7 +95,7 @@ export function MarketingNav() {
           <Link href="/login" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-fg sm:block">Sign in</Link>
           <Link
             href="/signup"
-            className="cta group inline-flex items-center gap-2 rounded-full bg-brand py-1.5 pl-4 pr-1.5 text-sm font-semibold text-white hover:bg-brand/90"
+            className="cta group inline-flex items-center gap-2 rounded-full bg-brand-strong py-1.5 pl-4 pr-1.5 text-sm font-semibold text-white hover:bg-brand-strong/90"
           >
             Start free
             <span className="grid h-6 w-6 place-items-center rounded-full bg-white/20 transition-transform duration-200 ease-out group-hover:translate-x-0.5">

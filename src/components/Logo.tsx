@@ -33,7 +33,7 @@ export function LogoBadge({ box = 32, mark, className = "" }: { box?: number; ma
   return (
     <span
       style={{ width: box, height: box }}
-      className={`grid flex-none place-items-center rounded-[10px] bg-brand text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)] ring-1 ring-inset ring-white/10 ${className}`}
+      className={`grid flex-none place-items-center rounded-[10px] bg-brand-strong text-white shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45)] ring-1 ring-inset ring-white/10 ${className}`}
     >
       <LogoMark size={mark ?? Math.round(box * 0.56)} />
     </span>

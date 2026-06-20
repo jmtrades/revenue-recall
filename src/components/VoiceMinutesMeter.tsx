@@ -103,13 +103,13 @@ export function VoiceMinutesMeter({ meter, planName, callsLeft, packs, billingCo
               <div key={t.id} className={`rounded-xl border p-3 ${t.featured ? "border-brand bg-brand-soft/15" : "border-border bg-surface"}`}>
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-fg">+{t.actions.toLocaleString()} min</p>
-                  {t.featured && <span className="pill bg-brand text-white text-[10px]">Most popular</span>}
+                  {t.featured && <span className="pill bg-brand-strong text-white text-[10px]">Most popular</span>}
                 </div>
                 <p className="mt-0.5 text-xs text-muted">{t.blurb}</p>
                 <button
                   onClick={() => buy(t.id)}
                   disabled={!t.purchasable}
-                  className="mt-2 block w-full rounded-lg bg-brand px-3 py-1.5 text-center text-xs font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
+                  className="mt-2 block w-full rounded-lg bg-brand-strong px-3 py-1.5 text-center text-xs font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50"
                   title={t.purchasable ? undefined : "Connect billing to enable top-ups"}
                 >
                   {`Buy · $${t.suggestedUsd}`}

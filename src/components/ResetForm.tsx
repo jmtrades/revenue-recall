@@ -14,7 +14,7 @@ function Submit({ label }: { label: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="cta inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-3 py-2.5 text-sm font-semibold text-white hover:bg-brand/90 disabled:opacity-60"
+      className="cta inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-strong px-3 py-2.5 text-sm font-semibold text-white hover:bg-brand-strong/90 disabled:opacity-60"
     >
       {pending && (
         <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">

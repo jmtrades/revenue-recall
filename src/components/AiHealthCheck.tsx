@@ -41,7 +41,7 @@ export function AiHealthCheck() {
       <button
         onClick={check}
         disabled={busy}
-        className="mt-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
+        className="mt-2 rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50"
       >
         {busy ? "Checking…" : "Test AI"}
       </button>

@@ -209,7 +209,7 @@ export function InboxView({
             <div className="flex-1 space-y-3 overflow-y-auto p-4">
               {messages.map((m) => (
                 <div key={m.id} className={`flex ${m.direction === "outbound" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm ${m.direction === "outbound" ? "bg-brand text-white" : "bg-surface-2 text-fg"}`}>
+                  <div className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm ${m.direction === "outbound" ? "bg-brand-strong text-white" : "bg-surface-2 text-fg"}`}>
                     <p>{m.body}</p>
                     <p className={`mt-1 flex items-center gap-1 text-[10px] ${m.direction === "outbound" ? "text-fg/70" : "text-muted"}`}><ChannelIcon channel={m.channel} size={11} /> · {timeAgo(m.at)} ago</p>
                   </div>
@@ -251,7 +251,7 @@ export function InboxView({
                   className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
                 />
                 {draft.trim() && <SpeakButton text={draft} label="" />}
-                <button onClick={send} disabled={sending || !draft.trim()} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{sending ? "Sending…" : "Send"}</button>
+                <button onClick={send} disabled={sending || !draft.trim()} className="rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{sending ? "Sending…" : "Send"}</button>
               </div>
               {error && <p className="mt-1.5 text-[11px] text-danger">{error}</p>}
               <p className="mt-1.5 text-[11px] text-muted">Replies go back out on {channelLabel(replyChannel(active.channel))} when that channel is connected — otherwise logged to the timeline.</p>

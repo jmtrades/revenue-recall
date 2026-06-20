@@ -136,7 +136,7 @@ export function SequencesView({ sequences, customIds = [], canAuthor = false }: 
       {canAuthor && !draft && (
         <div className="mb-5">
           <div className="flex flex-wrap items-center gap-2">
-            <button onClick={() => { setGenOpen((v) => !v); setError(null); }} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90">
+            <button onClick={() => { setGenOpen((v) => !v); setError(null); }} className="rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90">
               Build it for my business
             </button>
             <button onClick={() => { setDraft({ ...EMPTY, steps: [{ ...NEW_STEP }] }); setGenOpen(false); setError(null); }} className="rounded-lg border border-border px-4 py-2 text-sm text-muted transition hover:text-fg">
@@ -156,7 +156,7 @@ export function SequencesView({ sequences, customIds = [], canAuthor = false }: 
                   onChange={(e) => setGenGoal(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && !genBusy) void generate(); }}
                 />
-                <button onClick={generate} disabled={genBusy} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-60">
+                <button onClick={generate} disabled={genBusy} className="rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-60">
                   {genBusy ? "Designing…" : "Generate"}
                 </button>
               </div>
@@ -212,7 +212,7 @@ export function SequencesView({ sequences, customIds = [], canAuthor = false }: 
             )}
             {error && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">{error}</p>}
             <div className="flex gap-2">
-              <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
+              <button onClick={save} disabled={busy} className="rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50">
                 {busy ? "Saving…" : draft.id ? "Save changes" : "Create sequence"}
               </button>
               <button onClick={() => { setDraft(null); setError(null); }} className="rounded-lg border border-border px-4 py-2 text-sm text-muted transition hover:text-fg">Cancel</button>

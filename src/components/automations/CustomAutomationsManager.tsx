@@ -105,7 +105,7 @@ export function CustomAutomationsManager({ initial, stages, sequences, canManage
           <p className="mt-0.5 text-sm text-muted">Your own trigger → action rules. They run alongside the presets above.</p>
         </div>
         {!form && (
-          <button onClick={() => { setForm(emptyDraft()); setError(null); }} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white transition hover:bg-brand/90">
+          <button onClick={() => { setForm(emptyDraft()); setError(null); }} className="rounded-lg bg-brand-strong px-3 py-1.5 text-sm font-medium text-white transition hover:bg-brand-strong/90">
             New rule
           </button>
         )}
@@ -279,7 +279,7 @@ function Builder({
 
       {error && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">{error}</p>}
       <div className="flex gap-2">
-        <button onClick={onSave} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
+        <button onClick={onSave} disabled={busy} className="rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50">
           {busy ? "Saving…" : form.id ? "Save changes" : "Create rule"}
         </button>
         <button onClick={onCancel} className="rounded-lg border border-border px-4 py-2 text-sm text-muted transition hover:text-fg">Cancel</button>

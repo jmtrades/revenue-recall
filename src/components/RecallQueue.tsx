@@ -169,7 +169,7 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
-              className={`rounded-lg px-3 py-1.5 text-sm transition ${filter === f.id ? "bg-brand text-white" : "bg-surface-2 text-muted hover:text-fg"}`}
+              className={`rounded-lg px-3 py-1.5 text-sm transition ${filter === f.id ? "bg-brand-strong text-white" : "bg-surface-2 text-muted hover:text-fg"}`}
             >
               {f.label} <span className="ml-1 text-xs opacity-70">{count}</span>
             </button>
@@ -284,11 +284,11 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
                     )}
                     {draft.source !== "error" && (
                       draft.row.channel === "call" ? (
-                        <button onClick={logCall} disabled={sending || sent} className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand/90 disabled:opacity-60">
+                        <button onClick={logCall} disabled={sending || sent} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-strong px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-strong/90 disabled:opacity-60">
                           {sent ? <><Icon name="check" size={13} strokeWidth={3} /> Logged</> : sending ? "Logging…" : "Log call"}
                         </button>
                       ) : (
-                        <button onClick={send} disabled={sending || sent} className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand/90 disabled:opacity-60">
+                        <button onClick={send} disabled={sending || sent} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-strong px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-strong/90 disabled:opacity-60">
                           {sent ? <><Icon name="check" size={13} strokeWidth={3} /> Sent</> : sending ? "Sending…" : draft.row.channel === "sms" ? "Send SMS" : "Send email"}
                         </button>
                       )

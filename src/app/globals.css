@@ -7,6 +7,10 @@
   /* Money-green accent (white button text stays legible). Warm-neutral darks —
      deliberately NOT the blue-black that reads as generic "AI SaaS". */
   --brand-rgb: 5 150 105;
+  /* AA-safe variant used ONLY behind white button text (emerald-700): white on
+     --brand is ~3.8:1 (fails WCAG AA for normal text); on this it's ~5.5:1. The
+     lighter --brand stays the brand color for chips, accents, borders, glows. */
+  --brand-strong-rgb: 4 120 87;
   --brand-soft-rgb: 12 45 33;
   --bg-rgb: 10 11 10;
   --surface-rgb: 17 19 17;

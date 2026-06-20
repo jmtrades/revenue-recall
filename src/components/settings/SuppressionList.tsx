@@ -66,7 +66,7 @@ export function SuppressionList({ canManage }: { canManage: boolean }) {
             className="w-64 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
             aria-label="Email to suppress"
           />
-          <button onClick={() => email.trim() && mutate("POST", email.trim())} disabled={busy || !email.trim()} className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
+          <button onClick={() => email.trim() && mutate("POST", email.trim())} disabled={busy || !email.trim()} className="rounded-lg bg-brand-strong px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50">
             Suppress
           </button>
           {note && <span className="text-xs text-muted">{note}</span>}

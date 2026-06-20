@@ -41,7 +41,7 @@ export function StickyCTA() {
         </p>
         <Link
           href="/signup"
-          className="shrink-0 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand/90"
+          className="shrink-0 rounded-full bg-brand-strong px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-strong/90"
         >
           Start free
         </Link>

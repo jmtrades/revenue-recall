@@ -8,7 +8,7 @@ export default function NotFound() {
         <h1 className="mt-4 font-display text-xl font-semibold tracking-tight text-fg">We couldn&apos;t find that page</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">The link may be broken or the page may have moved. Let&apos;s get you back on track.</p>
         <div className="mt-6 flex justify-center gap-3">
-          <Link href="/dashboard" className="cta inline-flex items-center rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand/90">
+          <Link href="/dashboard" className="cta inline-flex items-center rounded-full bg-brand-strong px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-strong/90">
             Go to dashboard
           </Link>
           <Link href="/" className="cta inline-flex items-center rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-fg transition-colors hover:bg-surface-2">

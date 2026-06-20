@@ -65,7 +65,7 @@ export function NotificationSettings({ initial, persisted }: { initial: Notifica
           <button
             onClick={save}
             disabled={!dirty || status === "saving"}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
+            className="rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50"
           >
             {status === "saving" ? "Saving…" : "Save preferences"}
           </button>

@@ -59,7 +59,7 @@ export function PricingPlans() {
               key={p.name}
               className={`raised relative flex flex-col rounded-2xl border p-6 ${p.featured ? "border-brand bg-surface ring-glow lg:-mt-3 lg:pb-9" : "lift border-border bg-surface hover:border-brand/40"}`}
             >
-              {p.featured && <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-brand px-3 py-1 text-xs font-semibold text-white shadow-[0_4px_12px_-4px_rgb(0_0_0/0.6)]">Most popular</span>}
+              {p.featured && <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-brand-strong px-3 py-1 text-xs font-semibold text-white shadow-[0_4px_12px_-4px_rgb(0_0_0/0.6)]">Most popular</span>}
               <h3 className="text-lg font-semibold text-fg">{p.name}</h3>
               <p className="mt-1 text-sm leading-snug text-muted">{p.tagline}</p>
               <div className="mt-5 flex items-end gap-1">
@@ -89,14 +89,14 @@ export function PricingPlans() {
               {p.href.startsWith("mailto:") ? (
                 <a
                   href={p.href}
-                  className={`cta mt-5 block rounded-full px-4 py-2.5 text-center text-sm font-semibold ${p.featured ? "bg-brand text-white hover:bg-brand/90" : "border border-border text-fg hover:bg-surface-2"}`}
+                  className={`cta mt-5 block rounded-full px-4 py-2.5 text-center text-sm font-semibold ${p.featured ? "bg-brand-strong text-white hover:bg-brand-strong/90" : "border border-border text-fg hover:bg-surface-2"}`}
                 >
                   {p.cta}
                 </a>
               ) : (
                 <Link
                   href={p.href}
-                  className={`cta mt-5 block rounded-full px-4 py-2.5 text-center text-sm font-semibold ${p.featured ? "bg-brand text-white hover:bg-brand/90" : "border border-border text-fg hover:bg-surface-2"}`}
+                  className={`cta mt-5 block rounded-full px-4 py-2.5 text-center text-sm font-semibold ${p.featured ? "bg-brand-strong text-white hover:bg-brand-strong/90" : "border border-border text-fg hover:bg-surface-2"}`}
                 >
                   {p.cta}
                 </Link>

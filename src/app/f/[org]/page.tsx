@@ -84,7 +84,7 @@ export default async function HostedLeadForm({ params, searchParams }: Props) {
                 <label htmlFor="lf-message" className="mb-1 block text-xs text-muted">{s.labelMessage}</label>
                 <textarea id="lf-message" name="message" rows={3} maxLength={2000} className={field} />
               </div>
-              <button type="submit" className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand/90">
+              <button type="submit" className="w-full rounded-lg bg-brand-strong px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-strong/90">
                 {s.send}
               </button>
               <p className="text-center text-[11px] text-muted">{s.formFootnote}</p>

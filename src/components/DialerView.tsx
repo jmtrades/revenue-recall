@@ -316,7 +316,7 @@ export function DialerView({ queue, locale, voiceMinutes, objections }: { queue:
           iconName="dialer"
           title="No one to call yet"
           hint="The Power Dialer lines up every lead with a phone number — your cold/slipping deals first, then your open leads — for back-to-back calling with AI prep. Add leads with phone numbers and they show up here."
-          action={<Link href="/leads" className="cta inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90">Add or import leads</Link>}
+          action={<Link href="/leads" className="cta inline-flex items-center gap-1.5 rounded-full bg-brand-strong px-4 py-2 text-sm font-semibold text-white hover:bg-brand-strong/90">Add or import leads</Link>}
         />
       </div>
     );
@@ -527,7 +527,7 @@ export function DialerView({ queue, locale, voiceMinutes, objections }: { queue:
               </select>
             </div>
             {summaryError && <p className="mt-2 text-sm text-danger">{summaryError}</p>}
-            <button onClick={endCall} disabled={summarizing} className="mt-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
+            <button onClick={endCall} disabled={summarizing} className="mt-2 rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50">
               {summarizing ? "Summarizing…" : "End & summarize"}
             </button>
 

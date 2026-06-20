@@ -314,7 +314,7 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
         ) : (
           turns.map((t, i) => (
             <div key={i} className={`flex ${t.speaker === "rep" ? "justify-end" : "justify-start"}`}>
-              <span className={`max-w-[80%] rounded-2xl px-3 py-1.5 text-sm ${t.speaker === "rep" ? "bg-brand text-white" : "bg-surface text-fg"}`}>
+              <span className={`max-w-[80%] rounded-2xl px-3 py-1.5 text-sm ${t.speaker === "rep" ? "bg-brand-strong text-white" : "bg-surface text-fg"}`}>
                 {t.text}
               </span>
             </div>
@@ -331,7 +331,7 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
       {error && <p className="mt-2 text-xs text-danger">{error}</p>}
 
       {!started ? (
-        <button onClick={start} disabled={busy} className="mt-3 w-full rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
+        <button onClick={start} disabled={busy} className="mt-3 w-full rounded-lg bg-brand-strong px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50">
           {busy ? "Connecting…" : "Start role-play"}
         </button>
       ) : (
@@ -360,7 +360,7 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
                 )}
               </button>
             )}
-            <button onClick={() => send(input)} disabled={busy || !input.trim()} className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-50">
+            <button onClick={() => send(input)} disabled={busy || !input.trim()} className="rounded-lg bg-brand-strong px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50">
               Send
             </button>
           </div>

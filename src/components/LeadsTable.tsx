@@ -264,7 +264,7 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
             key={s.id}
             onClick={() => setSegment(s.id)}
             aria-pressed={segment === s.id}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${segment === s.id ? "bg-brand text-white" : "bg-surface-2 text-muted hover:text-fg"}`}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${segment === s.id ? "bg-brand-strong text-white" : "bg-surface-2 text-muted hover:text-fg"}`}
           >
             {s.label} <span className={segment === s.id ? "text-white/70" : "text-muted/60"}>{counts[s.id] ?? 0}</span>
           </button>
@@ -340,7 +340,7 @@ export function LeadsTable({ rows, owners, valueLabel, sequences = [] }: { rows:
           <button
             onClick={applyBulkStatus}
             disabled={!bulkStatus || bulkBusy}
-            className="rounded-md bg-brand px-3 py-1 text-xs font-medium text-white transition hover:bg-brand/90 disabled:opacity-50"
+            className="rounded-md bg-brand-strong px-3 py-1 text-xs font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50"
           >
             {bulkBusy ? "Applying…" : `Apply to ${selected.size}`}
           </button>
