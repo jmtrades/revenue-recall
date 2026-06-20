@@ -69,8 +69,8 @@ export function VoiceStudio({
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <input className={input} placeholder="Your name (e.g. Sam)" value={senderName} onChange={(e) => setSenderName(e.target.value)} />
-        <input className={input} placeholder="Sign-off (e.g. — Sam, Acme Realty)" value={signature} onChange={(e) => setSignature(e.target.value)} />
+        <input className={input} aria-label="Your name" placeholder="Your name (e.g. Sam)" value={senderName} onChange={(e) => setSenderName(e.target.value)} />
+        <input className={input} aria-label="Email sign-off" placeholder="Sign-off (e.g. — Sam, Acme Realty)" value={signature} onChange={(e) => setSignature(e.target.value)} />
       </div>
       <div className="mt-2">
         <input
