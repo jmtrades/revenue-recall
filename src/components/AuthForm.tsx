@@ -158,7 +158,7 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
 
       <Submit label={mode === "signup" ? "Create account" : "Sign in"} />
 
-      <div className="flex items-center gap-3 py-1 text-[11px] uppercase tracking-wider text-muted/60">
+      <div className="flex items-center gap-3 py-1 text-[11px] uppercase tracking-wider text-muted">
         <span className="h-px flex-1 bg-border" />
         or
         <span className="h-px flex-1 bg-border" />

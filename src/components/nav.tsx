@@ -50,12 +50,12 @@ export function NavLinks({ onNavigate, showAdmin = false }: { onNavigate?: () =>
     <nav className="flex flex-1 flex-col gap-4">
       {NAV_GROUPS.map((group) => (
         <div key={group.heading}>
-          <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted/70">{group.heading}</p>
+          <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted">{group.heading}</p>
           <div className="flex flex-col gap-0.5">
             {group.items.map((item) => {
               const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
               return (
-                <Link key={item.href} href={item.href} prefetch={false} onClick={onNavigate} className={`nav-link ${active ? "nav-link-active" : ""}`}>
+                <Link key={item.href} href={item.href} prefetch={false} onClick={onNavigate} aria-current={active ? "page" : undefined} className={`nav-link ${active ? "nav-link-active" : ""}`}>
                   <Icon name={item.icon} className="shrink-0" />
                   {item.label}
                 </Link>
@@ -66,12 +66,12 @@ export function NavLinks({ onNavigate, showAdmin = false }: { onNavigate?: () =>
       ))}
       <div className="mt-auto flex flex-col gap-0.5">
         {showAdmin && (
-          <Link href="/admin" prefetch={false} onClick={onNavigate} className={`nav-link ${pathname.startsWith("/admin") ? "nav-link-active" : ""}`}>
+          <Link href="/admin" prefetch={false} onClick={onNavigate} aria-current={pathname.startsWith("/admin") ? "page" : undefined} className={`nav-link ${pathname.startsWith("/admin") ? "nav-link-active" : ""}`}>
             <Icon name="shield" className="shrink-0" />
             Admin
           </Link>
         )}
-        <Link href="/settings" prefetch={false} onClick={onNavigate} className={`nav-link ${pathname.startsWith("/settings") ? "nav-link-active" : ""}`}>
+        <Link href="/settings" prefetch={false} onClick={onNavigate} aria-current={pathname.startsWith("/settings") ? "page" : undefined} className={`nav-link ${pathname.startsWith("/settings") ? "nav-link-active" : ""}`}>
           <Icon name="settings" className="shrink-0" />
           Settings
         </Link>

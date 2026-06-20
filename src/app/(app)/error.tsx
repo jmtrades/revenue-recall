@@ -36,7 +36,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
           <a href="/onboarding" className="cta inline-flex items-center rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-fg transition-colors hover:bg-surface-2">Finish setup</a>
           <a href="/login" className="cta inline-flex items-center rounded-full px-5 py-2.5 text-sm font-semibold text-muted transition-colors hover:text-fg">Sign out</a>
         </div>
-        {error.digest && <p className="mt-5 font-mono text-[11px] text-muted/70">Ref: {error.digest}</p>}
+        {error.digest && <p className="mt-5 font-mono text-[11px] text-muted">Ref: {error.digest}</p>}
       </div>
     </div>
   );
