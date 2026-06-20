@@ -10,10 +10,17 @@ beforeEach(() => {
   delete process.env.AGENT_QUIET_END_UTC;
   process.env.SEQUENCE_AUTOPILOT = "true";
   process.env.AGENT_DAILY_SEND_CAP = "1";
+  // This test is about the send CAP, not the send-compliance gate (covered in
+  // cadence-compliance.test.ts) — make the recall email step actually sendable by
+  // attesting CAN-SPAM readiness, so the cap is the only thing limiting output.
+  process.env.COMPLIANCE_ADDRESS = "123 Market St, San Francisco, CA 94105";
+  process.env.EMAIL_DOMAIN_VERIFIED = "true";
 });
 afterEach(() => {
   delete process.env.SEQUENCE_AUTOPILOT;
   delete process.env.AGENT_DAILY_SEND_CAP;
+  delete process.env.COMPLIANCE_ADDRESS;
+  delete process.env.EMAIL_DOMAIN_VERIFIED;
 });
 
 describe("cadence respects the shared daily send cap", () => {
