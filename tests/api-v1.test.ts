@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Mock the org resolver so the public endpoints run against the in-memory CRM
 // without a database. (vi.hoisted: factory runs before the route imports it.)
@@ -7,11 +7,15 @@ vi.mock("@/lib/api-keys-server", () => ({ resolveOrgByApiKey }));
 
 import { GET as listLeads } from "@/app/api/v1/leads/route";
 import { GET as listDeals } from "@/app/api/v1/deals/route";
+import { _resetRateLimit } from "@/lib/ratelimit";
 
 const KEY = "Bearer rr_live_validlooooooooooong";
 
 describe("public API v1 read endpoints", () => {
-  beforeEach(() => resolveOrgByApiKey.mockReset());
+  beforeEach(() => {
+    resolveOrgByApiKey.mockReset();
+    _resetRateLimit(); // isolate per-IP + per-org buckets across cases
+  });
 
   it("GET /api/v1/leads rejects a missing key (401)", async () => {
     resolveOrgByApiKey.mockResolvedValue(null);
@@ -50,5 +54,36 @@ describe("public API v1 read endpoints", () => {
       expect(json.data[0]).toHaveProperty("title");
       expect(json.data[0]).toHaveProperty("stage");
     }
+  });
+});
+
+describe("public API v1 per-workspace rate limit", () => {
+  beforeEach(() => {
+    resolveOrgByApiKey.mockReset();
+    _resetRateLimit();
+  });
+  afterEach(() => {
+    delete process.env.API_RATE_LIMIT_PER_MIN;
+  });
+
+  it("caps a single workspace key regardless of source, then 429s", async () => {
+    process.env.API_RATE_LIMIT_PER_MIN = "2"; // tiny cap for the test
+    resolveOrgByApiKey.mockResolvedValue("org_capped");
+    const call = (ip: string) =>
+      listLeads(new Request("http://x/api/v1/leads", { headers: { authorization: KEY, "x-forwarded-for": ip } }));
+    // Two allowed within the window…
+    expect((await call("1.1.1.1")).status).toBe(200);
+    expect((await call("2.2.2.2")).status).toBe(200);
+    // …a third from yet another IP is still blocked — the cap is per WORKSPACE,
+    // so rotating source IPs (which would defeat an IP-only limit) doesn't help.
+    expect((await call("3.3.3.3")).status).toBe(429);
+  });
+
+  it("does not leak the cap across workspaces", async () => {
+    process.env.API_RATE_LIMIT_PER_MIN = "1";
+    resolveOrgByApiKey.mockResolvedValueOnce("org_a").mockResolvedValueOnce("org_b");
+    expect((await listLeads(new Request("http://x/api/v1/leads", { headers: { authorization: KEY } }))).status).toBe(200);
+    // A different workspace gets its own fresh budget.
+    expect((await listLeads(new Request("http://x/api/v1/leads", { headers: { authorization: KEY } }))).status).toBe(200);
   });
 });
