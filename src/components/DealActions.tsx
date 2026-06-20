@@ -28,11 +28,16 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
   const [drafting, setDrafting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [variations, setVariations] = useState<{ subject?: string; body: string }[]>([]);
+  const [calling, setCalling] = useState(false);
+  const [callStatus, setCallStatus] = useState<string | null>(null);
 
   const canDraft = kind === "email" || kind === "sms" || kind === "call";
   // Email/SMS can actually be DELIVERED (not just logged) — the deal page used to
   // only "Log activity", which wrote a "sent" timeline entry without sending.
   const canSend = kind === "email" || kind === "sms";
+  // Call can actually be PLACED from here — the AI dials in a human voice — not
+  // just logged after the fact. (Same endpoint the Power Dialer uses.)
+  const canCall = kind === "call";
 
   async function draft(opts: { count?: number; scenario?: "voicemail" | "breakup" | "referral" | "recap" | "renewal" | "reschedule" } = {}) {
     const count = opts.count ?? 1;
@@ -109,6 +114,33 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
       setError(e instanceof Error ? e.message : "Send failed");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function placeCall() {
+    if (calling) return; // never double-dial on a fast double-click
+    setCalling(true);
+    setError(null);
+    setCallStatus("Dialing…");
+    try {
+      // The same endpoint the Power Dialer uses: the AI places the call in a
+      // human voice, honoring consent / opt-out / quiet-hours / minutes, and the
+      // transcript posts back to this deal's timeline when the call ends.
+      const res = await fetch(`/api/calls/place`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealId }),
+      });
+      const b = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(b.error ?? "Couldn't place the call");
+      setCallStatus(b.deduped ? "Already dialing this number." : "Calling now — the AI is on the line. The transcript lands on the timeline when the call ends.");
+      toast("Calling…");
+      startTransition(() => router.refresh());
+    } catch (e) {
+      setCallStatus(null);
+      setError(e instanceof Error ? e.message : "Couldn't place the call");
+    } finally {
+      setCalling(false);
     }
   }
 
@@ -266,6 +298,27 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
               Log only
             </button>
           </div>
+        ) : canCall ? (
+          // Call: actually DIAL (the AI places the call) — or just log a call you
+          // already made by hand. "Call now" doesn't need notes; the textarea +
+          // "Log call" is for recording an outcome.
+          <div className="mt-2 flex gap-2">
+            <button
+              onClick={placeCall}
+              disabled={calling}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-strong px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-strong/90 disabled:opacity-50"
+            >
+              <Icon name="dialer" size={14} /> {calling ? "Dialing…" : "Call now"}
+            </button>
+            <button
+              onClick={log}
+              disabled={busy || !summary.trim()}
+              title="Record a call you already made, without dialing"
+              className="rounded-lg border border-border px-3 py-2 text-sm text-muted transition hover:text-fg disabled:opacity-50"
+            >
+              Log call
+            </button>
+          </div>
         ) : (
           <button
             onClick={log}
@@ -275,6 +328,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
             {busy ? "Saving…" : "Log activity"}
           </button>
         )}
+        {callStatus && <p className="mt-2 rounded-lg border border-brand/30 bg-brand-soft/20 px-3 py-2 text-xs text-fg">{callStatus}</p>}
       </div>
 
       {error && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">{error}</p>}
