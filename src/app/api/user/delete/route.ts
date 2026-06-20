@@ -8,6 +8,7 @@ import { planAccountDeletion } from "@/lib/account-deletion";
 import { recordAudit } from "@/lib/audit";
 import { purgeOrgRecordings } from "@/lib/calls/recordings";
 import { logInfo, logError, errMessage } from "@/lib/log";
+import { withGuard } from "@/lib/api/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ const Body = z.object({ confirm: z.string() });
  * identity is removed. Requires a typed "DELETE" confirmation and is
  * irreversible — guarded accordingly.
  */
-export async function POST(req: Request) {
+export const POST = withGuard(async (req: Request) => {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   if (!rateLimit(clientKey(req, "data-delete"), 5, 60_000).ok) {
@@ -76,4 +77,4 @@ export async function POST(req: Request) {
     logError("user.delete.failed", { error: errMessage(e) });
     return NextResponse.json({ error: "Couldn't delete the account. Please contact support." }, { status: 500 });
   }
-}
+});
