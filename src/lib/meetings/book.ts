@@ -5,7 +5,7 @@ import { sendEmail, sendSms, channelStatus } from "@/lib/comms";
 import { ownerEmailsForOrg } from "@/lib/billing/lifecycle";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { emitWebhook } from "@/lib/webhooks-out";
-import { getAvailability, getMeetingTypeBySlug, busyIntervals, insertBooking } from "@/lib/meetings/store";
+import { getAvailability, getMeetingTypeBySlug, busyIntervals, insertBooking, findConfirmedBookingForSlot } from "@/lib/meetings/store";
 import { isSlotAvailable } from "@/lib/meetings/availability";
 import { DEFAULT_MEETING_TYPE, type MeetingType } from "@/lib/meetings/types";
 import { prospectStrings, fill, type ProspectStrings } from "@/lib/i18n/prospect";
@@ -103,6 +103,15 @@ export async function bookMeeting(input: BookMeetingInput): Promise<BookMeetingR
     dealTitle: `${type.name} — ${name}`,
     notes: input.notes ? `Booking note: ${input.notes}` : undefined,
   });
+
+  // Idempotency: a double-click or a network retry must not create a second
+  // booking + confirmation email + webhook for the same invitee + slot. captureLead
+  // returned a stable contactId (deduped on email/phone), so an existing confirmed
+  // booking for this (contact, start) means this is a duplicate — return it as-is.
+  const dup = await findConfirmedBookingForSlot(cap.contactId, startsAt).catch(() => null);
+  if (dup) {
+    return { bookingId: dup.id, contactId: cap.contactId, dealId: cap.dealId, startsAt, endsAt, meetingName: type.name };
+  }
 
   // Log the meeting on the timeline (best-effort — a logging hiccup must not lose
   // the booking the prospect just made).

@@ -23,12 +23,14 @@ const h = vi.hoisted(() => ({
   inserted: [] as Array<Record<string, unknown>>,
   emails: [] as Array<{ to: string; subject: string }>,
   webhooks: [] as string[],
+  existingBooking: null as Record<string, unknown> | null,
 }));
 
 vi.mock("@/lib/meetings/store", () => ({
   getAvailability: vi.fn(async () => h.availability),
   getMeetingTypeBySlug: vi.fn(async () => h.meetingType),
   busyIntervals: vi.fn(async () => h.busy),
+  findConfirmedBookingForSlot: vi.fn(async () => h.existingBooking),
   insertBooking: vi.fn(async (row: Record<string, unknown>) => {
     const b = { id: `bk_${h.inserted.length + 1}`, status: "confirmed", createdAt: new Date().toISOString(), ...row };
     h.inserted.push(b);
@@ -68,6 +70,7 @@ beforeEach(() => {
   h.inserted = [];
   h.emails = [];
   h.webhooks = [];
+  h.existingBooking = null;
 });
 
 describe("bookMeeting", () => {
@@ -121,6 +124,18 @@ describe("bookMeeting", () => {
   it("rejects a disabled meeting type", async () => {
     h.meetingType = { id: "mt_2", name: "Closed", slug: "demo", durationMinutes: 30, locationKind: "phone", enabled: false };
     await expect(bookMeeting({ slug: "demo", startIso: futureStart(), name: "Nope", email: "x@y.com" })).rejects.toBeInstanceOf(BookingError);
+  });
+
+  it("is idempotent on a double-submit: returns the existing booking, no second insert/email/webhook", async () => {
+    // The invitee already has this exact slot booked (double-click / retry).
+    h.existingBooking = { id: "bk_existing", status: "confirmed" };
+    const res = await bookMeeting({ slug: "demo", startIso: futureStart(6), name: "Dup Buyer", email: `dup-${Date.now()}@acme.com` });
+    expect(res.bookingId).toBe("bk_existing"); // the SAME booking, not a new one
+    expect(h.inserted).toHaveLength(0); // no duplicate row
+    expect(h.emails).toHaveLength(0); // no duplicate confirmation
+    expect(h.webhooks).not.toContain("meeting.booked"); // no duplicate booking webhook
+    // (captureLead dedupes the contact on the same email in reality, so lead.created
+    //  doesn't re-fire either — that's covered by the lead-capture dedup tests.)
   });
 
   it("requires a name and a contact method", async () => {
