@@ -25,12 +25,14 @@ Personal Access Token with `read:packages`, username = your GitHub username.)
 1. Render → **New +** → **Web Service**.
 2. Choose **"Deploy an existing image"**.
 3. Image URL: `ghcr.io/jmtrades/revenue-recall-call-stack:latest`
-4. Instance type: **Standard** (the voice model needs ~1–2 GB RAM).
+4. Instance type: **Standard** (the baked Whisper STT model needs ~1–2 GB RAM).
 5. Add these environment variables:
 
    | Key | Value |
    |-----|-------|
-   | `ANTHROPIC_API_KEY` | your Anthropic key |
+   | `ANTHROPIC_API_KEY` | your Anthropic key (the call brain) |
+   | `ELEVENLABS_API_KEY` | your ElevenLabs key (the voice — required) |
+   | `ELEVENLABS_VOICE_ID` | optional default voice id |
    | `TWILIO_ACCOUNT_SID` | from Twilio |
    | `TWILIO_AUTH_TOKEN` | from Twilio |
    | `TWILIO_FROM_NUMBER` | your platform fallback number, e.g. `+14155551234` |
@@ -38,8 +40,8 @@ Personal Access Token with `read:packages`, username = your GitHub username.)
    | `CALL_STATUS_WEBHOOK_URL` | `https://recall-touch.com/api/calls/log` |
    | `PUBLIC_WSS_BASE` | leave blank for now (step 3) |
 
-   (You don't need to set `NEURAL_VOICE_HOST/PORT`, `VOICE_ENGINE`, or
-   `WHISPER_MODEL` — they're baked into the image.)
+   (`WHISPER_MODEL` is baked into the image — no need to set it. Voice is
+   ElevenLabs, so there's no neural-voice host/engine to configure.)
 6. **Create Web Service.** Wait for the green **Live** dot. Health check path is
    `/health`.
 

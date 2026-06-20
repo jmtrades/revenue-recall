@@ -51,50 +51,40 @@ reset, and outreach** emails.
 | Twilio | `TWILIO_*` above + optional `CALL_TWIML_URL` |
 | Any provider (webhook) | `VOICE_WEBHOOK_URL` |
 
-### The spoken voice is studio-grade by default — and free
-Every spoken surface (read-aloud, call prep, role-play) uses **Kokoro, a
-neural voice model running on-device in the browser**: zero per-use cost, no
-vendor, audio never leaves the machine. It downloads once in the background
-(~90 MB, cached; WebGPU when available) — until it's ready, or on devices that
-can't run it, the next engine down answers. **No configuration needed.**
+### Spoken voice — ElevenLabs
+Every spoken surface (read-aloud, call prep, role-play, live calls) speaks through
+**ElevenLabs**. Set `ELEVENLABS_API_KEY` and it lights up everywhere; without it
+the app runs fine, the **written** voice works everywhere, and the UI shows how to
+enable spoken voice. There is no browser / on-device fallback voice.
 
-Hosted voices for PHONE calls, in priority order (quality-first):
+| Option | Vars |
+|---|---|
+| **ElevenLabs** (the spoken voice + voice cloning) | `ELEVENLABS_API_KEY` (optional `ELEVENLABS_VOICE_ID` for the default voice) |
 
-| Option | Vars | Notes |
-|---|---|---|
-| **ElevenLabs (the best voice — default leader)** | `ELEVENLABS_API_KEY` | the most human delivery on the market; ~$0.06/min on Flash (the shipped call default) |
-| Cartesia Sonic | `CARTESIA_API_KEY` + `CARTESIA_VOICE_ID` (optional `CARTESIA_VOICE_MAP`) | ~90 ms latency, ~$0.04/min — pin it to trade a little polish for margin |
-| OpenAI TTS | `OPENAI_API_KEY` | solid + cheapest (~$0.015/min) |
-
-Pin one with `VOICE_TTS_PROVIDER=cartesia|elevenlabs|openai`; otherwise the
-best-configured wins (ElevenLabs > Cartesia > OpenAI).
-
-**Two-tier ElevenLabs quality (automatic):** live calls use **Flash v2.5**
-(~75 ms, the model the minute-margin math is priced on); in-app read-aloud,
-voice previews, and the landing demo use **`eleven_multilingual_v2`** — the
-most natural production model — because latency is invisible there and fidelity
-is the whole point. Override either independently: `ELEVENLABS_MODEL` (realtime
-calls) and `ELEVENLABS_MODEL_HQ` (non-realtime, e.g. set to `eleven_v3` once
-it's GA for your account).
+**Two-tier quality (automatic):** live calls use **Turbo v2.5** (low latency — the
+model the minute-margin math is priced on); in-app read-aloud, voice previews, and
+the landing demo auto-prefer **`eleven_v3`** (the most natural model, with a
+self-healing fallback) because latency is invisible there and fidelity is the
+point. Override either independently: `ELEVENLABS_MODEL` (realtime calls, default
+`eleven_turbo_v2_5`) and `ELEVENLABS_MODEL_HQ` (non-realtime).
 
 **Voice economics (the margin math, all knobs env-overridable —
 `VOICE_COST_*_PER_MIN`):** the unit is a CONNECTED TALK MINUTE, not a dial — a
 no-answer is free and a voicemail drop is ~30 s, so 100 dials/day consumes
 only ~64 talk min (15% connect × 3 min + 38% voicemail × 0.5 min). A connected
 minute costs telephony ($0.014) + STT ($0.006) + LLM (~$0.005) + the voice —
-**≈ $0.085/min on ElevenLabs Flash (the shipped call default)**, $0.065
-Cartesia, $0.04 OpenAI. Allowances sell rep-scale dial volume; margins below
-are the WORST CASE (full allowance consumed — real utilization runs lower):
+**≈ $0.085/min on ElevenLabs (Turbo v2.5, the shipped call default)**.
+Allowances sell rep-scale dial volume; margins below are the WORST CASE (full
+allowance consumed — real utilization runs lower):
 
 | Plan | Talk minutes | ≈ dials it covers | Voice COGS (full) | % of price | Worst-case margin |
 |---|---|---|---|---|---|
-| Starter (free) | 0 phone (unlimited on-device practice) | — | $0 | 0% | — |
+| Starter (free) | 0 phone (email/SMS + practice role-play) | — | $0 | 0% | — |
 | Operator $399 | 1,500 / mo | ~2,300/mo (≈100/day) | ~$127.50 | 32% | **~68%** |
 | Autopilot $899 | 4,000 pooled | ~6,000/mo across the desk | ~$340 | 38% | **~62%** |
 | Scale (custom) | unmetered | — | priced per deal | — | — |
 
-(Pin `VOICE_TTS_PROVIDER=cartesia` and those floors rise to ~76% / ~71%.
-Repricing is **self-healing**: amounts changed in `billing/catalog.ts` are
+(Repricing is **self-healing**: amounts changed in `billing/catalog.ts` are
 noticed by the hourly platform tick, which mints the new Stripe prices itself
 — `transfer_lookup_key` keeps existing subscribers grandfathered. Re-running
 `POST /api/billing/setup` does the same thing immediately if you don't want
@@ -104,14 +94,13 @@ records that it happened.)
 Minutes meter automatically from the call gateway's reported durations
 (feature `call_minutes` in the usage ledger — COGS lands in the operator's
 Settings → Billing breakdown). When billing enforcement is on and an org runs
-out, new calls pause with a friendly upgrade message; email, SMS, and
-on-device practice keep working. Hosted audio is only ever spent on seconds of
-actual speech — never on page views.
+out, new calls pause with a friendly upgrade message; email and SMS keep
+working. Voice audio is only ever spent on seconds of actual speech — never on
+page views (previews are fixed lines, cached).
 
-House voices (Aria, Adam, …) are native Kokoro ids and auto-map on the hosted
-backends; delivery (warm / calm / energetic…) is shaped per line everywhere.
-(`NEXT_PUBLIC_NEURAL_VOICE_URL` — the self-hosted GPU service — takes priority
-over everything when set.)
+House voices (Aria, Adam, …) map 1:1 to distinct ElevenLabs voices, and each org
+can use its own cloned voice; delivery (warm / calm / energetic…) is shaped per
+line everywhere.
 
 ### Phone numbers
 - Bring your own caller ID: `OUTBOUND_FROM_NUMBER`
@@ -233,7 +222,7 @@ client id/secret — then Settings shows an OAuth button.
 | `ENCRYPTION_KEY` | **required for the in-app Connect UI** — encrypts per-org secrets (≥16 chars; keep stable) |
 | `ADMIN_TOKEN` | protects the one-time bootstrap endpoint |
 | `NEXT_PUBLIC_SITE_URL` | canonical URL for SEO + OAuth redirects (e.g. `https://recall-touch.com`) |
-| `NEXT_PUBLIC_NEURAL_VOICE_URL` | optional self-hosted neural TTS (else browser voice) |
+| `ELEVENLABS_API_KEY` | spoken voice (read-aloud, call prep, role-play, live calls). Inert without it — the written voice still works everywhere. |
 
 ---
 

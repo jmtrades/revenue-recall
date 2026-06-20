@@ -30,9 +30,9 @@ npm run dev
 
 Open http://localhost:3000. With no configuration it boots on the built-in CRM
 with realistic demo data for the **real estate** vertical. Copy `.env.example`
-to `.env.local` to change industry, org name, or connect a CRM. The `predev`/
-`prebuild` hooks stage the on-device voice engine to `public/vendor/`
-automatically (`scripts/copy-kokoro.mjs`) — no manual step.
+to `.env.local` to change industry, org name, or connect a CRM. Spoken voice is
+ElevenLabs — set `ELEVENLABS_API_KEY` to light it up; without it the app runs
+fine and the written voice works everywhere.
 
 ## Architecture
 
@@ -188,15 +188,13 @@ The voice layer goes well past "no clichés":
   the workspace default with their own `preferredLanguage` (set via CRM data or
   a `language` column on CSV import) — so outreach to them goes out in their
   language even in an otherwise-English org.
-- **Spoken voice, in-house** (`src/lib/voice/*`) — a real **neural voice that
-  runs on-device** (Kokoro-82M via WebGPU, WASM fallback): a one-time ~90 MB
-  cached download, then every line is synthesized locally at **zero marginal
-  cost** — audio never leaves the device. Sentence-streamed, so speech starts
-  near-instantly instead of after a long silent wait. Premium hosted voices
-  (Cartesia → ElevenLabs → OpenAI, pinnable via `VOICE_TTS_PROVIDER`) drop in
-  behind the same `setSynth()` seam for phone calls, with browser-native TTS as
-  the universal fallback (`docs/neural-voice.md`). Emotional delivery shifts
-  speed/pitch/pauses by mood.
+- **Spoken voice — ElevenLabs** (`src/lib/voice/*`) — read-aloud, call prep, and
+  role-play speak through ElevenLabs (read-aloud auto-prefers `eleven_v3` with a
+  self-healing fallback; live calls use Turbo v2.5). House voices map 1:1 to
+  distinct ElevenLabs voices, and each org can use its own cloned voice. It's
+  inert-without-config: set `ELEVENLABS_API_KEY` and it lights up; without it the
+  written voice works everywhere and the UI says how to enable spoken voice (no
+  browser/on-device fallback). Emotional delivery shifts speed/pauses by mood.
 - **Conversations like a person** (`src/lib/voice/turntaking.ts`,
   `conversation.ts`) — instant intent-aware acknowledgments ("Yeah — fair
   question.") cover the beat while the full reply is composed, thinking pauses
