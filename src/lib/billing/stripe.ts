@@ -72,6 +72,7 @@ export async function stripePost(path: string, form: Record<string, string>): Pr
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: new URLSearchParams(form).toString(),
+    signal: AbortSignal.timeout(15_000),
   });
   const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok) {
@@ -84,6 +85,7 @@ export async function stripePost(path: string, form: Record<string, string>): Pr
 export async function stripeGet(path: string): Promise<Record<string, unknown>> {
   const res = await fetch(`https://api.stripe.com/v1/${path}`, {
     headers: { Authorization: `Bearer ${env("STRIPE_SECRET_KEY")}` },
+    signal: AbortSignal.timeout(15_000),
   });
   const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok) {
