@@ -185,10 +185,16 @@ async function run(req: Request) {
   // different orgs use different lock keys, so concurrency can't make a tenant
   // double-send. Tune with CRON_FANOUT_CONCURRENCY (default 6).
   const concurrency = Number(process.env.CRON_FANOUT_CONCURRENCY) || 6;
+  // Per-org deadline so a single hung tenant can't hold a concurrency slot
+  // forever and starve the rest (or silently consume the whole function budget).
+  // On timeout the fetch aborts → mapWithConcurrency surfaces it as a per-org
+  // failure (counted + alerted below), and the slot frees for the next org.
+  const orgTimeoutMs = Number(process.env.CRON_ORG_TIMEOUT_MS) || 120_000;
   const settled = await mapWithConcurrency(ids, concurrency, async (id) => {
     const r = await fetch(`${origin}/api/agent/cron?org=${encodeURIComponent(id)}`, {
       method: "POST",
       headers: { authorization: `Bearer ${secret}` },
+      signal: AbortSignal.timeout(orgTimeoutMs),
     });
     return { org: id, status: r.status, result: await r.json().catch(() => null) };
   });

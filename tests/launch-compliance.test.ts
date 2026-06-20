@@ -10,6 +10,7 @@ beforeEach(() => {
   delete process.env.EMAIL_FROM;
   delete process.env.COMPLIANCE_ADDRESS;
   delete process.env.OUTBOUND_COMPLIANCE;
+  delete process.env.SIGNUP_REQUIRE_EMAIL_CONFIRM;
 });
 afterEach(() => {
   process.env = { ...SAVED };
@@ -41,5 +42,18 @@ describe("launchStatus — CAN-SPAM postal address", () => {
     process.env.EMAIL_FROM = "sales@acme.com";
     process.env.OUTBOUND_COMPLIANCE = "false"; // operator appends their own
     expect(addressWarning(launchStatus())).toBe(false);
+  });
+});
+
+describe("launchStatus — signup email confirmation (Supabase SMTP)", () => {
+  const confirmWarning = (s: { warnings: string[] }) => s.warnings.some((w) => /email confirmation|Supabase Auth's SMTP/i.test(w));
+
+  it("warns when signup requires email confirmation (relies on Supabase Auth SMTP)", () => {
+    process.env.SIGNUP_REQUIRE_EMAIL_CONFIRM = "true";
+    expect(confirmWarning(launchStatus())).toBe(true);
+  });
+
+  it("stays silent by default (auto-confirm, no Supabase SMTP dependency)", () => {
+    expect(confirmWarning(launchStatus())).toBe(false);
   });
 });
