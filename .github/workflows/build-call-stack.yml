@@ -1,4 +1,4 @@
-# Publishes the combined call-stack image (in-house neural voice + call-gateway)
+# Publishes the call-gateway image (Whisper STT → Opus brain → ElevenLabs TTS)
 # to GitHub Container Registry (GHCR). This is what lets the gateway be deployed
 # as a single container from an image URL — no Render<->GitHub connection and no
 # Blueprint needed. Trigger it manually (Actions tab -> Run workflow) or it runs
