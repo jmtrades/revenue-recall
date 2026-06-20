@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ReasonBadge, ChannelBadge, ScoreDot } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { SpeakButton } from "@/components/SpeakButton";
@@ -201,7 +202,9 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
                 >
                   <td className="px-4 py-4"><ScoreDot score={r.score} /></td>
                   <td className="px-4 py-4">
-                    <div className="font-medium text-fg">{r.title}</div>
+                    {/* A real link so the deal is reachable by keyboard/SR, not just
+                        the mouse-only row click (WCAG 2.1.1). */}
+                    <Link href={`/deals/${r.opportunityId}`} onClick={(e) => e.stopPropagation()} className="font-medium text-fg outline-none hover:text-brand focus-visible:underline">{r.title}</Link>
                     <div className="text-xs text-muted">{r.contactLabel}</div>
                   </td>
                   <td className="px-4 py-4"><ReasonBadge reason={r.reason} /></td>
