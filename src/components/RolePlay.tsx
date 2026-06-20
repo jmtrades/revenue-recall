@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons";
 import { TONES, DEFAULT_TONE, type ToneId } from "@/lib/tones";
 import {
-  isSpeechSupported,
   isRecognitionSupported,
   listenOnce,
   listenContinuous,
@@ -72,13 +71,14 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
   const [canSpeak, setCanSpeak] = useState(false);
   const [canListen, setCanListen] = useState(false);
   useEffect(() => {
-    setCanSpeak(isSpeechSupported());
+    // Voice is ElevenLabs-only — the spoken prospect plays only when ElevenLabs
+    // is configured (no browser/on-device fallback). Mic input is separate.
+    setCanSpeak(getSynth().available());
     setCanListen(isRecognitionSupported());
   }, []);
 
-  // Speech routes through getSynth() — the neural composite (on-device Kokoro,
-  // streamed) with the browser engine as its own internal fallback — so the
-  // role-play prospect speaks in the same studio voice as the real product.
+  // Speech routes through getSynth() — the ElevenLabs backend — so the role-play
+  // prospect speaks in the same studio voice as the real product.
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -239,7 +239,7 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
   }
 
   function reset() {
-    if (typeof window !== "undefined" && canSpeak) window.speechSynthesis.cancel();
+    speakHandleRef.current?.stop(); // stop any in-flight ElevenLabs playback
     liveListenRef.current?.stop();
     liveListenRef.current = null;
     speakHandleRef.current?.stop();
@@ -292,12 +292,12 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
       </div>
 
       <p className="mb-3 text-xs text-muted">
-        You sell, the app plays {contactName.split(" ")[0]} as a {difficulty} prospect — out loud, on-device.
-        {!canSpeak && " (Spoken voice needs a browser that supports speech synthesis.)"}
+        You sell, the app plays {contactName.split(" ")[0]} as a {difficulty} prospect — out loud, in the ElevenLabs voice.
+        {!canSpeak && " (Add an ElevenLabs key to hear the spoken voice.)"}
       </p>
 
       {/* Optional live ElevenLabs Conversational AI agent — a real two-way spoken
-          call instead of the on-device turn-by-turn loop. Self-hides unless the
+          call instead of the turn-by-turn loop. Self-hides unless the
           agent is configured (key + agent id) and entitled on this plan. The
           scenario (who they are, the deal, the difficulty) is passed as a prompt
           override so the live prospect is THIS deal, not a generic bot. */}

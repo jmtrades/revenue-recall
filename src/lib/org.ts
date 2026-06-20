@@ -35,8 +35,9 @@ export interface OrgSettings {
   /** This org's own caller-ID / "from" number (E.164) for calls + SMS. Each org
    *  brings/buys their own, so this is per-org, not a single platform number. */
   callerId?: string;
-  /** This org's outbound CALL voice — an in-house Kokoro voice id (e.g.
-   *  "af_heart") or a "clone:<id>" signature voice. Undefined = gateway default. */
+  /** This org's outbound CALL voice — a house voice id (e.g. "af_heart", which
+   *  maps to an ElevenLabs voice) or a "clone:<id>" signature voice. Undefined =
+   *  gateway default. */
   voiceId?: string;
   /** This org's hosted read-aloud voice — an "eleven:<id>" ElevenLabs voice
    *  (stock or the org's own clone) used by the neural TTS. Undefined = default. */

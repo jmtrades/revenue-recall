@@ -43,6 +43,6 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile Python services
-        run: python3 -m py_compile services/call-gateway/*.py services/neural-voice/server.py
+        run: python3 -m py_compile services/call-gateway/*.py
       - name: Call-gateway unit tests
         run: cd services/call-gateway && python3 -m unittest discover -s tests
