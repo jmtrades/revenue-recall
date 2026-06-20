@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { verifyStripeSignature, planForPrice } from "@/lib/billing/stripe";
-import { saveSubscriptionForOrg, saveSubscriptionForCustomer, orgIdForCustomer, type SubStatus } from "@/lib/billing/store";
+import { verifyStripeSignature, planForPriceResolved } from "@/lib/billing/stripe";
+import { saveSubscriptionForOrg, saveSubscriptionForCustomer, orgIdForCustomer, statusForOrg, type SubStatus } from "@/lib/billing/store";
 import { sendPaymentFailedEmail, sendCancellationEmail } from "@/lib/billing/lifecycle";
 import { isPlanId } from "@/lib/billing/plans";
 import { addUsageCredits } from "@/lib/ai/usage";
@@ -88,7 +88,12 @@ export async function POST(req: Request) {
         const customer = obj.customer as string;
         const items = (obj.items as { data?: { price?: { id?: string }; quantity?: number; current_period_end?: number }[] })?.data ?? [];
         const first = items[0];
-        const plan = planForPrice(first?.price?.id);
+        // Resolve the plan via env pins AND the catalog's stable lookup keys, so a
+        // customer-portal up/downgrade is reflected even on the supported zero-env,
+        // auto-provisioned price setup (env-only planForPrice would leave the OLD
+        // plan in place until the hourly reconcile corrected it). Same resolver
+        // reconcile uses, so the two never disagree.
+        const plan = await planForPriceResolved(first?.price?.id);
         // In Stripe API 2025-03-31+, current_period_end moved from the
         // subscription top level onto the items — read both so "renews on" and
         // the period are never silently blank on a newer API version.
@@ -139,8 +144,18 @@ export async function POST(req: Request) {
         // subscription is in good standing — flip it back to active so a
         // customer who fixed their card isn't left locked out until the next
         // subscription.updated event. Only acts on subscription invoices.
+        //
+        // Guard against resurrection: Stripe doesn't guarantee ordering, so the
+        // final invoice of a canceled cycle — or a retried delivery of an old
+        // payment_succeeded — can arrive AFTER customer.subscription.deleted. Don't
+        // flip a row we already know is canceled back to active (that would
+        // re-grant paid access to a churned customer until the hourly reconcile).
         const customer = obj.customer as string;
-        if (customer && obj.subscription) await saveSubscriptionForCustomer(customer, { status: "active" });
+        if (customer && obj.subscription) {
+          const orgId = await orgIdForCustomer(customer).catch(() => null);
+          const known = orgId ? await statusForOrg(orgId).catch(() => null) : null;
+          if (known !== "canceled") await saveSubscriptionForCustomer(customer, { status: "active" });
+        }
         break;
       }
       default:

@@ -108,6 +108,15 @@ export async function saveSubscriptionForOrg(id: string, patch: Partial<Subscrip
   if (error) throw new Error(`subscription upsert failed (org ${id}): ${error.message}`);
 }
 
+/** The coarse subscription status for a specific org (webhook contexts have no
+ *  session). Returns null when unknown / no DB — callers treat that as "not
+ *  canceled" so a read hiccup never blocks a legitimate state change. */
+export async function statusForOrg(orgId: string): Promise<SubStatus | null> {
+  if (!isSupabaseConfigured() || !orgId) return null;
+  const { data } = await getSupabase()!.from("subscriptions").select("status").eq("org_id", orgId).maybeSingle();
+  return (data?.status as SubStatus | undefined) ?? null;
+}
+
 /** Find which org a Stripe customer belongs to (webhook → org resolution). */
 export async function orgIdForCustomer(customerId: string): Promise<string | null> {
   if (!isSupabaseConfigured()) return null;

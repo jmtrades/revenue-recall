@@ -1,5 +1,4 @@
-import { billingConfigured, planForPrice, priceIdByLookupKey, stripeGet } from "@/lib/billing/stripe";
-import { CATALOG } from "@/lib/billing/catalog";
+import { billingConfigured, planForPriceResolved, stripeGet } from "@/lib/billing/stripe";
 import { saveSubscriptionForOrg, type SubStatus } from "@/lib/billing/store";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { logError, logInfo, errMessage } from "@/lib/log";
@@ -56,20 +55,6 @@ interface StripeSub {
   current_period_end?: number;
   metadata?: Record<string, string>;
   items?: { data?: StripeSubItem[] };
-}
-
-/** Price id → plan, via env pins first, then the catalog's stable lookup keys
- *  (how auto-provisioned prices resolve — no pasted STRIPE_PRICE_* needed). */
-async function planForPriceResolved(priceId: string | undefined): Promise<PlanId | undefined> {
-  if (!priceId) return undefined;
-  const pinned = planForPrice(priceId);
-  if (pinned) return pinned;
-  for (const entry of CATALOG) {
-    if (entry.kind !== "plan" || !entry.plan) continue;
-    const resolved = await priceIdByLookupKey(entry.lookupKey).catch(() => undefined);
-    if (resolved && resolved === priceId) return entry.plan;
-  }
-  return undefined;
 }
 
 interface LocalRow {

@@ -77,6 +77,35 @@ describe("stripe webhook route", () => {
     expect((await getSubscription()).status).toBe("active");
   });
 
+  it("does NOT resurrect a canceled subscription on a stale/out-of-order payment_succeeded", async () => {
+    // Stripe can deliver the final invoice of a canceled cycle (or retry an old
+    // payment_succeeded) AFTER subscription.deleted. Flipping it back to active
+    // would re-grant paid access to a churned customer.
+    const saveSpy = vi.fn(async () => {});
+    vi.doMock("@/lib/billing/store", async () => {
+      const actual = await vi.importActual<typeof import("@/lib/billing/store")>("@/lib/billing/store");
+      return { ...actual, orgIdForCustomer: async () => "org_x", statusForOrg: async () => "canceled", saveSubscriptionForCustomer: saveSpy };
+    });
+    const { POST } = await import("@/app/api/billing/webhook/route");
+    const res = await POST(signed(JSON.stringify({ type: "invoice.payment_succeeded", data: { object: { customer: "cus_x", subscription: "sub_x" } } })));
+    expect(res.status).toBe(200);
+    expect(saveSpy).not.toHaveBeenCalled(); // canceled stays canceled
+    vi.doUnmock("@/lib/billing/store");
+  });
+
+  it("DOES recover a non-canceled (past_due) subscription on payment_succeeded", async () => {
+    const saveSpy = vi.fn(async () => {});
+    vi.doMock("@/lib/billing/store", async () => {
+      const actual = await vi.importActual<typeof import("@/lib/billing/store")>("@/lib/billing/store");
+      return { ...actual, orgIdForCustomer: async () => "org_y", statusForOrg: async () => "past_due", saveSubscriptionForCustomer: saveSpy };
+    });
+    const { POST } = await import("@/app/api/billing/webhook/route");
+    const res = await POST(signed(JSON.stringify({ type: "invoice.payment_succeeded", data: { object: { customer: "cus_y", subscription: "sub_y" } } })));
+    expect(res.status).toBe(200);
+    expect(saveSpy).toHaveBeenCalledWith("cus_y", expect.objectContaining({ status: "active" }));
+    vi.doUnmock("@/lib/billing/store");
+  });
+
   it("ignores a one-off (non-subscription) paid invoice", async () => {
     const { POST } = await import("@/app/api/billing/webhook/route");
     const res = await POST(signed(JSON.stringify({ type: "invoice.payment_succeeded", data: { object: { customer: "cus_1" } } })));
