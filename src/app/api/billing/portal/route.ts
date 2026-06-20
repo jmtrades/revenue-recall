@@ -3,13 +3,16 @@ import { billingConfigured, createPortalSession } from "@/lib/billing/stripe";
 import { getSubscription } from "@/lib/billing/store";
 import { requireRole } from "@/lib/authz";
 import { recordAudit } from "@/lib/audit";
+import { withGuard } from "@/lib/api/guard";
+import { writeRateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
 /** Open the Stripe customer portal so a customer can manage or cancel billing. */
-export async function POST(req: Request) {
+export const POST = withGuard(async (req: Request) => {
   const denied = await requireRole("owner", "admin");
   if (denied) return denied;
+  if (!writeRateLimit(req, "billing").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   if (!billingConfigured()) {
     return NextResponse.json({ error: "Billing isn't configured." }, { status: 503 });
   }
@@ -24,4 +27,4 @@ export async function POST(req: Request) {
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Portal failed" }, { status: 502 });
   }
-}
+});

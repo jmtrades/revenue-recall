@@ -9,6 +9,8 @@ import { getSupabase } from "@/lib/supabase/client";
 import { getActiveOrgId } from "@/lib/supabase/tenant";
 import { requireRole } from "@/lib/authz";
 import { recordAudit } from "@/lib/audit";
+import { withGuard } from "@/lib/api/guard";
+import { writeRateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +21,10 @@ const Body = z.object({
   embedded: z.boolean().optional(),
 });
 
-export async function POST(req: Request) {
+export const POST = withGuard(async (req: Request) => {
   const denied = await requireRole("owner", "admin");
   if (denied) return denied;
+  if (!writeRateLimit(req, "billing").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   if (!billingConfigured()) {
     // Never block or alarm the buyer: they're using the product on Starter and
     // can upgrade the moment checkout is switched on.
@@ -61,4 +64,4 @@ export async function POST(req: Request) {
       : "We couldn't start checkout just now — please try again in a moment.";
     return NextResponse.json({ error: friendly }, { status: 502 });
   }
-}
+});
