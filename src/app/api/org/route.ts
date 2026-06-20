@@ -6,12 +6,13 @@ import { isLanguageCode } from "@/lib/languages";
 import { ACCENT_KEYS, THEME_MODES } from "@/lib/theme";
 import { requireRole } from "@/lib/authz";
 import { recordAudit } from "@/lib/audit";
+import { withGuard } from "@/lib/api/guard";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export const GET = withGuard(async () => {
   return NextResponse.json(await getOrgSettings());
-}
+});
 
 const Patch = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -29,7 +30,7 @@ const Patch = z.object({
   sendingPaused: z.boolean().optional(),
 });
 
-export async function PATCH(req: Request) {
+export const PATCH = withGuard(async (req: Request) => {
   // Org-wide settings (name, industry, compliance identity, quota) are an
   // owner/admin concern — a rep shouldn't be able to change them.
   const denied = await requireRole("owner", "admin");
@@ -43,4 +44,4 @@ export async function PATCH(req: Request) {
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Update failed" }, { status: 409 });
   }
-}
+});
