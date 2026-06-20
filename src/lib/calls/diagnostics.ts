@@ -14,7 +14,7 @@ export interface GatewayHealth {
   /** True when the URL answers but looks like the app, not the gateway. */
   misdirected?: boolean;
   status?: string;
-  voice?: boolean; // in-house neural voice wired
+  voice?: boolean; // ElevenLabs voice wired (gateway has ELEVENLABS_API_KEY)
   brain?: boolean; // Anthropic key present
   twilio?: boolean; // twilio_ready() incl. PUBLIC_WSS_BASE
   transport?: string;
