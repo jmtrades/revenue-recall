@@ -1,9 +1,10 @@
 # Deploy the call-gateway from a prebuilt image (no GitHub connection)
 
 If Render's GitHub connection won't cooperate, skip it entirely. The CI workflow
-`build-call-stack.yml` publishes the **whole calling stack** (in-house neural
-voice + call-gateway) as **one image** to GitHub Container Registry. You deploy
-that image as a single Render service — no Blueprint, no repo picker.
+`build-call-stack.yml` publishes the **call-gateway** (Whisper STT → Opus brain →
+ElevenLabs TTS) as **one image** to GitHub Container Registry. You deploy that
+image as a single Render service — no Blueprint, no repo picker. (Voice is
+ElevenLabs via `ELEVENLABS_API_KEY`; there is no separate voice service.)
 
 Image:
 
