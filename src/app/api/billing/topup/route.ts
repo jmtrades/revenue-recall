@@ -7,15 +7,18 @@ import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getSupabase } from "@/lib/supabase/client";
 import { getActiveOrgId } from "@/lib/supabase/tenant";
 import { requireRole } from "@/lib/authz";
+import { withGuard } from "@/lib/api/guard";
+import { writeRateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
 const Body = z.object({ pack: z.string(), embedded: z.boolean().optional() });
 
 /** Start a one-time Checkout for a usage top-up pack. */
-export async function POST(req: Request) {
+export const POST = withGuard(async (req: Request) => {
   const denied = await requireRole("owner", "admin");
   if (denied) return denied;
+  if (!writeRateLimit(req, "billing").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   if (!billingConfigured()) {
     return NextResponse.json({ error: "Billing isn't configured. Set STRIPE_SECRET_KEY to enable top-ups." }, { status: 503 });
   }
@@ -43,4 +46,4 @@ export async function POST(req: Request) {
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Top-up failed" }, { status: 502 });
   }
-}
+});
