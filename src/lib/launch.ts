@@ -46,6 +46,13 @@ export function launchStatus(): LaunchStatus {
     warnings.push("SMS isn't A2P 10DLC registered — register your brand + campaign with your carrier, then set SMS_A2P_REGISTERED=true. Until then autonomous texts are held for review.");
   }
   if (!isAiConfigured()) warnings.push("AI is in template mode — add ANTHROPIC_API_KEY for live, in-your-voice drafting.");
+  // Signup confirmation emails are sent by Supabase Auth's OWN SMTP (separate from
+  // the app's Resend), so requiring confirmation without Supabase custom SMTP set
+  // up can strand a real signup on Supabase's rate-limited default sender. We can't
+  // read Supabase's SMTP config from here, so flag it whenever the gate is on.
+  if (process.env.SIGNUP_REQUIRE_EMAIL_CONFIRM === "true") {
+    warnings.push("Signup requires email confirmation — those emails go through Supabase Auth's SMTP, not Resend. Configure custom SMTP in Supabase (Auth → Email) or new signups may never receive the confirmation link.");
+  }
 
   return { ready: blockers.length === 0, blockers, warnings };
 }
