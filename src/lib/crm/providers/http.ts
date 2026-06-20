@@ -11,6 +11,7 @@ import type {
   User,
 } from "@/lib/crm/types";
 import { fetchWithRetry } from "@/lib/crm/net";
+import { assertSafeOutboundUrl } from "@/lib/net/ssrf-guard";
 
 /**
  * Generic HTTP CRM adapter — connect ANY CRM, no per-vendor code. Point it at a
@@ -54,13 +55,17 @@ export class HttpCrmProvider implements CrmProvider {
   }
 
   private async get<T>(path: string): Promise<T> {
-    const res = await fetchWithRetry(`${this.base}${path}`, { headers: this.headers() });
+    const url = `${this.base}${path}`;
+    assertSafeOutboundUrl(url); // SSRF guard — block private/loopback/metadata hosts, require https
+    const res = await fetchWithRetry(url, { headers: this.headers(), redirect: "manual" });
     if (!res.ok) throw new Error(`CRM HTTP ${res.status} on GET ${path}`);
     return (await res.json()) as T;
   }
 
   private async post<T>(path: string, body: unknown): Promise<T> {
-    const res = await fetchWithRetry(`${this.base}${path}`, { method: "POST", headers: this.headers(), body: JSON.stringify(body) });
+    const url = `${this.base}${path}`;
+    assertSafeOutboundUrl(url); // SSRF guard — see get()
+    const res = await fetchWithRetry(url, { method: "POST", headers: this.headers(), body: JSON.stringify(body), redirect: "manual" });
     if (!res.ok) throw new Error(`CRM HTTP ${res.status} on POST ${path}`);
     return (await res.json()) as T;
   }

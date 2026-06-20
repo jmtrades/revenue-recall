@@ -13,6 +13,7 @@ import type {
   User,
 } from "@/lib/crm/types";
 import { fetchWithRetry } from "@/lib/crm/net";
+import { assertSafeOutboundUrl } from "@/lib/net/ssrf-guard";
 
 /**
  * Salesforce CRM adapter (REST + SOQL). Reads an OAuth access token and the org
@@ -102,8 +103,14 @@ export class SalesforceProvider implements CrmProvider {
 
   private send(path: string, init?: { method?: string; body?: unknown; absolute?: boolean }): Promise<Response> {
     const url = init?.absolute ? `${this.instance}${path}` : `${this.base}${path}`;
+    // SSRF guard: `instance` comes from the tenant's connection config (or a token
+    // refresh response), so block private/loopback/metadata hosts and require
+    // https; redirect:"manual" closes the redirect-to-internal bypass. Same posture
+    // as the database CRM adapter + outbound webhooks.
+    assertSafeOutboundUrl(url);
     return fetchWithRetry(url, {
       method: init?.method ?? "GET",
+      redirect: "manual",
       headers: {
         Authorization: `Bearer ${this.token}`,
         Accept: "application/json",
