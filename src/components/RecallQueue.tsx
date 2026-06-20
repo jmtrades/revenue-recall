@@ -102,6 +102,7 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
 
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [calling, setCalling] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
   function copy() {
@@ -137,6 +138,32 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
   // A call can't be "sent" — log that the call happened (with the script as the
   // note) so the deal advances and drops out of the queue, instead of silently
   // firing off an email behind the user's back.
+  // Actually DIAL: the AI places the call (human voice, consent/opt-out/quiet-hours/
+  // minutes enforced server-side) and the transcript posts back to the timeline.
+  async function placeCall() {
+    if (!draft || calling) return;
+    setCalling(true);
+    setSendError(null);
+    try {
+      const res = await fetch(`/api/calls/place`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealId: draft.row.opportunityId }),
+      });
+      const b = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setSent(true);
+        setTimeout(() => { setDraft(null); setSent(false); router.refresh(); }, 1000);
+      } else {
+        setSendError(b.error ?? "Couldn't place the call. Try again.");
+      }
+    } catch {
+      setSendError("Couldn't place the call. Try again.");
+    } finally {
+      setCalling(false);
+    }
+  }
+
   async function logCall() {
     if (!draft) return;
     setSending(true);
@@ -287,9 +314,14 @@ export function RecallQueue({ rows }: { rows: RecallRow[] }) {
                     )}
                     {draft.source !== "error" && (
                       draft.row.channel === "call" ? (
-                        <button onClick={logCall} disabled={sending || sent} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-strong px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-strong/90 disabled:opacity-60">
-                          {sent ? <><Icon name="check" size={13} strokeWidth={3} /> Logged</> : sending ? "Logging…" : "Log call"}
-                        </button>
+                        <>
+                          <button onClick={placeCall} disabled={sending || calling || sent} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-strong px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-strong/90 disabled:opacity-60">
+                            {sent ? <><Icon name="check" size={13} strokeWidth={3} /> Calling</> : <><Icon name="dialer" size={13} /> {calling ? "Dialing…" : "Call now"}</>}
+                          </button>
+                          <button onClick={logCall} disabled={sending || calling || sent} title="Record a call you already made by hand" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-fg hover:bg-surface-2 disabled:opacity-60">
+                            {sending ? "Logging…" : "Log call"}
+                          </button>
+                        </>
                       ) : (
                         <button onClick={send} disabled={sending || sent} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-strong px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-strong/90 disabled:opacity-60">
                           {sent ? <><Icon name="check" size={13} strokeWidth={3} /> Sent</> : sending ? "Sending…" : draft.row.channel === "sms" ? "Send SMS" : "Send email"}
