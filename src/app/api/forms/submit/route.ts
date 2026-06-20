@@ -15,9 +15,23 @@ export const dynamic = "force-dynamic";
  * bots. On success it redirects back to the form with ?sent=1 (HTML) or returns
  * JSON (programmatic).
  */
+// Server-side bounds for the public, unauthenticated form. The HTML form sets
+// maxLength, but those are client-only — a direct POST bypasses them, so we cap
+// every field here (mirroring the authed /api/v1/leads schema) and reject an
+// oversized body, so the endpoint can't be used to flood storage with multi-MB
+// values.
+const MAX_BODY_BYTES = 64 * 1024;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const cap = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
+
 export const POST = withGuard(async (req: Request) => {
   if (!rateLimit(clientKey(req, "formsubmit"), 30, 60_000).ok) {
     return NextResponse.json({ error: "Too many submissions — please wait a moment." }, { status: 429 });
+  }
+  // Reject an oversized payload before parsing (best-effort; field caps below are
+  // the real backstop since Content-Length can be absent).
+  if (Number(req.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "Submission too large." }, { status: 413 });
   }
 
   const ct = req.headers.get("content-type") ?? "";
@@ -44,11 +58,15 @@ export const POST = withGuard(async (req: Request) => {
     return done(req, wantsJson, org, token);
   }
 
-  const name = (fields.name ?? "").trim();
-  const email = (fields.email ?? "").trim();
-  const phone = (fields.phone ?? "").trim();
+  // Bound every field server-side. A malformed email is dropped (not stored) so
+  // garbage never enters the dedup/outreach path; the name+(email|phone) check
+  // below then decides if enough remains to create a lead.
+  const name = cap(fields.name, 200);
+  let email = cap(fields.email, 254);
+  if (email && !EMAIL_RE.test(email)) email = "";
+  const phone = cap(fields.phone, 40);
   if (!name || (!email && !phone)) {
-    if (wantsJson) return NextResponse.json({ error: "Name and an email or phone are required." }, { status: 400 });
+    if (wantsJson) return NextResponse.json({ error: "Name and a valid email or phone are required." }, { status: 400 });
     return NextResponse.redirect(formUrl(req, org, token, "error=1"), 303);
   }
 
@@ -57,8 +75,8 @@ export const POST = withGuard(async (req: Request) => {
       name,
       email: email || undefined,
       phone: phone || undefined,
-      company: (fields.company ?? "").trim() || undefined,
-      notes: (fields.message ?? "").trim() || undefined,
+      company: cap(fields.company, 200) || undefined,
+      notes: cap(fields.message, 2000) || undefined,
       source: "Web form",
     }),
   );
