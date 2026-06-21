@@ -2,6 +2,7 @@ import { entitlements, effectivePlan } from "@/lib/billing/entitlements";
 import { getSubscription } from "@/lib/billing/store";
 import { recordUsage, featureUnitsThisMonth, voiceMinuteCreditsThisPeriod } from "@/lib/ai/usage";
 import { ttsProvider, type TtsProvider } from "@/lib/voice/tts";
+import { isOperator } from "@/lib/operator";
 
 /**
  * Voice-minute economics — the COGS model for AI phone calls and the
@@ -166,6 +167,11 @@ export async function voiceMinutesMeter(now: Date = new Date()): Promise<VoiceMi
  *  purchased top-ups (or is unmetered). Callers gate with this only when
  *  billing enforcement is on — open demos and self-hosted stay unmetered. */
 export async function isWithinVoiceMinutes(now: Date = new Date()): Promise<boolean> {
+  // The operator/owner is always fully entitled to their own product — never let
+  // your own billing enforcement lock you out of calling (mirrors the isEntitled
+  // operator bypass in enforce.ts, which only covered aiLive/autopilot/integrations
+  // and left this voice gate blocking the operator's calls on the free plan).
+  if (await isOperator()) return true;
   const m = await voiceMinutesMeter(now);
   return m.unlimited || (m.limitMin > 0 && m.usedMin < m.limitMin);
 }
