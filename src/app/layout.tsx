@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { CookieConsent } from "@/components/CookieConsent";
 import { ClientErrorReporter } from "@/components/ClientErrorReporter";
+import { HelpWidget } from "@/components/HelpWidget";
 import { SITE_URL } from "@/lib/site";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${inter.variable} ${display.variable}`}>
       <body className="min-h-screen font-sans antialiased">
         {children}
+        <HelpWidget />
         <CookieConsent />
         <ClientErrorReporter />
       </body>

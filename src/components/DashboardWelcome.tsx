@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, Button } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
 import { SampleDataButton } from "@/components/SampleDataButton";
+import { StartCallingCard } from "@/components/StartCallingCard";
 import { RecallOrbit } from "@/components/RecallOrbit";
 import { canUseSampleData } from "@/lib/sample-data";
 
@@ -88,6 +89,8 @@ export async function DashboardWelcome({ greeting }: { greeting: string }) {
           </Card>
         ))}
       </div>
+
+      <StartCallingCard />
 
       <Card>
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
