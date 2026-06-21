@@ -1,4 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+
+// The operator is always entitled to call. Default to a NON-operator so every
+// existing test keeps its plan-gated behavior; one case flips it on.
+const { isOperator } = vi.hoisted(() => ({ isOperator: vi.fn(async () => false) }));
+vi.mock("@/lib/operator", () => ({ isOperator, operatorEmails: () => [] }));
+
 import {
   voiceCostPerMinuteUsd,
   voiceGrossMarginPct,
@@ -16,6 +22,7 @@ import { usageSummary, _resetUsage } from "@/lib/ai/usage";
 const SAVED = { ...process.env };
 beforeEach(() => {
   _resetUsage();
+  isOperator.mockResolvedValue(false);
   for (const k of Object.keys(process.env)) if (k.startsWith("VOICE_COST_")) delete process.env[k];
 });
 afterEach(() => {
@@ -107,6 +114,14 @@ describe("minutes metering (in-memory ledger path)", () => {
     // Demo org resolves to the free plan → 0 included → metered out.
     expect(meter.includedMin).toBe(0);
     expect(await isWithinVoiceMinutes()).toBe(false);
+  });
+
+  it("never blocks the OPERATOR — full calling access even on the free plan with 0 minutes", async () => {
+    isOperator.mockResolvedValue(true);
+    await recordCallMinutes(99999, "elevenlabs"); // way past any free allowance
+    const meter = await voiceMinutesMeter();
+    expect(meter.includedMin).toBe(0); // still the free plan…
+    expect(await isWithinVoiceMinutes()).toBe(true); // …but the operator is never gated
   });
 
   it("call-minute rows never burn the AI-message action pool", async () => {
