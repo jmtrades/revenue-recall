@@ -11,6 +11,7 @@ import { PageHeader, Stat, ReasonBadge, ScoreDot, Card, Avatar, ActivityIcon, Bu
 import { Funnel, ProgressRing, BarChart, Sparkline } from "@/components/charts";
 import { Icon } from "@/components/icons";
 import { DashboardWelcome } from "@/components/DashboardWelcome";
+import { StartCallingCard } from "@/components/StartCallingCard";
 import { ActivationChecklist } from "@/components/ActivationChecklist";
 import { RemoveSampleDataBanner } from "@/components/RemoveSampleDataBanner";
 import { hasSampleData } from "@/lib/sample-data";
@@ -115,6 +116,10 @@ export default async function DashboardPage() {
           <Button href="/dialer" variant="outline"><Icon name="dialer" size={15} /> Start calling</Button>
         </div>
       )}
+
+      {/* Until the first dial of the day, make the path to calling unmistakable;
+          once they're dialing, the pulse below takes its place. */}
+      {o.dialsToday === 0 && <StartCallingCard />}
 
       {o.dialsToday > 0 && (
         <Link href="/dialer" className="group flex items-center gap-4 rounded-2xl border border-border bg-surface px-5 py-3.5 transition hover:border-brand/40">
