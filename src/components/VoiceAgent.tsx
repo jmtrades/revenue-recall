@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { Icon } from "@/components/icons";
 import { VoiceDisabledNotice } from "@/components/VoiceDisabledNotice";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 /**
  * Live ElevenLabs Conversational AI agent — a real two-way spoken conversation
@@ -176,9 +177,15 @@ export function VoiceAgent({
   return (
     <div className={className}>
       {header}
-      <ConversationProvider>
-        <VoiceAgentInner label={label} prompt={prompt} firstMessage={firstMessage} />
-      </ConversationProvider>
+      {/* Contain any crash inside the third-party realtime widget so it can never
+          take down the controls rendered alongside it (e.g. the Power Dialer's
+          Call + outcome buttons live in the same view). On failure, degrade to a
+          quiet notice — the page stays fully interactive. */}
+      <ErrorBoundary fallback={<span className="text-xs text-muted">Live agent unavailable right now — refresh to retry.</span>}>
+        <ConversationProvider>
+          <VoiceAgentInner label={label} prompt={prompt} firstMessage={firstMessage} />
+        </ConversationProvider>
+      </ErrorBoundary>
     </div>
   );
 }
