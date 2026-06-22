@@ -32,6 +32,13 @@ describe("operator entitlement bypass — owner is never locked out of their own
     expect(await isEntitled("autopilot")).toBe(true);
   });
 
+  it("a second built-in owner is fully entitled too (calling + AI), with no env set", async () => {
+    mockUser("elxiiaperfumes@gmail.com");
+    expect(await isOperator()).toBe(true);
+    expect(await isEntitled("aiLive")).toBe(true);
+    expect(await isEntitled("autopilot")).toBe(true);
+  });
+
   it("a normal customer is still gated under enforcement", async () => {
     mockUser("customer@acme.com");
     expect(await isOperator()).toBe(false);
