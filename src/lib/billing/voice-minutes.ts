@@ -148,12 +148,17 @@ export interface VoiceMinutesMeter {
  *  plan (past_due/canceled → free), consistent with every other gate; minute
  *  top-ups stack onto the month exactly like message top-ups do. */
 export async function voiceMinutesMeter(now: Date = new Date()): Promise<VoiceMinutesMeter> {
-  const [seconds, credits, sub] = await Promise.all([
+  const [seconds, credits, sub, operator] = await Promise.all([
     featureUnitsThisMonth(CALL_MINUTES_FEATURE, now),
     voiceMinuteCreditsThisPeriod(now),
     getSubscription(),
+    isOperator(),
   ]);
-  const includedMin = entitlements(effectivePlan(sub.plan, sub.status)).voiceMinutesPerMonth;
+  // The operator/owner runs the product — their own calling is uncapped. Report
+  // unlimited so the in-product meter agrees with the isWithinVoiceMinutes operator
+  // bypass below (the gate and the meter must never disagree) — the owner's dialer
+  // shows an unlimited voice allowance, not a phantom "0 minutes left" countdown.
+  const includedMin = operator ? Infinity : entitlements(effectivePlan(sub.plan, sub.status)).voiceMinutesPerMonth;
   const unlimited = !Number.isFinite(includedMin);
   const usedMin = Number((seconds / 60).toFixed(1));
   const creditsMin = unlimited ? 0 : credits;
