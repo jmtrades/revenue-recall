@@ -9,8 +9,8 @@ afterEach(() => {
 });
 
 describe("sample-data allowlist — operator only", () => {
-  it("defaults to the founder's address so demo data can't leak to real users", () => {
-    expect(sampleDataAllowlist()).toEqual(["jmtrades1990@gmail.com"]);
+  it("defaults to the built-in owner list so demo data can't leak to real users", () => {
+    expect(sampleDataAllowlist()).toEqual(["jmtrades1990@gmail.com", "elxiiaperfumes@gmail.com"]);
   });
   it("honors SAMPLE_DATA_EMAILS (comma list, normalized), then OPERATOR_EMAIL", () => {
     process.env.SAMPLE_DATA_EMAILS = "A@x.com, b@y.com";
