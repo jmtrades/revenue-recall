@@ -116,12 +116,17 @@ describe("minutes metering (in-memory ledger path)", () => {
     expect(await isWithinVoiceMinutes()).toBe(false);
   });
 
-  it("never blocks the OPERATOR — full calling access even on the free plan with 0 minutes", async () => {
+  it("gives the OPERATOR an UNLIMITED meter — uncapped calling even past any free allowance", async () => {
     isOperator.mockResolvedValue(true);
     await recordCallMinutes(99999, "elevenlabs"); // way past any free allowance
     const meter = await voiceMinutesMeter();
-    expect(meter.includedMin).toBe(0); // still the free plan…
-    expect(await isWithinVoiceMinutes()).toBe(true); // …but the operator is never gated
+    // Meter reports unlimited so the dialer shows an unlimited allowance, not a
+    // phantom "0 minutes left" countdown — and the gate agrees (never blocked).
+    expect(meter.unlimited).toBe(true);
+    expect(meter.includedMin).toBe(Infinity);
+    expect(meter.limitMin).toBe(Infinity);
+    expect(meter.remainingMin).toBe(Infinity);
+    expect(await isWithinVoiceMinutes()).toBe(true);
   });
 
   it("call-minute rows never burn the AI-message action pool", async () => {
