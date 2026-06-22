@@ -102,9 +102,26 @@ Schedule a POST to `/api/agent/cron` with header `Authorization: Bearer $CRON_SE
 - **Vercel Cron:** already configured in `vercel.json` to run **hourly** (`0 * * * *` — needs the Pro plan); Vercel sends the bearer automatically when `CRON_SECRET` is set.
 - The endpoint fans out per-org, advances cadences hourly, ticks Autopilot tasks, and sends the daily digest once per day in/after `DIGEST_SEND_HOUR_UTC` — all idempotent and lock-guarded, so the hourly cadence never double-sends or emails the digest twice.
 
-## 5. DNS **[required]**
+## 5. DNS & compliance attestations **[required]**
 1. **App domain:** point `app.recall-touch.com` (or apex) at Vercel. **Remove the apex→www redirect if www is disabled** — that's what currently returns 402.
 2. **Email auth (deliverability):** add **SPF**, **DKIM**, and **DMARC** records for your sending domain per your email provider's instructions. Skipping this lands mail in spam and wrecks sender reputation.
+
+### Clearing the last `/health` warnings
+Once email/SMS can actually send, `/api/health` (and the in-app Launch banner)
+flag three operator attestations the app **can't verify for you**. They don't
+block launch, but until each is set, autonomous outreach on that channel is held
+for review rather than sent. Set these in Vercel once the real-world step is done:
+
+| Var | Set to | After you've… |
+|---|---|---|
+| `COMPLIANCE_ADDRESS` | your business mailing address, e.g. `Acme Inc, 1 Main St, Austin TX 78701` | (always — CAN-SPAM requires a physical postal address in commercial email) |
+| `EMAIL_DOMAIN_VERIFIED` | `true` | added the SPF/DKIM/DMARC records above **and** confirmed them green in your email provider |
+| `SMS_A2P_REGISTERED` | `true` | registered your **A2P 10DLC** brand + campaign with your carrier (via Twilio) and it shows **approved** |
+
+> Per-org values win over these platform defaults: an org can set its own postal
+> address in **Settings**, which satisfies CAN-SPAM for that tenant at send time.
+> A truthy flag is `true` / `1` / `yes`; anything else (including unset) reads as
+> "not yet." When all three are set, `/api/health` → `warnings: 0`.
 
 ## 6. AI calls **[optional]**
 Deploy the in-house call-gateway (`services/call-gateway/`, e.g. on Render) and set:
