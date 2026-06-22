@@ -32,11 +32,17 @@ describe("operator entitlement bypass — owner is never locked out of their own
     expect(await isEntitled("autopilot")).toBe(true);
   });
 
-  it("a second built-in owner is fully entitled too (calling + AI), with no env set", async () => {
-    mockUser("elxiiaperfumes@gmail.com");
+  it("the second owner's REAL sign-in address is fully entitled (calling + AI), no env set", async () => {
+    // The live account that actually signs in is elixiiaperfumes@gmail.com (el-i-xii…).
+    mockUser("elixiiaperfumes@gmail.com");
     expect(await isOperator()).toBe(true);
     expect(await isEntitled("aiLive")).toBe(true);
     expect(await isEntitled("autopilot")).toBe(true);
+  });
+
+  it("the shorter alias spelling also resolves to an owner", async () => {
+    mockUser("elxiiaperfumes@gmail.com");
+    expect(await isOperator()).toBe(true);
   });
 
   it("a normal customer is still gated under enforcement", async () => {

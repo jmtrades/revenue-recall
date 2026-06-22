@@ -12,7 +12,11 @@ import { getSessionUser } from "@/lib/auth";
  * sample-data gate and the entitlement/voice bypasses can't drift apart. An env
  * override REPLACES the built-in list, so include every owner email when setting one.
  */
-const DEFAULT_OPERATOR_EMAILS = ["jmtrades1990@gmail.com", "elxiiaperfumes@gmail.com"];
+// Both spellings of the second owner's address are included on purpose: the live
+// account that actually signs in is "elixiiaperfumes@gmail.com" (el-i-xii…); the
+// shorter "elxiiaperfumes@gmail.com" is kept as a harmless alias so a grant to
+// either spelling resolves. Extra entries that no one signs in as are inert.
+const DEFAULT_OPERATOR_EMAILS = ["jmtrades1990@gmail.com", "elixiiaperfumes@gmail.com", "elxiiaperfumes@gmail.com"];
 
 export function operatorEmails(): string[] {
   const raw = process.env.SAMPLE_DATA_EMAILS || process.env.OPERATOR_EMAIL;
