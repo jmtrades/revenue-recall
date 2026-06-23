@@ -105,18 +105,26 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
     speakingRef.current = true;
     cancelSpeakRef.current = false;
     void (async () => {
-      const h = await getSynth().speak(text, { ...toVoicePrefs(loadVoicePrefs()), lang: speechLang, emotion: emotion as never });
-      // Barge-in can land while the synth is still preparing — honor it.
-      if (cancelSpeakRef.current) {
-        h.stop();
+      try {
+        const h = await getSynth().speak(text, { ...toVoicePrefs(loadVoicePrefs()), lang: speechLang, emotion: emotion as never });
+        // Barge-in can land while the synth is still preparing — honor it.
+        if (cancelSpeakRef.current) {
+          h.stop();
+          speakingRef.current = false;
+          return;
+        }
+        speakHandleRef.current = h;
+        h.done.finally(() => {
+          speakingRef.current = false;
+          if (liveRef.current) startLiveListen(); // hand the floor back to the human
+        });
+      } catch {
+        // The voice backend hiccuped — never let that freeze the role-play with
+        // the speaking lock stuck on. Release it and hand the floor back so the
+        // conversation keeps going (silently, like an unavailable voice).
         speakingRef.current = false;
-        return;
+        if (liveRef.current) startLiveListen();
       }
-      speakHandleRef.current = h;
-      h.done.finally(() => {
-        speakingRef.current = false;
-        if (liveRef.current) startLiveListen(); // hand the floor back to the human
-      });
     })();
   }
 
