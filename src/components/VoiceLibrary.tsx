@@ -69,7 +69,13 @@ export function VoiceLibrary() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rate: next.rate, expressiveness: next.expressiveness }),
-      }).catch(() => {});
+      })
+        .then((r) => {
+          // A non-OK save means the tuning didn't stick — say so rather than
+          // letting the slider imply it saved (it'll read at the old speed later).
+          if (!r.ok) setError("Couldn't save your voice settings — try again.");
+        })
+        .catch(() => setError("Couldn't save your voice settings — check your connection."));
     }, 500);
   }, []);
 

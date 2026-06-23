@@ -34,17 +34,23 @@ export function SpeakButton({ text, label = "Listen", className = "" }: { text: 
     if (!clean) return;
     const prefs = toVoicePrefs(loadVoicePrefs());
     const synth = getSynth();
-    let handle: SpeakHandle;
-    if (synth.kind === "neural") {
-      // Neural backend handles its own voice selection server-side.
-      handle = await synth.speak(clean, prefs);
-    } else {
-      const voice = pickVoice(await loadVoices(), prefs);
-      handle = speak(clean, prefs, voice);
+    try {
+      let handle: SpeakHandle;
+      if (synth.kind === "neural") {
+        // Neural backend handles its own voice selection server-side.
+        handle = await synth.speak(clean, prefs);
+      } else {
+        const voice = pickVoice(await loadVoices(), prefs);
+        handle = speak(clean, prefs, voice);
+      }
+      handleRef.current = handle;
+      setSpeaking(true);
+      handle.done.finally(() => setSpeaking(false));
+    } catch {
+      // The voice backend hiccuped (network/permission). Reset cleanly rather
+      // than leaving an unhandled rejection and a click that did nothing.
+      setSpeaking(false);
     }
-    handleRef.current = handle;
-    setSpeaking(true);
-    handle.done.finally(() => setSpeaking(false));
   }
 
   if (!supported) return null;
