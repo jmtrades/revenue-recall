@@ -67,7 +67,7 @@ export function VoiceControls() {
     return (
       <div className="mt-5 border-t border-border pt-4">
         <p className="text-sm font-medium text-fg">Spoken voice</p>
-        <p className="mt-1 text-xs text-muted">Add an ElevenLabs key to hear briefs, drafts, and call prep read aloud. The written voice works everywhere.</p>
+        <p className="mt-1 text-xs text-muted">Connect the premium voice to hear briefs, drafts, and call prep read aloud. The written voice works everywhere.</p>
       </div>
     );
   }
@@ -77,7 +77,7 @@ export function VoiceControls() {
       <div>
         <p className="text-sm font-medium text-fg">Spoken voice</p>
         <p className="mt-0.5 text-xs text-muted">
-          ElevenLabs is connected — pick a voice below (or a teammate&rsquo;s cloned voice) and tune the speed. This is the voice it speaks in everywhere: briefs, drafts, call prep, and role-play.
+          The premium voice is connected — pick a voice below (or a teammate&rsquo;s cloned voice) and tune the speed. This is the voice it speaks in everywhere: briefs, drafts, call prep, and role-play.
         </p>
       </div>
 

@@ -70,7 +70,7 @@ export function CallVoicePicker({ initialVoiceId }: { initialVoiceId: string | n
     const synth = getSynth();
     setWarming(null);
     if (!synth.available()) {
-      setError("Add an ElevenLabs key to preview and use the call voice.");
+      setError("Connect the premium voice to preview and use the call voice.");
       return;
     }
     setPreviewing(id);
