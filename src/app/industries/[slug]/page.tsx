@@ -208,7 +208,7 @@ export default function IndustryPage({ params }: { params: { slug: string } }) {
         <section className="mt-10 sm:mt-16">
           <Reveal>
             <h2 className="text-2xl font-semibold text-fg">Hear it work a {ind.label.toLowerCase()} deal</h2>
-            <p className="mt-2 max-w-xl text-muted">Tap a rep — you&rsquo;ll hear the exact same ElevenLabs voice the AI uses on real calls. No signup needed.</p>
+            <p className="mt-2 max-w-xl text-muted">Tap a rep — you&rsquo;ll hear the exact same premium voice the AI uses on real calls. No signup needed.</p>
           </Reveal>
           <Reveal delay={0.08} className="mt-6">
             <VoiceDemo industryId={ind.id} />

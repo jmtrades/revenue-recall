@@ -300,8 +300,8 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
       </div>
 
       <p className="mb-3 text-xs text-muted">
-        You sell, the app plays {contactName.split(" ")[0]} as a {difficulty} prospect — out loud, in the ElevenLabs voice.
-        {!canSpeak && " (Add an ElevenLabs key to hear the spoken voice.)"}
+        You sell, the app plays {contactName.split(" ")[0]} as a {difficulty} prospect — out loud, in the premium voice.
+        {!canSpeak && " (Connect the premium voice to hear the spoken prospect.)"}
       </p>
 
       {/* Optional live ElevenLabs Conversational AI agent — a real two-way spoken
