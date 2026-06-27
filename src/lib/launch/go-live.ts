@@ -25,6 +25,11 @@ export interface GoLiveSignals {
   gatewayReachable: boolean | null;
   /** Gateway URL points at the app, not the call-gateway (classic misconfig). */
   gatewayMisdirected: boolean;
+  /** The gateway can actually ORIGINATE a call — its phone trunk is wired (Twilio
+   *  creds + PUBLIC_WSS_BASE on the gateway). A gateway can answer /health yet not
+   *  be able to dial; that must NOT read as "live". null = direct Twilio / no
+   *  gateway to place through (omit ⇒ unknown, treated as not-blocking). */
+  gatewayCanPlace?: boolean | null;
   /** A house/cloned voice is selected. */
   voiceReady: boolean;
   /** The conversation brain (Anthropic) is configured. */
@@ -61,14 +66,16 @@ const SCHEDULE_FRESH_HOURS = 26;
 export function goLiveStatus(s: GoLiveSignals): GoLiveStatus {
   // Telephony is the foundation: connected, not misdirected, and reachable when
   // a gateway URL is in play (null = direct Twilio, which needs no health ping).
-  const phoneOk = s.phoneConnected && !s.gatewayMisdirected && s.gatewayReachable !== false;
+  const phoneOk = s.phoneConnected && !s.gatewayMisdirected && s.gatewayReachable !== false && s.gatewayCanPlace !== false;
   const phoneDetail = !s.phoneConnected
     ? "No phone line connected — calls are logged to the timeline, not dialed. Connect a number to dial for real."
     : s.gatewayMisdirected
       ? "Phone line set, but the call-gateway URL points at the app. Fix VOICE_WEBHOOK_URL to the gateway."
       : s.gatewayReachable === false
         ? "Phone line set, but the call-gateway isn't responding. Calls won't connect until it's back."
-        : "Connected — calls dial out for real.";
+        : s.gatewayCanPlace === false
+          ? "The call-gateway is up but can't place calls yet — its phone line isn't wired on it. Calls are logged until it's set up."
+          : "Connected — calls dial out for real.";
 
   const consentDetail =
     s.leadCount === 0

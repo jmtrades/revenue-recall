@@ -59,8 +59,14 @@ describe("voiceReadiness", () => {
     expect(voiceReadiness({ live: true, reachable: false, misdirected: false }).state).toBe("setup");
   });
 
-  it("is live with a connected, reachable, correctly-pointed gateway", () => {
-    expect(voiceReadiness({ live: true, reachable: true, misdirected: false }).state).toBe("live");
+  it("is live with a connected, reachable gateway that can actually place calls", () => {
+    expect(voiceReadiness({ live: true, reachable: true, misdirected: false, placeable: true }).state).toBe("live");
+  });
+
+  it("holds at setup when the gateway is reachable but can't place calls yet (no false 'dial out for real')", () => {
+    const r = voiceReadiness({ live: true, reachable: true, misdirected: false, placeable: false });
+    expect(r.state).toBe("setup");
+    expect(r.canSend).toBe(false);
   });
 
   it("is live for direct telephony with no gateway URL to ping (reachable null)", () => {
