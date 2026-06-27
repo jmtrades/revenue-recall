@@ -27,6 +27,10 @@ export async function getGoLiveStatus(): Promise<GoLiveStatus> {
     phoneConnected: Boolean(diag?.channels.voice.live),
     gatewayReachable: diag?.gateway ? diag.gateway.reachable : null,
     gatewayMisdirected: Boolean(diag?.gateway?.misdirected),
+    // A reachable gateway still can't dial until its own phone trunk is wired
+    // (Twilio + PUBLIC_WSS_BASE on the gateway) — so "calls dial out for real"
+    // must wait for that, not just for the /health ping to answer.
+    gatewayCanPlace: diag?.gateway?.reachable ? Boolean(diag.gateway.twilio) : null,
     voiceReady: Boolean(org?.voiceId || org?.ttsVoiceId),
     // The live-call conversation brain runs in the call-gateway (its own key), so
     // trust the gateway's /health report when a gateway is configured; only fall

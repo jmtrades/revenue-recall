@@ -5,6 +5,7 @@ const ready: GoLiveSignals = {
   phoneConnected: true,
   gatewayReachable: true,
   gatewayMisdirected: false,
+  gatewayCanPlace: true,
   voiceReady: true,
   brainReady: true,
   leadCount: 100,
@@ -42,6 +43,16 @@ describe("goLiveStatus", () => {
     expect(state(goLiveStatus({ ...ready, gatewayReachable: false }), "phone")).toBe("attention");
     // null gateway = direct Twilio, no health ping needed → still live
     expect(state(goLiveStatus({ ...ready, gatewayReachable: null }), "phone")).toBe("live");
+  });
+
+  it("a reachable gateway that can't place calls yet is attention, not 'dial out for real'", () => {
+    // The gateway answers /health but its own phone trunk isn't wired — calls
+    // can't actually be placed, so the Phone line step must NOT read as live.
+    const s = goLiveStatus({ ...ready, gatewayCanPlace: false });
+    expect(state(s, "phone")).toBe("attention");
+    expect(s.liveForManualCalls).toBe(false);
+    expect(s.liveForAutonomousCalls).toBe(false);
+    expect(s.steps.find((x) => x.key === "phone")?.detail).toMatch(/can't place calls yet/i);
   });
 
   it("leads with zero consent is attention (can't auto-call); zero leads is off", () => {

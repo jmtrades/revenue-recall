@@ -71,11 +71,17 @@ export function smsReadiness(opts: { live: boolean; complianceOn: boolean; a2pRe
   return live("Connected and registered — SMS sends for real.");
 }
 
-/** Voice: a real telephony transport + a reachable, correctly-pointed gateway. */
-export function voiceReadiness(opts: { live: boolean; reachable: boolean | null; misdirected: boolean }): ChannelReadiness {
+/** Voice: a real telephony transport + a reachable, correctly-pointed gateway
+ *  that can actually ORIGINATE a call. `placeable` is the gateway's own telephony
+ *  readiness (its Twilio trunk + PUBLIC_WSS_BASE); null = direct Twilio / unknown. */
+export function voiceReadiness(opts: { live: boolean; reachable: boolean | null; misdirected: boolean; placeable?: boolean | null }): ChannelReadiness {
   if (!opts.live) return logging("No calling connected — calls are logged to the timeline, not dialed.");
   if (opts.misdirected) return setup("Calling is connected, but the gateway address points at the app instead of the call service.", ["a correctly pointed call gateway"]);
   if (opts.reachable === false) return setup("Calling is connected, but the call gateway isn't responding — calls won't connect until it's back.", ["a reachable call gateway"]);
+  // The gateway answers /health but can't dial yet (its phone trunk isn't wired on
+  // it) — showing "Live" here would make the Call button lie. Hold it at "setup".
+  if (opts.reachable === true && opts.placeable === false)
+    return setup("Calling is connected and the gateway is up, but it can't place calls yet — its phone line still needs to be set up on the gateway. Until then calls are logged.", ["a call gateway with its phone line configured"]);
   return live("Connected — calls dial out for real.");
 }
 
@@ -114,6 +120,8 @@ export async function getChannelReadiness(opts?: { address?: string | null }): P
       live: channelStatus().voice.live,
       reachable: diag?.gateway ? diag.gateway.reachable : null,
       misdirected: Boolean(diag?.gateway?.misdirected),
+      // Only a reachable gateway whose own phone trunk is wired can actually dial.
+      placeable: diag?.gateway?.reachable ? Boolean(diag.gateway.twilio) : null,
     }),
   };
 }
