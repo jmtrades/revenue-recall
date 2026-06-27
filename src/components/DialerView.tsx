@@ -341,7 +341,7 @@ export function DialerView({ queue, locale, voiceMinutes, objections }: { queue:
             <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${powerMode ? "left-3.5" : "left-0.5"}`} />
           </button>
         </label>
-        <div className="max-h-[70vh] flex-1 overflow-y-auto">
+        <div className="max-h-[40vh] flex-1 overflow-y-auto lg:max-h-[70vh]">
           {queue.map((q, i) => (
             <button
               key={q.dealId}
@@ -403,22 +403,28 @@ export function DialerView({ queue, locale, voiceMinutes, objections }: { queue:
             {/* One-tap no-connect logging — the bulk of any dial day. Each logs
                 the outcome, re-queues the deal, and (in Power Mode) jumps to the
                 next, so a missed call is a single click, not the full notes flow. */}
-            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
-              <span className="text-xs text-muted">Didn&apos;t connect?</span>
-              {QUICK_OUTCOMES.map((o, i) => (
-                <button
-                  key={o.id}
-                  onClick={() => quickLog(o)}
-                  disabled={Boolean(quickBusy) || Boolean(done[active.dealId])}
-                  className="rounded-full border border-border bg-surface px-3 py-2 text-xs font-medium text-fg transition hover:bg-surface-2 disabled:opacity-50"
-                >
-                  {quickBusy === o.id ? "Logging…" : o.label}
-                  <kbd className="ml-1.5 rounded bg-surface-2 px-1 font-mono text-[10px] text-muted">{i + 1}</kbd>
-                </button>
-              ))}
-              <span className="ml-auto hidden text-[11px] text-muted/70 sm:block">
-                <kbd className="rounded bg-surface-2 px-1 font-mono text-[10px]">C</kbd> call · <kbd className="rounded bg-surface-2 px-1 font-mono text-[10px]">N</kbd> next
-              </span>
+            <div className="mt-3 border-t border-border/60 pt-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted">Didn&apos;t connect?</span>
+                <span className="hidden text-[11px] text-muted/70 sm:block">
+                  <kbd className="rounded bg-surface-2 px-1 font-mono text-[10px]">C</kbd> call · <kbd className="rounded bg-surface-2 px-1 font-mono text-[10px]">N</kbd> next
+                </span>
+              </div>
+              {/* 2-up grid on phones so the four outcomes stay tap-sized and tidy;
+                  flows inline on wider screens. */}
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                {QUICK_OUTCOMES.map((o, i) => (
+                  <button
+                    key={o.id}
+                    onClick={() => quickLog(o)}
+                    disabled={Boolean(quickBusy) || Boolean(done[active.dealId])}
+                    className="inline-flex items-center justify-center rounded-full border border-border bg-surface px-3 py-2.5 text-xs font-medium text-fg transition hover:bg-surface-2 disabled:opacity-50 sm:py-2"
+                  >
+                    {quickBusy === o.id ? "Logging…" : o.label}
+                    <kbd className="ml-1.5 rounded bg-surface-2 px-1 font-mono text-[10px] text-muted">{i + 1}</kbd>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
