@@ -18,7 +18,7 @@ export function UserMenu({ name, email, signedIn }: { name: string; email?: stri
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+          <div className="absolute right-0 z-50 mt-2 w-[min(14rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
             <div className="border-b border-border px-4 py-3">
               <div className="text-sm font-medium text-fg">{name}</div>
               {email && <div className="truncate text-xs text-muted">{email}</div>}
