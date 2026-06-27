@@ -44,7 +44,7 @@ export default async function ForecastPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card title="Forecast categories" className="lg:col-span-2">
-          <MiniLegendBar segments={f.categories.map((c) => ({ label: `${c.label} · ${c.count}`, value: c.value, color: c.color }))} />
+          <MiniLegendBar segments={f.categories.map((c) => ({ label: `${c.label} · ${c.count}`, value: c.value, color: c.color }))} format={(n) => compactMoney(n, f.currency)} />
           <div className="mt-5 space-y-3">
             {f.byStage.map((s) => (
               <div key={s.label} className="flex items-center gap-3">

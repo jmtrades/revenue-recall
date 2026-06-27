@@ -167,7 +167,17 @@ export function ProgressRing({ value, size = 64, thickness = 7, color = BRAND }:
   );
 }
 
-export function MiniLegendBar({ segments }: { segments: { label: string; value: number; color: string }[] }) {
+export function MiniLegendBar({
+  segments,
+  // How to render each value label. Defaults to a thousands-separated integer
+  // (so counts read naturally and a raw amount never leaks as "690000"); money
+  // callers pass a currency formatter (e.g. compactMoney) so the legend matches
+  // the rest of the page instead of printing a bare number.
+  format = (n: number) => n.toLocaleString(),
+}: {
+  segments: { label: string; value: number; color: string }[];
+  format?: (n: number) => string;
+}) {
   const total = segments.reduce((s, x) => s + x.value, 0) || 1;
   return (
     <div>
@@ -180,7 +190,7 @@ export function MiniLegendBar({ segments }: { segments: { label: string; value: 
         {segments.map((s, i) => (
           <span key={i} className="flex items-center gap-1.5 text-xs text-muted">
             <span className="h-2 w-2 rounded-sm" style={{ background: s.color }} />
-            {s.label} <span className="text-fg">{s.value}</span>
+            {s.label} <span className="text-fg">{format(s.value)}</span>
           </span>
         ))}
       </div>
