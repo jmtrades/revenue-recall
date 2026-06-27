@@ -17,9 +17,20 @@ export function MobileMenu({ orgName, showAdmin = false }: { orgName: string; sh
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
       </button>
       {open && (
-        <div className="fixed inset-0 z-50 flex" onClick={() => setOpen(false)}>
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-          <aside ref={drawerRef} role="dialog" aria-modal="true" aria-label={`${orgName} menu`} className="relative flex w-64 flex-col border-r border-border bg-surface px-3 py-5 outline-none" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[60]">
+          {/* Solid scrim — a plain opaque-ish layer, NOT backdrop-blur: on iOS
+              Safari a backdrop-filter sibling breaks the drawer's own paint, which
+              made the page bleed through the menu. A button so a tap outside closes. */}
+          <button type="button" aria-label="Close menu" onClick={() => setOpen(false)} className="absolute inset-0 bg-black/70" />
+          {/* Drawer — absolutely positioned and explicitly opaque, so it always
+              fully covers the page content behind it (with a shadow to separate). */}
+          <aside
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${orgName} menu`}
+            className="absolute inset-y-0 left-0 flex w-72 max-w-[82%] flex-col overflow-y-auto border-r border-border bg-surface px-3 py-5 shadow-2xl outline-none"
+          >
             <Link href="/dashboard" onClick={() => setOpen(false)} className="px-3 pb-6">
               <div className="flex items-center gap-2.5">
                 <LogoBadge box={32} />
