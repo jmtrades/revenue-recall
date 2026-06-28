@@ -264,6 +264,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             placeholder="Subject"
+            aria-label="Email subject"
             className="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
           />
         )}
@@ -271,6 +272,7 @@ export function DealActions({ dealId, stages, currentStageId, canWrite }: { deal
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
           placeholder="What happened? Or click Draft with AI."
+          aria-label={`${KINDS.find((k) => k.id === kind)?.label ?? "Activity"} details`}
           rows={4}
           className="mt-2 w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
         />
