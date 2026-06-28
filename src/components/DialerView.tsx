@@ -515,6 +515,7 @@ export function DialerView({ queue, locale, voiceMinutes, objections }: { queue:
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={4}
+              aria-label="Call notes"
               placeholder="Jot down what happened — AI will summarize, set the outcome, and log it."
               className="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand"
             />
