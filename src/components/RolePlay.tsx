@@ -266,11 +266,13 @@ export function RolePlay({ contactName, company, dealTitle, locale }: { contactN
 
   return (
     <div className="card">
-      <div className="mb-3 flex items-center justify-between gap-2">
+      {/* flex-wrap: on phones the difficulty/tone controls drop below the heading
+          instead of clipping off the right edge of the card. */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 font-semibold text-fg"><Icon name="mic" size={16} className="text-brand" /> Practice this call
           {mood && <span className="pill bg-surface-2 text-muted">reading the room: {mood}</span>}
         </h2>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)} className={input2} aria-label="Difficulty">
             <option value="easy">Easy</option>
             <option value="medium">Medium</option>
