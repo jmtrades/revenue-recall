@@ -6,19 +6,24 @@
   color-scheme: dark;
   /* Money-green accent (white button text stays legible). Warm-neutral darks —
      deliberately NOT the blue-black that reads as generic "AI SaaS". */
-  --brand-rgb: 5 150 105;
+  --brand-rgb: 16 163 112;
   /* AA-safe variant used ONLY behind white button text (emerald-700): white on
      --brand is ~3.8:1 (fails WCAG AA for normal text); on this it's ~5.5:1. The
      lighter --brand stays the brand color for chips, accents, borders, glows. */
   --brand-strong-rgb: 4 120 87;
-  --brand-soft-rgb: 12 45 33;
-  --bg-rgb: 10 11 10;
-  --surface-rgb: 17 19 17;
-  --surface-2-rgb: 25 28 25;
-  --border-rgb: 38 42 39;
-  --muted-rgb: 148 154 148;
+  --brand-soft-rgb: 11 47 34;
+  /* Champagne gold — the second voice of the palette. Reserved for revenue
+     moments (recoverable $, at-risk value) so money reads as money. */
+  --gold-rgb: 214 178 106;
+  /* Deeper, warmer blacks than before — espresso-green rather than flat charcoal.
+     The extra depth lets surfaces and hairlines carry the hierarchy. */
+  --bg-rgb: 7 8 7;
+  --surface-rgb: 14 16 14;
+  --surface-2-rgb: 22 25 22;
+  --border-rgb: 42 47 43;
+  --muted-rgb: 150 157 150;
   --fg-rgb: 255 255 255;
-  --body-rgb: 223 227 223;
+  --body-rgb: 224 228 224;
   /* Strong custom easings (Emil Kowalski) — the built-in CSS easings lack punch. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
@@ -75,24 +80,25 @@
 
 [data-theme="light"] {
   color-scheme: light;
-  --bg-rgb: 246 247 249;
+  /* Warm ivory, not blue-gray — paper, not a spreadsheet. */
+  --bg-rgb: 249 248 244;
   --surface-rgb: 255 255 255;
-  --surface-2-rgb: 240 242 246;
-  --border-rgb: 225 229 236;
-  --muted-rgb: 90 100 118;
-  --fg-rgb: 17 24 39;
-  --body-rgb: 31 41 55;
+  --surface-2-rgb: 243 241 235;
+  --border-rgb: 227 223 213;
+  --muted-rgb: 108 110 102;
+  --fg-rgb: 26 28 25;
+  --body-rgb: 45 49 44;
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg-rgb: 10 11 10;
-  --surface-rgb: 17 19 17;
-  --surface-2-rgb: 25 28 25;
-  --border-rgb: 38 42 39;
-  --muted-rgb: 148 154 148;
+  --bg-rgb: 7 8 7;
+  --surface-rgb: 14 16 14;
+  --surface-2-rgb: 22 25 22;
+  --border-rgb: 42 47 43;
+  --muted-rgb: 150 157 150;
   --fg-rgb: 255 255 255;
-  --body-rgb: 223 227 223;
+  --body-rgb: 224 228 224;
 }
 
 html {
@@ -115,23 +121,41 @@ body {
   line-height: 1.6;
 }
 
-/* Ambient depth behind the whole page — subtle, keeps dark from reading flat. */
+/* Ambient depth behind the whole page — a green key light and a faint gold
+   counter-light, so the dark reads as a lit room instead of a flat fill. */
 body {
   background-image:
-    radial-gradient(50rem 30rem at 50% -10%, rgb(var(--brand-rgb) / 0.06), transparent 70%);
+    radial-gradient(50rem 30rem at 50% -10%, rgb(var(--brand-rgb) / 0.07), transparent 70%),
+    radial-gradient(72rem 40rem at 88% -18%, rgb(var(--gold-rgb) / 0.045), transparent 72%);
   background-attachment: fixed;
 }
 
-/* Headings use a distinctive display face (Space Grotesk) — the single biggest
-   break from the Inter/Roboto "AI SaaS" sameness. Body stays Inter. */
+/* Headings set in Fraunces — an editorial display serif with optical sizing and
+   true italics. THE break from the Inter/grotesk "AI SaaS" template look. Serifs
+   want gentler negative tracking than a grotesk, and a slightly lighter weight
+   reads more confident at display sizes. Body stays Inter. */
 h1, h2, h3 {
-  font-family: var(--font-display), var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display), Georgia, ui-serif, serif;
+  font-optical-sizing: auto;
+  letter-spacing: -0.015em;
   text-wrap: balance;
-  font-weight: 600;
+  font-weight: 560;
 }
-h1 { letter-spacing: -0.035em; }
+h1 { letter-spacing: -0.022em; }
 p { text-wrap: pretty; }
+
+/* Italic serif emphasis inside headings — the signature editorial gesture. */
+h1 em, h2 em, h3 em {
+  font-style: italic;
+  font-weight: 520;
+}
+
+/* Data numerals opt back into the precise grotesk: anything that combines
+   font-display with tabular-nums is a money figure / table / countdown, where
+   serif numerals would cost scannability. One rule converts them all. */
+[class~="font-display"][class~="tabular-nums"] {
+  font-family: var(--font-data), var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
 
 ::selection {
   background: rgb(var(--brand-rgb) / 0.3);
@@ -183,10 +207,10 @@ textarea:focus-visible,
     box-shadow: var(--shadow-card);
   }
   .stat-label {
-    @apply text-xs font-medium uppercase tracking-wide text-muted;
+    @apply text-xs font-medium uppercase tracking-[0.14em] text-muted;
   }
   .stat-value {
-    @apply mt-1 font-display text-2xl font-semibold tabular-nums tracking-tight text-fg;
+    @apply mt-1 font-data text-2xl font-semibold tabular-nums tracking-tight text-fg;
   }
   .pill {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
@@ -194,7 +218,7 @@ textarea:focus-visible,
   /* Section eyebrow — a refined pill badge with a lit dot. Replaces the plain
      repeated green caps so the accent stays special instead of diluted. */
   .eyebrow {
-    @apply inline-flex items-center gap-2 rounded-full border border-border bg-surface/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-body;
+    @apply inline-flex items-center gap-2 rounded-full border border-border bg-surface/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-body;
   }
   .eyebrow::before {
     content: "";
@@ -259,11 +283,14 @@ textarea:focus-visible,
     }
   }
 
-  /* Accent highlight — a confident SOLID accent, not a shimmer gradient
-     (the gradient headline is a tired AI-slop tell). Class name kept so all
-     existing usages flip to the cleaner treatment automatically. */
+  /* Accent phrase inside display headings — italic serif in the brand green.
+     The editorial signature: "on autopilot." reads like a magazine pull-quote,
+     not a highlighted keyword. Class name kept so every existing usage flips. */
   .gradient-text {
     color: rgb(var(--brand-rgb));
+    font-style: italic;
+    font-weight: 520;
+    letter-spacing: -0.01em;
   }
   /* Hero ambience: a dual-layer glow — a wide soft wash plus a tighter, slightly
      brighter core — so the top of the hero feels lit from a real source rather
@@ -357,9 +384,12 @@ textarea:focus-visible,
 }
 
 /* Button press feedback (Emil): the UI should feel it heard the press.
-   Targets the primary/ghost CTA treatment used across marketing + app. */
+   Targets the primary/ghost CTA treatment used across marketing + app.
+   The inner top light + soft brand glow make primary buttons read as machined
+   objects that sit above the page, not flat fills. */
 .cta {
-  transition: transform 140ms var(--ease-out), background-color 140ms var(--ease-out), border-color 140ms var(--ease-out);
+  transition: transform 140ms var(--ease-out), background-color 140ms var(--ease-out), border-color 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
+  box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.14), 0 10px 26px -14px rgb(var(--brand-rgb) / 0.55);
 }
 .cta:active {
   transform: scale(0.97);
