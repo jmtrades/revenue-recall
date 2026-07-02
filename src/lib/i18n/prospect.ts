@@ -935,7 +935,332 @@ const hi: Partial<ProspectStrings> = {
   unsubErrorBody: "अभी प्रोसेस नहीं हो सका। “unsubscribe” लिखकर जवाब दें, हम संभाल लेंगे।",
 };
 
-const CATALOGS: Record<string, Partial<ProspectStrings>> = { es, fr, de, pt, it, nl, pl, ja, zh, ko, ar, hi };
+/* Core catalogs for the remaining supported languages: the full prospect-visible
+   happy path (lead form, booking page, confirmation email). Less-trafficked
+   strings (cancel flow, errors, unsubscribe) fall back to English by design —
+   the Partial merge guarantees nothing ever renders undefined. */
+
+const bg: Partial<ProspectStrings> = {
+  formThanksTitle: "Благодарим — ще се свържем с вас", formThanksBody: "Получихме данните ви. Някой от {brand} ще се свърже скоро.", formHeading: "Свържете се с {brand}", formSub: "Оставете данните си и ще се свържем.", labelName: "Име", labelEmail: "Имейл", labelPhone: "Телефон", labelCompany: "Фирма", labelMessage: "Съобщение", send: "Изпрати",
+  bookingHeading: "Запазете {meeting} с {brand}", minutes: "мин", timesIn: "часове в {tz}", noTimes: "В момента няма свободни часове. Проверете отново скоро.", change: "промени", labelNotes: "Нещо, което да знаем?", confirm: "Потвърди резервацията", confirming: "Резервиране…", bookedTitle: "Резервацията е потвърдена", bookedWith: "{meeting} с {brand}",
+  emailSubject: "Потвърдено: {meeting} с {brand}", emailGreeting: "Здравейте, {name},", emailBooked: "Имате резервация за {meeting} с {brand}.", emailWhen: "Кога: {when}", emailWhere: "Къде: {where}",
+};
+const hr: Partial<ProspectStrings> = {
+  formThanksTitle: "Hvala — javit ćemo se", formThanksBody: "Vaši podaci su zaprimljeni. Netko iz {brand} javit će se uskoro.", formHeading: "Kontaktirajte {brand}", formSub: "Ostavite podatke i javit ćemo se.", labelName: "Ime", labelEmail: "E-mail", labelPhone: "Telefon", labelCompany: "Tvrtka", labelMessage: "Poruka", send: "Pošalji",
+  bookingHeading: "Rezervirajte {meeting} s {brand}", minutes: "min", timesIn: "termini u {tz}", noTimes: "Trenutno nema dostupnih termina. Provjerite uskoro.", change: "promijeni", labelNotes: "Nešto što bismo trebali znati?", confirm: "Potvrdi rezervaciju", confirming: "Rezerviranje…", bookedTitle: "Rezervacija potvrđena", bookedWith: "{meeting} s {brand}",
+  emailSubject: "Potvrđeno: {meeting} s {brand}", emailGreeting: "Pozdrav {name},", emailBooked: "Rezervirani ste za {meeting} s {brand}.", emailWhen: "Kada: {when}", emailWhere: "Gdje: {where}",
+};
+const cs: Partial<ProspectStrings> = {
+  formThanksTitle: "Děkujeme — ozveme se", formThanksBody: "Vaše údaje máme. Někdo z {brand} se brzy ozve.", formHeading: "Kontaktujte {brand}", formSub: "Zanechte údaje a ozveme se.", labelName: "Jméno", labelEmail: "E-mail", labelPhone: "Telefon", labelCompany: "Společnost", labelMessage: "Zpráva", send: "Odeslat",
+  bookingHeading: "Rezervujte si {meeting} s {brand}", minutes: "min", timesIn: "časy v {tz}", noTimes: "Momentálně nejsou k dispozici žádné termíny. Zkuste to brzy znovu.", change: "změnit", labelNotes: "Něco, co bychom měli vědět?", confirm: "Potvrdit rezervaci", confirming: "Rezervuji…", bookedTitle: "Rezervace potvrzena", bookedWith: "{meeting} s {brand}",
+  emailSubject: "Potvrzeno: {meeting} s {brand}", emailGreeting: "Dobrý den, {name},", emailBooked: "Máte rezervaci na {meeting} s {brand}.", emailWhen: "Kdy: {when}", emailWhere: "Kde: {where}",
+};
+const da: Partial<ProspectStrings> = {
+  formThanksTitle: "Tak — vi vender tilbage", formThanksBody: "Vi har modtaget dine oplysninger. Nogen fra {brand} kontakter dig snart.", formHeading: "Kontakt {brand}", formSub: "Efterlad dine oplysninger, så kontakter vi dig.", labelName: "Navn", labelEmail: "E-mail", labelPhone: "Telefon", labelCompany: "Virksomhed", labelMessage: "Besked", send: "Send",
+  bookingHeading: "Book et {meeting} med {brand}", minutes: "min", timesIn: "tider i {tz}", noTimes: "Ingen ledige tider lige nu. Kig forbi igen snart.", change: "skift", labelNotes: "Noget vi bør vide?", confirm: "Bekræft booking", confirming: "Booker…", bookedTitle: "Din booking er bekræftet", bookedWith: "{meeting} med {brand}",
+  emailSubject: "Bekræftet: {meeting} med {brand}", emailGreeting: "Hej {name},", emailBooked: "Du er booket til et {meeting} med {brand}.", emailWhen: "Hvornår: {when}", emailWhere: "Hvor: {where}",
+};
+const tl: Partial<ProspectStrings> = {
+  formThanksTitle: "Salamat — makikipag-ugnayan kami", formThanksBody: "Natanggap na ang iyong detalye. May makikipag-ugnayan mula sa {brand} sa lalong madaling panahon.", formHeading: "Makipag-ugnayan sa {brand}", formSub: "Iwan ang iyong detalye at kokontakin ka namin.", labelName: "Pangalan", labelEmail: "Email", labelPhone: "Telepono", labelCompany: "Kumpanya", labelMessage: "Mensahe", send: "Ipadala",
+  bookingHeading: "Mag-book ng {meeting} kasama ang {brand}", minutes: "min", timesIn: "mga oras sa {tz}", noTimes: "Walang available na oras ngayon. Bumalik muli sa lalong madaling panahon.", change: "palitan", labelNotes: "May dapat ba kaming malaman?", confirm: "Kumpirmahin ang booking", confirming: "Bino-book…", bookedTitle: "Nakumpirma ang booking", bookedWith: "{meeting} kasama ang {brand}",
+  emailSubject: "Kumpirmado: {meeting} kasama ang {brand}", emailGreeting: "Hi {name},", emailBooked: "Naka-book ka para sa {meeting} kasama ang {brand}.", emailWhen: "Kailan: {when}", emailWhere: "Saan: {where}",
+};
+const fi: Partial<ProspectStrings> = {
+  formThanksTitle: "Kiitos — olemme yhteydessä", formThanksBody: "Tietosi on vastaanotettu. Joku {brand}-tiimistä ottaa pian yhteyttä.", formHeading: "Ota yhteyttä: {brand}", formSub: "Jätä tietosi, niin otamme yhteyttä.", labelName: "Nimi", labelEmail: "Sähköposti", labelPhone: "Puhelin", labelCompany: "Yritys", labelMessage: "Viesti", send: "Lähetä",
+  bookingHeading: "Varaa {meeting} — {brand}", minutes: "min", timesIn: "ajat vyöhykkeellä {tz}", noTimes: "Ei vapaita aikoja juuri nyt. Tarkista pian uudelleen.", change: "vaihda", labelNotes: "Jotain, mitä meidän tulisi tietää?", confirm: "Vahvista varaus", confirming: "Varataan…", bookedTitle: "Varaus vahvistettu", bookedWith: "{meeting} — {brand}",
+  emailSubject: "Vahvistettu: {meeting} — {brand}", emailGreeting: "Hei {name},", emailBooked: "Sinulle on varattu {meeting} ({brand}).", emailWhen: "Milloin: {when}", emailWhere: "Missä: {where}",
+};
+const el: Partial<ProspectStrings> = {
+  formThanksTitle: "Ευχαριστούμε — θα επικοινωνήσουμε", formThanksBody: "Λάβαμε τα στοιχεία σας. Κάποιος από την {brand} θα επικοινωνήσει σύντομα.", formHeading: "Επικοινωνήστε με την {brand}", formSub: "Αφήστε τα στοιχεία σας και θα επικοινωνήσουμε.", labelName: "Όνομα", labelEmail: "Email", labelPhone: "Τηλέφωνο", labelCompany: "Εταιρεία", labelMessage: "Μήνυμα", send: "Αποστολή",
+  bookingHeading: "Κλείστε {meeting} με την {brand}", minutes: "λεπτά", timesIn: "ώρες σε {tz}", noTimes: "Δεν υπάρχουν διαθέσιμες ώρες αυτή τη στιγμή. Δοκιμάστε ξανά σύντομα.", change: "αλλαγή", labelNotes: "Κάτι που πρέπει να ξέρουμε;", confirm: "Επιβεβαίωση κράτησης", confirming: "Κράτηση…", bookedTitle: "Η κράτηση επιβεβαιώθηκε", bookedWith: "{meeting} με την {brand}",
+  emailSubject: "Επιβεβαιώθηκε: {meeting} με την {brand}", emailGreeting: "Γεια σας {name},", emailBooked: "Έχετε κράτηση για {meeting} με την {brand}.", emailWhen: "Πότε: {when}", emailWhere: "Πού: {where}",
+};
+const hu: Partial<ProspectStrings> = {
+  formThanksTitle: "Köszönjük — jelentkezünk", formThanksBody: "Adatait megkaptuk. A {brand} munkatársa hamarosan jelentkezik.", formHeading: "Lépjen kapcsolatba: {brand}", formSub: "Hagyja meg adatait, és jelentkezünk.", labelName: "Név", labelEmail: "E-mail", labelPhone: "Telefon", labelCompany: "Cég", labelMessage: "Üzenet", send: "Küldés",
+  bookingHeading: "Foglaljon {meeting} időpontot — {brand}", minutes: "perc", timesIn: "időpontok: {tz}", noTimes: "Jelenleg nincs szabad időpont. Nézzen vissza hamarosan.", change: "módosítás", labelNotes: "Van bármi, amit tudnunk kell?", confirm: "Foglalás megerősítése", confirming: "Foglalás…", bookedTitle: "Foglalás megerősítve", bookedWith: "{meeting} — {brand}",
+  emailSubject: "Megerősítve: {meeting} — {brand}", emailGreeting: "Kedves {name}!", emailBooked: "Időpontja lefoglalva: {meeting} — {brand}.", emailWhen: "Mikor: {when}", emailWhere: "Hol: {where}",
+};
+const id: Partial<ProspectStrings> = {
+  formThanksTitle: "Terima kasih — kami akan menghubungi Anda", formThanksBody: "Data Anda sudah kami terima. Seseorang dari {brand} akan segera menghubungi.", formHeading: "Hubungi {brand}", formSub: "Tinggalkan data Anda dan kami akan menghubungi.", labelName: "Nama", labelEmail: "Email", labelPhone: "Telepon", labelCompany: "Perusahaan", labelMessage: "Pesan", send: "Kirim",
+  bookingHeading: "Jadwalkan {meeting} dengan {brand}", minutes: "mnt", timesIn: "waktu dalam {tz}", noTimes: "Belum ada jadwal tersedia saat ini. Silakan cek kembali nanti.", change: "ubah", labelNotes: "Ada yang perlu kami ketahui?", confirm: "Konfirmasi jadwal", confirming: "Memesan…", bookedTitle: "Jadwal dikonfirmasi", bookedWith: "{meeting} dengan {brand}",
+  emailSubject: "Terkonfirmasi: {meeting} dengan {brand}", emailGreeting: "Halo {name},", emailBooked: "Anda terjadwal untuk {meeting} dengan {brand}.", emailWhen: "Kapan: {when}", emailWhere: "Di mana: {where}",
+};
+const ms: Partial<ProspectStrings> = {
+  formThanksTitle: "Terima kasih — kami akan menghubungi anda", formThanksBody: "Maklumat anda telah diterima. Seseorang daripada {brand} akan menghubungi tidak lama lagi.", formHeading: "Hubungi {brand}", formSub: "Tinggalkan maklumat anda dan kami akan menghubungi.", labelName: "Nama", labelEmail: "E-mel", labelPhone: "Telefon", labelCompany: "Syarikat", labelMessage: "Mesej", send: "Hantar",
+  bookingHeading: "Tempah {meeting} dengan {brand}", minutes: "min", timesIn: "masa dalam {tz}", noTimes: "Tiada masa tersedia buat masa ini. Sila semak semula nanti.", change: "tukar", labelNotes: "Ada apa-apa yang perlu kami tahu?", confirm: "Sahkan tempahan", confirming: "Menempah…", bookedTitle: "Tempahan disahkan", bookedWith: "{meeting} dengan {brand}",
+  emailSubject: "Disahkan: {meeting} dengan {brand}", emailGreeting: "Hai {name},", emailBooked: "Anda ditempah untuk {meeting} dengan {brand}.", emailWhen: "Bila: {when}", emailWhere: "Di mana: {where}",
+};
+const no: Partial<ProspectStrings> = {
+  formThanksTitle: "Takk — vi tar kontakt", formThanksBody: "Vi har mottatt opplysningene dine. Noen fra {brand} tar snart kontakt.", formHeading: "Kontakt {brand}", formSub: "Legg igjen opplysningene dine, så tar vi kontakt.", labelName: "Navn", labelEmail: "E-post", labelPhone: "Telefon", labelCompany: "Firma", labelMessage: "Melding", send: "Send",
+  bookingHeading: "Book et {meeting} med {brand}", minutes: "min", timesIn: "tider i {tz}", noTimes: "Ingen ledige tider akkurat nå. Sjekk igjen snart.", change: "endre", labelNotes: "Noe vi bør vite?", confirm: "Bekreft booking", confirming: "Booker…", bookedTitle: "Booking bekreftet", bookedWith: "{meeting} med {brand}",
+  emailSubject: "Bekreftet: {meeting} med {brand}", emailGreeting: "Hei {name},", emailBooked: "Du er booket til et {meeting} med {brand}.", emailWhen: "Når: {when}", emailWhere: "Hvor: {where}",
+};
+const ro: Partial<ProspectStrings> = {
+  formThanksTitle: "Mulțumim — vă contactăm în curând", formThanksBody: "Am primit datele dvs. Cineva de la {brand} vă va contacta în curând.", formHeading: "Contactați {brand}", formSub: "Lăsați-ne datele și vă contactăm.", labelName: "Nume", labelEmail: "Email", labelPhone: "Telefon", labelCompany: "Companie", labelMessage: "Mesaj", send: "Trimite",
+  bookingHeading: "Programați un {meeting} cu {brand}", minutes: "min", timesIn: "ore în {tz}", noTimes: "Momentan nu sunt ore disponibile. Reveniți în curând.", change: "schimbă", labelNotes: "Ceva ce ar trebui să știm?", confirm: "Confirmă programarea", confirming: "Se programează…", bookedTitle: "Programare confirmată", bookedWith: "{meeting} cu {brand}",
+  emailSubject: "Confirmat: {meeting} cu {brand}", emailGreeting: "Bună ziua, {name},", emailBooked: "Aveți o programare pentru {meeting} cu {brand}.", emailWhen: "Când: {when}", emailWhere: "Unde: {where}",
+};
+const ru: Partial<ProspectStrings> = {
+  formThanksTitle: "Спасибо — мы свяжемся с вами", formThanksBody: "Ваши данные получены. Кто-то из {brand} скоро свяжется с вами.", formHeading: "Связаться с {brand}", formSub: "Оставьте свои данные, и мы свяжемся с вами.", labelName: "Имя", labelEmail: "Email", labelPhone: "Телефон", labelCompany: "Компания", labelMessage: "Сообщение", send: "Отправить",
+  bookingHeading: "Записаться на {meeting} с {brand}", minutes: "мин", timesIn: "время в {tz}", noTimes: "Свободного времени сейчас нет. Загляните позже.", change: "изменить", labelNotes: "Что нам стоит знать?", confirm: "Подтвердить запись", confirming: "Бронирование…", bookedTitle: "Запись подтверждена", bookedWith: "{meeting} с {brand}",
+  emailSubject: "Подтверждено: {meeting} с {brand}", emailGreeting: "Здравствуйте, {name}!", emailBooked: "Вы записаны на {meeting} с {brand}.", emailWhen: "Когда: {when}", emailWhere: "Где: {where}",
+};
+const sk: Partial<ProspectStrings> = {
+  formThanksTitle: "Ďakujeme — ozveme sa", formThanksBody: "Vaše údaje máme. Niekto z {brand} sa čoskoro ozve.", formHeading: "Kontaktujte {brand}", formSub: "Nechajte nám údaje a ozveme sa.", labelName: "Meno", labelEmail: "E-mail", labelPhone: "Telefón", labelCompany: "Spoločnosť", labelMessage: "Správa", send: "Odoslať",
+  bookingHeading: "Rezervujte si {meeting} s {brand}", minutes: "min", timesIn: "časy v {tz}", noTimes: "Momentálne nie sú dostupné žiadne termíny. Skúste to čoskoro znova.", change: "zmeniť", labelNotes: "Niečo, čo by sme mali vedieť?", confirm: "Potvrdiť rezerváciu", confirming: "Rezervujem…", bookedTitle: "Rezervácia potvrdená", bookedWith: "{meeting} s {brand}",
+  emailSubject: "Potvrdené: {meeting} s {brand}", emailGreeting: "Dobrý deň, {name},", emailBooked: "Máte rezerváciu na {meeting} s {brand}.", emailWhen: "Kedy: {when}", emailWhere: "Kde: {where}",
+};
+const sv: Partial<ProspectStrings> = {
+  formThanksTitle: "Tack — vi hör av oss", formThanksBody: "Vi har tagit emot dina uppgifter. Någon från {brand} hör snart av sig.", formHeading: "Kontakta {brand}", formSub: "Lämna dina uppgifter så hör vi av oss.", labelName: "Namn", labelEmail: "E-post", labelPhone: "Telefon", labelCompany: "Företag", labelMessage: "Meddelande", send: "Skicka",
+  bookingHeading: "Boka ett {meeting} med {brand}", minutes: "min", timesIn: "tider i {tz}", noTimes: "Inga lediga tider just nu. Titta tillbaka snart.", change: "ändra", labelNotes: "Något vi bör veta?", confirm: "Bekräfta bokning", confirming: "Bokar…", bookedTitle: "Bokningen är bekräftad", bookedWith: "{meeting} med {brand}",
+  emailSubject: "Bekräftat: {meeting} med {brand}", emailGreeting: "Hej {name},", emailBooked: "Du är bokad för ett {meeting} med {brand}.", emailWhen: "När: {when}", emailWhere: "Var: {where}",
+};
+const ta: Partial<ProspectStrings> = {
+  formThanksTitle: "நன்றி — விரைவில் தொடர்பு கொள்கிறோம்", formThanksBody: "உங்கள் விவரங்கள் கிடைத்தன. {brand} அணியில் இருந்து விரைவில் தொடர்பு கொள்வோம்.", formHeading: "{brand} உடன் தொடர்பு கொள்ளுங்கள்", formSub: "உங்கள் விவரங்களை விடுங்கள்; நாங்கள் தொடர்பு கொள்கிறோம்.", labelName: "பெயர்", labelEmail: "மின்னஞ்சல்", labelPhone: "தொலைபேசி", labelCompany: "நிறுவனம்", labelMessage: "செய்தி", send: "அனுப்பு",
+  bookingHeading: "{brand} உடன் {meeting} பதிவு செய்யுங்கள்", minutes: "நிமி", timesIn: "{tz} நேரப்படி", noTimes: "தற்போது நேரங்கள் இல்லை. விரைவில் மீண்டும் பாருங்கள்.", change: "மாற்று", labelNotes: "நாங்கள் தெரிந்து கொள்ள வேண்டியது ஏதேனும்?", confirm: "பதிவை உறுதிப்படுத்து", confirming: "பதிவு செய்கிறது…", bookedTitle: "பதிவு உறுதியானது", bookedWith: "{brand} உடன் {meeting}",
+  emailSubject: "உறுதியானது: {brand} உடன் {meeting}", emailGreeting: "வணக்கம் {name},", emailBooked: "{brand} உடன் {meeting} பதிவு செய்யப்பட்டுள்ளது.", emailWhen: "எப்போது: {when}", emailWhere: "எங்கே: {where}",
+};
+const tr: Partial<ProspectStrings> = {
+  formThanksTitle: "Teşekkürler — sizinle iletişime geçeceğiz", formThanksBody: "Bilgileriniz alındı. {brand} ekibinden biri kısa süre içinde ulaşacak.", formHeading: "{brand} ile iletişime geçin", formSub: "Bilgilerinizi bırakın, size ulaşalım.", labelName: "Ad", labelEmail: "E-posta", labelPhone: "Telefon", labelCompany: "Şirket", labelMessage: "Mesaj", send: "Gönder",
+  bookingHeading: "{brand} ile {meeting} planlayın", minutes: "dk", timesIn: "saatler: {tz}", noTimes: "Şu anda uygun saat yok. Lütfen kısa süre sonra tekrar bakın.", change: "değiştir", labelNotes: "Bilmemiz gereken bir şey var mı?", confirm: "Randevuyu onayla", confirming: "Ayırtılıyor…", bookedTitle: "Randevu onaylandı", bookedWith: "{brand} ile {meeting}",
+  emailSubject: "Onaylandı: {brand} ile {meeting}", emailGreeting: "Merhaba {name},", emailBooked: "{brand} ile {meeting} için randevunuz alındı.", emailWhen: "Ne zaman: {when}", emailWhere: "Nerede: {where}",
+};
+const uk: Partial<ProspectStrings> = {
+  formThanksTitle: "Дякуємо — ми зв'яжемося з вами", formThanksBody: "Ваші дані отримано. Хтось із {brand} невдовзі зв'яжеться.", formHeading: "Зв'язатися з {brand}", formSub: "Залиште свої дані, і ми зв'яжемося.", labelName: "Ім'я", labelEmail: "Email", labelPhone: "Телефон", labelCompany: "Компанія", labelMessage: "Повідомлення", send: "Надіслати",
+  bookingHeading: "Забронювати {meeting} з {brand}", minutes: "хв", timesIn: "час у {tz}", noTimes: "Наразі немає вільного часу. Завітайте пізніше.", change: "змінити", labelNotes: "Що нам варто знати?", confirm: "Підтвердити бронювання", confirming: "Бронювання…", bookedTitle: "Бронювання підтверджено", bookedWith: "{meeting} з {brand}",
+  emailSubject: "Підтверджено: {meeting} з {brand}", emailGreeting: "Вітаємо, {name}!", emailBooked: "Вас записано на {meeting} з {brand}.", emailWhen: "Коли: {when}", emailWhere: "Де: {where}",
+};
+const vi: Partial<ProspectStrings> = {
+  formThanksTitle: "Cảm ơn — chúng tôi sẽ liên hệ", formThanksBody: "Đã nhận được thông tin của bạn. Người từ {brand} sẽ sớm liên hệ.", formHeading: "Liên hệ với {brand}", formSub: "Để lại thông tin và chúng tôi sẽ liên hệ.", labelName: "Họ tên", labelEmail: "Email", labelPhone: "Điện thoại", labelCompany: "Công ty", labelMessage: "Tin nhắn", send: "Gửi",
+  bookingHeading: "Đặt lịch {meeting} với {brand}", minutes: "phút", timesIn: "giờ theo {tz}", noTimes: "Hiện chưa có khung giờ trống. Vui lòng quay lại sau.", change: "đổi", labelNotes: "Có điều gì chúng tôi nên biết?", confirm: "Xác nhận lịch hẹn", confirming: "Đang đặt…", bookedTitle: "Đã xác nhận lịch hẹn", bookedWith: "{meeting} với {brand}",
+  emailSubject: "Đã xác nhận: {meeting} với {brand}", emailGreeting: "Chào {name},", emailBooked: "Bạn đã được đặt lịch {meeting} với {brand}.", emailWhen: "Khi nào: {when}", emailWhere: "Ở đâu: {where}",
+};
+
+const af: Partial<ProspectStrings> = {
+  formThanksTitle: "Dankie — ons kontak jou binnekort", formThanksBody: "Ons het jou besonderhede ontvang. Iemand van {brand} sal binnekort uitreik.", formHeading: "Kontak {brand}", formSub: "Los jou besonderhede en ons kontak jou.", labelName: "Naam", labelEmail: "E-pos", labelPhone: "Telefoon", labelCompany: "Maatskappy", labelMessage: "Boodskap", send: "Stuur",
+  bookingHeading: "Bespreek 'n {meeting} met {brand}", minutes: "min", timesIn: "tye in {tz}", noTimes: "Geen tye is nou beskikbaar nie. Kom kyk gou weer.", change: "verander", labelNotes: "Iets wat ons moet weet?", confirm: "Bevestig bespreking", confirming: "Bespreek…", bookedTitle: "Bespreking bevestig", bookedWith: "{meeting} met {brand}",
+  emailSubject: "Bevestig: {meeting} met {brand}", emailGreeting: "Hallo {name},", emailBooked: "Jy is bespreek vir 'n {meeting} met {brand}.", emailWhen: "Wanneer: {when}", emailWhere: "Waar: {where}",
+};
+const sq: Partial<ProspectStrings> = {
+  formThanksTitle: "Faleminderit — do t'ju kontaktojmë", formThanksBody: "Të dhënat tuaja u morën. Dikush nga {brand} do t'ju kontaktojë së shpejti.", formHeading: "Kontaktoni {brand}", formSub: "Lini të dhënat tuaja dhe do t'ju kontaktojmë.", labelName: "Emri", labelEmail: "Email", labelPhone: "Telefoni", labelCompany: "Kompania", labelMessage: "Mesazhi", send: "Dërgo",
+  bookingHeading: "Rezervoni një {meeting} me {brand}", minutes: "min", timesIn: "oraret në {tz}", noTimes: "Nuk ka orare të lira tani. Kontrolloni sërish së shpejti.", change: "ndrysho", labelNotes: "Diçka që duhet ta dimë?", confirm: "Konfirmo rezervimin", confirming: "Duke rezervuar…", bookedTitle: "Rezervimi u konfirmua", bookedWith: "{meeting} me {brand}",
+  emailSubject: "Konfirmuar: {meeting} me {brand}", emailGreeting: "Përshëndetje {name},", emailBooked: "Jeni rezervuar për një {meeting} me {brand}.", emailWhen: "Kur: {when}", emailWhere: "Ku: {where}",
+};
+const am: Partial<ProspectStrings> = {
+  formThanksTitle: "እናመሰግናለን — እናገኝዎታለን", formThanksBody: "ዝርዝሮችዎ ደርሰዋል። ከ{brand} ሰው በቅርቡ ያገኝዎታል።", formHeading: "{brand}ን ያግኙ", formSub: "ዝርዝሮችዎን ይተዉ እና እናገኝዎታለን።", labelName: "ስም", labelEmail: "ኢሜይል", labelPhone: "ስልክ", labelCompany: "ኩባንያ", labelMessage: "መልእክት", send: "ላክ",
+  bookingHeading: "ከ{brand} ጋር {meeting} ይያዙ", minutes: "ደቂቃ", timesIn: "ሰዓቶች በ{tz}", noTimes: "አሁን ክፍት ሰዓት የለም። በቅርቡ ደግመው ይሞክሩ።", change: "ቀይር", labelNotes: "ማወቅ ያለብን ነገር አለ?", confirm: "ቀጠሮውን አረጋግጥ", confirming: "በመያዝ ላይ…", bookedTitle: "ቀጠሮው ተረጋግጧል", bookedWith: "{meeting} ከ{brand} ጋር",
+  emailSubject: "ተረጋግጧል: {meeting} ከ{brand} ጋር", emailGreeting: "ሰላም {name},", emailBooked: "ከ{brand} ጋር ለ{meeting} ተይዘዋል።", emailWhen: "መቼ: {when}", emailWhere: "የት: {where}",
+};
+const hy: Partial<ProspectStrings> = {
+  formThanksTitle: "Շնորհակալություն — կկապվենք ձեզ հետ", formThanksBody: "Ձեր տվյալները ստացվել են։ {brand}-ից որևէ մեկը շուտով կկապվի։", formHeading: "Կապվեք {brand}-ի հետ", formSub: "Թողեք ձեր տվյալները, և մենք կկապվենք։", labelName: "Անուն", labelEmail: "Էլ. փոստ", labelPhone: "Հեռախոս", labelCompany: "Ընկերություն", labelMessage: "Հաղորդագրություն", send: "Ուղարկել",
+  bookingHeading: "Ամրագրեք {meeting} {brand}-ի հետ", minutes: "րոպե", timesIn: "ժամերը {tz}-ով", noTimes: "Այս պահին ազատ ժամեր չկան։ Շուտով նորից ստուգեք։", change: "փոխել", labelNotes: "Ինչ-որ բան, որ պետք է իմանանք?", confirm: "Հաստատել ամրագրումը", confirming: "Ամրագրում…", bookedTitle: "Ամրագրումը հաստատված է", bookedWith: "{meeting} {brand}-ի հետ",
+  emailSubject: "Հաստատված է: {meeting} {brand}-ի հետ", emailGreeting: "Բարև {name},", emailBooked: "Դուք ամրագրված եք {meeting}-ի համար {brand}-ի հետ։", emailWhen: "Երբ: {when}", emailWhere: "Որտեղ: {where}",
+};
+const az: Partial<ProspectStrings> = {
+  formThanksTitle: "Təşəkkürlər — sizinlə əlaqə saxlayacağıq", formThanksBody: "Məlumatlarınız alındı. {brand} komandasından biri tezliklə əlaqə saxlayacaq.", formHeading: "{brand} ilə əlaqə saxlayın", formSub: "Məlumatlarınızı buraxın, sizinlə əlaqə saxlayaq.", labelName: "Ad", labelEmail: "E-poçt", labelPhone: "Telefon", labelCompany: "Şirkət", labelMessage: "Mesaj", send: "Göndər",
+  bookingHeading: "{brand} ilə {meeting} sifariş edin", minutes: "dəq", timesIn: "vaxtlar {tz} üzrə", noTimes: "Hazırda boş vaxt yoxdur. Tezliklə yenidən yoxlayın.", change: "dəyiş", labelNotes: "Bilməli olduğumuz bir şey var?", confirm: "Sifarişi təsdiqlə", confirming: "Sifariş edilir…", bookedTitle: "Sifariş təsdiqləndi", bookedWith: "{brand} ilə {meeting}",
+  emailSubject: "Təsdiqləndi: {brand} ilə {meeting}", emailGreeting: "Salam {name},", emailBooked: "{brand} ilə {meeting} üçün sifarişiniz var.", emailWhen: "Nə vaxt: {when}", emailWhere: "Harada: {where}",
+};
+const be: Partial<ProspectStrings> = {
+  formThanksTitle: "Дзякуй — мы звяжамся з вамі", formThanksBody: "Вашы даныя атрыманы. Хтосьці з {brand} хутка звяжацца.", formHeading: "Звязацца з {brand}", formSub: "Пакіньце свае даныя, і мы звяжамся.", labelName: "Імя", labelEmail: "Email", labelPhone: "Тэлефон", labelCompany: "Кампанія", labelMessage: "Паведамленне", send: "Адправіць",
+  bookingHeading: "Запісацца на {meeting} з {brand}", minutes: "хв", timesIn: "час у {tz}", noTimes: "Зараз няма вольнага часу. Зазірніце пазней.", change: "змяніць", labelNotes: "Што нам варта ведаць?", confirm: "Пацвердзіць запіс", confirming: "Браніраванне…", bookedTitle: "Запіс пацверджаны", bookedWith: "{meeting} з {brand}",
+  emailSubject: "Пацверджана: {meeting} з {brand}", emailGreeting: "Вітаем, {name}!", emailBooked: "Вы запісаны на {meeting} з {brand}.", emailWhen: "Калі: {when}", emailWhere: "Дзе: {where}",
+};
+const bn: Partial<ProspectStrings> = {
+  formThanksTitle: "ধন্যবাদ — আমরা যোগাযোগ করব", formThanksBody: "আপনার তথ্য পেয়েছি। {brand} থেকে কেউ শীঘ্রই যোগাযোগ করবে।", formHeading: "{brand}-এর সাথে যোগাযোগ করুন", formSub: "আপনার তথ্য দিন, আমরা যোগাযোগ করব।", labelName: "নাম", labelEmail: "ইমেইল", labelPhone: "ফোন", labelCompany: "কোম্পানি", labelMessage: "বার্তা", send: "পাঠান",
+  bookingHeading: "{brand}-এর সাথে {meeting} বুক করুন", minutes: "মিনিট", timesIn: "{tz} অনুযায়ী সময়", noTimes: "এখন কোনো সময় খালি নেই। শীঘ্রই আবার দেখুন।", change: "পরিবর্তন", labelNotes: "আমাদের জানার মতো কিছু?", confirm: "বুকিং নিশ্চিত করুন", confirming: "বুক করা হচ্ছে…", bookedTitle: "বুকিং নিশ্চিত হয়েছে", bookedWith: "{brand}-এর সাথে {meeting}",
+  emailSubject: "নিশ্চিত: {brand}-এর সাথে {meeting}", emailGreeting: "হাই {name},", emailBooked: "{brand}-এর সাথে {meeting}-এর জন্য আপনার বুকিং হয়েছে।", emailWhen: "কখন: {when}", emailWhere: "কোথায়: {where}",
+};
+const bs: Partial<ProspectStrings> = {
+  formThanksTitle: "Hvala — javit ćemo se", formThanksBody: "Vaši podaci su zaprimljeni. Neko iz {brand} će se uskoro javiti.", formHeading: "Kontaktirajte {brand}", formSub: "Ostavite podatke i javit ćemo se.", labelName: "Ime", labelEmail: "E-mail", labelPhone: "Telefon", labelCompany: "Kompanija", labelMessage: "Poruka", send: "Pošalji",
+  bookingHeading: "Rezervišite {meeting} sa {brand}", minutes: "min", timesIn: "termini u {tz}", noTimes: "Trenutno nema dostupnih termina. Provjerite uskoro.", change: "promijeni", labelNotes: "Nešto što bismo trebali znati?", confirm: "Potvrdi rezervaciju", confirming: "Rezervišem…", bookedTitle: "Rezervacija potvrđena", bookedWith: "{meeting} sa {brand}",
+  emailSubject: "Potvrđeno: {meeting} sa {brand}", emailGreeting: "Zdravo {name},", emailBooked: "Rezervisani ste za {meeting} sa {brand}.", emailWhen: "Kada: {when}", emailWhere: "Gdje: {where}",
+};
+const my: Partial<ProspectStrings> = {
+  formThanksTitle: "ကျေးဇူးတင်ပါသည် — ဆက်သွယ်ပါမည်", formThanksBody: "သင့်အချက်အလက်များ ရရှိပါပြီ။ {brand} မှ တစ်ဦးက မကြာမီ ဆက်သွယ်ပါမည်။", formHeading: "{brand} ကို ဆက်သွယ်ရန်", formSub: "အချက်အလက်ထားခဲ့ပါ၊ ကျွန်ုပ်တို့ ဆက်သွယ်ပါမည်။", labelName: "အမည်", labelEmail: "အီးမေးလ်", labelPhone: "ဖုန်း", labelCompany: "ကုမ္ပဏီ", labelMessage: "စာ", send: "ပို့ရန်",
+  bookingHeading: "{brand} နှင့် {meeting} ရက်ချိန်းယူရန်", minutes: "မိနစ်", timesIn: "{tz} အချိန်များ", noTimes: "ယခု အချိန်လွတ်မရှိပါ။ မကြာမီ ပြန်စစ်ပါ။", change: "ပြောင်းရန်", labelNotes: "ကျွန်ုပ်တို့ သိသင့်သည့်အရာ ရှိပါသလား?", confirm: "ရက်ချိန်း အတည်ပြုရန်", confirming: "ယူနေသည်…", bookedTitle: "ရက်ချိန်း အတည်ပြုပြီး", bookedWith: "{brand} နှင့် {meeting}",
+  emailSubject: "အတည်ပြုပြီး: {brand} နှင့် {meeting}", emailGreeting: "မင်္ဂလာပါ {name},", emailBooked: "{brand} နှင့် {meeting} အတွက် ရက်ချိန်းယူပြီးပါပြီ။", emailWhen: "မည်သည့်အချိန်: {when}", emailWhere: "မည်သည့်နေရာ: {where}",
+};
+const ca: Partial<ProspectStrings> = {
+  formThanksTitle: "Gràcies — ens posarem en contacte", formThanksBody: "Hem rebut les teves dades. Algú de {brand} et contactarà aviat.", formHeading: "Contacta amb {brand}", formSub: "Deixa'ns les teves dades i et contactarem.", labelName: "Nom", labelEmail: "Correu electrònic", labelPhone: "Telèfon", labelCompany: "Empresa", labelMessage: "Missatge", send: "Envia",
+  bookingHeading: "Reserva un {meeting} amb {brand}", minutes: "min", timesIn: "hores en {tz}", noTimes: "Ara mateix no hi ha hores disponibles. Torna-ho a mirar aviat.", change: "canvia", labelNotes: "Res que hàgim de saber?", confirm: "Confirma la reserva", confirming: "Reservant…", bookedTitle: "Reserva confirmada", bookedWith: "{meeting} amb {brand}",
+  emailSubject: "Confirmat: {meeting} amb {brand}", emailGreeting: "Hola {name},", emailBooked: "Tens una reserva per a un {meeting} amb {brand}.", emailWhen: "Quan: {when}", emailWhere: "On: {where}",
+};
+const et: Partial<ProspectStrings> = {
+  formThanksTitle: "Aitäh — võtame ühendust", formThanksBody: "Sinu andmed on käes. Keegi {brand}-ist võtab peagi ühendust.", formHeading: "Võta ühendust: {brand}", formSub: "Jäta oma andmed ja võtame ühendust.", labelName: "Nimi", labelEmail: "E-post", labelPhone: "Telefon", labelCompany: "Ettevõte", labelMessage: "Sõnum", send: "Saada",
+  bookingHeading: "Broneeri {meeting} — {brand}", minutes: "min", timesIn: "ajad vööndis {tz}", noTimes: "Praegu vabu aegu pole. Vaata varsti uuesti.", change: "muuda", labelNotes: "Midagi, mida peaksime teadma?", confirm: "Kinnita broneering", confirming: "Broneerin…", bookedTitle: "Broneering kinnitatud", bookedWith: "{meeting} — {brand}",
+  emailSubject: "Kinnitatud: {meeting} — {brand}", emailGreeting: "Tere {name},", emailBooked: "Sulle on broneeritud {meeting} ({brand}).", emailWhen: "Millal: {when}", emailWhere: "Kus: {where}",
+};
+const ka: Partial<ProspectStrings> = {
+  formThanksTitle: "მადლობა — დაგიკავშირდებით", formThanksBody: "თქვენი მონაცემები მივიღეთ. {brand}-დან ვინმე მალე დაგიკავშირდებათ.", formHeading: "დაუკავშირდით {brand}-ს", formSub: "დატოვეთ მონაცემები და დაგიკავშირდებით.", labelName: "სახელი", labelEmail: "ელფოსტა", labelPhone: "ტელეფონი", labelCompany: "კომპანია", labelMessage: "შეტყობინება", send: "გაგზავნა",
+  bookingHeading: "დაჯავშნეთ {meeting} {brand}-თან", minutes: "წთ", timesIn: "დრო {tz}-ში", noTimes: "ამჟამად თავისუფალი დრო არ არის. მალე შეამოწმეთ.", change: "შეცვლა", labelNotes: "რამე, რაც უნდა ვიცოდეთ?", confirm: "ჯავშნის დადასტურება", confirming: "იჯავშნება…", bookedTitle: "ჯავშანი დადასტურდა", bookedWith: "{meeting} {brand}-თან",
+  emailSubject: "დადასტურდა: {meeting} {brand}-თან", emailGreeting: "გამარჯობა {name},", emailBooked: "დაჯავშნილი გაქვთ {meeting} {brand}-თან.", emailWhen: "როდის: {when}", emailWhere: "სად: {where}",
+};
+const gu: Partial<ProspectStrings> = {
+  formThanksTitle: "આભાર — અમે સંપર્ક કરીશું", formThanksBody: "તમારી વિગતો મળી ગઈ છે. {brand} તરફથી કોઈ ટૂંક સમયમાં સંપર્ક કરશે.", formHeading: "{brand} નો સંપર્ક કરો", formSub: "તમારી વિગતો આપો અને અમે સંપર્ક કરીશું.", labelName: "નામ", labelEmail: "ઇમેઇલ", labelPhone: "ફોન", labelCompany: "કંપની", labelMessage: "સંદેશ", send: "મોકલો",
+  bookingHeading: "{brand} સાથે {meeting} બુક કરો", minutes: "મિનિટ", timesIn: "{tz} મુજબ સમય", noTimes: "હમણાં કોઈ સમય ઉપલબ્ધ નથી. ટૂંક સમયમાં ફરી તપાસો.", change: "બદલો", labelNotes: "અમારે જાણવા જેવું કંઈ?", confirm: "બુકિંગ કન્ફર્મ કરો", confirming: "બુક થઈ રહ્યું છે…", bookedTitle: "બુકિંગ કન્ફર્મ થયું", bookedWith: "{brand} સાથે {meeting}",
+  emailSubject: "કન્ફર્મ: {brand} સાથે {meeting}", emailGreeting: "નમસ્તે {name},", emailBooked: "{brand} સાથે {meeting} માટે તમારું બુકિંગ થયું છે.", emailWhen: "ક્યારે: {when}", emailWhere: "ક્યાં: {where}",
+};
+const ha: Partial<ProspectStrings> = {
+  formThanksTitle: "Mun gode — za mu tuntube ka", formThanksBody: "Mun karɓi bayananka. Wani daga {brand} zai tuntube ka nan ba da jimawa ba.", formHeading: "Tuntuɓi {brand}", formSub: "Bar bayananka, za mu tuntube ka.", labelName: "Suna", labelEmail: "Imel", labelPhone: "Waya", labelCompany: "Kamfani", labelMessage: "Saƙo", send: "Aika",
+  bookingHeading: "Yi ajiyar {meeting} tare da {brand}", minutes: "min", timesIn: "lokuta a {tz}", noTimes: "Babu lokacin da ke akwai yanzu. Duba nan gaba kaɗan.", change: "canza", labelNotes: "Akwai abin da ya kamata mu sani?", confirm: "Tabbatar da ajiyar", confirming: "Ana ajiye…", bookedTitle: "An tabbatar da ajiyar", bookedWith: "{meeting} tare da {brand}",
+  emailSubject: "An tabbatar: {meeting} tare da {brand}", emailGreeting: "Sannu {name},", emailBooked: "An yi maka ajiyar {meeting} tare da {brand}.", emailWhen: "Yaushe: {when}", emailWhere: "Ina: {where}",
+};
+const he: Partial<ProspectStrings> = {
+  dir: "rtl",
+  formThanksTitle: "תודה — ניצור קשר בקרוב", formThanksBody: "הפרטים שלך התקבלו. מישהו מ-{brand} ייצור קשר בקרוב.", formHeading: "יצירת קשר עם {brand}", formSub: "השאירו פרטים וניצור קשר.", labelName: "שם", labelEmail: "אימייל", labelPhone: "טלפון", labelCompany: "חברה", labelMessage: "הודעה", send: "שליחה",
+  bookingHeading: "קביעת {meeting} עם {brand}", minutes: "דק'", timesIn: "שעות לפי {tz}", noTimes: "אין שעות פנויות כרגע. בדקו שוב בקרוב.", change: "שינוי", labelNotes: "משהו שכדאי שנדע?", confirm: "אישור הפגישה", confirming: "קובע…", bookedTitle: "הפגישה נקבעה", bookedWith: "{meeting} עם {brand}",
+  emailSubject: "אושר: {meeting} עם {brand}", emailGreeting: "שלום {name},", emailBooked: "נקבעה לך {meeting} עם {brand}.", emailWhen: "מתי: {when}", emailWhere: "איפה: {where}",
+};
+const is: Partial<ProspectStrings> = {
+  formThanksTitle: "Takk — við höfum samband", formThanksBody: "Upplýsingarnar þínar bárust. Einhver frá {brand} hefur samband fljótlega.", formHeading: "Hafðu samband við {brand}", formSub: "Skildu eftir upplýsingar og við höfum samband.", labelName: "Nafn", labelEmail: "Netfang", labelPhone: "Sími", labelCompany: "Fyrirtæki", labelMessage: "Skilaboð", send: "Senda",
+  bookingHeading: "Bókaðu {meeting} með {brand}", minutes: "mín", timesIn: "tímar í {tz}", noTimes: "Engir lausir tímar núna. Kíktu aftur fljótlega.", change: "breyta", labelNotes: "Eitthvað sem við ættum að vita?", confirm: "Staðfesta bókun", confirming: "Bóka…", bookedTitle: "Bókun staðfest", bookedWith: "{meeting} með {brand}",
+  emailSubject: "Staðfest: {meeting} með {brand}", emailGreeting: "Hæ {name},", emailBooked: "Þú ert bókaður í {meeting} með {brand}.", emailWhen: "Hvenær: {when}", emailWhere: "Hvar: {where}",
+};
+const ga: Partial<ProspectStrings> = {
+  formThanksTitle: "Go raibh maith agat — beimid i dteagmháil", formThanksBody: "Tá do chuid sonraí faighte againn. Beidh duine ó {brand} i dteagmháil go luath.", formHeading: "Déan teagmháil le {brand}", formSub: "Fág do shonraí agus beimid i dteagmháil.", labelName: "Ainm", labelEmail: "Ríomhphost", labelPhone: "Fón", labelCompany: "Comhlacht", labelMessage: "Teachtaireacht", send: "Seol",
+  bookingHeading: "Cuir {meeting} in áirithe le {brand}", minutes: "nóim", timesIn: "amanna in {tz}", noTimes: "Níl aon amanna ar fáil faoi láthair. Féach arís go luath.", change: "athraigh", labelNotes: "Aon rud ba chóir dúinn a bheith ar eolas?", confirm: "Deimhnigh an áirithint", confirming: "Ag cur in áirithe…", bookedTitle: "Áirithint deimhnithe", bookedWith: "{meeting} le {brand}",
+  emailSubject: "Deimhnithe: {meeting} le {brand}", emailGreeting: "Dia dhuit {name},", emailBooked: "Tá {meeting} curtha in áirithe agat le {brand}.", emailWhen: "Cathain: {when}", emailWhere: "Cá háit: {where}",
+};
+const jv: Partial<ProspectStrings> = {
+  formThanksTitle: "Matur nuwun — kita bakal ngubungi", formThanksBody: "Data sampeyan wis ditampa. Wong saka {brand} bakal enggal ngubungi.", formHeading: "Hubungi {brand}", formSub: "Tinggalake data sampeyan, kita bakal ngubungi.", labelName: "Jeneng", labelEmail: "Email", labelPhone: "Telpon", labelCompany: "Perusahaan", labelMessage: "Pesen", send: "Kirim",
+  bookingHeading: "Pesen {meeting} karo {brand}", minutes: "mnt", timesIn: "wektu ing {tz}", noTimes: "Ora ana wektu kosong saiki. Priksa maneh mengko.", change: "ganti", labelNotes: "Ana sing kudu kita ngerteni?", confirm: "Konfirmasi pesenan", confirming: "Mesen…", bookedTitle: "Pesenan dikonfirmasi", bookedWith: "{meeting} karo {brand}",
+  emailSubject: "Dikonfirmasi: {meeting} karo {brand}", emailGreeting: "Halo {name},", emailBooked: "Sampeyan wis kadaftar kanggo {meeting} karo {brand}.", emailWhen: "Kapan: {when}", emailWhere: "Ing endi: {where}",
+};
+const kn: Partial<ProspectStrings> = {
+  formThanksTitle: "ಧನ್ಯವಾದಗಳು — ನಾವು ಸಂಪರ್ಕಿಸುತ್ತೇವೆ", formThanksBody: "ನಿಮ್ಮ ವಿವರಗಳು ತಲುಪಿವೆ. {brand} ನಿಂದ ಯಾರಾದರೂ ಶೀಘ್ರದಲ್ಲೇ ಸಂಪರ್ಕಿಸುತ್ತಾರೆ.", formHeading: "{brand} ಅನ್ನು ಸಂಪರ್ಕಿಸಿ", formSub: "ನಿಮ್ಮ ವಿವರಗಳನ್ನು ನೀಡಿ, ನಾವು ಸಂಪರ್ಕಿಸುತ್ತೇವೆ.", labelName: "ಹೆಸರು", labelEmail: "ಇಮೇಲ್", labelPhone: "ಫೋನ್", labelCompany: "ಕಂಪನಿ", labelMessage: "ಸಂದೇಶ", send: "ಕಳುಹಿಸಿ",
+  bookingHeading: "{brand} ಜೊತೆ {meeting} ಬುಕ್ ಮಾಡಿ", minutes: "ನಿಮಿಷ", timesIn: "{tz} ಪ್ರಕಾರ ಸಮಯ", noTimes: "ಸದ್ಯ ಯಾವುದೇ ಸಮಯ ಲಭ್ಯವಿಲ್ಲ. ಶೀಘ್ರದಲ್ಲೇ ಮತ್ತೆ ನೋಡಿ.", change: "ಬದಲಿಸಿ", labelNotes: "ನಾವು ತಿಳಿದಿರಬೇಕಾದದ್ದು ಏನಾದರೂ?", confirm: "ಬುಕಿಂಗ್ ದೃಢೀಕರಿಸಿ", confirming: "ಬುಕ್ ಆಗುತ್ತಿದೆ…", bookedTitle: "ಬುಕಿಂಗ್ ದೃಢೀಕೃತವಾಗಿದೆ", bookedWith: "{brand} ಜೊತೆ {meeting}",
+  emailSubject: "ದೃಢೀಕೃತ: {brand} ಜೊತೆ {meeting}", emailGreeting: "ನಮಸ್ಕಾರ {name},", emailBooked: "{brand} ಜೊತೆ {meeting} ಗಾಗಿ ನಿಮ್ಮ ಬುಕಿಂಗ್ ಆಗಿದೆ.", emailWhen: "ಯಾವಾಗ: {when}", emailWhere: "ಎಲ್ಲಿ: {where}",
+};
+const kk: Partial<ProspectStrings> = {
+  formThanksTitle: "Рақмет — сізбен байланысамыз", formThanksBody: "Деректеріңіз алынды. {brand} тарапынан біреу жақын арада хабарласады.", formHeading: "{brand}-пен байланысу", formSub: "Деректеріңізді қалдырыңыз, біз хабарласамыз.", labelName: "Аты", labelEmail: "Email", labelPhone: "Телефон", labelCompany: "Компания", labelMessage: "Хабарлама", send: "Жіберу",
+  bookingHeading: "{brand}-пен {meeting} брондау", minutes: "мин", timesIn: "{tz} бойынша уақыт", noTimes: "Қазір бос уақыт жоқ. Жақында қайта қараңыз.", change: "өзгерту", labelNotes: "Біз білуге тиіс нәрсе бар ма?", confirm: "Брондауды растау", confirming: "Брондалуда…", bookedTitle: "Брондау расталды", bookedWith: "{brand}-пен {meeting}",
+  emailSubject: "Расталды: {brand}-пен {meeting}", emailGreeting: "Сәлеметсіз бе, {name}!", emailBooked: "{brand}-пен {meeting} үшін брондалдыңыз.", emailWhen: "Қашан: {when}", emailWhere: "Қайда: {where}",
+};
+const km: Partial<ProspectStrings> = {
+  formThanksTitle: "អរគុណ — យើងនឹងទាក់ទងទៅ", formThanksBody: "ព័ត៌មានរបស់អ្នកបានមកដល់ហើយ។ នរណាម្នាក់ពី {brand} នឹងទាក់ទងឆាប់ៗ។", formHeading: "ទាក់ទង {brand}", formSub: "ទុកព័ត៌មានរបស់អ្នក ហើយយើងនឹងទាក់ទងទៅ។", labelName: "ឈ្មោះ", labelEmail: "អ៊ីមែល", labelPhone: "ទូរស័ព្ទ", labelCompany: "ក្រុមហ៊ុន", labelMessage: "សារ", send: "ផ្ញើ",
+  bookingHeading: "កក់ {meeting} ជាមួយ {brand}", minutes: "នាទី", timesIn: "ម៉ោងតាម {tz}", noTimes: "មិនមានម៉ោងទំនេរឥឡូវទេ។ សូមពិនិត្យម្តងទៀតឆាប់ៗ។", change: "ផ្លាស់ប្តូរ", labelNotes: "មានអ្វីដែលយើងគួរដឹង?", confirm: "បញ្ជាក់ការកក់", confirming: "កំពុងកក់…", bookedTitle: "ការកក់ត្រូវបានបញ្ជាក់", bookedWith: "{meeting} ជាមួយ {brand}",
+  emailSubject: "បានបញ្ជាក់: {meeting} ជាមួយ {brand}", emailGreeting: "សួស្តី {name},", emailBooked: "អ្នកបានកក់ {meeting} ជាមួយ {brand} ហើយ។", emailWhen: "ពេលណា: {when}", emailWhere: "នៅឯណា: {where}",
+};
+const ky: Partial<ProspectStrings> = {
+  formThanksTitle: "Рахмат — сиз менен байланышабыз", formThanksBody: "Маалыматыңыз алынды. {brand} тарабынан бирөө жакында байланышат.", formHeading: "{brand} менен байланышуу", formSub: "Маалыматыңызды калтырыңыз, биз байланышабыз.", labelName: "Аты", labelEmail: "Email", labelPhone: "Телефон", labelCompany: "Компания", labelMessage: "Билдирүү", send: "Жөнөтүү",
+  bookingHeading: "{brand} менен {meeting} брондоо", minutes: "мүн", timesIn: "{tz} боюнча убакыт", noTimes: "Азыр бош убакыт жок. Жакында кайра текшериңиз.", change: "өзгөртүү", labelNotes: "Биз билүүгө тийиш нерсе барбы?", confirm: "Брондоону ырастоо", confirming: "Брондолууда…", bookedTitle: "Брондоо ырасталды", bookedWith: "{brand} менен {meeting}",
+  emailSubject: "Ырасталды: {brand} менен {meeting}", emailGreeting: "Салам, {name}!", emailBooked: "{brand} менен {meeting} үчүн брондолдуңуз.", emailWhen: "Качан: {when}", emailWhere: "Кайда: {where}",
+};
+const lo: Partial<ProspectStrings> = {
+  formThanksTitle: "ຂອບໃຈ — ພວກເຮົາຈະຕິດຕໍ່ຫາ", formThanksBody: "ໄດ້ຮັບຂໍ້ມູນຂອງທ່ານແລ້ວ. ຜູ້ໃດຜູ້ໜຶ່ງຈາກ {brand} ຈະຕິດຕໍ່ໃນໄວໆນີ້.", formHeading: "ຕິດຕໍ່ {brand}", formSub: "ຝາກຂໍ້ມູນຂອງທ່ານໄວ້ ແລ້ວພວກເຮົາຈະຕິດຕໍ່ຫາ.", labelName: "ຊື່", labelEmail: "ອີເມວ", labelPhone: "ໂທລະສັບ", labelCompany: "ບໍລິສັດ", labelMessage: "ຂໍ້ຄວາມ", send: "ສົ່ງ",
+  bookingHeading: "ຈອງ {meeting} ກັບ {brand}", minutes: "ນາທີ", timesIn: "ເວລາຕາມ {tz}", noTimes: "ບໍ່ມີເວລາຫວ່າງຕອນນີ້. ກະລຸນາກວດຄືນໃນໄວໆນີ້.", change: "ປ່ຽນ", labelNotes: "ມີຫຍັງທີ່ພວກເຮົາຄວນຮູ້ບໍ?", confirm: "ຢືນຢັນການຈອງ", confirming: "ກຳລັງຈອງ…", bookedTitle: "ການຈອງໄດ້ຮັບການຢືນຢັນ", bookedWith: "{meeting} ກັບ {brand}",
+  emailSubject: "ຢືນຢັນແລ້ວ: {meeting} ກັບ {brand}", emailGreeting: "ສະບາຍດີ {name},", emailBooked: "ທ່ານໄດ້ຈອງ {meeting} ກັບ {brand} ແລ້ວ.", emailWhen: "ເມື່ອໃດ: {when}", emailWhere: "ຢູ່ໃສ: {where}",
+};
+const lv: Partial<ProspectStrings> = {
+  formThanksTitle: "Paldies — mēs sazināsimies", formThanksBody: "Jūsu dati ir saņemti. Kāds no {brand} drīz sazināsies.", formHeading: "Sazinieties ar {brand}", formSub: "Atstājiet savus datus, un mēs sazināsimies.", labelName: "Vārds", labelEmail: "E-pasts", labelPhone: "Tālrunis", labelCompany: "Uzņēmums", labelMessage: "Ziņa", send: "Sūtīt",
+  bookingHeading: "Rezervējiet {meeting} ar {brand}", minutes: "min", timesIn: "laiki {tz}", noTimes: "Šobrīd nav pieejamu laiku. Ieskatieties drīz vēlreiz.", change: "mainīt", labelNotes: "Kaut kas, kas mums jāzina?", confirm: "Apstiprināt rezervāciju", confirming: "Rezervē…", bookedTitle: "Rezervācija apstiprināta", bookedWith: "{meeting} ar {brand}",
+  emailSubject: "Apstiprināts: {meeting} ar {brand}", emailGreeting: "Sveiki, {name}!", emailBooked: "Jums ir rezervēts {meeting} ar {brand}.", emailWhen: "Kad: {when}", emailWhere: "Kur: {where}",
+};
+const lt: Partial<ProspectStrings> = {
+  formThanksTitle: "Ačiū — susisieksime", formThanksBody: "Jūsų duomenys gauti. Kažkas iš {brand} netrukus susisieks.", formHeading: "Susisiekite su {brand}", formSub: "Palikite duomenis ir mes susisieksime.", labelName: "Vardas", labelEmail: "El. paštas", labelPhone: "Telefonas", labelCompany: "Įmonė", labelMessage: "Žinutė", send: "Siųsti",
+  bookingHeading: "Rezervuokite {meeting} su {brand}", minutes: "min", timesIn: "laikai {tz}", noTimes: "Šiuo metu laisvų laikų nėra. Netrukus patikrinkite dar kartą.", change: "keisti", labelNotes: "Kažkas, ką turėtume žinoti?", confirm: "Patvirtinti rezervaciją", confirming: "Rezervuojama…", bookedTitle: "Rezervacija patvirtinta", bookedWith: "{meeting} su {brand}",
+  emailSubject: "Patvirtinta: {meeting} su {brand}", emailGreeting: "Sveiki, {name},", emailBooked: "Jums rezervuotas {meeting} su {brand}.", emailWhen: "Kada: {when}", emailWhere: "Kur: {where}",
+};
+const mk: Partial<ProspectStrings> = {
+  formThanksTitle: "Благодариме — ќе се јавиме", formThanksBody: "Вашите податоци се примени. Некој од {brand} наскоро ќе се јави.", formHeading: "Контактирајте со {brand}", formSub: "Оставете ги вашите податоци и ќе се јавиме.", labelName: "Име", labelEmail: "Е-пошта", labelPhone: "Телефон", labelCompany: "Компанија", labelMessage: "Порака", send: "Испрати",
+  bookingHeading: "Резервирајте {meeting} со {brand}", minutes: "мин", timesIn: "термини во {tz}", noTimes: "Моментално нема слободни термини. Проверете наскоро.", change: "промени", labelNotes: "Нешто што треба да знаеме?", confirm: "Потврди резервација", confirming: "Се резервира…", bookedTitle: "Резервацијата е потврдена", bookedWith: "{meeting} со {brand}",
+  emailSubject: "Потврдено: {meeting} со {brand}", emailGreeting: "Здраво {name},", emailBooked: "Резервирани сте за {meeting} со {brand}.", emailWhen: "Кога: {when}", emailWhere: "Каде: {where}",
+};
+const ml: Partial<ProspectStrings> = {
+  formThanksTitle: "നന്ദി — ഞങ്ങൾ ബന്ധപ്പെടും", formThanksBody: "നിങ്ങളുടെ വിവരങ്ങൾ ലഭിച്ചു. {brand}-ൽ നിന്ന് ആരെങ്കിലും ഉടൻ ബന്ധപ്പെടും.", formHeading: "{brand}-നെ ബന്ധപ്പെടുക", formSub: "വിവരങ്ങൾ നൽകൂ, ഞങ്ങൾ ബന്ധപ്പെടാം.", labelName: "പേര്", labelEmail: "ഇമെയിൽ", labelPhone: "ഫോൺ", labelCompany: "കമ്പനി", labelMessage: "സന്ദേശം", send: "അയയ്ക്കുക",
+  bookingHeading: "{brand}-നൊപ്പം {meeting} ബുക്ക് ചെയ്യുക", minutes: "മിനിറ്റ്", timesIn: "{tz} പ്രകാരം സമയം", noTimes: "ഇപ്പോൾ സമയം ലഭ്യമല്ല. ഉടൻ വീണ്ടും നോക്കുക.", change: "മാറ്റുക", labelNotes: "ഞങ്ങൾ അറിയേണ്ട എന്തെങ്കിലും?", confirm: "ബുക്കിംഗ് സ്ഥിരീകരിക്കുക", confirming: "ബുക്ക് ചെയ്യുന്നു…", bookedTitle: "ബുക്കിംഗ് സ്ഥിരീകരിച്ചു", bookedWith: "{brand}-നൊപ്പം {meeting}",
+  emailSubject: "സ്ഥിരീകരിച്ചു: {brand}-നൊപ്പം {meeting}", emailGreeting: "ഹായ് {name},", emailBooked: "{brand}-നൊപ്പം {meeting}-നായി നിങ്ങൾ ബുക്ക് ചെയ്തിരിക്കുന്നു.", emailWhen: "എപ്പോൾ: {when}", emailWhere: "എവിടെ: {where}",
+};
+const mr: Partial<ProspectStrings> = {
+  formThanksTitle: "धन्यवाद — आम्ही संपर्क करू", formThanksBody: "तुमची माहिती मिळाली. {brand} कडून कोणीतरी लवकरच संपर्क करेल.", formHeading: "{brand} शी संपर्क साधा", formSub: "तुमची माहिती द्या, आम्ही संपर्क करू.", labelName: "नाव", labelEmail: "ईमेल", labelPhone: "फोन", labelCompany: "कंपनी", labelMessage: "संदेश", send: "पाठवा",
+  bookingHeading: "{brand} सोबत {meeting} बुक करा", minutes: "मिनिटे", timesIn: "{tz} नुसार वेळा", noTimes: "सध्या वेळ उपलब्ध नाही. लवकरच पुन्हा पहा.", change: "बदला", labelNotes: "आम्हाला माहीत असावे असे काही?", confirm: "बुकिंग निश्चित करा", confirming: "बुक होत आहे…", bookedTitle: "बुकिंग निश्चित झाले", bookedWith: "{brand} सोबत {meeting}",
+  emailSubject: "निश्चित: {brand} सोबत {meeting}", emailGreeting: "नमस्कार {name},", emailBooked: "{brand} सोबत {meeting} साठी तुमचे बुकिंग झाले आहे.", emailWhen: "कधी: {when}", emailWhere: "कुठे: {where}",
+};
+const mn: Partial<ProspectStrings> = {
+  formThanksTitle: "Баярлалаа — бид холбогдоно", formThanksBody: "Таны мэдээлэл хүлээн авлаа. {brand}-аас хэн нэгэн удахгүй холбогдоно.", formHeading: "{brand}-тай холбогдох", formSub: "Мэдээллээ үлдээгээрэй, бид холбогдоно.", labelName: "Нэр", labelEmail: "Имэйл", labelPhone: "Утас", labelCompany: "Компани", labelMessage: "Зурвас", send: "Илгээх",
+  bookingHeading: "{brand}-тай {meeting} товлох", minutes: "мин", timesIn: "{tz} дахь цагууд", noTimes: "Одоогоор сул цаг алга. Удахгүй дахин шалгана уу.", change: "өөрчлөх", labelNotes: "Бидний мэдэх ёстой зүйл байна уу?", confirm: "Товлолтыг баталгаажуулах", confirming: "Товлож байна…", bookedTitle: "Товлолт баталгаажлаа", bookedWith: "{brand}-тай {meeting}",
+  emailSubject: "Баталгаажсан: {brand}-тай {meeting}", emailGreeting: "Сайн байна уу, {name}!", emailBooked: "{brand}-тай {meeting}-д товлогдлоо.", emailWhen: "Хэзээ: {when}", emailWhere: "Хаана: {where}",
+};
+const ne: Partial<ProspectStrings> = {
+  formThanksTitle: "धन्यवाद — हामी सम्पर्क गर्नेछौं", formThanksBody: "तपाईंको विवरण प्राप्त भयो। {brand} बाट कसैले चाँडै सम्पर्क गर्नेछ।", formHeading: "{brand} लाई सम्पर्क गर्नुहोस्", formSub: "आफ्नो विवरण छोड्नुहोस्, हामी सम्पर्क गर्नेछौं।", labelName: "नाम", labelEmail: "इमेल", labelPhone: "फोन", labelCompany: "कम्पनी", labelMessage: "सन्देश", send: "पठाउनुहोस्",
+  bookingHeading: "{brand} सँग {meeting} बुक गर्नुहोस्", minutes: "मिनेट", timesIn: "{tz} अनुसार समय", noTimes: "अहिले कुनै समय उपलब्ध छैन। चाँडै फेरि हेर्नुहोस्।", change: "परिवर्तन", labelNotes: "हामीले जान्नुपर्ने केही?", confirm: "बुकिङ पुष्टि गर्नुहोस्", confirming: "बुक हुँदैछ…", bookedTitle: "बुकिङ पुष्टि भयो", bookedWith: "{brand} सँग {meeting}",
+  emailSubject: "पुष्टि भयो: {brand} सँग {meeting}", emailGreeting: "नमस्ते {name},", emailBooked: "{brand} सँग {meeting} का लागि तपाईंको बुकिङ भयो।", emailWhen: "कहिले: {when}", emailWhere: "कहाँ: {where}",
+};
+const ps: Partial<ProspectStrings> = {
+  dir: "rtl",
+  formThanksTitle: "مننه — ژر به اړیکه ونیسو", formThanksBody: "ستاسو معلومات ترلاسه شول. د {brand} څخه به یو څوک ژر اړیکه ونیسي.", formHeading: "له {brand} سره اړیکه ونیسئ", formSub: "خپل معلومات پرېږدئ، موږ به اړیکه ونیسو.", labelName: "نوم", labelEmail: "بریښنالیک", labelPhone: "تلیفون", labelCompany: "شرکت", labelMessage: "پیغام", send: "ولېږئ",
+  bookingHeading: "له {brand} سره {meeting} ونیسئ", minutes: "دقیقې", timesIn: "وختونه په {tz}", noTimes: "اوس مهال وخت نشته. ژر بیا وګورئ.", change: "بدلول", labelNotes: "کوم څه چې موږ یې باید پوه شو؟", confirm: "ملاقات تایید کړئ", confirming: "نیول کېږي…", bookedTitle: "ملاقات تایید شو", bookedWith: "{meeting} له {brand} سره",
+  emailSubject: "تایید شو: {meeting} له {brand} سره", emailGreeting: "سلام {name}،", emailBooked: "تاسو له {brand} سره د {meeting} لپاره ثبت شوي یاست.", emailWhen: "کله: {when}", emailWhere: "چېرته: {where}",
+};
+const fa: Partial<ProspectStrings> = {
+  dir: "rtl",
+  formThanksTitle: "متشکریم — به‌زودی تماس می‌گیریم", formThanksBody: "اطلاعات شما دریافت شد. کسی از {brand} به‌زودی تماس می‌گیرد.", formHeading: "تماس با {brand}", formSub: "اطلاعات خود را بگذارید تا تماس بگیریم.", labelName: "نام", labelEmail: "ایمیل", labelPhone: "تلفن", labelCompany: "شرکت", labelMessage: "پیام", send: "ارسال",
+  bookingHeading: "رزرو {meeting} با {brand}", minutes: "دقیقه", timesIn: "زمان‌ها به وقت {tz}", noTimes: "در حال حاضر زمانی خالی نیست. به‌زودی دوباره سر بزنید.", change: "تغییر", labelNotes: "چیزی هست که باید بدانیم؟", confirm: "تأیید رزرو", confirming: "در حال رزرو…", bookedTitle: "رزرو تأیید شد", bookedWith: "{meeting} با {brand}",
+  emailSubject: "تأیید شد: {meeting} با {brand}", emailGreeting: "سلام {name}،", emailBooked: "برای {meeting} با {brand} رزرو شده‌اید.", emailWhen: "چه زمانی: {when}", emailWhere: "کجا: {where}",
+};
+const pa: Partial<ProspectStrings> = {
+  formThanksTitle: "ਧੰਨਵਾਦ — ਅਸੀਂ ਸੰਪਰਕ ਕਰਾਂਗੇ", formThanksBody: "ਤੁਹਾਡੇ ਵੇਰਵੇ ਮਿਲ ਗਏ ਹਨ। {brand} ਤੋਂ ਕੋਈ ਜਲਦੀ ਸੰਪਰਕ ਕਰੇਗਾ।", formHeading: "{brand} ਨਾਲ ਸੰਪਰਕ ਕਰੋ", formSub: "ਆਪਣੇ ਵੇਰਵੇ ਛੱਡੋ, ਅਸੀਂ ਸੰਪਰਕ ਕਰਾਂਗੇ।", labelName: "ਨਾਮ", labelEmail: "ਈਮੇਲ", labelPhone: "ਫ਼ੋਨ", labelCompany: "ਕੰਪਨੀ", labelMessage: "ਸੁਨੇਹਾ", send: "ਭੇਜੋ",
+  bookingHeading: "{brand} ਨਾਲ {meeting} ਬੁੱਕ ਕਰੋ", minutes: "ਮਿੰਟ", timesIn: "{tz} ਅਨੁਸਾਰ ਸਮਾਂ", noTimes: "ਇਸ ਵੇਲੇ ਕੋਈ ਸਮਾਂ ਉਪਲਬਧ ਨਹੀਂ। ਜਲਦੀ ਫਿਰ ਵੇਖੋ।", change: "ਬਦਲੋ", labelNotes: "ਕੁਝ ਜੋ ਸਾਨੂੰ ਪਤਾ ਹੋਣਾ ਚਾਹੀਦਾ?", confirm: "ਬੁਕਿੰਗ ਪੱਕੀ ਕਰੋ", confirming: "ਬੁੱਕ ਹੋ ਰਿਹਾ…", bookedTitle: "ਬੁਕਿੰਗ ਪੱਕੀ ਹੋ ਗਈ", bookedWith: "{brand} ਨਾਲ {meeting}",
+  emailSubject: "ਪੱਕਾ: {brand} ਨਾਲ {meeting}", emailGreeting: "ਸਤ ਸ੍ਰੀ ਅਕਾਲ {name},", emailBooked: "{brand} ਨਾਲ {meeting} ਲਈ ਤੁਹਾਡੀ ਬੁਕਿੰਗ ਹੋ ਗਈ ਹੈ।", emailWhen: "ਕਦੋਂ: {when}", emailWhere: "ਕਿੱਥੇ: {where}",
+};
+const sr: Partial<ProspectStrings> = {
+  formThanksTitle: "Хвала — јавићемо се", formThanksBody: "Ваши подаци су примљени. Неко из {brand} ће се ускоро јавити.", formHeading: "Контактирајте {brand}", formSub: "Оставите податке и јавићемо се.", labelName: "Име", labelEmail: "Имејл", labelPhone: "Телефон", labelCompany: "Компанија", labelMessage: "Порука", send: "Пошаљи",
+  bookingHeading: "Резервишите {meeting} са {brand}", minutes: "мин", timesIn: "термини у {tz}", noTimes: "Тренутно нема слободних термина. Проверите ускоро.", change: "промени", labelNotes: "Нешто што треба да знамо?", confirm: "Потврди резервацију", confirming: "Резервишем…", bookedTitle: "Резервација потврђена", bookedWith: "{meeting} са {brand}",
+  emailSubject: "Потврђено: {meeting} са {brand}", emailGreeting: "Здраво {name},", emailBooked: "Резервисани сте за {meeting} са {brand}.", emailWhen: "Када: {when}", emailWhere: "Где: {where}",
+};
+const si: Partial<ProspectStrings> = {
+  formThanksTitle: "ස්තුතියි — අපි සම්බන්ධ වෙමු", formThanksBody: "ඔබේ තොරතුරු ලැබී ඇත. {brand} වෙතින් කෙනෙක් ඉක්මනින් සම්බන්ධ වේ.", formHeading: "{brand} අමතන්න", formSub: "ඔබේ තොරතුරු තබන්න, අපි සම්බන්ධ වෙමු.", labelName: "නම", labelEmail: "ඊමේල්", labelPhone: "දුරකථනය", labelCompany: "සමාගම", labelMessage: "පණිවිඩය", send: "යවන්න",
+  bookingHeading: "{brand} සමඟ {meeting} වෙන් කරන්න", minutes: "මිනි", timesIn: "{tz} අනුව වේලාවන්", noTimes: "දැනට වේලාවන් නොමැත. ඉක්මනින් නැවත බලන්න.", change: "වෙනස් කරන්න", labelNotes: "අප දැනගත යුතු දෙයක්?", confirm: "වෙන්කිරීම තහවුරු කරන්න", confirming: "වෙන් කරමින්…", bookedTitle: "වෙන්කිරීම තහවුරු විය", bookedWith: "{brand} සමඟ {meeting}",
+  emailSubject: "තහවුරුයි: {brand} සමඟ {meeting}", emailGreeting: "ආයුබෝවන් {name},", emailBooked: "{brand} සමඟ {meeting} සඳහා ඔබ වෙන් වී ඇත.", emailWhen: "කවදාද: {when}", emailWhere: "කොහේද: {where}",
+};
+const sl: Partial<ProspectStrings> = {
+  formThanksTitle: "Hvala — oglasili se bomo", formThanksBody: "Vaše podatke smo prejeli. Nekdo iz {brand} se bo kmalu oglasil.", formHeading: "Kontaktirajte {brand}", formSub: "Pustite podatke in se oglasimo.", labelName: "Ime", labelEmail: "E-pošta", labelPhone: "Telefon", labelCompany: "Podjetje", labelMessage: "Sporočilo", send: "Pošlji",
+  bookingHeading: "Rezervirajte {meeting} z {brand}", minutes: "min", timesIn: "termini v {tz}", noTimes: "Trenutno ni prostih terminov. Preverite kmalu.", change: "spremeni", labelNotes: "Kaj, kar bi morali vedeti?", confirm: "Potrdi rezervacijo", confirming: "Rezerviram…", bookedTitle: "Rezervacija potrjena", bookedWith: "{meeting} z {brand}",
+  emailSubject: "Potrjeno: {meeting} z {brand}", emailGreeting: "Pozdravljeni, {name},", emailBooked: "Rezervirani ste za {meeting} z {brand}.", emailWhen: "Kdaj: {when}", emailWhere: "Kje: {where}",
+};
+const so: Partial<ProspectStrings> = {
+  formThanksTitle: "Mahadsanid — waan kula soo xiriiri doonnaa", formThanksBody: "Xogtaadii waa la helay. Qof ka socda {brand} ayaa dhawaan kula soo xiriiri doona.", formHeading: "La xiriir {brand}", formSub: "Xogtaada nagu reeb, waan kula soo xiriiri doonnaa.", labelName: "Magac", labelEmail: "Iimayl", labelPhone: "Telefoon", labelCompany: "Shirkad", labelMessage: "Fariin", send: "Dir",
+  bookingHeading: "Ballanso {meeting} la {brand}", minutes: "daq", timesIn: "waqtiyada {tz}", noTimes: "Hadda waqti banaan ma jiro. Dhawaan mar kale hubi.", change: "beddel", labelNotes: "Wax aan ogaan lahayn ma jiraa?", confirm: "Xaqiiji ballanta", confirming: "Waa la ballansanayaa…", bookedTitle: "Ballanta waa la xaqiijiyay", bookedWith: "{meeting} la {brand}",
+  emailSubject: "La xaqiijiyay: {meeting} la {brand}", emailGreeting: "Salaan {name},", emailBooked: "Waxaa laguu ballansaday {meeting} la {brand}.", emailWhen: "Goorma: {when}", emailWhere: "Xaggee: {where}",
+};
+const sw: Partial<ProspectStrings> = {
+  formThanksTitle: "Asante — tutawasiliana nawe", formThanksBody: "Taarifa zako zimepokelewa. Mtu kutoka {brand} atawasiliana hivi karibuni.", formHeading: "Wasiliana na {brand}", formSub: "Acha taarifa zako na tutawasiliana.", labelName: "Jina", labelEmail: "Barua pepe", labelPhone: "Simu", labelCompany: "Kampuni", labelMessage: "Ujumbe", send: "Tuma",
+  bookingHeading: "Weka {meeting} na {brand}", minutes: "dak", timesIn: "nyakati kwa {tz}", noTimes: "Hakuna nyakati zilizopo kwa sasa. Angalia tena hivi karibuni.", change: "badilisha", labelNotes: "Kitu tunachopaswa kujua?", confirm: "Thibitisha miadi", confirming: "Inawekwa…", bookedTitle: "Miadi imethibitishwa", bookedWith: "{meeting} na {brand}",
+  emailSubject: "Imethibitishwa: {meeting} na {brand}", emailGreeting: "Habari {name},", emailBooked: "Umewekewa {meeting} na {brand}.", emailWhen: "Lini: {when}", emailWhere: "Wapi: {where}",
+};
+const te: Partial<ProspectStrings> = {
+  formThanksTitle: "ధన్యవాదాలు — మేము సంప్రదిస్తాము", formThanksBody: "మీ వివరాలు అందాయి. {brand} నుండి ఎవరైనా త్వరలో సంప్రదిస్తారు.", formHeading: "{brand} ని సంప్రదించండి", formSub: "మీ వివరాలు ఇవ్వండి, మేము సంప్రదిస్తాము.", labelName: "పేరు", labelEmail: "ఇమెయిల్", labelPhone: "ఫోన్", labelCompany: "కంపెనీ", labelMessage: "సందేశం", send: "పంపండి",
+  bookingHeading: "{brand} తో {meeting} బుక్ చేయండి", minutes: "నిమి", timesIn: "{tz} ప్రకారం సమయాలు", noTimes: "ప్రస్తుతం సమయాలు అందుబాటులో లేవు. త్వరలో మళ్లీ చూడండి.", change: "మార్చండి", labelNotes: "మేము తెలుసుకోవాల్సినది ఏదైనా?", confirm: "బుకింగ్ నిర్ధారించండి", confirming: "బుక్ అవుతోంది…", bookedTitle: "బుకింగ్ నిర్ధారించబడింది", bookedWith: "{brand} తో {meeting}",
+  emailSubject: "నిర్ధారించబడింది: {brand} తో {meeting}", emailGreeting: "హాయ్ {name},", emailBooked: "{brand} తో {meeting} కోసం మీ బుకింగ్ జరిగింది.", emailWhen: "ఎప్పుడు: {when}", emailWhere: "ఎక్కడ: {where}",
+};
+const th: Partial<ProspectStrings> = {
+  formThanksTitle: "ขอบคุณ — เราจะติดต่อกลับ", formThanksBody: "ได้รับข้อมูลของคุณแล้ว จะมีคนจาก {brand} ติดต่อกลับเร็วๆ นี้", formHeading: "ติดต่อ {brand}", formSub: "ฝากข้อมูลไว้ แล้วเราจะติดต่อกลับ", labelName: "ชื่อ", labelEmail: "อีเมล", labelPhone: "โทรศัพท์", labelCompany: "บริษัท", labelMessage: "ข้อความ", send: "ส่ง",
+  bookingHeading: "จอง {meeting} กับ {brand}", minutes: "นาที", timesIn: "เวลาตาม {tz}", noTimes: "ขณะนี้ไม่มีเวลาว่าง โปรดกลับมาดูใหม่เร็วๆ นี้", change: "เปลี่ยน", labelNotes: "มีอะไรที่เราควรรู้ไหม?", confirm: "ยืนยันการจอง", confirming: "กำลังจอง…", bookedTitle: "ยืนยันการจองแล้ว", bookedWith: "{meeting} กับ {brand}",
+  emailSubject: "ยืนยันแล้ว: {meeting} กับ {brand}", emailGreeting: "สวัสดี {name}", emailBooked: "คุณได้จอง {meeting} กับ {brand} แล้ว", emailWhen: "เมื่อไหร่: {when}", emailWhere: "ที่ไหน: {where}",
+};
+const ur: Partial<ProspectStrings> = {
+  dir: "rtl",
+  formThanksTitle: "شکریہ — ہم جلد رابطہ کریں گے", formThanksBody: "آپ کی معلومات موصول ہو گئیں۔ {brand} سے کوئی جلد رابطہ کرے گا۔", formHeading: "{brand} سے رابطہ کریں", formSub: "اپنی معلومات چھوڑیں، ہم رابطہ کریں گے۔", labelName: "نام", labelEmail: "ای میل", labelPhone: "فون", labelCompany: "کمپنی", labelMessage: "پیغام", send: "بھیجیں",
+  bookingHeading: "{brand} کے ساتھ {meeting} بک کریں", minutes: "منٹ", timesIn: "{tz} کے مطابق اوقات", noTimes: "فی الحال کوئی وقت دستیاب نہیں۔ جلد دوبارہ دیکھیں۔", change: "تبدیل کریں", labelNotes: "کچھ جو ہمیں معلوم ہونا چاہیے؟", confirm: "بکنگ کی تصدیق کریں", confirming: "بک ہو رہی ہے…", bookedTitle: "بکنگ کی تصدیق ہو گئی", bookedWith: "{brand} کے ساتھ {meeting}",
+  emailSubject: "تصدیق شدہ: {brand} کے ساتھ {meeting}", emailGreeting: "سلام {name}،", emailBooked: "{brand} کے ساتھ {meeting} کے لیے آپ کی بکنگ ہو گئی ہے۔", emailWhen: "کب: {when}", emailWhere: "کہاں: {where}",
+};
+const uz: Partial<ProspectStrings> = {
+  formThanksTitle: "Rahmat — siz bilan bog'lanamiz", formThanksBody: "Ma'lumotlaringiz qabul qilindi. {brand} jamoasidan kimdir tez orada bog'lanadi.", formHeading: "{brand} bilan bog'lanish", formSub: "Ma'lumotlaringizni qoldiring, biz bog'lanamiz.", labelName: "Ism", labelEmail: "Email", labelPhone: "Telefon", labelCompany: "Kompaniya", labelMessage: "Xabar", send: "Yuborish",
+  bookingHeading: "{brand} bilan {meeting} band qilish", minutes: "daq", timesIn: "{tz} bo'yicha vaqtlar", noTimes: "Hozircha bo'sh vaqt yo'q. Tez orada yana tekshiring.", change: "o'zgartirish", labelNotes: "Biz bilishimiz kerak bo'lgan narsa bormi?", confirm: "Bandni tasdiqlash", confirming: "Band qilinmoqda…", bookedTitle: "Band tasdiqlandi", bookedWith: "{brand} bilan {meeting}",
+  emailSubject: "Tasdiqlandi: {brand} bilan {meeting}", emailGreeting: "Salom {name},", emailBooked: "{brand} bilan {meeting} uchun band qilindingiz.", emailWhen: "Qachon: {when}", emailWhere: "Qayerda: {where}",
+};
+const cy: Partial<ProspectStrings> = {
+  formThanksTitle: "Diolch — byddwn mewn cysylltiad", formThanksBody: "Mae eich manylion wedi cyrraedd. Bydd rhywun o {brand} yn cysylltu cyn bo hir.", formHeading: "Cysylltwch â {brand}", formSub: "Gadewch eich manylion a byddwn yn cysylltu.", labelName: "Enw", labelEmail: "E-bost", labelPhone: "Ffôn", labelCompany: "Cwmni", labelMessage: "Neges", send: "Anfon",
+  bookingHeading: "Archebwch {meeting} gyda {brand}", minutes: "mun", timesIn: "amseroedd yn {tz}", noTimes: "Dim amseroedd ar gael ar hyn o bryd. Edrychwch eto'n fuan.", change: "newid", labelNotes: "Unrhyw beth y dylem ei wybod?", confirm: "Cadarnhau'r archeb", confirming: "Yn archebu…", bookedTitle: "Archeb wedi'i chadarnhau", bookedWith: "{meeting} gyda {brand}",
+  emailSubject: "Wedi'i gadarnhau: {meeting} gyda {brand}", emailGreeting: "Helo {name},", emailBooked: "Rydych wedi'ch archebu ar gyfer {meeting} gyda {brand}.", emailWhen: "Pryd: {when}", emailWhere: "Ble: {where}",
+};
+
+const CATALOGS: Record<string, Partial<ProspectStrings>> = {
+  es, fr, de, pt, it, nl, pl, ja, zh, ko, ar, hi,
+  bg, hr, cs, da, tl, fi, el, hu, id, ms, no, ro, ru, sk, sv, ta, tr, uk, vi,
+  af, sq, am, hy, az, be, bn, bs, my, ca, et, ka, gu, ha, he, is, ga, jv, kn, kk, km, ky, lo, lv, lt, mk, ml, mr, mn, ne, ps, fa, pa, sr, si, sl, so, sw, te, th, ur, uz, cy,
+};
 
 /** The strings for an org's selling language; unknown codes fall back to English. */
 export function prospectStrings(lang?: string | null): ProspectStrings {

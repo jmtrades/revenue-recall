@@ -53,7 +53,8 @@ describe("languages", () => {
     const codes = new Set(LANGUAGES.map((l) => l.code));
     expect(codes.size).toBe(LANGUAGES.length);
     for (const l of LANGUAGES) {
-      expect(l.locale).toMatch(/^[a-z]{2}-[A-Z]{2}$/);
+      // BCP-47 primary subtags are 2 OR 3 letters (e.g. "fil-PH" for Filipino).
+      expect(l.locale).toMatch(/^[a-z]{2,3}-[A-Z]{2}$/);
       expect(l.native.length).toBeGreaterThan(0);
     }
   });

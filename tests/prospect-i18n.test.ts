@@ -22,14 +22,17 @@ describe("prospectStrings", () => {
   it("provides a localized catalog for every supported language beyond English", () => {
     for (const lang of LANGUAGES.filter((l) => l.code !== "en")) {
       const s = prospectStrings(lang.code);
-      // Each catalog must actually translate (spot-check the most-seen string).
-      expect(s.send, `${lang.code} should translate "Send"`).not.toBe(_EN.send);
+      // Each catalog must actually translate. Spot-check the confirm button —
+      // unlike "Send" (identical in Danish/Norwegian), it never coincides with
+      // the English string in a real translation.
+      expect(s.confirm, `${lang.code} should translate "Confirm booking"`).not.toBe(_EN.confirm);
     }
   });
 
-  it("only Arabic is right-to-left", () => {
+  it("exactly the right-to-left scripts render rtl", () => {
+    const RTL = new Set(["ar", "he", "fa", "ur", "ps"]);
     for (const lang of LANGUAGES) {
-      expect(prospectStrings(lang.code).dir).toBe(lang.code === "ar" ? "rtl" : "ltr");
+      expect(prospectStrings(lang.code).dir, lang.code).toBe(RTL.has(lang.code) ? "rtl" : "ltr");
     }
   });
 
