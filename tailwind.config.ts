@@ -21,10 +21,14 @@ const config: Config = {
         success: "#34d399",
         warn: "#fbbf24",
         danger: "#f87171",
+        // Champagne gold — the "revenue" accent for recoverable-money moments.
+        gold: "rgb(var(--gold-rgb) / <alpha-value>)",
       },
       fontFamily: {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"],
-        display: ["var(--font-display)", "var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "Georgia", "ui-serif", "serif"],
+        // Data numerals: precise tabular grotesk for tables, money, countdowns.
+        data: ["var(--font-data)", "var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
     },
   },
