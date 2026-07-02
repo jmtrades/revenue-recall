@@ -7,11 +7,13 @@ describe("appearance theme", () => {
     expect(ACCENT_KEYS).toContain(DEFAULT_ACCENT);
   });
 
-  it("every accent declares a valid rgb triplet and hex swatch", () => {
+  it("every accent declares valid rgb triplets (both theme pairs) and a hex swatch", () => {
     for (const key of ACCENT_KEYS) {
       const a = ACCENTS[key];
       expect(a.brand).toMatch(/^\d{1,3} \d{1,3} \d{1,3}$/);
       expect(a.soft).toMatch(/^\d{1,3} \d{1,3} \d{1,3}$/);
+      expect(a.brandLight).toMatch(/^\d{1,3} \d{1,3} \d{1,3}$/);
+      expect(a.softLight).toMatch(/^\d{1,3} \d{1,3} \d{1,3}$/);
       expect(a.hex).toMatch(/^#[0-9a-f]{6}$/i);
     }
   });
@@ -34,9 +36,14 @@ describe("appearance theme", () => {
     expect(isThemeMode("sepia")).toBe(false);
   });
 
-  it("exposes accent as CSS custom properties for the shell", () => {
+  it("exposes accent as theme-pair source variables for the shell", () => {
+    // accentVars sets SOURCE vars (dark + light pairs), not --brand-rgb itself —
+    // the stylesheet's :root/[data-theme] rules resolve the active pair, so the
+    // accent follows live theme switches (including "system") without JS.
     const vars = accentVars("rose") as Record<string, string>;
-    expect(vars["--brand-rgb"]).toBe(ACCENTS.rose.brand);
-    expect(vars["--brand-soft-rgb"]).toBe(ACCENTS.rose.soft);
+    expect(vars["--brand-dark"]).toBe(ACCENTS.rose.brand);
+    expect(vars["--brand-soft-dark"]).toBe(ACCENTS.rose.soft);
+    expect(vars["--brand-light"]).toBe(ACCENTS.rose.brandLight);
+    expect(vars["--brand-soft-light"]).toBe(ACCENTS.rose.softLight);
   });
 });

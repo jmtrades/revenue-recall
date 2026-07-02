@@ -18,9 +18,10 @@ const config: Config = {
           strong: "rgb(var(--brand-strong-rgb) / <alpha-value>)",
           soft: "rgb(var(--brand-soft-rgb) / <alpha-value>)",
         },
-        success: "#34d399",
-        warn: "#fbbf24",
-        danger: "#f87171",
+        // Theme-aware status colors (see globals.css :root / [data-theme="light"]).
+        success: "rgb(var(--success-rgb) / <alpha-value>)",
+        warn: "rgb(var(--warn-rgb) / <alpha-value>)",
+        danger: "rgb(var(--danger-rgb) / <alpha-value>)",
         // Champagne gold — the "revenue" accent for recoverable-money moments.
         gold: "rgb(var(--gold-rgb) / <alpha-value>)",
       },
