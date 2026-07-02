@@ -80,11 +80,18 @@ export function OrgSettingsForm({
       <div>
         <label className="stat-label">Language you sell in</label>
         <select className={`${input} mt-1`} value={language} disabled={!persisted} onChange={(e) => { setLanguage(e.target.value); touched(); }}>
-          {LANGUAGES.map((l) => (
-            <option key={l.code} value={l.code}>{l.label} — {l.native}</option>
-          ))}
+          <optgroup label="Email, texts + live voice calls">
+            {LANGUAGES.filter((l) => l.voiceCall).map((l) => (
+              <option key={l.code} value={l.code}>{l.label} — {l.native}</option>
+            ))}
+          </optgroup>
+          <optgroup label="Email + texts (live calls coming)">
+            {LANGUAGES.filter((l) => !l.voiceCall).map((l) => (
+              <option key={l.code} value={l.code}>{l.label} — {l.native}</option>
+            ))}
+          </optgroup>
         </select>
-        <p className="mt-1 text-xs text-muted">AI writes every email, text, and call script in this language.</p>
+        <p className="mt-1 text-xs text-muted">AI writes every email, text, and call script in this language — and speaks it on live calls where supported.</p>
       </div>
       <div>
         <label className="stat-label">Timezone</label>
