@@ -28,7 +28,8 @@ export async function LaunchBanner() {
 
   const inner = (
     <>
-      <span className="min-w-0 flex-1 truncate">
+      {/* Wrap on phones so the actual issue is readable; one ellipsized line from sm: up. */}
+      <span className="min-w-0 flex-1 sm:truncate">
         <span className="font-medium">{urgent ? "Finish setup: " : "Almost there: "}</span>
         {top}
         {extra > 0 ? ` (+${extra} more)` : ""}

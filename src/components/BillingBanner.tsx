@@ -16,7 +16,8 @@ export async function BillingBanner() {
 
   const inner = (
     <>
-      <span className="min-w-0 flex-1 truncate">{s.message}</span>
+      {/* Wrap on phones so the message is readable; one ellipsized line from sm: up. */}
+      <span className="min-w-0 flex-1 sm:truncate">{s.message}</span>
       <Link
         href="/settings?tab=billing"
         className={`shrink-0 rounded-lg px-3 py-1 text-xs font-medium transition ${s.urgent ? "bg-danger text-white hover:bg-danger/90" : "bg-brand-strong text-white hover:bg-brand-strong/90"}`}
