@@ -397,7 +397,8 @@ export function DialerView({ queue, locale, voiceMinutes, objections }: { queue:
               <ReasonBadge reason={active.reason} />
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <button onClick={call} disabled={placing} className="inline-flex items-center gap-2 rounded-xl bg-success px-6 py-3 text-base font-semibold text-white shadow-sm transition active:scale-[0.97] hover:bg-success/90 disabled:opacity-50 disabled:active:scale-100"><Icon name="dialer" size={17} /> {placing ? "Dialing…" : "Call"}</button>
+              {/* brand-strong is the AA-safe green behind white text (bg-success fails ~2:1). */}
+              <button onClick={call} disabled={placing} className="cta inline-flex items-center gap-2 rounded-xl bg-brand-strong px-6 py-3 text-base font-semibold text-white shadow-sm transition active:scale-[0.97] hover:bg-brand-strong/90 disabled:opacity-50 disabled:active:scale-100"><Icon name="dialer" size={17} /> {placing ? "Dialing…" : "Call"}</button>
               {callStatus && <span className="text-sm text-muted">{callStatus}</span>}
             </div>
             {/* One-tap no-connect logging — the bulk of any dial day. Each logs
