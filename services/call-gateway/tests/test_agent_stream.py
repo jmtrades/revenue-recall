@@ -56,7 +56,7 @@ def _install_fakes(sentences, heard="hello"):
                 yield x
         return _s
 
-    agent.transcribe = lambda pcm, sr: heard
+    agent.transcribe = lambda pcm, sr, lang="en": heard
     agent.synthesize = fake_synth
     agent.stream_lines = fake_stream(sentences)
 
@@ -117,7 +117,7 @@ class TestAgentResilience(unittest.TestCase):
     def test_stt_error_skips_the_turn_without_crashing_the_call(self):
         _install_fakes(["unused"])
 
-        def boom(pcm, sr):
+        def boom(pcm, sr, lang="en"):
             raise RuntimeError("stt down")
 
         agent.transcribe = boom
@@ -137,7 +137,7 @@ class TestAgentResilience(unittest.TestCase):
                 yield ""  # pragma: no cover — makes this an async generator
             return _gen()
 
-        agent.transcribe = lambda pcm, sr: "hello"
+        agent.transcribe = lambda pcm, sr, lang="en": "hello"
         agent.stream_lines = raising_stream
         a = agent.CallAgent(opener="Opener.", disclosure="")
         transport = FakeTransport([b"x", None])

@@ -12,6 +12,7 @@ import { hasOptedOut, recordingDisclosure, callConsentRequired, hasCallConsent }
 import { enforcementOn } from "@/lib/billing/enforce";
 import { isWithinVoiceMinutes } from "@/lib/billing/voice-minutes";
 import { voicemailScript } from "@/lib/voice/voicemail";
+import { contactPreferredLanguage, voiceCallSupported, DEFAULT_LANGUAGE } from "@/lib/languages";
 import type { Activity } from "@/lib/crm/types";
 
 export const dynamic = "force-dynamic";
@@ -165,9 +166,16 @@ export const POST = withGuard(async (req: Request) => {
   if (parsed.data.dealId) meta.dealId = parsed.data.dealId;
   if (org?.id) meta.orgId = org.id;
 
+  // Conduct the call in the contact's preferred language (org language as the
+  // fallback) — the gateway uses it for speech recognition and the agent's
+  // replies. Only sent when the live-call stack actually speaks it; text-only
+  // outreach languages keep today's English-call behavior instead of erroring.
+  const callLang = contactPreferredLanguage(contact?.attributes, org?.language ?? DEFAULT_LANGUAGE);
+  const lang = callLang !== DEFAULT_LANGUAGE && voiceCallSupported(callLang) ? callLang : undefined;
+
   // Sign the meta so the gateway's post-back can't be replayed onto another
   // tenant (verified in /api/calls/log before any org-scoped write).
-  const result = await placeCall(to, { from, voiceId: org?.voiceId, context, opener, voicemail, meta: Object.keys(meta).length ? signCallMeta(meta) : undefined });
+  const result = await placeCall(to, { from, voiceId: org?.voiceId, context, opener, voicemail, lang, meta: Object.keys(meta).length ? signCallMeta(meta) : undefined });
   if (result.status === "failed") {
     // Most "failed" calls in practice are an unreachable gateway (wrong/empty
     // VOICE_WEBHOOK_URL, or the gateway service down) — point the user at the

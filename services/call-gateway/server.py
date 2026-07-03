@@ -122,6 +122,9 @@ async def voice(request: Request):
         # Spoken if the line goes to voicemail (when answering-machine detection is
         # wired at the telephony layer); carried here so the agent has it ready.
         "voicemail": (body or {}).get("voicemail"),
+        # ISO 639-1 call language from the app (org/contact setting) — drives
+        # Whisper's recognition and the brain's replies. Absent → English.
+        "lang": (body or {}).get("lang") or "",
         "meta": (body or {}).get("meta") or {},
         "_ts": time.monotonic(),
     }
@@ -243,7 +246,7 @@ async def twilio_media(ws: WebSocket):
         await ws.close(code=4401)
         return
     ctx = _pending.pop(call_id, {}) if call_id else {}
-    agent = CallAgent(context=ctx.get("context", ""), voice_id=ctx.get("voiceId"), opener=ctx.get("opener") or DEFAULT_OPENER, voicemail=ctx.get("voicemail"))
+    agent = CallAgent(context=ctx.get("context", ""), voice_id=ctx.get("voiceId"), opener=ctx.get("opener") or DEFAULT_OPENER, voicemail=ctx.get("voicemail"), lang=ctx.get("lang") or "")
     started = time.monotonic()
     try:
         await _conduct(agent, transport, call_id)
@@ -278,6 +281,7 @@ async def media(ws: WebSocket, call_id: str):
         voice_id=ctx.get("voiceId"),
         opener=ctx.get("opener") or DEFAULT_OPENER,
         voicemail=ctx.get("voicemail"),
+        lang=ctx.get("lang") or "",
     )
     started = time.monotonic()
     try:
