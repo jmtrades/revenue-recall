@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { LANGUAGES, getLanguage, isLanguageCode, localeFor, languageDirective, toLanguageCode, contactPreferredLanguage, DEFAULT_LANGUAGE } from "@/lib/languages";
+import { LANGUAGES, getLanguage, isLanguageCode, localeFor, languageDirective, toLanguageCode, contactPreferredLanguage, voiceCallSupported, DEFAULT_LANGUAGE } from "@/lib/languages";
 
 describe("languages", () => {
   it("validates known and unknown codes", () => {
@@ -12,6 +12,16 @@ describe("languages", () => {
     expect(getLanguage("xx").code).toBe(DEFAULT_LANGUAGE);
     expect(getLanguage(undefined).code).toBe(DEFAULT_LANGUAGE);
     expect(getLanguage(null).code).toBe(DEFAULT_LANGUAGE);
+  });
+
+  it("flags live-call support honestly (drives the placement gate + picker split)", () => {
+    expect(voiceCallSupported("en")).toBe(true);
+    expect(voiceCallSupported("es")).toBe(true);
+    expect(voiceCallSupported("th")).toBe(false); // text outreach only today
+    expect(voiceCallSupported("xx")).toBe(true); // unknown → English fallback, which IS callable
+    // Both tiers are non-empty — the picker's optgroups never render blank.
+    expect(LANGUAGES.some((l) => l.voiceCall)).toBe(true);
+    expect(LANGUAGES.some((l) => !l.voiceCall)).toBe(true);
   });
 
   it("maps a language to a BCP-47 TTS locale", () => {

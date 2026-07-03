@@ -4,7 +4,7 @@ import asyncio
 import logging
 
 from brain import stream_lines
-from stt import transcribe
+from stt import transcribe, normalize_lang
 from tts import synthesize
 from compliance import is_opt_out
 from config import TELEPHONY_SAMPLE_RATE, CALL_AI_DISCLOSURE
@@ -34,7 +34,7 @@ log = logging.getLogger("call-gateway.agent")
 
 
 class CallAgent:
-    def __init__(self, context: str = "", voice_id=None, opener: str = DEFAULT_OPENER, voicemail=None, disclosure: str = CALL_AI_DISCLOSURE):
+    def __init__(self, context: str = "", voice_id=None, opener: str = DEFAULT_OPENER, voicemail=None, disclosure: str = CALL_AI_DISCLOSURE, lang: str = ""):
         self.turns = []
         self.context = context
         self.voice_id = voice_id
@@ -46,6 +46,12 @@ class CallAgent:
         # Set when the prospect asks to stop being contacted mid-call, so the
         # post-back can persist a durable do-not-contact.
         self.opted_out = False
+        # ISO 639-1 language for the whole call: pins Whisper's recognition and
+        # steers the brain's replies. Empty/invalid → English (today's behavior).
+        self.lang = normalize_lang(lang) if lang else "en"
+        if self.lang != "en":
+            hint = f"Conduct the ENTIRE call in the language with ISO 639-1 code '{self.lang}' — natural, idiomatic, native-sounding. Do not switch to English unless the prospect does."
+            self.context = f"{self.context}\n{hint}".strip() if self.context else hint
 
     async def _speak(self, text: str, transport):
         async for chunk in synthesize(text, voice_id=self.voice_id, sample_rate=TELEPHONY_SAMPLE_RATE):
@@ -99,7 +105,7 @@ class CallAgent:
             # utterance and keep listening rather than crashing (and losing the
             # whole transcript on the way out).
             try:
-                heard = await asyncio.to_thread(transcribe, pcm, TELEPHONY_SAMPLE_RATE)
+                heard = await asyncio.to_thread(transcribe, pcm, TELEPHONY_SAMPLE_RATE, self.lang)
             except Exception:
                 log.warning("STT failed; skipping utterance", exc_info=True)
                 continue
