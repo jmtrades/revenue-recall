@@ -20,13 +20,13 @@ const Body = z
   .refine((d) => Boolean(d.stageId || d.status), { message: "stageId or status is required" });
 
 export const PATCH = withGuard(
-  withApiKey<{ params: { id: string } }>(async (req, _orgId, { params }) => {
+  withApiKey<{ params: Promise<{ id: string }> }>(async (req, _orgId, { params }) => {
     const parsed = Body.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid payload" }, { status: 400 });
     }
 
-    const detail = await getDealDetail(params.id);
+    const detail = await getDealDetail((await params).id);
     if (!detail) return NextResponse.json({ error: "Deal not found" }, { status: 404 });
 
     let stageId = parsed.data.stageId;
@@ -39,7 +39,7 @@ export const PATCH = withGuard(
       return NextResponse.json({ error: "No matching stage in this deal's pipeline" }, { status: 400 });
     }
 
-    const opp = await moveDeal(params.id, stageId);
+    const opp = await moveDeal((await params).id, stageId);
     return NextResponse.json({
       ok: true,
       deal: { id: opp.id, title: opp.title, value: opp.value, currency: opp.currency, stage: target.label },

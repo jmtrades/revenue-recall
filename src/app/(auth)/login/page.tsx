@@ -13,7 +13,8 @@ const CALLBACK_ERRORS: Record<string, string> = {
   oauth: "Google sign-in couldn't finish establishing your session. Please try once more — if it keeps happening, your admin needs to check the sign-in redirect settings.",
 };
 
-export default function LoginPage({ searchParams }: { searchParams: { next?: string; error?: string } }) {
+export default async function LoginPage(props: { searchParams: Promise<{ next?: string; error?: string }> }) {
+  const searchParams = await props.searchParams;
   const note = searchParams.error ? CALLBACK_ERRORS[searchParams.error] : undefined;
   return (
     <div>

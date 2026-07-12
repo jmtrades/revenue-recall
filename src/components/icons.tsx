@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import type { JSX, SVGProps } from "react";
 
 /**
  * Dependency-free icon set. Crisp 24-grid stroke icons that inherit the current

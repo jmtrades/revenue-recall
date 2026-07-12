@@ -19,20 +19,20 @@ const Patch = z
   .refine((d) => Object.keys(d).length > 0, { message: "Provide at least one field to update" });
 
 export const GET = withGuard(
-  withApiKey<{ params: { id: string } }>(async (_req, _orgId, { params }) => {
-    const contact = await (await resolveProvider()).getContact(params.id);
+  withApiKey<{ params: Promise<{ id: string }> }>(async (_req, _orgId, { params }) => {
+    const contact = await (await resolveProvider()).getContact((await params).id);
     if (!contact) return NextResponse.json({ error: "Contact not found" }, { status: 404 });
     return NextResponse.json({ contact: serializeContact(contact) });
   }),
 );
 
 export const PATCH = withGuard(
-  withApiKey<{ params: { id: string } }>(async (req, _orgId, { params }) => {
+  withApiKey<{ params: Promise<{ id: string }> }>(async (req, _orgId, { params }) => {
     const parsed = Patch.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid payload" }, { status: 400 });
     }
-    const updated = await updateContactRecord(params.id, parsed.data);
+    const updated = await updateContactRecord((await params).id, parsed.data);
     if (!updated) return NextResponse.json({ error: "Contact not found" }, { status: 404 });
     return NextResponse.json({ ok: true, contact: serializeContact(updated) });
   }),

@@ -10,18 +10,18 @@ const Body = z.object({
   direction: z.enum(["inbound", "outbound"]).optional(),
 });
 
-export const POST = withGuard<{ params: { id: string } }>(async (req, { params }) => {
+export const POST = withGuard<{ params: Promise<{ id: string }> }>(async (req, { params }) => {
   if (!writeRateLimit(req, "deal-activity").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid activity" }, { status: 400 });
 
   const provider = (await resolveProvider());
-  const opp = await provider.getOpportunity(params.id);
+  const opp = await provider.getOpportunity((await params).id);
   if (!opp) return NextResponse.json({ error: "Deal not found" }, { status: 404 });
 
   try {
     const activity = await provider.logActivity({
-      opportunityId: params.id,
+      opportunityId: (await params).id,
       contactId: opp.contactId,
       kind: parsed.data.kind,
       summary: parsed.data.summary,

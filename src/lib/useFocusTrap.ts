@@ -18,7 +18,7 @@ const FOCUSABLE = [
  * that opened it. Pair with useEscapeKey + a backdrop click for a complete,
  * keyboard-accessible overlay. Attach the returned ref to the dialog container.
  */
-export function useFocusTrap<T extends HTMLElement = HTMLElement>(active: boolean): RefObject<T> {
+export function useFocusTrap<T extends HTMLElement = HTMLElement>(active: boolean): RefObject<T | null> {
   const ref = useRef<T>(null);
   useEffect(() => {
     if (!active) return;

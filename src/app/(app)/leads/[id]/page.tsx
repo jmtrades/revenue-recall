@@ -20,7 +20,8 @@ function daysAgo(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
 }
 
-export default async function ContactPage({ params }: { params: { id: string } }) {
+export default async function ContactPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const detail = await getContactDetail(params.id);
   if (!detail) notFound();
   const { contact, deals, activities } = detail;

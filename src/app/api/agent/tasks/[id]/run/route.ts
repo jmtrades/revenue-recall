@@ -9,11 +9,11 @@ import { withGuard } from "@/lib/api/guard";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
-export const POST = withGuard(async (_req: Request, { params }: { params: { id: string } }) => {
+export const POST = withGuard(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
   // Triggering an org-wide Autopilot run (it can auto-send) is an admin action.
   const denied = await requireRole("owner", "admin");
   if (denied) return denied;
-  const task = await getTask(params.id);
+  const task = await getTask((await params).id);
   if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 });
   // Hold the same per-org Autopilot lock as the cron, so a manual "run now" can't
   // race a scheduled tick and double-send to the same prospects.

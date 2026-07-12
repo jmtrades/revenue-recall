@@ -19,7 +19,8 @@ const PatchBody = z
   });
 
 /** Edit a deal's title / value / expected close / owner. Session-gated; rate-limited. */
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   if (!writeRateLimit(req, "deal-edit").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = PatchBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid deal update" }, { status: 400 });
@@ -35,7 +36,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 
   try {
-    const result = await updateDealRecord(params.id, patch);
+    const result = await updateDealRecord((await params).id, patch);
     if (!result.ok) {
       if (result.reason === "not_found") return NextResponse.json({ error: "Deal not found" }, { status: 404 });
       return NextResponse.json({ error: "This CRM doesn't support editing deals here." }, { status: 409 });
@@ -48,15 +49,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 /** Permanently delete a deal. Session-gated by middleware; rate-limited. */
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   if (!writeRateLimit(req, "deal-delete").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   try {
-    const result = await deleteDeal(params.id);
+    const result = await deleteDeal((await params).id);
     if (!result.ok) {
       if (result.reason === "not_found") return NextResponse.json({ error: "Deal not found" }, { status: 404 });
       return NextResponse.json({ error: "This CRM doesn't support deleting deals here." }, { status: 409 });
     }
-    await recordAudit("deal.deleted", params.id);
+    await recordAudit("deal.deleted", (await params).id);
     return NextResponse.json({ ok: true });
   } catch (err) {
     logError("deals.delete.failed", { error: errMessage(err) });

@@ -30,7 +30,7 @@ export async function anyOrgExists(): Promise<boolean> {
 async function attributeReferral(orgId: string): Promise<void> {
   try {
     const { cookies } = await import("next/headers");
-    const ref = parseReferralCode(cookies().get(REFERRAL_COOKIE)?.value);
+    const ref = parseReferralCode((await cookies()).get(REFERRAL_COOKIE)?.value);
     if (!ref || !isAttributableReferral(ref, orgId)) return;
     const client = getSupabase();
     if (!client) return;

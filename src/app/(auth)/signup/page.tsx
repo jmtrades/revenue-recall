@@ -11,7 +11,8 @@ export const metadata = {
     "Start with Revenue Recall — autonomous outbound that works every deal across email, SMS, and the phone. Live in two minutes, with any CRM or none.",
 };
 
-export default async function SignupPage({ searchParams }: { searchParams?: { plan?: string } }) {
+export default async function SignupPage(props: { searchParams?: Promise<{ plan?: string }> }) {
+  const searchParams = await props.searchParams;
   // Accept marketing names (?plan=operator/autopilot) or legacy keys (growth/team)
   // and store the canonical PlanId so checkout works either way.
   const plan = normalizePlanParam(searchParams?.plan);
