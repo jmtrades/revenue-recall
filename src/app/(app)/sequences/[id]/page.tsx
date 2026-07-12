@@ -11,7 +11,8 @@ import { EnrollmentList, type EnrollmentRow } from "@/components/EnrollmentList"
 export const metadata = { title: "Sequence" };
 export const dynamic = "force-dynamic";
 
-export default async function SequenceDetailPage({ params }: { params: { id: string } }) {
+export default async function SequenceDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const seq = await resolveSequence(params.id);
   if (!seq) notFound();
 

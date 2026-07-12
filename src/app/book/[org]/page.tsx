@@ -13,8 +13,8 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 interface Props {
-  params: { org: string };
-  searchParams: { k?: string; t?: string };
+  params: Promise<{ org: string }>;
+  searchParams: Promise<{ k?: string; t?: string }>;
 }
 
 function locationLabel(t: MeetingType, s: ProspectStrings): string {
@@ -31,7 +31,9 @@ function locationLabel(t: MeetingType, s: ProspectStrings): string {
   }
 }
 
-export default async function BookingPage({ params, searchParams }: Props) {
+export default async function BookingPage(props: Props) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const org = decodeURIComponent(params.org);
   const token = searchParams.k ?? "";
   const valid = verifyBookingToken(org, token);

@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 
 const PatchBody = z.object({ role: z.enum(MEMBER_ROLES as [string, ...string[]]) });
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   if (!writeRateLimit(req, "members").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const denied = await requireRole("owner", "admin");
   if (denied) return denied;
@@ -18,20 +19,21 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const parsed = PatchBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Pick a valid role." }, { status: 400 });
   try {
-    const member = await updateMemberRole(params.id, parsed.data.role as MemberRole);
-    await recordAudit("member.role_changed", `${params.id} → ${parsed.data.role}`);
+    const member = await updateMemberRole((await params).id, parsed.data.role as MemberRole);
+    await recordAudit("member.role_changed", `${(await params).id} → ${parsed.data.role}`);
     return NextResponse.json({ member });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Couldn't update role" }, { status: 409 });
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const denied = await requireRole("owner", "admin");
   if (denied) return denied;
   try {
-    await removeMember(params.id);
-    await recordAudit("member.removed", params.id);
+    await removeMember((await params).id);
+    await recordAudit("member.removed", (await params).id);
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Couldn't remove member" }, { status: 409 });

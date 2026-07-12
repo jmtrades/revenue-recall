@@ -32,7 +32,7 @@ const PROVIDERS: { name: string; ready: boolean; make: () => CrmProvider }[] = [
 ];
 
 if (LIVE && !PROVIDERS.some((p) => p.ready)) {
-  // eslint-disable-next-line no-console
+   
   console.warn("[crm.live] CRM_LIVE_SMOKE=1 but no provider credentials are set — nothing to smoke.");
 }
 
@@ -57,7 +57,7 @@ for (const pv of PROVIDERS) {
       expect(Array.isArray(opps)).toBe(true);
       // Every pipeline must expose stages (the recall engine/board depend on it).
       for (const pl of pipelines) expect(pl.stages.length).toBeGreaterThan(0);
-      // eslint-disable-next-line no-console
+       
       console.log(`[${pv.name}] users=${users.length} pipelines=${pipelines.length} contacts=${contacts.length} deals=${opps.length}`);
     });
 
@@ -66,7 +66,7 @@ for (const pv of PROVIDERS) {
       if (opps.length === 0) return;
       const acts = await p.listActivities(opps[0].id);
       expect(Array.isArray(acts)).toBe(true);
-      // eslint-disable-next-line no-console
+       
       console.log(`[${pv.name}] activities on ${opps[0].id}: ${acts.length}`);
     });
 
@@ -89,7 +89,7 @@ for (const pv of PROVIDERS) {
         const moved = await p.moveOpportunity(deal.id, otherOpen.id);
         expect(moved.id).toBe(deal.id);
       }
-      // eslint-disable-next-line no-console
+       
       console.log(`[${pv.name}] wrote contact=${contact.id} deal=${deal.id} note=${logged.id}`);
     });
   });

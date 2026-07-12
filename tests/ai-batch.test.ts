@@ -10,7 +10,7 @@ const fakeClient = {
     batches: {
       create: async (b: unknown) => { created.push(b); return { id: "batch_test_1" }; },
       retrieve: async () => ({ processing_status: status }),
-      // eslint-disable-next-line require-yield
+       
       results: async () => (async function* () { for (const r of rows) yield r; })(),
     },
   },

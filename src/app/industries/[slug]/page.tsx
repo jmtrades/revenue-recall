@@ -30,7 +30,8 @@ export function generateStaticParams() {
   return LISTED.map((i) => ({ slug: slugFor(i.id) }));
 }
 
-export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const params = await props.params;
   const ind = LISTED.find((i) => i.id === idForSlug(params.slug));
   if (!ind) return {};
   const title = `${ind.label} sales automation — Revenue Recall`;
@@ -45,7 +46,8 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
   };
 }
 
-export default function IndustryPage({ params }: { params: { slug: string } }) {
+export default async function IndustryPage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const ind = LISTED.find((i) => i.id === idForSlug(params.slug));
   if (!ind) notFound();
   const full = getIndustry(ind.id);

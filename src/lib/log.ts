@@ -23,7 +23,7 @@ function emit(level: Level, event: string, fields?: Record<string, unknown>): vo
   } catch {
     line = JSON.stringify({ ts: new Date().toISOString(), level, event });
   }
-  // eslint-disable-next-line no-console
+   
   (level === "error" ? console.error : level === "warn" ? console.warn : console.log)(line);
 }
 

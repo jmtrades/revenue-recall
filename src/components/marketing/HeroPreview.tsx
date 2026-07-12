@@ -18,7 +18,7 @@ function useCountUp(target: number, ms: number, run: boolean): number {
   // Initialize to the final value so SSR + no-JS render the real number; only
   // animate (from ~0) once mounted on the client.
   const [n, setN] = useState(target);
-  const raf = useRef<number>();
+  const raf = useRef<number | undefined>(undefined);
   useEffect(() => {
     if (!run) {
       setN(target);
