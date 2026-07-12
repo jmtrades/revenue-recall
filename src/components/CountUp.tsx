@@ -16,7 +16,7 @@ import { useReducedMotion } from "motion/react";
 export function CountUp({ value, className }: { value: string; className?: string }) {
   const reduced = useReducedMotion();
   const [display, setDisplay] = useState(value);
-  const raf = useRef<number>();
+  const raf = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (reduced) {

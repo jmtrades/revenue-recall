@@ -20,8 +20,9 @@ function back(origin: string, status: string): NextResponse {
   return NextResponse.redirect(`${origin}/settings?tab=channels&connected=${status}`);
 }
 
-export async function GET(req: Request, { params }: { params: { platform: string } }) {
-  const platform = params.platform;
+export async function GET(req: Request, props: { params: Promise<{ platform: string }> }) {
+  const params = await props.params;
+  const platform = (await params).platform;
   const origin = new URL(req.url).origin;
   if (!isOAuthPlatform(platform)) return back(origin, "error");
 

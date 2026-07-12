@@ -31,9 +31,10 @@ function isPlatform(p: string): p is SocialPlatform {
  * Telegram, whose payload has no stable account id). Falls back to the default
  * single-tenant resolution when nothing matches.
  */
-export async function GET(req: Request, { params }: { params: { platform: string } }) {
-  if (!isPlatform(params.platform)) return new NextResponse("unknown platform", { status: 404 });
-  const channel = getSocialChannel(params.platform);
+export async function GET(req: Request, props: { params: Promise<{ platform: string }> }) {
+  const { platform } = await props.params;
+  if (!isPlatform(platform)) return new NextResponse("unknown platform", { status: 404 });
+  const channel = getSocialChannel(platform);
   const url = new URL(req.url);
   const orgParam = url.searchParams.get("org") ?? undefined;
   const verify = () => channel?.verifyChallenge?.(url.searchParams) ?? null;
@@ -45,9 +46,9 @@ export async function GET(req: Request, { params }: { params: { platform: string
   return new NextResponse("ok", { status: 200 });
 }
 
-export async function POST(req: Request, { params }: { params: { platform: string } }) {
-  if (!isPlatform(params.platform)) return NextResponse.json({ error: "unknown platform" }, { status: 404 });
-  const platform = params.platform;
+export async function POST(req: Request, props: { params: Promise<{ platform: string }> }) {
+  const { platform } = await props.params;
+  if (!isPlatform(platform)) return NextResponse.json({ error: "unknown platform" }, { status: 404 });
   const channel = getSocialChannel(platform);
   if (!channel) return NextResponse.json({ error: "unknown platform" }, { status: 404 });
   // Cap unauthenticated HMAC-verify + account-lookup work per source (the other

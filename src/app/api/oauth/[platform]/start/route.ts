@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic";
  * redirect the user to the platform's consent screen. Auth-gated by middleware,
  * so only a signed-in member can start a connection for their org.
  */
-export const GET = withGuard(async (req: Request, { params }: { params: { platform: string } }) => {
-  const platform = params.platform;
+export const GET = withGuard(async (req: Request, { params }: { params: Promise<{ platform: string }> }) => {
+  const platform = (await params).platform;
   if (!isOAuthPlatform(platform)) return NextResponse.json({ error: "unknown platform" }, { status: 404 });
   if (!oauthConfigured(platform)) {
     const p = OAUTH_PROVIDERS[platform];

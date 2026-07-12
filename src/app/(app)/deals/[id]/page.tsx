@@ -24,7 +24,8 @@ function daysAgo(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
 }
 
-export default async function DealPage({ params }: { params: { id: string } }) {
+export default async function DealPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const detail = await getDealDetail(params.id);
   if (!detail) notFound();
   const { opp, contact, owner, pipeline, stage, activities, fields } = detail;

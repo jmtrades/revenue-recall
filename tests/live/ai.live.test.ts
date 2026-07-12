@@ -47,7 +47,7 @@ describe.skipIf(!LIVE)("live AI features", () => {
     expect(out.body.length).toBeGreaterThan(30);
     const tell = hasWorstTell(`${out.subject} ${out.body}`);
     expect(tell, `output contained an AI tell: ${tell}`).toBeNull();
-    // eslint-disable-next-line no-console
+     
     console.log(`\n[draft email]\nSubject: ${out.subject}\n${out.body}\n`);
   });
 
@@ -63,7 +63,7 @@ describe.skipIf(!LIVE)("live AI features", () => {
     const out = await draftReply({ channel: "email", contactName: "Pat Diaz", dealTitle: "Acme — Q3 rollout", industryId: "saas", incoming: "This looks solid but it's over our budget. Can you do anything on price?" });
     expect(out.source).toBe("ai");
     expect(out.body.length).toBeGreaterThan(20);
-    // eslint-disable-next-line no-console
+     
     console.log(`\n[reply]\n${out.body}\n`);
   });
 
@@ -75,7 +75,7 @@ describe.skipIf(!LIVE)("live AI features", () => {
     });
     expect(out.source).toBe("ai");
     expect(out.summary.length).toBeGreaterThan(20);
-    // eslint-disable-next-line no-console
+     
     console.log(`\n[brief]\n${out.summary}\n`);
   });
 });

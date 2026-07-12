@@ -9,13 +9,15 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 interface Props {
-  params: { org: string };
-  searchParams: { k?: string; sent?: string; error?: string };
+  params: Promise<{ org: string }>;
+  searchParams: Promise<{ k?: string; sent?: string; error?: string }>;
 }
 
 const field = "w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-fg outline-none focus:border-brand";
 
-export default async function HostedLeadForm({ params, searchParams }: Props) {
+export default async function HostedLeadForm(props: Props) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const org = decodeURIComponent(params.org);
   const token = searchParams.k ?? "";
   const valid = verifyFormToken(org, token);

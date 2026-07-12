@@ -21,11 +21,11 @@ const Body = z.object({
   body: z.string().max(8000).optional(),
 });
 
-export const POST = withGuard(async (req: Request, { params }: { params: { id: string } }) => {
+export const POST = withGuard(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "action required" }, { status: 400 });
 
-  const item = await getOutboxItem(params.id);
+  const item = await getOutboxItem((await params).id);
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (item.status !== "pending") return NextResponse.json({ error: "Already handled" }, { status: 409 });
 

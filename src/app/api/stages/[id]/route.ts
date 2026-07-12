@@ -32,7 +32,7 @@ const PatchBody = z
   });
 
 /** Rename / set probability / reorder a stage. Owner/admin only. */
-export const PATCH = withGuard<{ params: { id: string } }>(async (req, { params }) => {
+export const PATCH = withGuard<{ params: Promise<{ id: string }> }>(async (req, { params }) => {
   const denied = await requireRole("owner", "admin");
   if (denied) return denied;
   if (!writeRateLimit(req, "stage-edit").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -40,22 +40,22 @@ export const PATCH = withGuard<{ params: { id: string } }>(async (req, { params 
   if (!parsed.success) return NextResponse.json({ error: "Invalid stage update" }, { status: 400 });
 
   if (parsed.data.direction) {
-    const moved = await moveStage(params.id, parsed.data.direction);
+    const moved = await moveStage((await params).id, parsed.data.direction);
     if (!moved.ok) return fail(moved.reason);
   }
   if (parsed.data.label !== undefined || parsed.data.probability !== undefined) {
-    const updated = await updateStage(params.id, { label: parsed.data.label, probability: parsed.data.probability });
+    const updated = await updateStage((await params).id, { label: parsed.data.label, probability: parsed.data.probability });
     if (!updated.ok) return fail(updated.reason);
   }
   return NextResponse.json({ ok: true });
 });
 
 /** Delete an empty open stage. Owner/admin only. */
-export const DELETE = withGuard<{ params: { id: string } }>(async (req, { params }) => {
+export const DELETE = withGuard<{ params: Promise<{ id: string }> }>(async (req, { params }) => {
   const denied = await requireRole("owner", "admin");
   if (denied) return denied;
   if (!writeRateLimit(req, "stage-edit").ok) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-  const result = await deleteStage(params.id);
+  const result = await deleteStage((await params).id);
   if (!result.ok) return fail(result.reason);
   return NextResponse.json({ ok: true });
 });

@@ -15,12 +15,13 @@ describe("per-industry landing pages", () => {
     expect(params.every((p) => !p.slug.includes("_"))).toBe(true);
   });
 
-  it("builds rich metadata per industry and empty for an unknown slug", () => {
-    const m = generateMetadata({ params: { slug: "real-estate" } });
+  it("builds rich metadata per industry and empty for an unknown slug", async () => {
+    // Next 16: route params arrive as a Promise and generateMetadata is async.
+    const m = await generateMetadata({ params: Promise.resolve({ slug: "real-estate" }) });
     expect(m.title).toMatch(/Real Estate/);
     expect(typeof m.description).toBe("string");
     expect(m.alternates?.canonical).toMatch(/\/industries\/real-estate$/);
-    expect(generateMetadata({ params: { slug: "does-not-exist" } })).toEqual({});
+    await expect(generateMetadata({ params: Promise.resolve({ slug: "does-not-exist" }) })).resolves.toEqual({});
   });
 
   it("lists every industry page in the sitemap", () => {
