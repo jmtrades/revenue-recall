@@ -32,6 +32,7 @@ export const NAV_GROUPS: { heading: string; items: { href: string; label: string
       { href: "/agents", label: "Autopilot", icon: "autopilot" },
       { href: "/sequences", label: "Sequences", icon: "sequences" },
       { href: "/webinars", label: "Webinars", icon: "screen" },
+      { href: "/voices", label: "Voices", icon: "volume" },
       { href: "/templates", label: "Templates", icon: "templates" },
       { href: "/automations", label: "Automations", icon: "automations" },
     ],

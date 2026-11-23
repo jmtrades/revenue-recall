@@ -18,12 +18,12 @@ function title(session: WebinarSession | undefined): string {
 export function callOpener(reg: WebinarRegistrant, session: WebinarSession | undefined, purpose: ActionPurpose): string {
   const who = first(reg.name);
   if (reg.state === "pitch_drop" || purpose === "rejoin") {
-    return `Hi ${who}, you just dropped off ${title(session)}. I can text you the link to jump straight back in.`;
+    return `Hey ${who} — yeah, you just dropped off ${title(session)}. Want me to text you the link to hop back in?`;
   }
   if (purpose === "replay") {
-    return `Hi ${who}, we missed you at ${title(session)}. I can text you the replay link if now's a bad time.`;
+    return `Hey ${who}, we missed you at ${title(session)}. I can text the replay if now's a bad time.`;
   }
-  return `Hi ${who}, it's a quick follow-up from ${title(session)}. Got a minute?`;
+  return `Hey ${who}, quick follow-up from ${title(session)}. Got a second?`;
 }
 
 export function voicemailScript(reg: WebinarRegistrant, session: WebinarSession | undefined, purpose: ActionPurpose): string {
@@ -78,6 +78,7 @@ export function callContext(reg: WebinarRegistrant, session: WebinarSession | un
   return [
     `Webinar recovery. Session: ${title(session)}.`,
     `Person: ${reg.name ?? "unknown"}. State: ${reg.state}. Purpose: ${purpose}.`,
+    "Sound like a person: short sentences, one light filler if it fits, and stop if they interrupt.",
     `Link to send them: ${link}.`,
     "They were on a live webinar or registered for one. Goal: get them back in, or book a conversation if the session is over.",
     "Do not invent prices, results, guarantees, or attendance numbers. If they want to stop, confirm and end the call.",

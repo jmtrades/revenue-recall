@@ -75,11 +75,18 @@ function defaultPorts(): WebinarPorts {
   return {
     now: () => new Date(),
     async placeCall(input) {
+      const { callVoiceProfile } = await import("@/lib/voice/tts");
+      const { getVoiceAssignments, resolveSpokenVoice } = await import("@/lib/voice/assignments");
+      const orgVoice = input.meta.orgId
+        ? (await getVoiceAssignments(input.meta.orgId).catch(() => undefined))
+        : undefined;
+      const spoken = resolveSpokenVoice({ assignments: orgVoice, webinarId: input.meta.webinarSessionId });
       const r = await placeCall(input.to, {
         opener: input.opener,
         voicemail: input.voicemail,
         context: input.context,
         meta: signCallMeta(input.meta),
+        ...callVoiceProfile(spoken),
       });
       return mapSend(r);
     },

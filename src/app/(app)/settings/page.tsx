@@ -17,6 +17,7 @@ import { OAUTH_PROVIDERS, oauthConfigured, type OAuthPlatform } from "@/lib/conn
 import { complianceConfig } from "@/lib/compliance";
 import { listOwnedNumbers, numbersConfigured, numbersProviderId, outboundFromNumber } from "@/lib/numbers";
 import { SetupChecklist, type SetupItem } from "@/components/SetupChecklist";
+import { IntegrationsPanel } from "@/components/IntegrationsPanel";
 import { PipelineStagesEditor } from "@/components/PipelineStagesEditor";
 import { getTeamAndPipeline, getRecentCaptures } from "@/lib/queries";
 import { money } from "@/lib/format";
@@ -196,6 +197,7 @@ export default async function SettingsPage(
   const setupTab = (
     <Card>
       <SetupChecklist items={setupItems} />
+      <div className="mt-6"><IntegrationsPanel /></div>
     </Card>
   );
   const voiceTab = (

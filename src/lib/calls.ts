@@ -313,10 +313,11 @@ export async function runCallRetries(now: Date = new Date()): Promise<RetryRunRe
       ]
         .filter(Boolean)
         .join(" ");
+      const { callVoiceProfile } = await import("@/lib/voice/tts");
       const res = await placeCall(phone, {
         from: org.callerId,
         context: retryContext,
-        voiceId: org.ttsVoiceId ?? undefined,
+        ...callVoiceProfile(org.ttsVoiceId),
         meta: signCallMeta({ contactId: contact.id, ...(a.opportunityId ? { dealId: a.opportunityId } : {}), ...(orgIdForMeta ? { orgId: orgIdForMeta } : {}) }),
       }).catch(() => ({ status: "failed" as const }));
       if (res.status === "failed") {

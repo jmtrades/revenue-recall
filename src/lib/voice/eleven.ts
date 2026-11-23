@@ -187,6 +187,18 @@ export async function cloneElevenVoice(input: CloneInput): Promise<{ id: string;
   return { id: data.voiceId, name: input.name };
 }
 
+/** Rename a cloned voice. Instant clones are edited with the provider's edit endpoint. */
+export async function renameElevenVoice(voiceId: string, name: string): Promise<void> {
+  const k = key();
+  if (!k) throw new Error("ElevenLabs not configured");
+  const id = parseElevenSelection(elevenSelection(voiceId)) ?? voiceId;
+  if (!/^[A-Za-z0-9]{1,64}$/.test(id)) throw new Error("Invalid voice id");
+  const form = new FormData();
+  form.set("name", name.trim().slice(0, 80));
+  const res = await fetch(`${API}/voices/${id}/edit`, { method: "POST", headers: { "xi-api-key": k }, body: form });
+  if (!res.ok) throw new Error(`ElevenLabs rename ${res.status}${await elevenErrorDetail(res)}`);
+}
+
 /** Delete a voice (used to remove the org's own clones). */
 export async function deleteElevenVoice(voiceId: string): Promise<void> {
   const client = elevenClient();

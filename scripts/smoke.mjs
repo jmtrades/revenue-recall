@@ -35,6 +35,7 @@ const ROUTES = [
   "/agents",
   "/sequences",
   "/templates",
+  "/voices",
   "/automations",
   "/reports",
   "/results",

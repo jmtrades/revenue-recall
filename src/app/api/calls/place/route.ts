@@ -12,6 +12,8 @@ import { hasOptedOut, recordingDisclosure, callConsentRequired, hasCallConsent }
 import { enforcementOn } from "@/lib/billing/enforce";
 import { isWithinVoiceMinutes } from "@/lib/billing/voice-minutes";
 import { voicemailScript } from "@/lib/voice/voicemail";
+import { callVoiceProfile } from "@/lib/voice/tts";
+import { getVoiceAssignments, resolveSpokenVoice } from "@/lib/voice/assignments";
 import { contactPreferredLanguage, voiceCallSupported, DEFAULT_LANGUAGE } from "@/lib/languages";
 import type { Activity } from "@/lib/crm/types";
 
@@ -175,7 +177,14 @@ export const POST = withGuard(async (req: Request) => {
 
   // Sign the meta so the gateway's post-back can't be replayed onto another
   // tenant (verified in /api/calls/log before any org-scoped write).
-  const result = await placeCall(to, { from, voiceId: org?.voiceId, context, opener, voicemail, lang, meta: Object.keys(meta).length ? signCallMeta(meta) : undefined });
+  const assignments = await getVoiceAssignments(org?.id ?? "local").catch(() => undefined);
+  const spoken = resolveSpokenVoice({
+    assignments,
+    campaignId: parsed.data.dealId,
+    workspaceVoice: org?.ttsVoiceId || org?.voiceId,
+  });
+  const profile = callVoiceProfile(spoken);
+  const result = await placeCall(to, { from, ...profile, context, opener, voicemail, lang, meta: Object.keys(meta).length ? signCallMeta(meta) : undefined });
   if (result.status === "failed") {
     // Most "failed" calls in practice are an unreachable gateway (wrong/empty
     // VOICE_WEBHOOK_URL, or the gateway service down) — point the user at the
