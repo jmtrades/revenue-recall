@@ -18,6 +18,7 @@ import { complianceConfig } from "@/lib/compliance";
 import { listOwnedNumbers, numbersConfigured, numbersProviderId, outboundFromNumber } from "@/lib/numbers";
 import { SetupChecklist, type SetupItem } from "@/components/SetupChecklist";
 import { IntegrationsPanel } from "@/components/IntegrationsPanel";
+import { freeDbEnabled } from "@/lib/free/db";
 import { PipelineStagesEditor } from "@/components/PipelineStagesEditor";
 import { getTeamAndPipeline, getRecentCaptures } from "@/lib/queries";
 import { money } from "@/lib/format";
@@ -117,10 +118,10 @@ export default async function SettingsPage(
   const topupsWired = topupResolved.some(Boolean);
   const setupItems: SetupItem[] = [
     {
-      label: "Workspace database", ok: isSupabaseConfigured(), required: true, where: "Supabase + Vercel",
-      detail: "Stores every account's data, privately. Already connected.",
-      steps: ["Create a project at supabase.com", "Run the migrations in supabase/migrations", "Add NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY in Vercel", "Redeploy"],
-      link: { href: "https://supabase.com/dashboard", label: "Open Supabase" },
+      label: "Workspace database", ok: isSupabaseConfigured() || freeDbEnabled(), required: true, where: isSupabaseConfigured() ? "Supabase" : "SQLite file",
+      detail: freeDbEnabled() && !isSupabaseConfigured() ? "This host keeps data in a SQLite file on disk. A Supabase project is optional." : "Stores every account's data, privately. Already connected.",
+      steps: freeDbEnabled() && !isSupabaseConfigured() ? ["Nothing to paste. The file is created on first write.", "Set FREE_DB_DIR if it should live somewhere other than .data"] : ["Create a project at supabase.com", "Run the migrations in supabase/migrations", "Add the SUPABASE_* keys on the host", "Restart"],
+      link: isSupabaseConfigured() ? { href: "https://supabase.com/dashboard", label: "Open Supabase" } : undefined,
     },
     {
       label: "Private per-user accounts", ok: isAuthRequired(), required: true, where: "Automatic",
@@ -128,7 +129,7 @@ export default async function SettingsPage(
       steps: ["Connect the database above; sign-in then becomes required automatically (nothing to set)"],
     },
     {
-      label: "Account provisioning key", ok: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY), required: true, where: "Vercel",
+      label: "Account provisioning key", ok: !isSupabaseConfigured() || Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY), required: isSupabaseConfigured(), where: "Host",
       detail: "Lets a brand-new sign-up get their own workspace created. Without it, signups can't be provisioned.",
       steps: ["Supabase → Settings → API → copy the service_role key", "Add it as SUPABASE_SERVICE_ROLE_KEY in Vercel", "Redeploy"],
     },
@@ -189,9 +190,9 @@ export default async function SettingsPage(
       steps: ["Set SEQUENCE_AUTOPILOT=true and REPLY_AUTOPILOT=true in Vercel", "Redeploy"],
     },
     {
-      label: "Scheduled runs", ok: Boolean(process.env.CRON_SECRET), required: false, where: "Vercel",
-      detail: "Secures the daily autopilot job (Vercel Cron is already scheduled).",
-      steps: ["Set CRON_SECRET to a random string in Vercel", "Redeploy"],
+      label: "Scheduled runs", ok: process.env.FREE_SCHEDULER !== "0" || Boolean(process.env.CRON_SECRET), required: false, where: "This process",
+      detail: "The app runs the minute webinar tick and the hourly agent tick itself. Set CRON_SECRET only if something else also calls those URLs.",
+      steps: ["Leave FREE_SCHEDULER unset so the process keeps the schedule", "Set CRON_SECRET if an outside pinger will call /api/agent/cron"],
     },
   ];
   const setupTab = (
