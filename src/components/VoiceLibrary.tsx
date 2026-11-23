@@ -217,13 +217,14 @@ export function VoiceLibrary() {
           ? `The premium voice service key is set but the connection was rejected${error ? `: ${error}` : ""}. Double-check ELEVENLABS_API_KEY on the host is a valid key, then restart.`
           : "The premium voice service isn't connected. Add ELEVENLABS_API_KEY on the host (and ELEVENLABS_AGENT_ID for the live agent), then restart.";
     return (
-      <div className="mt-5 space-y-2 border-t border-border pt-4">
+      <div className="mt-5 space-y-3 border-t border-border pt-4">
         <p className="text-sm font-medium text-fg">Read-aloud voice</p>
         <VoiceDisabledNotice
           title="Voice not connected"
           message={msg}
           link={{ href: "https://elevenlabs.io/app/settings/api-keys", label: "Get a voice API key →" }}
         />
+        <CloneVoice onCloned={load} />
       </div>
     );
   }
