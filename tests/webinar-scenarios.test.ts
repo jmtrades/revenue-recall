@@ -12,6 +12,7 @@ import {
   type WebinarPorts,
 } from "@/lib/webinar/engine";
 import { normalizeWebinarEvents } from "@/lib/webinar/normalize";
+import { __resetPresenceForTests, recordBeacon, sweepPresence } from "@/lib/webinar/presence";
 import { zoomEncryptedToken, zoomSignature } from "@/lib/webinar/verify";
 import type { CanonicalEvent } from "@/lib/webinar/types";
 
@@ -96,6 +97,7 @@ async function regOf(res: IngestResult) {
 
 beforeEach(() => {
   __resetWebinarForTests();
+  __resetPresenceForTests();
   now = new Date("2026-11-25T15:00:00.000Z");
   rec = { calls: [], sms: [], emails: [], alerts: [], replies: [] };
   failCalls = 0;
@@ -647,6 +649,29 @@ const scenarios: Record<ScenarioId, () => Promise<void>> = {
     const call = row.actions.find((a) => a.channel === "call" && a.status === "sent");
     expect(call?.liveOverride).toBe(false);
     expect(rec.calls).toHaveLength(1);
+  },
+
+  async S43_beacon_pagehide_calls() {
+    const join = recordBeacon(ORG, { type: "join", sessionId: "room", email: sam.email, phone: sam.phone, name: sam.name, provider: "webinarjam", consent: { call: true, sms: true } }, now);
+    expect(join?.type).toBe("attendance.joined");
+    await ingestWebinarEvent(ORG, join!);
+    const leave = recordBeacon(ORG, { type: "leave", sessionId: "room", email: sam.email, phone: sam.phone, provider: "webinarjam" }, now);
+    expect(leave?.type).toBe("attendance.left");
+    const res = await ingestWebinarEvent(ORG, leave!);
+    expect(rec.calls).toHaveLength(1);
+    expect(res.latencyMs!).toBeLessThan(1000);
+  },
+
+  async S44_missed_heartbeat_calls() {
+    const join = recordBeacon(ORG, { type: "heartbeat", sessionId: "room", email: sam.email, phone: sam.phone, name: sam.name, provider: "everwebinar", consent: { call: true, sms: true } }, now);
+    await ingestWebinarEvent(ORG, join!);
+    now = new Date(now.getTime() + 13_000);
+    const missed = sweepPresence(ORG, now, 12_000);
+    expect(missed).toHaveLength(1);
+    expect(missed[0].type).toBe("attendance.left");
+    const res = await ingestWebinarEvent(ORG, missed[0]);
+    expect(rec.calls).toHaveLength(1);
+    expect(res.latencyMs!).toBeLessThan(1000);
   },
 
   async S42_session_end_then_stale_leave() {

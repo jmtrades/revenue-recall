@@ -108,6 +108,12 @@ export function normalizeWebinarEvents(provider: string, body: unknown, now = ne
   if (p === "demio") return normalizeDemio(body, now);
   if (p === "webinarjam" || p === "everwebinar") return normalizeWebinarJam(body, now);
   if (p === "goto" || p === "gotowebinar") return normalizeGoto(body, now);
+  if (p === "livestorm") return normalizeLivestorm(body, now);
+  if (p === "webinargeek") return normalizeWebinarGeek(body, now);
+  if (p === "bigmarker") return normalizeBigMarker(body, now);
+  if (p === "zoho" || p === "zohowebinar" || p === "zohomeeting") return normalizeZoho(body, now);
+  // ClickMeeting, ON24, Kajabi, Kartra, HighLevel, Riverside, YouTube, Vimeo,
+  // StreamYard: no documented per-viewer leave. A generic-shaped POST still maps.
   return normalizeGeneric(body, now, p || "generic");
 }
 
@@ -153,8 +159,10 @@ function normalizeGeneric(body: unknown, now: Date, provider: string): Canonical
 
 function normalizeZoom(body: unknown, now: Date): CanonicalEvent[] {
   if (!isDict(body)) return [];
-  const event = str(body.event) ?? "";
-  if (event === "endpoint.url_validation") return [];
+  const rawEvent = str(body.event) ?? "";
+  if (rawEvent === "endpoint.url_validation") return [];
+  // Meetings use the same participant envelope as webinars.
+  const event = rawEvent.startsWith("meeting.") ? rawEvent.replace("meeting.", "webinar.") : rawEvent;
   const payload = isDict(body.payload) ? body.payload : {};
   const object = isDict(payload.object) ? payload.object : {};
   const sessionId = str(object.id) ?? str(object.uuid) ?? "zoom";
@@ -169,7 +177,7 @@ function normalizeZoom(body: unknown, now: Date): CanonicalEvent[] {
   const email = str(participant.email);
   const id = str(participant.registrant_id) ?? str(participant.id) ?? str(participant.user_id);
   const who = email ?? id ?? "session";
-  const eventId = str(body.event_ts) ? `${event}:${sessionId}:${who}:${String(body.event_ts)}` : undefined;
+  const eventId = str(body.event_ts) ? `${rawEvent}:${sessionId}:${who}:${String(body.event_ts)}` : undefined;
   return [
     {
       dedupeKey: dedupe("zoom", eventId, type, sessionId, who, occurredAt),
@@ -284,6 +292,185 @@ function normalizeGoto(body: unknown, now: Date): CanonicalEvent[] {
       },
     },
   ];
+}
+
+function normalizeLivestorm(body: unknown, now: Date): CanonicalEvent[] {
+  if (!isDict(body)) return [];
+  const data = isDict(body.data) ? body.data : body;
+  const meta = isDict(body.meta) ? body.meta : isDict(data.meta) ? data.meta : {};
+  const hook = isDict(meta.webhook) ? meta.webhook : {};
+  const event = str(hook.event) ?? str(body.event) ?? "";
+  const attrs = isDict(data.attributes) ? data.attributes : {};
+  const detail = isDict(attrs.registrant_detail) ? attrs.registrant_detail : {};
+  const sessionId = str(detail.session_id) ?? str(attrs.event_id) ?? str(data.id) ?? "livestorm";
+  const occurredAt = iso(attrs.updated_at ?? attrs.created_at ?? attrs.ended_at, now.toISOString());
+  const email = str(attrs.email);
+  const name = [str(attrs.first_name), str(attrs.last_name)].filter(Boolean).join(" ") || undefined;
+  let type: CanonicalType | undefined;
+  if (event === "people.registered") type = "registrant.registered";
+  else if (event === "people.watched_replay") type = "attendance.replay_started";
+  else if (event === "people.not_attended") type = "registrant.registered";
+  else if (event === "session.started") type = "session.upsert";
+  else if (event === "session.ended") type = "session.upsert";
+  else if (event === "people.attended") type = "attendance.joined";
+  else return [];
+  const phase: WebinarPhase | undefined = event === "session.ended" || event === "people.not_attended" || event === "people.attended" ? "ended" : event === "session.started" ? "live" : undefined;
+  return [
+    {
+      dedupeKey: dedupe("livestorm", str(hook.id) ?? str(data.id), type, sessionId, email ?? "session", occurredAt),
+      provider: "livestorm",
+      type,
+      occurredAt,
+      session: { id: sessionId, title: str(attrs.name), phase, rejoinUrl: str(attrs.room_link) ?? str(detail.connection_link) },
+      registrant: type === "session.upsert" ? undefined : { email, name, timezone: str(attrs.timezone) },
+    },
+  ];
+}
+
+function normalizeWebinarGeek(body: unknown, now: Date): CanonicalEvent[] {
+  if (!isDict(body)) return [];
+  const entity = isDict(body.entity) ? body.entity : body;
+  const event = (str(body.event) ?? "").toLowerCase();
+  const sessionId = str(entity.webinar_id) ?? str(entity.broadcast_id) ?? str(body.webinar_id) ?? "webinargeek";
+  const occurredAt = iso(body.timestamp, now.toISOString());
+  const email = str(entity.email) ?? str(entity.attendee_email) ?? str(body.email);
+  let type: CanonicalType | undefined;
+  if (/unsubscrib/.test(event)) type = "outcome.opt_out";
+  else if (/replay/.test(event)) type = "attendance.replay_started";
+  else if (/started/.test(event)) type = "attendance.joined";
+  else if (/subscribed|registration/.test(event)) type = "registrant.registered";
+  // "new viewer" is WebinarGeek's after-they-leave signal (up to 2 hours late).
+  else if (/viewer/.test(event)) type = "attendance.left";
+  else return normalizeGeneric(body, now, "webinargeek");
+  return [
+    {
+      dedupeKey: dedupe("webinargeek", str(body.id), type, sessionId, email ?? "session", occurredAt),
+      provider: "webinargeek",
+      type,
+      occurredAt,
+      session: { id: sessionId, phase: type === "attendance.left" || type === "attendance.joined" ? "live" : undefined },
+      registrant: { email, name: [str(entity.first_name), str(entity.last_name)].filter(Boolean).join(" ") || str(entity.name), phone: str(entity.phone) },
+    },
+  ];
+}
+
+function normalizeBigMarker(body: unknown, now: Date): CanonicalEvent[] {
+  if (!isDict(body)) return [];
+  if (isDict(body.registration)) {
+    const r = body.registration;
+    const sessionId = str(r.conference_id) ?? "bigmarker";
+    const occurredAt = iso(r.time_stamp, now.toISOString());
+    const email = str(r.email);
+    return [
+      {
+        dedupeKey: dedupe("bigmarker", str(r.bmid), "registrant.registered", sessionId, email ?? "session", occurredAt),
+        provider: "bigmarker",
+        type: "registrant.registered",
+        occurredAt,
+        session: { id: sessionId, rejoinUrl: str(r.enter_url) },
+        registrant: { id: str(r.bmid), email, name: [str(r.first_name), str(r.last_name)].filter(Boolean).join(" ") || undefined },
+      },
+    ];
+  }
+  if (Array.isArray(body.attendees)) {
+    // Posted when the session ends, with enter/leave times. Not a live leave.
+    return (body.attendees as unknown[]).flatMap((row) => {
+      if (!isDict(row)) return [];
+      const sessionId = str(row.conference_id) ?? "bigmarker";
+      const email = str(row.email);
+      const occurredAt = iso(row.last_leave_time ?? row.enter_time, now.toISOString());
+      return [
+        {
+          dedupeKey: dedupe("bigmarker", str(row.bmid), "attendance.joined", sessionId, email ?? "session", occurredAt),
+          provider: "bigmarker",
+          type: "attendance.joined" as const,
+          occurredAt,
+          session: { id: sessionId, title: str(row.webinar_title), phase: "ended" as const },
+          registrant: { id: str(row.bmid), email, name: [str(row.first_name), str(row.last_name)].filter(Boolean).join(" ") || undefined },
+        },
+      ];
+    });
+  }
+  return normalizeGeneric(body, now, "bigmarker");
+}
+
+function normalizeZoho(body: unknown, now: Date): CanonicalEvent[] {
+  if (!isDict(body)) return [];
+  const event = (str(body.event) ?? str(body.event_type) ?? str(body.trigger) ?? "").toLowerCase();
+  const sessionId = str(body.webinar_id) ?? str(body.webinarId) ?? str(body.meeting_key) ?? "zoho";
+  const occurredAt = iso(body.timestamp ?? body.time, now.toISOString());
+  const email = str(body.email) ?? str(body.member_email);
+  let type: CanonicalType | undefined;
+  let phase: WebinarPhase | undefined;
+  if (event.includes("registered")) type = "registrant.registered";
+  else if (event.includes("joined")) {
+    type = "attendance.joined";
+    phase = "live";
+  } else if (event.includes("removed") || event.includes("left")) {
+    type = "attendance.left";
+    phase = "live";
+  } else if (event.includes("ended")) {
+    type = "session.upsert";
+    phase = "ended";
+  } else if (event.includes("started")) {
+    type = "session.upsert";
+    phase = "live";
+  } else return normalizeGeneric(body, now, "zoho");
+  return [
+    {
+      dedupeKey: dedupe("zoho", str(body.id), type, sessionId, email ?? "session", occurredAt),
+      provider: "zoho",
+      type,
+      occurredAt,
+      session: { id: sessionId, title: str(body.topic) ?? str(body.webinar_title), phase },
+      registrant: type === "session.upsert" ? undefined : { email, name: str(body.name) ?? str(body.member_name), phone: str(body.phone) },
+    },
+  ];
+}
+
+/**
+ * Demio's participants report, pulled after a session. "left early" is not a
+ * live webhook. phase is ended so the call is a normal recovery, not a
+ * live-room override.
+ */
+export function demioReportToEvents(dateId: string, body: unknown, now = new Date()): CanonicalEvent[] {
+  if (!isDict(body) || !Array.isArray(body.participants)) return [];
+  const events: CanonicalEvent[] = [];
+  for (const row of body.participants) {
+    if (!isDict(row)) continue;
+    const status = (str(row.status) ?? "").toLowerCase();
+    const email = str(row.email);
+    const occurredAt = now.toISOString();
+    if (status === "left early") {
+      events.push({
+        dedupeKey: dedupe("demio", undefined, "attendance.left", dateId, email ?? "session", `${status}:${email ?? ""}`),
+        provider: "demio",
+        type: "attendance.left",
+        occurredAt,
+        session: { id: dateId, phase: "ended" },
+        registrant: { email, name: str(row.name) },
+      });
+    } else if (status === "did not attend") {
+      events.push({
+        dedupeKey: dedupe("demio", undefined, "registrant.registered", dateId, email ?? "session", `noshow:${email ?? ""}`),
+        provider: "demio",
+        type: "registrant.registered",
+        occurredAt,
+        session: { id: dateId, phase: "ended" },
+        registrant: { email, name: str(row.name) },
+      });
+    }
+  }
+  if (events.some((e) => e.type === "registrant.registered")) {
+    events.push({
+      dedupeKey: dedupe("demio", undefined, "session.upsert", dateId, "session", "ended"),
+      provider: "demio",
+      type: "session.upsert",
+      occurredAt: now.toISOString(),
+      session: { id: dateId, phase: "ended" },
+    });
+  }
+  return events;
 }
 
 /** Zoom's URL-validation handshake. Null when this body isn't one. */
