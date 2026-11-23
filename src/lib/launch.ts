@@ -1,5 +1,6 @@
 import { getConfig } from "@/lib/config";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { freeDbEnabled } from "@/lib/free/db";
 import { isAiConfigured } from "@/lib/ai/client";
 import { channelStatus } from "@/lib/comms";
 import { complianceConfig, emailDomainVerified, smsA2pRegistered } from "@/lib/compliance";
@@ -23,7 +24,7 @@ export function launchStatus(): LaunchStatus {
   const ch = channelStatus();
 
   const blockers: string[] = [];
-  if (!isSupabaseConfigured()) blockers.push("No database connected — set the SUPABASE_* env vars.");
+  if (!isSupabaseConfigured() && !freeDbEnabled()) blockers.push("No database connected — the free SQLite file is off (FREE_DB=0) and no Supabase project is set.");
   if (!cfg.authRequired) blockers.push("Auth is optional — connect a database so every user gets a private workspace, or set NEXT_PUBLIC_AUTH_REQUIRED=true.");
   if (isSupabaseConfigured() && !process.env.SUPABASE_SERVICE_ROLE_KEY) blockers.push("Database connected without a service-role key — new accounts can't be provisioned (set SUPABASE_SERVICE_ROLE_KEY).");
 

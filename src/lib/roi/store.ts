@@ -1,5 +1,6 @@
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
+import { getFreeDb, readAnalytics, writeAnalytics } from "@/lib/free/db";
 import type { NewRoiEvent, RoiActor, RoiChannel, RoiEvent, RoiEventName } from "@/lib/roi/types";
 import { isRoiEventName } from "@/lib/roi/types";
 
@@ -61,6 +62,11 @@ export async function recordRoiEvent(input: NewRoiEvent): Promise<void> {
     cost: input.cost,
     actor: input.actor,
   };
+  const file = getFreeDb();
+  if (file) {
+    writeAnalytics(file, orgId, event);
+    return;
+  }
   if (!isSupabaseConfigured()) {
     const bag = memory.get(orgId) ?? [];
     if (bag.some((e) => e.dedupeKey === event.dedupeKey)) return;
@@ -92,6 +98,29 @@ export async function recordRoiEvent(input: NewRoiEvent): Promise<void> {
 
 export async function listRoiEvents(orgId?: string): Promise<RoiEvent[]> {
   const id = await scope(orgId);
+  const file = getFreeDb();
+  if (file) {
+    return readAnalytics(file, id).flatMap((row) => {
+      if (!isRoiEventName(row.name)) return [];
+      const event: RoiEvent = {
+        id: row.dedupeKey,
+        dedupeKey: row.dedupeKey,
+        name: row.name,
+        occurredAt: row.occurredAt,
+        channel: (row.channel as RoiChannel) || undefined,
+        contactId: row.contactId || undefined,
+        dealId: row.dealId || undefined,
+        leadId: row.leadId || undefined,
+        campaignId: row.campaignId || undefined,
+        sequenceId: row.sequenceId || undefined,
+        stepId: row.stepId || undefined,
+        revenue: row.revenue ?? undefined,
+        cost: row.cost ?? undefined,
+        actor: (row.actor as RoiActor) || undefined,
+      };
+      return [event];
+    });
+  }
   if (!isSupabaseConfigured()) return [...(memory.get(id) ?? [])];
   const { data, error } = await getSupabase()!
     .from("analytics_events")

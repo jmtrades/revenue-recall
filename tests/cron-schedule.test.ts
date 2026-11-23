@@ -1,28 +1,23 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { FREE_SCHEDULE, runsThroughTheDay, WEBINAR_TICK_MS, AGENT_TICK_MS } from "@/lib/free/schedule";
 
 /**
  * The autopilot only reaches prospects within their 8am–9pm local window and
- * holds the rest for the next run, so the cron MUST tick through the day. A
- * once-daily schedule (especially at a US-night UTC hour) silently means the
- * agent never calls. Guard the frequency so it can't regress.
+ * holds the rest for the next run, so the scheduler MUST tick through the day.
+ * A once-daily schedule (especially at a US-night UTC hour) silently means the
+ * agent never calls. The free host runs this inside the Node process — there
+ * is no Vercel cron.
  */
-describe("autopilot cron schedule", () => {
-  const cfg = JSON.parse(readFileSync(join(process.cwd(), "vercel.json"), "utf8")) as {
-    crons?: { path: string; schedule: string }[];
-  };
-
-  it("registers the agent cron", () => {
-    const cron = cfg.crons?.find((c) => c.path === "/api/agent/cron");
-    expect(cron, "vercel.json must register /api/agent/cron").toBeDefined();
+describe("free host schedule", () => {
+  it("registers an hourly agent tick and a minute webinar tick", () => {
+    expect(FREE_SCHEDULE.agent).toBe("0 * * * *");
+    expect(FREE_SCHEDULE.webinar).toBe("* * * * *");
+    expect(AGENT_TICK_MS).toBe(60 * 60_000);
+    expect(WEBINAR_TICK_MS).toBe(60_000);
   });
 
-  it("runs at least hourly, never just once a day", () => {
-    const cron = cfg.crons?.find((c) => c.path === "/api/agent/cron");
-    const hourField = cron!.schedule.trim().split(/\s+/)[1]; // min hour dom mon dow
-    // "*" (every hour) or a list/range/step is fine; a single fixed hour is NOT.
-    const isSingleFixedHour = /^\d+$/.test(hourField);
-    expect(isSingleFixedHour, `cron hour "${hourField}" runs once a day — the agent would skip everyone in quiet hours`).toBe(false);
+  it("runs the agent through the day, never just once", () => {
+    expect(runsThroughTheDay(FREE_SCHEDULE.agent)).toBe(true);
+    expect(runsThroughTheDay("0 13 * * *")).toBe(false);
   });
 });

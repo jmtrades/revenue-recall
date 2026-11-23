@@ -1,11 +1,13 @@
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { getFreeDb, readDoc, writeDoc } from "@/lib/free/db";
 import { phoneDigits, phonesMatch, normalizeEmail } from "@/lib/webinar/time";
 import type { WebinarRegistrant, WebinarSession } from "@/lib/webinar/types";
 
 /**
- * Webinar store. In-memory when Supabase isn't configured (demo + tests);
- * org-scoped tables otherwise. Writes are compare-and-swap on `version` so two
- * webhook workers can't both dial the same leave.
+ * Webinar store. SQLite file when no Supabase is configured (the free host).
+ * Pure memory in tests. Org-scoped Supabase tables when that project is set.
+ * Writes are compare-and-swap on `version` so two workers can't both dial
+ * the same leave.
  */
 
 interface Mem {
@@ -16,13 +18,35 @@ interface Mem {
 
 const memory = new Map<string, Mem>();
 
+interface SavedBag {
+  events: string[];
+  sessions: [string, WebinarSession & { provider: string }][];
+  registrants: [string, WebinarRegistrant][];
+}
+
 function bag(orgId: string): Mem {
   let b = memory.get(orgId);
   if (!b) {
-    b = { events: new Set(), sessions: new Map(), registrants: new Map() };
+    const file = getFreeDb();
+    const saved = file ? readDoc<SavedBag>(file, orgId, "webinar") : null;
+    b = saved
+      ? { events: new Set(saved.events), sessions: new Map(saved.sessions), registrants: new Map(saved.registrants) }
+      : { events: new Set(), sessions: new Map(), registrants: new Map() };
     memory.set(orgId, b);
   }
   return b;
+}
+
+function remember(orgId: string): void {
+  const file = getFreeDb();
+  const b = memory.get(orgId);
+  if (!file || !b) return;
+  const doc: SavedBag = {
+    events: [...b.events],
+    sessions: [...b.sessions.entries()],
+    registrants: [...b.registrants.entries()],
+  };
+  writeDoc(file, orgId, "webinar", doc);
 }
 
 export function __resetWebinarForTests(): void {
@@ -48,6 +72,7 @@ export async function claimEvent(orgId: string, key: string): Promise<boolean> {
     const id = `${orgId}:${key}`;
     if (b.events.has(id)) return false;
     b.events.add(id);
+    remember(orgId);
     return true;
   }
   const { error } = await getSupabase()!.from("webinar_events").insert({ org_id: orgId, dedupe_key: key });
@@ -59,6 +84,7 @@ export async function claimEvent(orgId: string, key: string): Promise<boolean> {
 export async function forgetEvent(orgId: string, key: string): Promise<void> {
   if (!dbConfigured()) {
     bag(orgId).events.delete(`${orgId}:${key}`);
+    remember(orgId);
     return;
   }
   await getSupabase()!.from("webinar_events").delete().eq("org_id", orgId).eq("dedupe_key", key);
@@ -81,6 +107,7 @@ export async function upsertSession(orgId: string, patch: Partial<WebinarSession
   };
   if (!dbConfigured()) {
     bag(orgId).sessions.set(patch.id, { ...next, provider: next.provider });
+    remember(orgId);
     return next;
   }
   const { error } = await getSupabase()!.from("webinar_sessions").upsert({
@@ -149,6 +176,7 @@ export async function saveRegistrant(orgId: string, reg: WebinarRegistrant, expe
     if ((cur?.version ?? 0) !== expectedVersion) return false;
     b.registrants.set(reg.id, next);
     reg.version = next.version;
+    remember(orgId);
     return true;
   }
   const row = {

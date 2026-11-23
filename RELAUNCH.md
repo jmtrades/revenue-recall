@@ -12,9 +12,11 @@ None of these are in the repo, and none were set in the workspace this change wa
 
 | Secret | Required for | In this workspace |
 | --- | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Database | Missing |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Database + auth | Missing |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server writes, provisioning | Missing |
+The database does not need a Supabase project. With no `SUPABASE_*` variables the app stores data in a SQLite file (`.data/revenue-recall.sqlite`, or `FREE_DB_DIR`). Set `FREE_DB=0` only if you want the old forgetful in-memory demo.
+
+| `NEXT_PUBLIC_SUPABASE_URL` | Optional. Leave unset to use the free SQLite file. | Missing |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Only if you still point at a Supabase project | Missing |
+| `SUPABASE_SERVICE_ROLE_KEY` | Only if you still point at a Supabase project | Missing |
 | `ENCRYPTION_KEY` | Encrypt stored connection secrets; signs call meta | Missing |
 | `ADMIN_TOKEN` | `/api/admin/bootstrap`, `/api/webinar/status`, operator health detail | Missing |
 | `CRON_SECRET` | `/api/agent/cron` and `/api/webinar/tick` | Missing |
@@ -50,7 +52,7 @@ Set these attestations only after the underlying account work is done. They are 
 
 Optional, already defaulted in code (do not set unless you want to change the limit): every `WEBINAR_MAX_*`, `WEBINAR_QUIET_*`, `WEBINAR_BLOCK_SUNDAY`, `WEBINAR_REQUIRE_*_CONSENT`, `WEBINAR_LIVE_CALL_OVERRIDE`, `WEBINAR_DEFAULT_TIMEZONE` (`Europe/London`).
 
-`SUPABASE_DB_URL` is the Postgres connection string if migrations are applied with `npm run db:migrate` instead of the Supabase dashboard. It is a secret. Migration `0059_webinar.sql` has to be applied before webinar rows will persist. Without it the process falls back to memory and a restart loses in-flight recovery.
+On the free host, webinar rows and the results ledger live in the SQLite file and survive a restart. `SUPABASE_DB_URL` is only for applying the Postgres migrations if you opt into Supabase later.
 
 ## Webhook URLs
 
@@ -60,8 +62,8 @@ These are not secrets. They are the addresses to paste into provider dashboards 
 | --- | --- |
 | Webinar events | `https://<host>/api/webinar/events?org=<ORG_ID>&t=<inbound token>&provider=zoom` (or `demio`, `goto`, `webinarjam`, `generic`) |
 | Zoom validation + events | Same URL. Zoom's URL-validation handshake is handled. Header `x-zm-signature`. |
-| Recovery tick | `https://<host>/api/webinar/tick` with `Authorization: Bearer <CRON_SECRET>`. `vercel.json` schedules this every minute. Vercel Hobby only allows a daily cron; a minute schedule needs Pro, or any external pinger hitting that URL. |
-| Autopilot cron | `https://<host>/api/agent/cron` (also drains due webinar steps once an hour) |
+| Recovery tick | Runs inside the Node process every minute. `https://<host>/api/webinar/tick` with `Authorization: Bearer <CRON_SECRET>` is the same job if you want an outside pinger. |
+| Autopilot cron | Runs inside the Node process every hour. `https://<host>/api/agent/cron` is the same job. |
 | Inbound SMS | `https://<host>/api/inbound/sms?org=<ORG_ID>&t=<token>` |
 | Call outcomes | `https://<host>/api/calls/log` |
 | Stripe | `https://<host>/api/billing/webhook` |
@@ -100,7 +102,7 @@ Other `type` values: `registrant.registered`, `attendance.joined`, `attendance.r
 
 ## Order of operations
 
-1. Paste the Supabase keys. Apply migrations through `0059_webinar.sql`.
+1. Run the app (`docker build -t revenue-recall . && docker run -p 3000:3000 -v rr-data:/data revenue-recall`, or `npm run build && npm start`). SQLite is created on first write. Supabase keys are optional and not required.
 2. Paste `ENCRYPTION_KEY`, `ADMIN_TOKEN`, `CRON_SECRET`, `INBOUND_SIGNING_SECRET`.
 3. `POST /api/admin/bootstrap` with the admin token once, if the project has no org yet. Copy the org id.
 4. Paste `WEBINAR_WEBHOOK_SECRET` and `WEBINAR_BEACON_TOKEN`, plus the secret for each platform you actually use (table below).
@@ -168,5 +170,5 @@ Beacon, for every platform that has no leave webhook. Paste on a page you contro
 
 - Zoom is the only vendor in this list with a documented real-time leave webhook. Everyone else is the beacon, a post-session report, or a generic POST you send yourself.
 - The beacon cannot run inside Zoom, YouTube, Vimeo, StreamYard, or the ON24 console. It only sees pages you can edit.
-- The minute tick places the 3-minute and 10-minute redials, and it is also what notices a missed heartbeat if the page never fired pagehide. Vercel Hobby cannot run a minute cron.
+- The minute tick places the 3-minute and 10-minute redials, and it is also what notices a missed heartbeat if the page never fired pagehide. The Node process runs that tick itself. Set `FREE_SCHEDULER=0` only if something else is already calling `/api/webinar/tick`.
 - Memory mode (no Supabase) drops recovery state and heartbeats on restart. Production needs the database and migration `0059_webinar.sql`.
