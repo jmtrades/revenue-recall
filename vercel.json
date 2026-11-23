@@ -4,6 +4,10 @@
     {
       "path": "/api/agent/cron",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/webinar/tick",
+      "schedule": "* * * * *"
     }
   ]
 }

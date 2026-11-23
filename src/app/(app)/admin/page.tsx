@@ -16,6 +16,8 @@ import { getReports } from "@/lib/queries";
 import { resolveProvider } from "@/lib/crm/registry";
 import { compactMoney, pct } from "@/lib/format";
 import { launchStatus } from "@/lib/launch";
+import { webinarArmed } from "@/lib/webinar/config";
+import { platformStatus } from "@/lib/webinar/platforms";
 import type { Activity } from "@/lib/crm/types";
 
 export const metadata = { title: "Admin — Revenue Recall" };
@@ -63,6 +65,7 @@ export default async function AdminPage() {
   // System health at a glance — each feature lights up only when its key/URL is
   // set, mirroring the product's inert-without-config behavior.
   const ch = channelStatus();
+  const webinarPlatforms = platformStatus();
   const systems: { label: string; live: boolean }[] = [
     { label: "Email", live: ch.email.live },
     { label: "SMS", live: ch.sms.live },
@@ -71,6 +74,7 @@ export default async function AdminPage() {
     { label: "Premium voice", live: ttsAvailable() },
     { label: "Live call agent", live: convaiConfigured() },
     { label: "Billing", live: billingConfigured() },
+    { label: "Webinar recovery", live: webinarArmed() },
   ];
 
   // Launch readiness — the few things that actually gate "can I go live?", each
@@ -161,6 +165,25 @@ export default async function AdminPage() {
             </div>
           ))}
         </div>
+      </Card>
+
+      <Card title="Webinar platforms">
+        <ul className="divide-y divide-border">
+          {webinarPlatforms.map((p) => (
+            <li key={p.id} className="flex items-center justify-between gap-3 py-2">
+              <span className="min-w-0">
+                <span className="block text-sm text-fg">{p.label}</span>
+                <span className="block text-xs text-muted">
+                  {p.detection === "webhook_leave" ? "Live leave webhook" : p.detection === "post_session" ? "After the session, plus beacon" : p.detection === "generic" ? "Generic leave POST" : "Beacon on a page you control"}
+                </span>
+              </span>
+              <span className={`inline-flex shrink-0 items-center gap-1.5 text-xs font-medium ${p.armed ? "text-success" : "text-muted"}`}>
+                <span className={`h-2 w-2 rounded-full ${p.armed ? "bg-success" : "bg-muted/40"}`} aria-hidden="true" />
+                {p.armed ? "Armed" : "Not configured"}
+              </span>
+            </li>
+          ))}
+        </ul>
       </Card>
 
       <Card title="Recent activity">

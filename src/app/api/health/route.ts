@@ -7,6 +7,8 @@ import { ttsAvailable } from "@/lib/voice/tts";
 import { convaiConfigured, convaiAgentId, convaiReason } from "@/lib/voice/convai";
 import { elevenConfigured } from "@/lib/voice/eleven";
 import { launchStatus } from "@/lib/launch";
+import { webinarArmed } from "@/lib/webinar/config";
+import { platformStatus } from "@/lib/webinar/platforms";
 import { isAdminRequest } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +28,8 @@ export async function GET(req: Request) {
     // ElevenLabs surfaces: hosted read-aloud TTS, and the live two-way agent.
     voiceHosted: ttsAvailable(),
     voiceAgent: convaiConfigured(),
+    webinar: webinarArmed(),
+    webinarPlatforms: platformStatus().map((p) => ({ id: p.id, armed: p.armed, detection: p.detection })),
   };
 
   // Voice connection detail — public (no session) so an operator can confirm the

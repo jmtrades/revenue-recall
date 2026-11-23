@@ -19,7 +19,13 @@ function secret(): string | null {
 }
 
 function payload(meta: Record<string, string | undefined>): string {
-  return `${meta.orgId ?? ""}|${meta.contactId ?? ""}|${meta.dealId ?? ""}`;
+  const base = `${meta.orgId ?? ""}|${meta.contactId ?? ""}|${meta.dealId ?? ""}`;
+  // Webinar recovery binds the registrant into the signature. Older call meta
+  // (no webinar fields) keeps the original payload so in-flight calls still verify.
+  if (meta.webinarSessionId || meta.webinarRegistrantId || meta.webinarStepId) {
+    return `${base}|w|${meta.webinarSessionId ?? ""}|${meta.webinarRegistrantId ?? ""}|${meta.webinarStepId ?? ""}`;
+  }
+  return base;
 }
 
 /** Attach the signature. Returns meta unchanged when no secret is available
