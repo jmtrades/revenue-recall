@@ -241,6 +241,17 @@ export function applyEvent(
 
   switch (event.type) {
     case "registrant.registered": {
+      // A registration that arrives with the session already over (Demio
+      // "did not attend", Livestorm people.not_attended) is a no-show.
+      if (session.phase === "ended" && (reg.state === "registered" || reg.state === "reminded")) {
+        cancelPending(reg);
+        reg.state = "no_show";
+        reg.recoveryActive = true;
+        reg.recoveryReason = "no_show";
+        addSteps(reg, NOSHOW, now);
+        stamp(reg, event.occurredAt);
+        return { registrant: reg };
+      }
       if (!reg.actions.some((a) => a.stepId.startsWith("rem-"))) addSteps(reg, reminderSteps(session, now), now);
       if (reg.state === "registered" || reg.state === "reminded") reg.state = "registered";
       stamp(reg, event.occurredAt);
@@ -252,8 +263,19 @@ export function applyEvent(
         if (delta > cfg.lateJoinAfterSec * 1000) reg.late = true;
       }
       cancelPending(reg);
-      reg.present = true;
       reg.joinCount += 1;
+      // Post-session attendance (BigMarker attendee dump, Livestorm people.attended)
+      // is not a live room. Follow up. Do not place a "you just left" call.
+      if (session.phase === "ended") {
+        reg.present = false;
+        reg.state = "attended";
+        reg.recoveryActive = true;
+        reg.recoveryReason = "post_session_attendance";
+        addSteps(reg, FOLLOWUP, now);
+        stamp(reg, event.occurredAt);
+        return { registrant: reg };
+      }
+      reg.present = true;
       reg.state = "in_room";
       reg.recoveryActive = false;
       reg.cancelledReason = reg.leaveCount > 0 ? "rejoined" : undefined;

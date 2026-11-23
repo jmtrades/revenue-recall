@@ -33,10 +33,15 @@ export const POST = withGuard(async (req: Request) => {
 
   let body: unknown = null;
   if (raw.trim()) {
-    try {
-      body = JSON.parse(raw);
-    } catch {
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    const form = (req.headers.get("content-type") ?? "").includes("application/x-www-form-urlencoded");
+    if (form) {
+      body = Object.fromEntries(new URLSearchParams(raw));
+    } else {
+      try {
+        body = JSON.parse(raw);
+      } catch {
+        return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+      }
     }
   }
 
@@ -68,3 +73,8 @@ export const POST = withGuard(async (req: Request) => {
   logInfo("webinar.webhook", { provider, orgId, events: events.length, latencyMs });
   return NextResponse.json({ ok: true, results, latencyMs });
 });
+
+/** GoTo validates the callback URL with a GET that must return 200. */
+export function GET() {
+  return new NextResponse(null, { status: 200 });
+}

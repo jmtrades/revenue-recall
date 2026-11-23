@@ -1,3 +1,4 @@
+import { anyWebinarArmed, WEBINAR_PLATFORMS } from "@/lib/webinar/platforms";
 import type { WebinarConfig } from "@/lib/webinar/types";
 
 /**
@@ -49,29 +50,24 @@ export function webinarConfig(): WebinarConfig {
   };
 }
 
-/** True when a webhook shared secret is configured, so inbound events can be authenticated. */
+/** True when any platform secret, or the shared webhook/beacon secret, is set. */
 export function webinarArmed(): boolean {
-  return Boolean(
-    process.env.WEBINAR_WEBHOOK_SECRET ||
-      process.env.ZOOM_WEBHOOK_SECRET ||
-      process.env.DEMIO_WEBHOOK_SECRET ||
-      process.env.WEBINARJAM_WEBHOOK_SECRET ||
-      process.env.GOTO_WEBHOOK_SECRET,
-  );
+  return anyWebinarArmed();
 }
 
+const SECRET_ENV: Record<string, string> = {
+  gotowebinar: "GOTO_WEBHOOK_SECRET",
+  zohowebinar: "ZOHO_WEBHOOK_SECRET",
+  zohomeeting: "ZOHO_WEBHOOK_SECRET",
+  beacon: "WEBINAR_BEACON_TOKEN",
+};
+for (const p of WEBINAR_PLATFORMS) SECRET_ENV[p.id] = p.secretEnv;
+
+/** Provider secret, else the shared webhook secret, else the beacon token. */
 export function secretForProvider(provider: string): string | undefined {
-  const generic = process.env.WEBINAR_WEBHOOK_SECRET;
-  const specific =
-    provider === "zoom"
-      ? process.env.ZOOM_WEBHOOK_SECRET
-      : provider === "demio"
-        ? process.env.DEMIO_WEBHOOK_SECRET
-        : provider === "webinarjam" || provider === "everwebinar"
-          ? process.env.WEBINARJAM_WEBHOOK_SECRET
-          : provider === "goto" || provider === "gotowebinar"
-            ? process.env.GOTO_WEBHOOK_SECRET
-            : undefined;
-  const v = (specific || generic || "").trim();
-  return v || undefined;
+  const key = provider.toLowerCase();
+  const specific = (process.env[SECRET_ENV[key] ?? ""] ?? "").trim();
+  const generic = (process.env.WEBINAR_WEBHOOK_SECRET ?? "").trim();
+  const beacon = (process.env.WEBINAR_BEACON_TOKEN ?? "").trim();
+  return specific || generic || beacon || undefined;
 }

@@ -39,6 +39,8 @@ export const PUBLIC_API = [
   "/api/webinar/events", // webinar provider webhooks — HMAC / shared secret
   "/api/webinar/tick", // minute recovery tick — CRON_SECRET
   "/api/webinar/status", // operator status — ADMIN_TOKEN or CRON_SECRET
+  "/api/webinar/beacon", // presence beacon from a page the org controls
+  "/api/webinar/beacon.js", // embeddable snippet
 ];
 
 /** True when `path` is reachable without a session. */

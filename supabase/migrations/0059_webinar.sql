@@ -66,3 +66,27 @@ create policy org_isolation_webinar_registrants on webinar_registrants
 drop policy if exists org_isolation_webinar_events on webinar_events;
 create policy org_isolation_webinar_events on webinar_events
   using (org_id = current_org_id()) with check (org_id = current_org_id());
+
+-- Heartbeats from the presence snippet. Last-seen is what the minute tick
+-- uses to notice a tab that died without firing pagehide.
+create table if not exists webinar_presence (
+  org_id        uuid not null references orgs(id) on delete cascade,
+  presence_key  text not null,
+  session_id    text not null,
+  provider      text not null,
+  email         text,
+  phone         text,
+  name          text,
+  present       boolean not null default true,
+  last_seen     timestamptz not null default now(),
+  primary key (org_id, presence_key)
+);
+
+create index if not exists idx_webinar_presence_open
+  on webinar_presence (org_id, last_seen)
+  where present;
+
+alter table webinar_presence enable row level security;
+drop policy if exists org_isolation_webinar_presence on webinar_presence;
+create policy org_isolation_webinar_presence on webinar_presence
+  using (org_id = current_org_id()) with check (org_id = current_org_id());

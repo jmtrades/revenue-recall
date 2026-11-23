@@ -103,7 +103,7 @@ Other `type` values: `registrant.registered`, `attendance.joined`, `attendance.r
 1. Paste the Supabase keys. Apply migrations through `0059_webinar.sql`.
 2. Paste `ENCRYPTION_KEY`, `ADMIN_TOKEN`, `CRON_SECRET`, `INBOUND_SIGNING_SECRET`.
 3. `POST /api/admin/bootstrap` with the admin token once, if the project has no org yet. Copy the org id.
-4. Paste `WEBINAR_WEBHOOK_SECRET` and, if used, the one provider secret.
+4. Paste `WEBINAR_WEBHOOK_SECRET` and `WEBINAR_BEACON_TOKEN`, plus the secret for each platform you actually use (table below).
 5. Paste voice: `VOICE_WEBHOOK_URL` + `COMMS_WEBHOOK_TOKEN` + `CALL_STATUS_WEBHOOK_URL`, or the three Twilio variables. For the spoken voicemail drop and the conversational agent, the voice URL has to be the call gateway, not a static TwiML bin.
 6. Paste `ELEVENLABS_API_KEY` and `ELEVENLABS_AGENT_ID`.
 7. Paste `ANTHROPIC_API_KEY`.
@@ -114,13 +114,59 @@ Other `type` values: `registrant.registered`, `attendance.joined`, `attendance.r
 
 ## Checks
 
-- `GET /api/health` — public verdict. With the admin bearer, blocker text is included. `capabilities.webinar` is true only when a webinar secret is set.
+- `GET /api/health` — public verdict. With the admin bearer, blocker text is included. `capabilities.webinar` is true when any webinar secret is set. `capabilities.webinarPlatforms` is one row per platform (`id`, `armed`, `detection`) and does not include secrets.
 - `GET /api/webinar/status` — counts by lifecycle state, the compliance limits in effect, and the webhook URL. No phone numbers.
-- Admin → System status shows "Webinar recovery".
+- Admin → Webinar platforms lists every platform and whether its secret is set.
 - A leave event's response includes `latencyMs`: milliseconds from receipt to call initiation. The scenario test S34 locks this under 1000ms.
+
+## Per-platform secrets and setup
+
+Webhook URL for every platform that can POST: `https://<host>/api/webinar/events?org=<ORG_ID>&t=<org token>&provider=<id>`. GoTo also sends a GET to that URL to validate it; the route returns 200. Signature headers are checked when the platform's secret is set. `?token=<secret>` is accepted when a platform cannot sign.
+
+Beacon, for every platform that has no leave webhook. Paste on a page you control (not inside Zoom, YouTube, Vimeo, or StreamYard):
+
+```html
+<script>
+  window.RR_WEBINAR = {
+    endpoint: "https://<host>/api/webinar/beacon?org=<ORG_ID>&t=<org token>&provider=webinarjam",
+    sessionId: "SESSION",
+    email: "person@example.com",
+    phone: "+447700900123",
+    name: "Sam Taylor",
+    provider: "webinarjam",
+    consent: { call: true, sms: true }
+  };
+</script>
+<script src="https://<host>/api/webinar/beacon.js"></script>
+```
+
+| Platform | `provider=` | Secret to paste | Events to subscribe | Leave latency |
+| --- | --- | --- | --- | --- |
+| Zoom Webinars and Meetings | `zoom` | `ZOOM_WEBHOOK_SECRET` | `webinar.participant_joined`, `webinar.participant_left`, `webinar.registration_created`, `webinar.ended`, and the same four with `meeting.` instead of `webinar.`. Zoom also sends `endpoint.url_validation`. | Real-time webhook. A few seconds for Zoom to deliver, then under a second here. |
+| GoTo Webinar | `goto` | `GOTO_WEBHOOK_SECRET` | `registrant.added`, `registrant.joined`, `webinar.created`, `webinar.changed`. There is no `registrant.left`. | Join is a webhook. Leave is the beacon (pagehide immediate, missed heartbeat ~12s) unless you relay `attendance.left`. |
+| Demio | `demio` | `DEMIO_API_KEY`, `DEMIO_API_SECRET`, `DEMIO_DATE_IDS` | None. Demio does not offer webhooks. | Beacon during the session. The participants report (`left early`, `did not attend`) is polled after the session when `DEMIO_DATE_IDS` is set. |
+| WebinarJam | `webinarjam` | `WEBINARJAM_WEBHOOK_SECRET` | registration, attended | Beacon. No leave webhook. |
+| EverWebinar | `everwebinar` | `WEBINARJAM_WEBHOOK_SECRET` (same account as WebinarJam) | registration, attended | Beacon. No leave webhook. |
+| Livestorm | `livestorm` | `LIVESTORM_WEBHOOK_SECRET` | `people.registered`, `session.started`, `session.ended`, `people.attended`, `people.not_attended`, `people.watched_replay` | Those attendance events fire after the session. Live leave is the beacon. |
+| WebinarGeek | `webinargeek` | `WEBINARGEK_WEBHOOK_SECRET` | `webinar_subscribed`, `new_viewer_started_watching`, `new_viewer`, `new_replay_viewer`. Header `Signature` is HMAC-SHA256 of the body. | "Started watching" is when they open the page. "New viewer" is up to 2 hours after they leave. Live leave is the beacon. |
+| BigMarker | `bigmarker` | `BIGMARKER_WEBHOOK_SECRET` | new registration; live attendee data (sent when the session ends) | Registration is live. The attendee dump is end-of-session. Live leave is the beacon. |
+| Zoho Webinar / Meeting | `zoho` | `ZOHO_WEBHOOK_SECRET` | `webinar_registered`, `webinar_member_joined`, `webinar_member_removed`, `webinar_started`, `webinar_ended` | Join and removal are webhooks. A tab close is the beacon. |
+| ClickMeeting | `clickmeeting` | `CLICKMEETING_WEBHOOK_SECRET` | Relay a generic payload, or use the beacon. Connectors poll about every 15 minutes. | Beacon, or your own `attendance.left` POST. |
+| ON24 | `on24` | `ON24_WEBHOOK_SECRET` | Relay a generic payload. Their console will not run the snippet. | Beacon on a page you own. |
+| StreamYard | `streamyard` | `WEBINAR_BEACON_TOKEN` | None. Their room will not run the snippet. | Beacon on a wrapper page you own only. |
+| Kajabi | `kajabi` | `KAJABI_WEBHOOK_SECRET` | Generic registration if you wire one. | Beacon on the Kajabi page. |
+| Kartra | `kartra` | `KARTRA_WEBHOOK_SECRET` | Generic registration if you wire one. | Beacon on the Kartra page. |
+| HighLevel | `highlevel` | `HIGHLEVEL_WEBHOOK_SECRET` | A workflow webhook in the generic shape for registration. | Beacon on the funnel page. |
+| Riverside | `riverside` | `RIVERSIDE_WEBHOOK_SECRET` | None for an audience. | Beacon or a generic leave POST. |
+| YouTube Live | `youtube` | `WEBINAR_BEACON_TOKEN` | None. youtube.com does not identify viewers. | Beacon only on your embed page. |
+| Vimeo Live | `vimeo` | `WEBINAR_BEACON_TOKEN` | None. vimeo.com does not identify viewers. | Beacon only on your embed page. |
+| Generic | `generic` | `WEBINAR_WEBHOOK_SECRET` | `attendance.left`, `attendance.joined`, `registrant.registered`, `session.upsert` | Under a second after your POST. |
+
+`WEBINAR_BEACON_TOKEN` (or the org `t` token) authorizes `POST /api/webinar/beacon`. `WEBINAR_BEACON_GRACE_MS` defaults to 12000.
 
 ## Known gaps
 
-- WebinarJam / EverWebinar do not send real-time leave. Instant recovery needs Zoom, Demio, GoTo, or a generic leave POST.
-- The minute tick is what places the 3-minute and 10-minute redials. If the host only runs the hourly cron, those redials wait until the hour. The first call and the no-answer SMS do not wait on the cron.
-- Memory mode (no Supabase) drops recovery state on restart. Production needs the database.
+- Zoom is the only vendor in this list with a documented real-time leave webhook. Everyone else is the beacon, a post-session report, or a generic POST you send yourself.
+- The beacon cannot run inside Zoom, YouTube, Vimeo, StreamYard, or the ON24 console. It only sees pages you can edit.
+- The minute tick places the 3-minute and 10-minute redials, and it is also what notices a missed heartbeat if the page never fired pagehide. Vercel Hobby cannot run a minute cron.
+- Memory mode (no Supabase) drops recovery state and heartbeats on restart. Production needs the database and migration `0059_webinar.sql`.

@@ -25,6 +25,8 @@ import {
   webinarCounts,
 } from "@/lib/webinar/store";
 import { leadTimezone, localDay, normalizeEmail, phoneDigits } from "@/lib/webinar/time";
+import { sweepPresence } from "@/lib/webinar/presence";
+import { demioReportToEvents } from "@/lib/webinar/normalize";
 import type { CallClass, CanonicalEvent, RecoveryAction, WebinarConfig, WebinarRegistrant, WebinarSession } from "@/lib/webinar/types";
 
 export interface DispatchRecord {
@@ -411,7 +413,35 @@ export async function tickWebinarRecovery(orgId?: string | null): Promise<{ orgI
     const records = await lock(row.id, () => dispatchDue(org, row.id, now, cfg, Date.now()));
     dispatched += records.filter((r) => r.status === "sent").length;
   }
-  return { orgId: org, processed: due.length, dispatched };
+  const missed = sweepPresence(org, now);
+  const polled = await pollDemio(now).catch(() => [] as CanonicalEvent[]);
+  for (const event of [...missed, ...polled]) {
+    const result = await ingestWebinarEvent(org, event, Date.now());
+    dispatched += result.dispatched.filter((r) => r.status === "sent").length;
+  }
+  return { orgId: org, processed: due.length + missed.length, dispatched };
+}
+
+/** Demio has no leave webhook. This reads the post-session participants report. */
+async function pollDemio(now: Date): Promise<CanonicalEvent[]> {
+  const key = (process.env.DEMIO_API_KEY ?? "").trim();
+  const secret = (process.env.DEMIO_API_SECRET ?? "").trim();
+  const ids = (process.env.DEMIO_DATE_IDS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (!key || !secret || ids.length === 0) return [];
+  const out: CanonicalEvent[] = [];
+  for (const id of ids) {
+    try {
+      const res = await fetch(`https://my.demio.com/api/v1/report/${encodeURIComponent(id)}/participants`, {
+        headers: { "Api-Key": key, "Api-Secret": secret, Accept: "application/json" },
+        signal: AbortSignal.timeout(8_000),
+      });
+      if (!res.ok) continue;
+      out.push(...demioReportToEvents(id, await res.json(), now));
+    } catch {
+      /* one date failing must not stall the tick */
+    }
+  }
+  return out;
 }
 
 export async function onWebinarCallOutcome(input: {

@@ -4,7 +4,7 @@ Every id below is implemented in `src/lib/webinar` and executed by `tests/webina
 
 Attendance is push, not poll. Zoom, Demio, GoTo Webinar, and the generic webhook deliver join/leave as they happen. The live-leave call is placed inside that HTTP request. Later steps (redial, SMS, email) are stored with a due time and fired by `POST /api/webinar/tick` (every minute) or by the call-outcome webhook, whichever comes first. A no-answer pulls the rejoin SMS forward immediately instead of waiting out the clock.
 
-WebinarJam and EverWebinar only document registration and "attended". Those map to register/join. A true sub-second leave from those products needs their events relayed in the generic shape (or a provider that emits leave).
+Zoom is the only platform here with a documented real-time leave webhook. Everyone else uses the presence beacon (pagehide, or a missed heartbeat of about 12 seconds) or a post-session report. The beacon only runs on a page you can edit.
 
 Recovery stops in the same turn as a rejoin, any reply, STOP / opt-out, or a booking. Pending steps are cancelled. A step that already left the building cannot be unsent.
 
@@ -52,6 +52,8 @@ Recovery stops in the same turn as a rejoin, any reply, STOP / opt-out, or a boo
 | S40_live_leave_without_prior_join_still_calls | Leave arrives and the join webhook was missed | Still treated as a live leave. The call goes out. |
 | S41_replay_drop_near_offer | They drop the replay near the offer | State `pitch_drop`, but the call is not a live-room override (quiet hours and Sunday still apply). |
 | S42_session_end_then_stale_leave | They were in the room at the end; an older leave arrives after | State `attended`. The stale leave does not start a recovery call. |
+| S43_beacon_pagehide_calls | The presence snippet sends join, then leave (pagehide) | One call, under a second after the leave POST. Used for platforms with no leave webhook. |
+| S44_missed_heartbeat_calls | Heartbeats stop for longer than the grace (default 12s) | Treated as a leave. One call. |
 
 ## Compliance defaults
 
@@ -75,10 +77,52 @@ Configurable. Unset means these values, not unlimited.
 
 UK mobile numbers (`+44`) resolve to `Europe/London`. NANP numbers use the area-code zone already used by the dialer. Quiet hours are inside both the US TCPA window (8:00–21:00) and Ofcom's evening cutoff. STOP, a verbal opt-out, and a do-not-contact flag suppress every session for that email and phone.
 
+## Platforms
+
+Leave detection is only as fast as the vendor. "Webhook" means they POST a leave. "Beacon" means a script on a page you control (pagehide is immediate, a missed heartbeat is about 12 seconds). "After the session" means the vendor's own event arrives when the session is over, or later.
+
+| Platform | How a leave is seen | Realistic latency | Secret |
+| --- | --- | --- | --- |
+| Zoom Webinars and Meetings | `participant_left` webhook, plus URL validation | A few seconds for Zoom to deliver, then under a second for us to dial | `ZOOM_WEBHOOK_SECRET` |
+| GoTo Webinar | Join webhook only. Official events do not include leave. Beacon, or a relayed `attendance.left` | Beacon: immediate on pagehide, ~12s if the tab dies | `GOTO_WEBHOOK_SECRET` |
+| Demio | No webhooks. Beacon during the session. Participants report (`left early`, `did not attend`) after it | Beacon during; the report is after the session | `DEMIO_API_KEY`, `DEMIO_API_SECRET`, `DEMIO_DATE_IDS` |
+| WebinarJam | Registration and attended only | Beacon | `WEBINARJAM_WEBHOOK_SECRET` |
+| EverWebinar | Same as WebinarJam | Beacon | `WEBINARJAM_WEBHOOK_SECRET` |
+| Livestorm | `people.attended` / `people.not_attended` fire after the session | Beacon for a live leave | `LIVESTORM_WEBHOOK_SECRET` |
+| WebinarGeek | "Started watching" is when they open the page. "New viewer" is up to 2 hours after they leave | Beacon for a live leave. Their own leave signal is up to 2 hours | `WEBINARGEK_WEBHOOK_SECRET` |
+| BigMarker | Registration is live. Attendee rows arrive when the session ends | Beacon for a live leave | `BIGMARKER_WEBHOOK_SECRET` |
+| Zoho Webinar / Meeting | Join and "member removed" webhooks. No voluntary-leave event | Beacon for a tab close. Removal is a webhook | `ZOHO_WEBHOOK_SECRET` |
+| ClickMeeting | No verified instant leave. Connectors poll about every 15 minutes | Beacon, or a generic leave POST | `CLICKMEETING_WEBHOOK_SECRET` |
+| ON24 | Polled registrant/attendee signals. The ON24 console will not run our script | Beacon only on a page you own | `ON24_WEBHOOK_SECRET` |
+| StreamYard | No per-viewer webhook. Their room will not run our script | Beacon only on a wrapper page you own | `WEBINAR_BEACON_TOKEN` |
+| Kajabi, Kartra, HighLevel | No leave webhook. Their pages accept custom code | Beacon | `KAJABI_WEBHOOK_SECRET`, `KARTRA_WEBHOOK_SECRET`, `HIGHLEVEL_WEBHOOK_SECRET` |
+| Riverside | Recording studio, not a registrant webinar | Beacon or a generic leave POST | `RIVERSIDE_WEBHOOK_SECRET` |
+| YouTube Live, Vimeo Live | No per-viewer identity or leave. youtube.com / vimeo.com are invisible | Beacon only on a page you own that embeds the player | `WEBINAR_BEACON_TOKEN` |
+| Generic | You POST `attendance.left` | Under a second after your POST | `WEBINAR_WEBHOOK_SECRET` |
+
+Embed the beacon on a page you control:
+
+```html
+<script>
+  window.RR_WEBINAR = {
+    endpoint: "https://<host>/api/webinar/beacon?org=<ORG_ID>&t=<org token>&provider=webinarjam",
+    sessionId: "SESSION_ID",
+    email: "REGISTRANT_EMAIL",
+    phone: "+44...",
+    name: "Name",
+    provider: "webinarjam",
+    consent: { call: true, sms: true }
+  };
+</script>
+<script src="https://<host>/api/webinar/beacon.js"></script>
+```
+
+`consent.call` must be true or the beacon will not dial. Hiding the tab starts an 8 second timer before a leave; closing the page sends the leave immediately. A heartbeat every 5 seconds covers a crashed tab: silence for 12 seconds becomes a leave on the next tick.
+
 ## What is not covered
 
 - Provider delivery delay before the webhook hits us. Once the request is in the process, call initiation is under a second (S34). A provider that only polls attendance cannot meet that.
-- WebinarJam / EverWebinar native leave events. They do not emit them. Relay leave in the generic payload if you need the instant call.
+- A leave from inside Zoom's own window is the Zoom webhook. The beacon does not run inside Zoom, YouTube, Vimeo, StreamYard, or the ON24 console.
 - Voicemail drop audio on a raw Twilio `CALL_TWIML_URL` that does not run the call gateway. The `voicemail` script is sent on the voice webhook payload. The gateway speaks it when AMD says machine. A bare Twilio URL does not.
 - Carrier-level DNC lists we have not been given. A number is suppressed when this system recorded STOP, a verbal opt-out, or `doNotContact`.
 - A human-quality live conversation when `ANTHROPIC_API_KEY` is unset. Replies still go out, from the same template brain the rest of the product uses.

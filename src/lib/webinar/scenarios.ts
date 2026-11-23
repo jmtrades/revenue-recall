@@ -46,6 +46,8 @@ export const SCENARIO_IDS = [
   "S40_live_leave_without_prior_join_still_calls",
   "S41_replay_drop_near_offer",
   "S42_session_end_then_stale_leave",
+  "S43_beacon_pagehide_calls",
+  "S44_missed_heartbeat_calls",
 ] as const;
 
 export type ScenarioId = (typeof SCENARIO_IDS)[number];

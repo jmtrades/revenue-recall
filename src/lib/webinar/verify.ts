@@ -16,6 +16,11 @@ export function zoomEncryptedToken(secret: string, plainToken: string): string {
   return crypto.createHmac("sha256", secret).update(plainToken).digest("hex");
 }
 
+/** GoTo signs `timestamp:rawBody` with HMAC-SHA256 and base64-encodes it. */
+export function gotoSignature(secret: string, timestamp: string, rawBody: string): string {
+  return crypto.createHmac("sha256", secret).update(`${timestamp}:${rawBody}`).digest("base64");
+}
+
 function header(headers: Headers, name: string): string | null {
   return headers.get(name);
 }
@@ -58,11 +63,25 @@ export function verifyWebinarRequest(input: {
     return { ok: true };
   }
 
+  if (provider === "goto" || provider === "gotowebinar") {
+    const ts = header(input.headers, "x-webhook-signature-timestamp");
+    const sig = header(input.headers, "x-webhook-signature");
+    if (ts && sig) {
+      const ms = Number(ts) < 1e12 ? Number(ts) * 1000 : Number(ts);
+      const now = input.now ?? new Date();
+      if (!Number.isFinite(ms) || Math.abs(now.getTime() - ms) > MAX_SKEW_MS) return { ok: false, reason: "stale_timestamp" };
+      const expected = gotoSignature(secret, ts, input.rawBody);
+      if (!safeEqual(sig, expected)) return { ok: false, reason: "bad_signature" };
+      return { ok: true };
+    }
+  }
+
   const sig =
     header(input.headers, "x-webinar-signature") ??
     header(input.headers, "x-demio-signature") ??
     header(input.headers, "x-webinarjam-signature") ??
-    header(input.headers, "x-goto-signature");
+    header(input.headers, "x-goto-signature") ??
+    header(input.headers, "signature");
   if (!verifyHmacSignature(secret, input.rawBody, sig)) return { ok: false, reason: "bad_signature" };
   return { ok: true };
 }

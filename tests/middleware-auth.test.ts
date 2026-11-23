@@ -28,6 +28,8 @@ describe("middleware auth-gate allowlist (real isPublicRoute)", () => {
       "/api/webinar/events",
       "/api/webinar/tick",
       "/api/webinar/status",
+      "/api/webinar/beacon",
+      "/api/webinar/beacon.js",
     ]) {
       expect(isPublicRoute(p), `${p} must bypass the auth gate`).toBe(true);
     }
