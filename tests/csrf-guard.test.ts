@@ -25,6 +25,8 @@ describe("CSRF guard — which requests must prove same-origin", () => {
       "/api/inbound/sms", // Twilio signature
       "/api/inbound/email",
       "/api/calls/log", // gateway COMMS_WEBHOOK_TOKEN
+      "/api/webinar/events", // webinar HMAC
+      "/api/webinar/tick", // CRON_SECRET
       "/api/v1/leads", // public API key
       "/api/forms/submit", // HMAC form token
       "/api/bookings/create", // HMAC booking token

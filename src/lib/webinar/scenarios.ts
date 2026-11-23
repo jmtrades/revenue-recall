@@ -1,0 +1,51 @@
+/**
+ * Scenario ids covered by the webinar lifecycle. docs/WEBINAR_SCENARIOS.md must
+ * mention every id, and tests/webinar-scenarios.test.ts must run every id.
+ * Adding a scenario without a test (or a doc line) fails CI.
+ */
+export const SCENARIO_IDS = [
+  "S01_register_schedules_reminders",
+  "S02_join_cancels_reminders",
+  "S03_late_join_flagged",
+  "S04_leave_immediate_call",
+  "S05_pitch_drop_copy",
+  "S06_rejoin_cancels_recovery",
+  "S07_duplicate_event_noop",
+  "S08_stale_leave_after_rejoin_ignored",
+  "S09_newer_join_beats_older_leave",
+  "S10_no_answer_accelerates_sms",
+  "S11_voicemail_script_on_first_call_only",
+  "S12_rejoin_after_no_answer_stops",
+  "S13_sms_stop_opts_out_all_sessions",
+  "S14_sms_natural_language_stops_and_replies",
+  "S15_booked_terminal",
+  "S16_no_show_never_joined",
+  "S17_replay_stops_live_recovery",
+  "S18_replay_complete_followup",
+  "S19_quiet_hours_defer_scheduled_not_live_leave",
+  "S20_sunday_blocks_scheduled_not_live_leave",
+  "S21_daily_call_cap_defers",
+  "S22_missing_consent_skips_call_sends_email",
+  "S23_duplicate_registration_merges",
+  "S24_concurrent_webinars_isolated_until_opt_out",
+  "S25_provider_failure_retries_then_sms",
+  "S26_wrong_number_stops_calls_keeps_email",
+  "S27_short_hangup_stops_redial",
+  "S28_busy_stays_in_recovery",
+  "S29_dnc_blocks_every_channel",
+  "S30_leave_before_session_live_ignored",
+  "S31_webhook_rejects_bad_signature",
+  "S32_zoom_url_validation",
+  "S33_zoom_participant_left_normalized",
+  "S34_leave_to_call_latency_under_one_second",
+  "S35_demio_webinarjam_goto_normalize",
+  "S36_email_reply_stops_recovery",
+  "S37_session_call_cap",
+  "S38_connected_call_moves_to_followup",
+  "S39_verbal_opt_out_on_call",
+  "S40_live_leave_without_prior_join_still_calls",
+  "S41_replay_drop_near_offer",
+  "S42_session_end_then_stale_leave",
+] as const;
+
+export type ScenarioId = (typeof SCENARIO_IDS)[number];

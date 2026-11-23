@@ -11,6 +11,18 @@ describe("call meta signing", () => {
     expect(verifyCallMeta(signed)).toBe(true);
   });
 
+  it("binds webinar registrant ids into the signature", () => {
+    const signed = signCallMeta({
+      orgId: "org_1",
+      contactId: "c_1",
+      webinarSessionId: "sess",
+      webinarRegistrantId: "reg",
+      webinarStepId: "leave-call-1",
+    });
+    expect(verifyCallMeta(signed)).toBe(true);
+    expect(verifyCallMeta({ ...signed, webinarRegistrantId: "someone-else" })).toBe(false);
+  });
+
   it("rejects tampered identity fields", () => {
     const signed = signCallMeta({ orgId: "org_1", contactId: "c_1" });
     expect(verifyCallMeta({ ...signed, orgId: "org_2" })).toBe(false); // re-pointed at another tenant

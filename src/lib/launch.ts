@@ -3,6 +3,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { isAiConfigured } from "@/lib/ai/client";
 import { channelStatus } from "@/lib/comms";
 import { complianceConfig, emailDomainVerified, smsA2pRegistered } from "@/lib/compliance";
+import { webinarArmed } from "@/lib/webinar/config";
 
 /**
  * Launch readiness — the single source of truth for "what still needs wiring,"
@@ -46,6 +47,9 @@ export function launchStatus(): LaunchStatus {
     warnings.push("SMS isn't A2P 10DLC registered — register your brand + campaign with your carrier, then set SMS_A2P_REGISTERED=true. Until then autonomous texts are held for review.");
   }
   if (!isAiConfigured()) warnings.push("AI is in template mode — add ANTHROPIC_API_KEY for live, in-your-voice drafting.");
+  if (!webinarArmed()) {
+    warnings.push("Webinar recovery isn't armed — set WEBINAR_WEBHOOK_SECRET (and the provider secret, if you use one) and point the webinar platform at /api/webinar/events. See RELAUNCH.md.");
+  }
   // Signup confirmation emails are sent by Supabase Auth's OWN SMTP (separate from
   // the app's Resend), so requiring confirmation without Supabase custom SMTP set
   // up can strand a real signup on Supabase's rate-limited default sender. We can't
