@@ -1,6 +1,6 @@
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
-import { getFreeDb, readAnalytics, writeAnalytics } from "@/lib/free/db";
+import { getFreeDb } from "@/lib/free/db";
 import type { NewRoiEvent, RoiActor, RoiChannel, RoiEvent, RoiEventName } from "@/lib/roi/types";
 import { isRoiEventName } from "@/lib/roi/types";
 
@@ -64,7 +64,7 @@ export async function recordRoiEvent(input: NewRoiEvent): Promise<void> {
   };
   const file = getFreeDb();
   if (file) {
-    writeAnalytics(file, orgId, event);
+    file.writeAnalytics(orgId, event);
     return;
   }
   if (!isSupabaseConfigured()) {
@@ -100,7 +100,7 @@ export async function listRoiEvents(orgId?: string): Promise<RoiEvent[]> {
   const id = await scope(orgId);
   const file = getFreeDb();
   if (file) {
-    return readAnalytics(file, id).flatMap((row) => {
+    return file.readAnalytics(id).flatMap((row) => {
       if (!isRoiEventName(row.name)) return [];
       const event: RoiEvent = {
         id: row.dedupeKey,

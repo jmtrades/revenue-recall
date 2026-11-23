@@ -1,5 +1,5 @@
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
-import { getFreeDb, readDoc, writeDoc } from "@/lib/free/db";
+import { getFreeDb } from "@/lib/free/db";
 import { phoneDigits, phonesMatch, normalizeEmail } from "@/lib/webinar/time";
 import type { WebinarRegistrant, WebinarSession } from "@/lib/webinar/types";
 
@@ -28,7 +28,7 @@ function bag(orgId: string): Mem {
   let b = memory.get(orgId);
   if (!b) {
     const file = getFreeDb();
-    const saved = file ? readDoc<SavedBag>(file, orgId, "webinar") : null;
+    const saved = file ? file.readDoc<SavedBag>(orgId, "webinar") : null;
     b = saved
       ? { events: new Set(saved.events), sessions: new Map(saved.sessions), registrants: new Map(saved.registrants) }
       : { events: new Set(), sessions: new Map(), registrants: new Map() };
@@ -46,7 +46,7 @@ function remember(orgId: string): void {
     sessions: [...b.sessions.entries()],
     registrants: [...b.registrants.entries()],
   };
-  writeDoc(file, orgId, "webinar", doc);
+  file.writeDoc(orgId, "webinar", doc);
 }
 
 export function __resetWebinarForTests(): void {
