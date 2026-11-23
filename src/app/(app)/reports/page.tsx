@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getReports, getWonBackDeals } from "@/lib/queries";
 import { clickStats, engagementStats } from "@/lib/tracking";
 import { bookingStats } from "@/lib/meetings/stats";
@@ -41,7 +42,11 @@ export default async function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Reports" subtitle="Pipeline health, conversion, sources, and team performance." />
+      <PageHeader
+        title="Reports"
+        subtitle="Pipeline health, conversion, sources, and team performance."
+        action={<Link href="/results" className="text-sm font-medium text-brand hover:underline">Results</Link>}
+      />
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Closed Won" value={money(m.wonValue, m.currency)} hint={`${m.wonCount} deals`} tone="success" countUp />

@@ -11,7 +11,9 @@ import type { Activity } from "@/lib/crm/types";
 import { isSupabaseConfigured, getSupabase } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getActiveOrgId } from "@/lib/supabase/tenant";
-import { hourInZone, dayInZone } from "@/lib/tz";
+import { hourInZone, dayInZone, weekdayInZone } from "@/lib/tz";
+import { loadRoi } from "@/lib/roi/load";
+import { buildWeeklySummary } from "@/lib/roi/weekly";
 
 /**
  * Scheduled email notifications. Driven by the cron tick, gated by the org's
@@ -21,7 +23,7 @@ import { hourInZone, dayInZone } from "@/lib/tz";
  * flow is exercisable in the demo and goes live the moment a provider is set.
  */
 
-export type DigestKind = "daily_digest" | "task_reminders";
+export type DigestKind = "daily_digest" | "task_reminders" | "weekly_results";
 
 export interface DigestResult {
   sent: DigestKind[];
@@ -201,6 +203,21 @@ export async function runDigests(now: Date = new Date()): Promise<DigestResult> 
     result.recipients += await broadcast(to, subject, body);
     await markSent("daily_digest", day);
     result.sent.push("daily_digest");
+  }
+
+  // Monday, local to the org: one results letter for the trailing window.
+  // Deduped like the daily digest, so a chatty cron still sends it once.
+  if (prefs.weekly_results && weekdayInZone(now, tz) === 1 && !(await alreadySent("weekly_results", day))) {
+    try {
+      const loaded = await loadRoi(now);
+      const base = publicSiteUrl();
+      const { subject, body } = buildWeeklySummary(loaded.report, orgName, base ? `${base.replace(/\/$/, "")}/results` : null);
+      result.recipients += await broadcast(to, subject, body);
+      await markSent("weekly_results", day);
+      result.sent.push("weekly_results");
+    } catch {
+      /* a results hiccup must not block the daily digest */
+    }
   }
 
   if (prefs.task_reminders && !(await alreadySent("task_reminders", day))) {

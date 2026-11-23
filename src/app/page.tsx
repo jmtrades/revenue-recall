@@ -226,6 +226,39 @@ export default function LandingPage() {
         </Stagger>
       </section>
 
+      <section className="border-b border-border">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-16 sm:py-24 lg:grid-cols-12">
+          <Reveal className="lg:col-span-5">
+            <span className="eyebrow">The results</span>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">
+              You see the work, and the revenue it put back.
+            </h2>
+            <p className="mt-4 max-w-md text-lg leading-relaxed text-muted">
+              Every send, call, reply, webinar join and leave, booking, and win is logged to your workspace. Results shows recovered revenue, leads brought back from a drop-off, and an estimate of hours saved — with the week written out as an email you can forward.
+            </p>
+          </Reveal>
+          <Reveal delay={0.08} className="lg:col-span-7">
+            <div className="bezel rounded-[1.75rem] p-2">
+              <div className="rounded-[1.4rem] border border-border/80 bg-surface p-5 sm:p-6">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {[
+                    ["Revenue recovered", "Won deals, attributed to the touch before them"],
+                    ["Rescued from drop-off", "Left the room, then rejoined, replied, or booked"],
+                    ["Hours saved", "Estimated from the AI actions that were logged"],
+                  ].map(([title, body]) => (
+                    <div key={title} className="rounded-2xl bg-surface-2/80 p-4">
+                      <p className="text-sm font-medium text-fg">{title}</p>
+                      <p className="mt-2 text-xs leading-relaxed text-muted">{body}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-4 text-xs text-muted">Numbers come from your ledger. An empty week stays empty.</p>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
       {/* Integrations / works-with bar */}
       <section className="border-b border-border">
         <Reveal className="mx-auto max-w-6xl px-5 py-10">

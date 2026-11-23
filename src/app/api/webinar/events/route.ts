@@ -71,6 +71,12 @@ export const POST = withGuard(async (req: Request) => {
   const results = orgParam ? await runWithOrg(orgParam, run) : await run();
   const latencyMs = results.find((r) => r.latencyMs !== undefined)?.latencyMs;
   logInfo("webinar.webhook", { provider, orgId, events: events.length, latencyMs });
+  try {
+    const { captureWebinarEvents } = await import("@/lib/roi/capture");
+    await captureWebinarEvents(orgId, events);
+  } catch {
+    /* attendance is already ingested; the results ledger must not fail the webhook */
+  }
   return NextResponse.json({ ok: true, results, latencyMs });
 });
 

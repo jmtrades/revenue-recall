@@ -332,11 +332,24 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
             });
             // Attribute autopilot work on an at-risk deal so won-back ROI counts it.
             if (t.reason) await recordRecallTouch({ dealId: t.opp.id, contactId: t.opp.contactId, channel, source: "autopilot", industry: org.industryId });
-            void recordSent({ orgId: org.id, contactId: t.opp.contactId, dealId: t.opp.id, channel });
+            void recordSent({ orgId: org.id, contactId: t.opp.contactId, dealId: t.opp.id, channel, actor: "ai" });
           }
         }
       }
-      if (result === "drafted" || result === "queued") drafted += 1;
+      if (result === "drafted" || result === "queued") {
+        drafted += 1;
+        const { captureRoi } = await import("@/lib/roi/capture");
+        const hour = new Date().toISOString().slice(0, 13);
+        void captureRoi({
+          dedupeKey: `ai-draft:${t.opp.id}:${channel}:${hour}`,
+          name: "ai.action",
+          channel: channel === "call" ? "call" : channel === "sms" ? "sms" : "email",
+          contactId: t.opp.contactId,
+          dealId: t.opp.id,
+          actor: "ai",
+          orgId: org.id,
+        });
+      }
 
       // Review-mode email/SMS drafts become approval-inbox items. Tag the ones
       // working an at-risk (recall-scored) deal so the approve route attributes a

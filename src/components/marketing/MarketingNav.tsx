@@ -59,15 +59,15 @@ export function MarketingNav() {
   }, []);
 
   return (
-    <header
-      className={`sticky top-0 z-40 border-b transition-[background-color,border-color,box-shadow] duration-300 ${
-        scrolled
-          ? "border-border/60 bg-bg/80 shadow-[0_1px_0_0_rgb(255_255_255/0.03),0_10px_30px_-22px_rgb(0_0_0/0.8)] backdrop-blur-xl"
-          : "border-transparent bg-bg/30 backdrop-blur-md"
-      }`}
-    >
+    <header className="sticky top-0 z-40 px-3 pt-3 sm:px-5">
       <ScrollProgress />
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
+      <div
+        className={`mx-auto flex h-14 max-w-6xl items-center justify-between rounded-full border px-3 transition-[background-color,border-color,box-shadow] duration-300 sm:px-4 ${
+          scrolled
+            ? "border-border/80 bg-bg/85 shadow-soft backdrop-blur-xl"
+            : "border-white/10 bg-surface/55 backdrop-blur-md"
+        }`}
+      >
         <Link href="/" className="group flex items-center gap-2.5">
           <LogoBadge box={32} className="transition-transform duration-200 ease-out group-hover:scale-105" />
           <span className="font-display text-[15px] font-semibold tracking-tight text-fg">Revenue Recall</span>

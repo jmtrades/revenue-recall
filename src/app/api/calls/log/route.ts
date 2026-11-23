@@ -147,6 +147,20 @@ export const POST = withGuard(async (req: Request) => {
   const orgId = b.meta?.orgId;
   try {
     const activity = orgId ? await runWithOrg(orgId, log) : await log();
+    try {
+      const { captureCall } = await import("@/lib/roi/capture");
+      await captureCall({
+        orgId,
+        callId: b.callId,
+        contactId,
+        dealId,
+        outcome: b.outcome,
+        durationSec: b.durationSec,
+        actor: b.meta?.webinarRegistrantId ? "ai" : "user",
+      });
+    } catch {
+      /* the transcript is already logged; a ledger miss must not force a retry */
+    }
     return NextResponse.json({ ok: true, logged: Boolean(activity), id: activity?.id });
   } catch (e) {
     // Un-record the dedup key so the gateway's retry can reprocess (don't lose

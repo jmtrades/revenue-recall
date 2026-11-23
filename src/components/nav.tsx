@@ -31,6 +31,7 @@ export const NAV_GROUPS: { heading: string; items: { href: string; label: string
     items: [
       { href: "/agents", label: "Autopilot", icon: "autopilot" },
       { href: "/sequences", label: "Sequences", icon: "sequences" },
+      { href: "/webinars", label: "Webinars", icon: "screen" },
       { href: "/templates", label: "Templates", icon: "templates" },
       { href: "/automations", label: "Automations", icon: "automations" },
     ],
@@ -38,6 +39,7 @@ export const NAV_GROUPS: { heading: string; items: { href: string; label: string
   {
     heading: "Insights",
     items: [
+      { href: "/results", label: "Results", icon: "spark" },
       { href: "/reports", label: "Reports", icon: "reports" },
       { href: "/forecast", label: "Forecast", icon: "forecast" },
     ],

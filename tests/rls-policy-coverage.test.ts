@@ -20,7 +20,7 @@ import { join } from "node:path";
 
 // The org-scoped tables (must match tests/org-isolation-tripwire.test.ts).
 const ORG_SCOPED_TABLES = [
-  "activities", "agent_outbox", "agent_runs", "agent_tasks", "ai_batches", "ai_usage",
+  "activities", "agent_outbox", "agent_runs", "agent_tasks", "ai_batches", "ai_usage", "analytics_events",
   "audit_log", "booking_availability", "bookings", "connections", "contacts",
   "custom_automation_runs", "custom_automations", "custom_sequences", "custom_templates",
   "digest_runs", "invitations", "manual_tasks", "meeting_types", "members", "message_events",

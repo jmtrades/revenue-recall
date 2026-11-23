@@ -3,6 +3,7 @@ import { publicSiteUrl } from "@/lib/site";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { safeEqual } from "@/lib/safe-compare";
+import { captureMessage } from "@/lib/roi/capture";
 
 /**
  * Click tracking for outbound links. At send time, http(s) URLs in a message
@@ -17,6 +18,10 @@ export interface ClickContext {
   contactId?: string;
   dealId?: string;
   channel?: "email" | "sms";
+  /** Who performed the send. Replies and clicks are the prospect's. */
+  actor?: "ai" | "user" | "system";
+  sequenceId?: string;
+  campaignId?: string;
 }
 
 interface ClickPayload extends ClickContext {
@@ -93,6 +98,7 @@ export async function recordClick(p: ClickPayload): Promise<void> {
   } catch {
     /* best-effort */
   }
+  void captureMessage({ kind: "click", orgId: p.orgId, contactId: p.contactId, dealId: p.dealId, channel: p.channel, url: p.u });
 }
 
 /** Record an outbound 'sent' or inbound 'reply' engagement event. Best-effort —
@@ -101,13 +107,25 @@ export async function recordClick(p: ClickPayload): Promise<void> {
 async function recordEvent(kind: "sent" | "reply", ctx: ClickContext): Promise<void> {
   try {
     const client = getSupabase();
-    if (!client) return;
-    const orgId = ctx.orgId ?? (await resolveActiveOrgId().catch(() => null));
-    if (!orgId) return;
-    await client.from("message_events").insert({ org_id: orgId, kind, channel: ctx.channel ?? null, contact_id: ctx.contactId ?? null, deal_id: ctx.dealId ?? null, url: null });
+    if (client) {
+      const orgId = ctx.orgId ?? (await resolveActiveOrgId().catch(() => null));
+      if (orgId) {
+        await client.from("message_events").insert({ org_id: orgId, kind, channel: ctx.channel ?? null, contact_id: ctx.contactId ?? null, deal_id: ctx.dealId ?? null, url: null });
+      }
+    }
   } catch {
     /* best-effort */
   }
+  void captureMessage({
+    kind,
+    orgId: ctx.orgId,
+    contactId: ctx.contactId,
+    dealId: ctx.dealId,
+    channel: ctx.channel,
+    actor: ctx.actor,
+    sequenceId: ctx.sequenceId,
+    campaignId: ctx.campaignId,
+  });
 }
 
 /** An outbound email/SMS was sent. */

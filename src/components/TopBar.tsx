@@ -6,7 +6,7 @@ import { UserMenu } from "@/components/UserMenu";
 
 export function TopBar({ userName, userEmail, signedIn, orgName, showAdmin = false }: { userName: string; userEmail?: string; signedIn: boolean; orgName: string; showAdmin?: boolean }) {
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-bg/80 px-4 py-3 backdrop-blur sm:px-8">
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border/80 bg-bg/75 px-4 py-3 backdrop-blur-xl sm:px-8">
       <div className="flex min-w-0 items-center gap-3">
         <MobileMenu orgName={orgName} showAdmin={showAdmin} />
         <CommandSearch />

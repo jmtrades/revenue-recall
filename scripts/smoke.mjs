@@ -37,6 +37,8 @@ const ROUTES = [
   "/templates",
   "/automations",
   "/reports",
+  "/results",
+  "/webinars",
   "/forecast",
   "/settings",
   "/billing",

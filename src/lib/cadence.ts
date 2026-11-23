@@ -566,7 +566,7 @@ export async function runDueSteps(now: string = new Date().toISOString()): Promi
       });
       // Attribute the recall effort only on an ACTUAL send.
       if (seq.id === "recall") await recordRecallTouch({ dealId: deal?.id, contactId: e.contactId, channel: step.channel, source: "cadence", occurredAt: now, industry: org.industryId, sequenceId: seq.id, stepIndex: e.stepIndex });
-      void recordSent({ orgId: org.id, contactId: e.contactId, dealId: deal?.id, channel: step.channel });
+      void recordSent({ orgId: org.id, contactId: e.contactId, dealId: deal?.id, channel: step.channel, actor: "ai", sequenceId: seq.id, campaignId: seq.id });
       sent += 1; // count toward the shared daily cap
       result.sent += 1;
     } else {

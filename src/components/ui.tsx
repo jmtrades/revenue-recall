@@ -57,8 +57,8 @@ export function Button({
   onClick?: () => void;
   disabled?: boolean;
 }) {
-  const base = "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-[transform,background-color,border-color,color] duration-150 active:scale-[0.97] disabled:opacity-50";
-  const sizes = { sm: "px-2.5 py-1 text-xs", md: "px-3.5 py-2 text-sm" };
+  const base = "inline-flex items-center justify-center gap-1.5 rounded-full font-medium transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.98] disabled:opacity-50";
+  const sizes = { sm: "px-3 py-1.5 text-xs", md: "px-4 py-2 text-sm" };
   const variants = {
     primary: "bg-brand-strong text-white hover:bg-brand-strong/90",
     ghost: "text-muted hover:bg-surface-2 hover:text-fg",
@@ -84,7 +84,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="grid place-items-center rounded-2xl border border-dashed border-border bg-surface/40 px-6 py-14 text-center">
+    <div className="grid place-items-center rounded-[1.5rem] border border-dashed border-border bg-surface/50 px-6 py-16 text-center">
       <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20">
         {iconName ? <Icon name={iconName} size={22} /> : icon ? <span className="text-xl text-muted/70">{icon}</span> : <Icon name="inbox" size={22} />}
       </span>
@@ -124,12 +124,12 @@ export function ActivityIcon({ kind }: { kind: string }) {
 
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
-    <header className="mb-6 flex items-end justify-between gap-4">
-      <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-fg">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
+    <header className="mb-8 flex flex-col gap-4 border-b border-border/70 pb-5 sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0">
+        <h1 className="font-display text-[1.7rem] font-semibold leading-tight tracking-tight text-fg sm:text-[2rem]">{title}</h1>
+        {subtitle && <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted">{subtitle}</p>}
       </div>
-      {action}
+      {action ? <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div> : null}
     </header>
   );
 }
