@@ -16,6 +16,7 @@ import { getReports } from "@/lib/queries";
 import { resolveProvider } from "@/lib/crm/registry";
 import { compactMoney, pct } from "@/lib/format";
 import { launchStatus } from "@/lib/launch";
+import { webinarArmed } from "@/lib/webinar/config";
 import type { Activity } from "@/lib/crm/types";
 
 export const metadata = { title: "Admin — Revenue Recall" };
@@ -71,6 +72,7 @@ export default async function AdminPage() {
     { label: "Premium voice", live: ttsAvailable() },
     { label: "Live call agent", live: convaiConfigured() },
     { label: "Billing", live: billingConfigured() },
+    { label: "Webinar recovery", live: webinarArmed() },
   ];
 
   // Launch readiness — the few things that actually gate "can I go live?", each

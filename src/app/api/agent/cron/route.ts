@@ -98,6 +98,11 @@ async function runForCurrentOrg() {
   // Execute due call retries (self-gated: only orgs with an enabled auto call
   // task; quiet hours / opt-outs / attempt budget enforced inside).
   const callRetries = await runCallRetries().catch((e) => ({ error: e instanceof Error ? e.message : "retries failed" }));
+  // Webinar redials/SMS/email that came due since the last tick. The instant
+  // leave→call path does not use this; it runs inside the webinar webhook.
+  const { tickWebinarRecovery } = await import("@/lib/webinar/engine");
+  const { resolveActiveOrgId } = await import("@/lib/supabase/active-org");
+  const webinar = await tickWebinarRecovery(await resolveActiveOrgId()).catch((e) => ({ error: e instanceof Error ? e.message : "webinar tick failed" }));
   const batches = await collectDueBatches().catch((e) => ({ error: e instanceof Error ? e.message : "batch collect failed" }));
   // Remind invitees before their booked meetings (self-dedups per booking; only
   // sends within the reminder window). Best-effort and never throws.
@@ -123,10 +128,10 @@ async function runForCurrentOrg() {
   const usageNudge = await runUsageNudge().catch((e) => ({ error: e instanceof Error ? e.message : "usage nudge failed" }));
   // Surface engine errors to the operator — an autonomous tick that silently
   // errors every run would otherwise go unnoticed.
-  for (const [stage, result] of Object.entries({ cadence, batches, digests, callRetries, reminders, idleRules, usageNudge })) {
+  for (const [stage, result] of Object.entries({ cadence, batches, digests, callRetries, reminders, idleRules, usageNudge, webinar })) {
     if (isErrored(result)) await sendAlert(`cron.${stage}`, { error: result.error });
   }
-  return { ran: results.length, results, autopilotLocked: !fence, cadence, batches, digests, callRetries, reminders, idleRules, usageNudge };
+  return { ran: results.length, results, autopilotLocked: !fence, cadence, batches, digests, callRetries, reminders, idleRules, usageNudge, webinar };
 }
 
 /** Fan out: process every org in its own authenticated sub-request so each gets

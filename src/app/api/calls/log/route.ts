@@ -27,7 +27,15 @@ const Body = z.object({
   // The gateway echoes the per-call meta it received from /api/calls/place —
   // including the owning org id, so the transcript lands on the RIGHT tenant's
   // timeline instead of falling back to the first org.
-  meta: z.object({ contactId: z.string().optional(), dealId: z.string().optional(), orgId: z.string().max(200).optional(), sig: z.string().max(64).optional() }).partial().optional(),
+  meta: z.object({
+    contactId: z.string().optional(),
+    dealId: z.string().optional(),
+    orgId: z.string().max(200).optional(),
+    sig: z.string().max(64).optional(),
+    webinarSessionId: z.string().max(200).optional(),
+    webinarRegistrantId: z.string().max(200).optional(),
+    webinarStepId: z.string().max(80).optional(),
+  }).partial().optional(),
   outcome: z.string().max(80).optional(),
   transcript: z.string().max(20000).optional(),
   durationSec: z.number().nonnegative().optional(),
@@ -103,6 +111,26 @@ export const POST = withGuard(async (req: Request) => {
     // A verbal opt-out on the call → durable do-not-contact, so future outreach
     // (calls, texts, email) is suppressed for this contact. Best-effort: the
     // logged call already records the request even if the flag write can't land.
+    // Webinar recovery advances on the outcome (no-answer → SMS, rejoin already
+    // cancelled, verbal opt-out stops every session). Best-effort: the CRM log
+    // above already succeeded, and a retry of this post-back is idempotent.
+    const webinarRegistrantId = b.meta?.webinarRegistrantId;
+    const webinarOrg = b.meta?.orgId;
+    if (webinarRegistrantId && webinarOrg) {
+      try {
+        const { onWebinarCallOutcome } = await import("@/lib/webinar/engine");
+        await onWebinarCallOutcome({
+          orgId: webinarOrg,
+          registrantId: webinarRegistrantId,
+          stepId: b.meta?.webinarStepId,
+          outcome: b.outcome,
+          durationSec: b.durationSec,
+          optOut: b.optOut,
+        });
+      } catch {
+        /* recovery still has the minute tick and the original event */
+      }
+    }
     if (b.optOut && contactId) {
       try {
         const provider = await resolveProvider();
