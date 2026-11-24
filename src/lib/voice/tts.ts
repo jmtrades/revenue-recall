@@ -63,6 +63,12 @@ export const ELEVEN_VOICES: Record<string, string> = {
   bm_daniel: "onwK4e9ZLuTAKqWW03F9", // Daniel
 };
 
+/** Library voices the ElevenLabs free tier rejects with HTTP 402. */
+const LIBRARY_VOICE_BLOCKED = new Set([
+  "21m00Tcm4TlvDq8ikWAM", // Rachel
+  "9BWtsMINqrJLrRacOk9x", // Aria
+]);
+
 /** OpenAI TTS voice names (the full house catalog mapped to valid OpenAI
  *  voices — a small fixed set, so several house voices share an OpenAI voice;
  *  gender stays matched). */
@@ -97,7 +103,7 @@ function groupDefault(voiceId: string): string {
   if (g === "am") return "am_adam";
   if (g === "bf") return "bf_emma";
   if (g === "bm") return "bm_george";
-  return "af_heart"; // af_ and anything unrecognized
+  return "af_jessica"; // af_ and anything unrecognized — premade, free-tier safe
 }
 
 /** Optional per-house-voice override map for Cartesia (JSON env), since its
@@ -134,7 +140,10 @@ export function providerVoice(provider: TtsProvider, voiceId?: string | null): s
   const id = voiceId && !voiceId.startsWith("clone:") ? voiceId : DEFAULT_HOUSE_VOICE;
   if (provider === "cartesia") return cartesiaVoice(voiceId);
   if (provider === "elevenlabs") {
-    if (env("ELEVENLABS_VOICE_ID") && id === DEFAULT_HOUSE_VOICE) return env("ELEVENLABS_VOICE_ID")!;
+    // An operator override is honored unless it is a library voice the free
+    // tier rejects with 402 (Rachel, Aria). Those fall through to Jessica.
+    const override = env("ELEVENLABS_VOICE_ID");
+    if (override && id === DEFAULT_HOUSE_VOICE && !LIBRARY_VOICE_BLOCKED.has(override)) return override;
     return ELEVEN_VOICES[id] ?? ELEVEN_VOICES[groupDefault(id)] ?? ELEVEN_VOICES[DEFAULT_HOUSE_VOICE];
   }
   if (env("OPENAI_TTS_VOICE") && id === DEFAULT_HOUSE_VOICE) return env("OPENAI_TTS_VOICE")!;

@@ -44,8 +44,9 @@ export const HOUSE_VOICES: HouseVoice[] = [
   { id: "bm_daniel", label: "Daniel", description: "Authoritative · UK" },
 ];
 
-/** The default house voice (Aria — maps to the gateway's default ElevenLabs voice). */
-export const DEFAULT_HOUSE_VOICE = "af_heart";
+/** The default house voice. Jessica is an ElevenLabs premade voice the free tier
+ *  can speak. Library voices (Rachel, Aria) return HTTP 402 on that plan. */
+export const DEFAULT_HOUSE_VOICE = "af_jessica";
 
 /** A selectable call voice id: a known house voice, or a `clone:<id>` signature
  *  voice (validated loosely — the gateway enforces consent before cloning). */
@@ -56,7 +57,7 @@ export function isCallVoiceId(id: string): boolean {
 }
 
 export function houseVoiceLabel(id: string | undefined | null): string {
-  if (!id) return "Aria (default)";
+  if (!id) return "Jessica (default)";
   if (id.startsWith("clone:")) return `Cloned voice (${id.slice("clone:".length)})`;
   return HOUSE_VOICES.find((v) => v.id === id)?.label ?? id;
 }

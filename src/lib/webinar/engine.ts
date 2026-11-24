@@ -97,13 +97,18 @@ function defaultPorts(): WebinarPorts {
       return mapSend(await sendEmail(input.to, input.subject, input.body));
     },
     async reply(input) {
-      const drafted = await draftReply({
-        channel: input.channel,
-        contactName: input.name || "there",
-        dealTitle: input.title,
-        incoming: input.incoming,
-      });
-      return { body: drafted.body, subject: drafted.subject };
+      try {
+        const drafted = await draftReply({
+          channel: input.channel,
+          contactName: input.name || "there",
+          dealTitle: input.title,
+          incoming: input.incoming,
+        });
+        if (drafted.body?.trim()) return { body: drafted.body, subject: drafted.subject };
+      } catch {
+        /* no Anthropic key, or the model threw — the template below still answers */
+      }
+      return { body: "Thanks for the note. I'll send the replay so you can pick it back up." };
     },
     alert: (event, detail) => sendAlert(event, detail),
   };

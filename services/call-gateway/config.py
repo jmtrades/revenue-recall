@@ -40,7 +40,9 @@ CALLER_ID = env("OUTBOUND_FROM_NUMBER", "")
 # in-house. Leave unset to use the FreeSWITCH/SIP-trunk path above instead.
 TWILIO_ACCOUNT_SID = env("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = env("TWILIO_AUTH_TOKEN")
-TWILIO_FROM_NUMBER = env("TWILIO_FROM_NUMBER")
+# Trial caller ID. Used when TWILIO_FROM_NUMBER is unset so drop-off calls still
+# leave from the configured trial line. A per-call caller ID still wins.
+TWILIO_FROM_NUMBER = env("TWILIO_FROM_NUMBER", "+17622405708")
 # Public wss:// URL of THIS gateway, reachable by Twilio (e.g. wss://calls.acme.com).
 PUBLIC_WSS_BASE = env("PUBLIC_WSS_BASE")
 
