@@ -6,7 +6,8 @@
 # /api/health every 10 minutes.
 #
 # GitHub Actions runs scheduled workflows only from the repository default
-# branch. After this file merges to that branch (main), the schedule starts.
+# branch, which is claude/build-universal-sales-system-RY33X. Merging into
+# main does not start the schedule. The file has to be on that default branch.
 # Until then, run it by hand with workflow_dispatch from any branch.
 #
 # The URL is the repo variable APP_URL when set, otherwise the live Render app.
