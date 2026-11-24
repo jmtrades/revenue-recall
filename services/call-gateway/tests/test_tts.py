@@ -20,14 +20,17 @@ class TestElevenVoice(unittest.TestCase):
 
     def test_none_uses_the_configured_fallback_then_the_default(self):
         self.assertEqual(eleven_voice(None, "FALLBACK_ID"), "FALLBACK_ID")
-        self.assertEqual(eleven_voice(None), HOUSE_TO_ELEVEN["af_heart"])
+        self.assertEqual(eleven_voice(None), HOUSE_TO_ELEVEN["af_jessica"])
+        # Library voices the free tier 402s are replaced with Jessica.
+        self.assertEqual(eleven_voice(None, "21m00Tcm4TlvDq8ikWAM"), HOUSE_TO_ELEVEN["af_jessica"])
+        self.assertEqual(eleven_voice(None, "9BWtsMINqrJLrRacOk9x"), HOUSE_TO_ELEVEN["af_jessica"])
 
     def test_unmapped_house_id_resolves_to_the_same_group(self):
         # An unknown male-UK id → the male-UK default (George), never a mismatch.
         self.assertEqual(eleven_voice("bm_unknown"), HOUSE_TO_ELEVEN["bm_george"])
         self.assertEqual(eleven_voice("am_unknown"), HOUSE_TO_ELEVEN["am_adam"])
         # Unknown group → the overall default.
-        self.assertEqual(eleven_voice("zz_unknown"), HOUSE_TO_ELEVEN["af_heart"])
+        self.assertEqual(eleven_voice("zz_unknown"), HOUSE_TO_ELEVEN["af_jessica"])
 
 
 class TestDownsample(unittest.TestCase):

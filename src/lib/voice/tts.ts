@@ -63,6 +63,12 @@ export const ELEVEN_VOICES: Record<string, string> = {
   bm_daniel: "onwK4e9ZLuTAKqWW03F9", // Daniel
 };
 
+/** Library voices the ElevenLabs free tier rejects with HTTP 402. */
+const LIBRARY_VOICE_BLOCKED = new Set([
+  "21m00Tcm4TlvDq8ikWAM", // Rachel
+  "9BWtsMINqrJLrRacOk9x", // Aria
+]);
+
 /** OpenAI TTS voice names (the full house catalog mapped to valid OpenAI
  *  voices — a small fixed set, so several house voices share an OpenAI voice;
  *  gender stays matched). */
@@ -97,7 +103,7 @@ function groupDefault(voiceId: string): string {
   if (g === "am") return "am_adam";
   if (g === "bf") return "bf_emma";
   if (g === "bm") return "bm_george";
-  return "af_heart"; // af_ and anything unrecognized
+  return "af_jessica"; // af_ and anything unrecognized — premade, free-tier safe
 }
 
 /** Optional per-house-voice override map for Cartesia (JSON env), since its
@@ -134,7 +140,10 @@ export function providerVoice(provider: TtsProvider, voiceId?: string | null): s
   const id = voiceId && !voiceId.startsWith("clone:") ? voiceId : DEFAULT_HOUSE_VOICE;
   if (provider === "cartesia") return cartesiaVoice(voiceId);
   if (provider === "elevenlabs") {
-    if (env("ELEVENLABS_VOICE_ID") && id === DEFAULT_HOUSE_VOICE) return env("ELEVENLABS_VOICE_ID")!;
+    // An operator override is honored unless it is a library voice the free
+    // tier rejects with 402 (Rachel, Aria). Those fall through to Jessica.
+    const override = env("ELEVENLABS_VOICE_ID");
+    if (override && id === DEFAULT_HOUSE_VOICE && !LIBRARY_VOICE_BLOCKED.has(override)) return override;
     return ELEVEN_VOICES[id] ?? ELEVEN_VOICES[groupDefault(id)] ?? ELEVEN_VOICES[DEFAULT_HOUSE_VOICE];
   }
   if (env("OPENAI_TTS_VOICE") && id === DEFAULT_HOUSE_VOICE) return env("OPENAI_TTS_VOICE")!;
@@ -145,7 +154,16 @@ export function providerVoice(provider: TtsProvider, voiceId?: string | null): s
  *  `use_speaker_boost` is on everywhere — it tightens fidelity to the reference
  *  voice (the difference that reads as "a real person", which is the make-or-
  *  break on a sales call) for a negligible latency cost on the turbo model. */
-export function elevenSettings(emotion?: Emotion, expressiveness?: number): { stability: number; similarity_boost: number; style: number; use_speaker_boost: boolean } {
+/** The delivery used on live calls and voicemail drops: human, not announcer. */
+export const HUMAN_VOICE = {
+  stability: 0.4,
+  similarity_boost: 0.8,
+  style: 0.3,
+  use_speaker_boost: true,
+} as const;
+
+export function elevenSettings(emotion?: Emotion, expressiveness?: number, purpose?: "call" | "voicemail" | "read"): { stability: number; similarity_boost: number; style: number; use_speaker_boost: boolean } {
+  if (purpose === "call" || purpose === "voicemail") return { ...HUMAN_VOICE };
   const boost = { use_speaker_boost: true };
   // An explicit per-org expressiveness wins: it sets stability directly (lower =
   // livelier) and nudges style up with it, overriding the per-emotion default.
@@ -165,7 +183,7 @@ export function elevenSettings(emotion?: Emotion, expressiveness?: number): { st
     case "confident":
       return { stability: 0.5, similarity_boost: 0.75, style: 0.3, ...boost };
     default:
-      return { stability: 0.5, similarity_boost: 0.75, style: 0.2, ...boost };
+      return { stability: 0.4, similarity_boost: 0.8, style: 0.3, ...boost };
   }
 }
 
@@ -200,7 +218,9 @@ export interface SynthesizeInput {
    *  production model for non-realtime audio (read-aloud, previews, the landing
    *  demo) where a second of extra latency is invisible and fidelity is the
    *  whole point. Never use "max" on the live-call path. */
-  quality?: "realtime" | "max";
+  quality?: "realtime" | "max" | "voicemail";
+  /** Live calls and voicemail drops use the fixed human delivery, not the read-aloud slider. */
+  purpose?: "call" | "voicemail" | "read";
   /** 0–1 per-org expressiveness (overrides the per-emotion ElevenLabs stability). */
   expressiveness?: number;
 }
@@ -216,7 +236,8 @@ export interface SynthesizeInput {
  *    leaves no room for a retry. Turbo v2.5 by default (quality-first; same
  *    per-character cost as Flash, ~250 ms vs ~75 ms). Pin ELEVENLABS_MODEL=
  *    eleven_flash_v2_5 to favor raw latency over polish. */
-export function elevenModelChain(quality: "realtime" | "max"): string[] {
+export function elevenModelChain(quality: "realtime" | "max" | "voicemail"): string[] {
+  if (quality === "voicemail") return ["eleven_multilingual_v2"];
   if (quality === "max") {
     const hq = env("ELEVENLABS_MODEL_HQ");
     return hq ? [hq] : ["eleven_v3", "eleven_multilingual_v2"];
@@ -225,8 +246,27 @@ export function elevenModelChain(quality: "realtime" | "max"): string[] {
 }
 
 /** The primary model id for a quality tier (the first/best candidate). */
-export function elevenModel(quality: "realtime" | "max" = "realtime"): string {
+export function elevenModel(quality: "realtime" | "max" | "voicemail" = "realtime"): string {
   return elevenModelChain(quality)[0];
+}
+
+/** Payload the call gateway should use so a live call and its voicemail drop
+ *  share one voice and the human delivery settings. */
+export function callVoiceProfile(voiceId?: string): {
+  voiceId?: string;
+  voice: { stability: number; similarityBoost: number; style: number; speakerBoost: boolean; callModel: string; voicemailModel: string };
+} {
+  return {
+    voiceId,
+    voice: {
+      stability: HUMAN_VOICE.stability,
+      similarityBoost: HUMAN_VOICE.similarity_boost,
+      style: HUMAN_VOICE.style,
+      speakerBoost: HUMAN_VOICE.use_speaker_boost,
+      callModel: elevenModel("realtime"),
+      voicemailModel: elevenModel("voicemail"),
+    },
+  };
 }
 
 /** Whether an ElevenLabs error means "this MODEL isn't usable on this account"
@@ -284,12 +324,14 @@ export async function synthesizeSpeech(input: SynthesizeInput): Promise<Synthesi
     const client = elevenClient();
     if (!client) throw new Error("ElevenLabs not configured");
     const voice = providerVoice("elevenlabs", input.voiceId);
-    const s = elevenSettings(input.emotion, input.expressiveness);
+    const purpose = input.purpose ?? (input.quality === "voicemail" ? "voicemail" : input.quality === "max" ? "read" : "call");
+    const s = elevenSettings(input.emotion, purpose === "read" ? input.expressiveness : undefined, purpose);
     // Walk the quality tier's model candidates (max prefers eleven_v3 → falls
     // back to multilingual_v2), skipping any this account has already proven it
     // can't use. The SDK takes camelCase settings; our tuner returns the API's
     // snake_case shape, so map it across here (one place, not per caller).
-    const candidates = elevenModelChain(input.quality ?? "realtime").filter((m) => !elevenUnavailableModels.has(m));
+    const tier = input.quality ?? (purpose === "voicemail" ? "voicemail" : purpose === "read" ? "max" : "realtime");
+    const candidates = elevenModelChain(tier).filter((m) => !elevenUnavailableModels.has(m));
     const models = candidates.length ? candidates : ["eleven_multilingual_v2"];
     let lastErr: unknown;
     for (let i = 0; i < models.length; i++) {

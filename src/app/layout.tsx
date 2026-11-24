@@ -1,18 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Fraunces, Space_Grotesk } from "next/font/google";
+import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CookieConsent } from "@/components/CookieConsent";
 import { ClientErrorReporter } from "@/components/ClientErrorReporter";
 import { HelpWidget } from "@/components/HelpWidget";
 import { SITE_URL } from "@/lib/site";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
-// Display face: Fraunces — a characterful editorial serif (with true italics and
-// optical sizing) that separates the brand from the Inter/grotesk "AI SaaS"
-// sameness. Data numerals stay on Space Grotesk (--font-data) so tables, money
-// figures, and countdowns keep their precise, tabular rhythm.
+const sans = Geist({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+// Display face stays Fraunces — the editorial serif — while the UI and the
+// numerals move to Geist, the same family Vercel ships. Tables stay tabular.
 const display = Fraunces({ subsets: ["latin"], variable: "--font-display", display: "swap", style: ["normal", "italic"], axes: ["opsz"] });
-const data = Space_Grotesk({ subsets: ["latin"], variable: "--font-data", display: "swap", weight: ["500", "600", "700"] });
+const data = Geist_Mono({ subsets: ["latin"], variable: "--font-data", display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -31,7 +29,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${display.variable} ${data.variable}`}>
+    <html lang="en" className={`${sans.variable} ${display.variable} ${data.variable}`}>
       <body className="min-h-screen font-sans antialiased">
         {children}
         <HelpWidget />

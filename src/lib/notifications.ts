@@ -12,6 +12,7 @@ export const NOTIFICATION_OPTIONS = [
   { key: "recall_flag", label: "Deal flagged by Revenue Recall", default: true },
   { key: "stage_change", label: "Deal stage changes", default: false },
   { key: "daily_digest", label: "Daily pipeline digest (email)", default: true },
+  { key: "weekly_results", label: "Weekly results summary (email)", default: true },
   { key: "task_reminders", label: "Task reminders", default: true },
 ] as const;
 

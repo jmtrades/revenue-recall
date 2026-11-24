@@ -98,22 +98,28 @@ describe("house voice → provider voice mapping", () => {
   it("a voice with no exact map falls back within its own gender/accent group, never a mismatch", () => {
     // Ids NOT in the curated set still resolve to a same-group default (never a
     // mismatched gender/accent) — proving the safety net holds.
-    expect(providerVoice("elevenlabs", "af_bella")).toBe(ELEVEN_VOICES.af_heart); // female US → female US
+    expect(providerVoice("elevenlabs", "af_bella")).toBe(ELEVEN_VOICES.af_jessica); // female US → Jessica (premade)
     expect(providerVoice("elevenlabs", "bm_lewis")).toBe(ELEVEN_VOICES.bm_george); // male UK → male UK
     expect(providerVoice("elevenlabs", "am_santa")).toBe(ELEVEN_VOICES.am_adam); // male US → male US
     expect(providerVoice("elevenlabs", "bf_alice")).toBe(ELEVEN_VOICES.bf_emma); // female UK → female UK
   });
 
   it("clone voices and unknown ids fall back to the default voice", () => {
-    expect(providerVoice("elevenlabs", "clone:abc123")).toBe(ELEVEN_VOICES.af_heart);
-    expect(providerVoice("openai", "not_a_voice")).toBe(OPENAI_VOICES.af_heart);
-    expect(providerVoice("openai", null)).toBe(OPENAI_VOICES.af_heart);
+    expect(providerVoice("elevenlabs", "clone:abc123")).toBe(ELEVEN_VOICES.af_jessica);
+    expect(providerVoice("openai", "not_a_voice")).toBe(OPENAI_VOICES.af_jessica);
+    expect(providerVoice("openai", null)).toBe(OPENAI_VOICES.af_jessica);
   });
 
   it("an env default override wins only for the default voice", () => {
     process.env.ELEVENLABS_VOICE_ID = "custom_el";
     expect(providerVoice("elevenlabs", undefined)).toBe("custom_el");
     expect(providerVoice("elevenlabs", "am_adam")).toBe(ELEVEN_VOICES.am_adam);
+  });
+
+  it("a library voice set as the env default falls through to Jessica", () => {
+    process.env.ELEVENLABS_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // Rachel — free tier 402
+    expect(providerVoice("elevenlabs", undefined)).toBe(ELEVEN_VOICES.af_jessica);
+    delete process.env.ELEVENLABS_VOICE_ID;
   });
 });
 

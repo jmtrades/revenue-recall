@@ -59,7 +59,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <LaunchBanner />
         <SendingPausedBanner initialPaused={org.sendingPaused} />
         <BillingBanner />
-        <main id="main-content" tabIndex={-1} className="flex-1 overflow-x-hidden px-4 py-6 sm:px-8 sm:py-7">{children}</main>
+        <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1280px] flex-1 overflow-x-hidden px-4 py-6 sm:px-8 sm:py-8">{children}</main>
       </div>
     </div>
   );

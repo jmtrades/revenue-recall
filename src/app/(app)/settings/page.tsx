@@ -17,6 +17,11 @@ import { OAUTH_PROVIDERS, oauthConfigured, type OAuthPlatform } from "@/lib/conn
 import { complianceConfig } from "@/lib/compliance";
 import { listOwnedNumbers, numbersConfigured, numbersProviderId, outboundFromNumber } from "@/lib/numbers";
 import { SetupChecklist, type SetupItem } from "@/components/SetupChecklist";
+import { IntegrationsPanel } from "@/components/IntegrationsPanel";
+import { WebinarSetup } from "@/components/WebinarSetup";
+import { webinarConnect } from "@/lib/webinar/install";
+import { headers } from "next/headers";
+import { freeDbEnabled } from "@/lib/free/db";
 import { PipelineStagesEditor } from "@/components/PipelineStagesEditor";
 import { getTeamAndPipeline, getRecentCaptures } from "@/lib/queries";
 import { money } from "@/lib/format";
@@ -81,6 +86,11 @@ export default async function SettingsPage(
   props: { searchParams: Promise<{ billing?: string; tab?: string; connected?: string }> }
 ) {
   const searchParams = await props.searchParams;
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
+  const proto = h.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+  const origin = host ? `${proto}://${host}` : "https://revenue-recall-relaunch.onrender.com";
+  const webinar = webinarConnect(origin);
   const cfg = getConfig();
   const org = await getOrgSettings();
   const voice = await getStoredVoice();
@@ -116,10 +126,10 @@ export default async function SettingsPage(
   const topupsWired = topupResolved.some(Boolean);
   const setupItems: SetupItem[] = [
     {
-      label: "Workspace database", ok: isSupabaseConfigured(), required: true, where: "Supabase + Vercel",
-      detail: "Stores every account's data, privately. Already connected.",
-      steps: ["Create a project at supabase.com", "Run the migrations in supabase/migrations", "Add NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY in Vercel", "Redeploy"],
-      link: { href: "https://supabase.com/dashboard", label: "Open Supabase" },
+      label: "Workspace database", ok: isSupabaseConfigured() || freeDbEnabled(), required: true, where: isSupabaseConfigured() ? "Supabase" : "SQLite file",
+      detail: freeDbEnabled() && !isSupabaseConfigured() ? "This host keeps data in a SQLite file on disk. A Supabase project is optional." : "Stores every account's data, privately. Already connected.",
+      steps: freeDbEnabled() && !isSupabaseConfigured() ? ["Nothing to paste. The file is created on first write.", "Set FREE_DB_DIR if it should live somewhere other than .data"] : ["Create a project at supabase.com", "Run the migrations in supabase/migrations", "Add the SUPABASE_* keys on the host", "Restart"],
+      link: isSupabaseConfigured() ? { href: "https://supabase.com/dashboard", label: "Open Supabase" } : undefined,
     },
     {
       label: "Private per-user accounts", ok: isAuthRequired(), required: true, where: "Automatic",
@@ -127,14 +137,14 @@ export default async function SettingsPage(
       steps: ["Connect the database above; sign-in then becomes required automatically (nothing to set)"],
     },
     {
-      label: "Account provisioning key", ok: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY), required: true, where: "Vercel",
+      label: "Account provisioning key", ok: !isSupabaseConfigured() || Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY), required: isSupabaseConfigured(), where: "Host",
       detail: "Lets a brand-new sign-up get their own workspace created. Without it, signups can't be provisioned.",
-      steps: ["Supabase → Settings → API → copy the service_role key", "Add it as SUPABASE_SERVICE_ROLE_KEY in Vercel", "Redeploy"],
+      steps: ["Supabase → Settings → API → copy the service_role key", "Add it as SUPABASE_SERVICE_ROLE_KEY on the host", "Restart"],
     },
     {
-      label: "Email sending", ok: ch.email.live, required: true, where: "Resend + Vercel",
-      detail: "So signup confirmations, invites, and outreach actually send instead of just logging.",
-      steps: ["Create a Resend account and verify your sending domain", "Add RESEND_API_KEY and EMAIL_FROM in Vercel", "Redeploy"],
+      label: "Email sending", ok: ch.email.live, required: true, where: "Resend",
+      detail: "So signup confirmations, invites, and outreach actually send instead of just logging. Without a key, email is logged and recovery continues.",
+      steps: ["Create a Resend account and verify your sending domain", "Add RESEND_API_KEY and EMAIL_FROM on the host", "Restart"],
       link: { href: "https://resend.com", label: "Open Resend" },
     },
     {
@@ -143,30 +153,30 @@ export default async function SettingsPage(
       steps: ["Open Settings → General", "Enter your business name and postal address", "Save"],
     },
     {
-      label: "Self-serve connections (encryption)", ok: encAvailable, required: false, where: "Vercel",
+      label: "Self-serve connections (encryption)", ok: encAvailable, required: false, where: "Host",
       detail: "Unlocks the in-app Connect buttons so each user links their own CRM, database, and social accounts (stored encrypted).",
-      steps: ["Generate a random key, e.g. openssl rand -base64 32", "Add it as ENCRYPTION_KEY in Vercel (keep it stable)", "Redeploy"],
+      steps: ["Generate a random key, e.g. openssl rand -base64 32", "Add it as ENCRYPTION_KEY on the host (keep it stable)", "Restart"],
     },
     {
-      label: "Live AI writing", ok: isAiConfigured(), required: false, where: "Vercel",
+      label: "Live AI writing", ok: isAiConfigured(), required: false, where: "Host",
       detail: "Writes outreach live in each user's voice. Until connected, polished templates are used.",
-      steps: ["Get an API key at console.anthropic.com", "Add it as ANTHROPIC_API_KEY in Vercel", "Redeploy"],
+      steps: ["Get an API key at console.anthropic.com", "Add it as ANTHROPIC_API_KEY on the host", "Restart"],
       link: { href: "https://console.anthropic.com", label: "Open Anthropic" },
     },
     {
-      label: "Premium lifelike voice", ok: elevenConfigured(), required: false, where: "Voice provider + Vercel",
+      label: "Premium lifelike voice", ok: elevenConfigured(), required: false, where: "ElevenLabs",
       detail: "Reads outreach and previews aloud in a real, human-grade voice — and unlocks the voice library + cloning in Settings → Voice. This row is green only when ELEVENLABS_API_KEY is live in this deployment.",
-      steps: ["Get an API key at elevenlabs.io", "Add it as ELEVENLABS_API_KEY in the Vercel project serving recall-touch.com", "Redeploy (server vars need a fresh build)", "Settings → Voice: pick a voice or clone your own"],
+      steps: ["Get an API key at elevenlabs.io", "Add it as ELEVENLABS_API_KEY on the host", "Restart", "Settings → Voice: pick a voice or clone your own"],
       link: { href: "https://elevenlabs.io/app", label: "Open voice provider" },
     },
     {
-      label: "Live voice agent", ok: convaiConfigured(), required: false, where: "Voice provider + Vercel",
+      label: "Live voice agent", ok: convaiConfigured(), required: false, where: "ElevenLabs",
       detail: "Turns on the two-way \"Talk to a live AI prospect\" agent — a real spoken conversation, not turn-by-turn.",
-      steps: ["In your voice provider, create a Conversational AI agent", "Add its id as ELEVENLABS_AGENT_ID in Vercel (with ELEVENLABS_API_KEY)", "Allow voice overrides in the agent's security settings to use your chosen/cloned voice", "Redeploy"],
+      steps: ["In your voice provider, create a Conversational AI agent", "Add its id as ELEVENLABS_AGENT_ID on the host (with ELEVENLABS_API_KEY)", "Allow voice overrides in the agent's security settings to use your chosen/cloned voice", "Restart"],
       link: { href: "https://elevenlabs.io/app/conversational-ai", label: "Open Agents" },
     },
     {
-      label: "Billing — charge customers", ok: billingOn, required: false, where: "Stripe + Vercel",
+      label: "Billing — charge customers", ok: billingOn, required: false, where: "Stripe",
       detail: "Turns on self-serve checkout, the customer portal, and usage top-ups.",
       steps: ["Add STRIPE_SECRET_KEY (Stripe → Developers → API keys)", "Add a webhook to /api/billing/webhook and paste STRIPE_WEBHOOK_SECRET", "Add STRIPE_PUBLISHABLE_KEY so checkout runs on your own domain", "Redeploy"],
       link: { href: "https://dashboard.stripe.com", label: "Open Stripe" },
@@ -177,25 +187,27 @@ export default async function SettingsPage(
       steps: ["After STRIPE_SECRET_KEY is set, run once:", "curl -X POST https://recall-touch.com/api/billing/setup -H \"Authorization: Bearer $ADMIN_TOKEN\"", "Prices wire themselves automatically (lookup keys)"],
     },
     {
-      label: "SMS & calls", ok: ch.sms.live, required: false, where: "Twilio + Vercel",
+      label: "SMS & calls", ok: ch.sms.live, required: false, where: "Twilio",
       detail: "Send real texts and run the power dialer (optional — email works on its own).",
-      steps: ["Create a Twilio account and get a number", "Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER in Vercel", "Redeploy"],
+      steps: ["Create a Twilio account and get a number", "Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER on the host", "Restart"],
       link: { href: "https://console.twilio.com", label: "Open Twilio" },
     },
     {
-      label: "Autopilot", ok: process.env.SEQUENCE_AUTOPILOT === "true" || process.env.REPLY_AUTOPILOT === "true", required: false, where: "Vercel",
+      label: "Autopilot", ok: process.env.SEQUENCE_AUTOPILOT === "true" || process.env.REPLY_AUTOPILOT === "true", required: false, where: "Host",
       detail: "Let it send sequences and replies hands-off (takes effect once a channel above is connected).",
-      steps: ["Set SEQUENCE_AUTOPILOT=true and REPLY_AUTOPILOT=true in Vercel", "Redeploy"],
+      steps: ["Set SEQUENCE_AUTOPILOT=true and REPLY_AUTOPILOT=true on the host", "Restart"],
     },
     {
-      label: "Scheduled runs", ok: Boolean(process.env.CRON_SECRET), required: false, where: "Vercel",
-      detail: "Secures the daily autopilot job (Vercel Cron is already scheduled).",
-      steps: ["Set CRON_SECRET to a random string in Vercel", "Redeploy"],
+      label: "Scheduled runs", ok: process.env.FREE_SCHEDULER !== "0" || Boolean(process.env.CRON_SECRET), required: false, where: "This process",
+      detail: "The app runs the minute webinar tick and the hourly agent tick itself. Set CRON_SECRET only if something else also calls those URLs.",
+      steps: ["Leave FREE_SCHEDULER unset so the process keeps the schedule", "Set CRON_SECRET if an outside pinger will call /api/agent/cron"],
     },
   ];
   const setupTab = (
     <Card>
       <SetupChecklist items={setupItems} />
+      <div className="mt-6"><IntegrationsPanel /></div>
+      <WebinarSetup secret={webinar.secret} rows={webinar.rows} />
     </Card>
   );
   const voiceTab = (

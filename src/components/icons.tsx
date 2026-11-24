@@ -44,7 +44,9 @@ export type IconName =
   | "play"
   | "stop"
   | "check"
-  | "upload";
+  | "upload"
+  | "spark"
+  | "screen";
 
 const PATHS: Record<IconName, JSX.Element> = {
   dashboard: (
@@ -289,6 +291,16 @@ const PATHS: Record<IconName, JSX.Element> = {
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <path d="M7 9l5-5 5 5" />
       <path d="M12 4v12" />
+    </>
+  ),
+  spark: (
+    <path d="M12 3l1.6 5.2L19 10l-5.4 1.8L12 17l-1.6-5.2L5 10l5.4-1.8L12 3z" />
+  ),
+  screen: (
+    <>
+      <rect x="3" y="4" width="18" height="12" rx="2" />
+      <path d="M8 20h8" />
+      <path d="M12 16v4" />
     </>
   ),
 };

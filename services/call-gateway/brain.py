@@ -90,12 +90,33 @@ def split_complete_sentences(buf: str):
     return sentences, buf[last:]
 
 
+def _scripted(turns, wrap: bool) -> str:
+    """A short spoken line when no Anthropic key is configured.
+
+    Drop-off recovery still has to answer the person on the line. The opener and
+    voicemail are already scripted by the app; this covers the turns after they
+    speak so a missing model key does not drop the call.
+    """
+    if wrap:
+        return "I'll send the replay and a time to reconnect. Talk soon."
+    last = ""
+    for turn in reversed(turns or []):
+        if turn.get("role") == "prospect":
+            last = (turn.get("text") or "").lower()
+            break
+    if any(w in last for w in ("not interested", "no thanks", "busy", "later")):
+        return "Totally fair. I'll text the replay so you have it, and leave it there."
+    return "Thanks for picking up. I can send the replay or find a minute to finish it. Which is easier?"
+
+
 def next_line(turns, context: str = "", wrap: bool = False) -> str:
     """turns: [{'role': 'prospect'|'rep', 'text': str}]. Returns the rep's next line.
 
     wrap=True forces a graceful close (used once the call hits the turn cap), so a
     stubborn back-and-forth always ends instead of looping until the prospect hangs up.
     """
+    if not ANTHROPIC_API_KEY:
+        return _scripted(turns, wrap)
     system, messages = _build(turns, context, wrap)
     resp = _get_client().messages.create(
         model=ANTHROPIC_MODEL, system=system, max_tokens=120, messages=messages
@@ -109,6 +130,9 @@ async def stream_lines(turns, context: str = "", wrap: bool = False):
     instead of waiting for the whole reply — the single biggest cut to on-call dead
     air. Native async streaming keeps the event loop free, so concurrent calls' media
     keeps flowing. Any trailing partial is flushed when the stream ends."""
+    if not ANTHROPIC_API_KEY:
+        yield _scripted(turns, wrap)
+        return
     system, messages = _build(turns, context, wrap)
     buf = ""
     async with _get_async_client().messages.stream(

@@ -23,6 +23,13 @@ export async function markDoNotContact(provider: CrmProvider, contact: Contact):
     await provider.updateContact(contact.id, {
       attributes: { ...(contact.attributes ?? {}), doNotContact: true, optedOutAt: new Date().toISOString() },
     });
+    const { captureRoi } = await import("@/lib/roi/capture");
+    void captureRoi({
+      dedupeKey: `optout:${contact.id}:${new Date().toISOString().slice(0, 10)}`,
+      name: "message.opt_out",
+      contactId: contact.id,
+      actor: "prospect",
+    });
     return true;
   } catch {
     return false; // best-effort; the logged opt-out activity still suppresses near-term

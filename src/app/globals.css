@@ -219,14 +219,12 @@ textarea:focus-visible,
 
 @layer components {
   .card {
-    @apply rounded-xl border border-border bg-surface p-5;
-    /* Real material: hairline top highlight (catches light) + a faint top-down
-       sheen + layered ambient shadow. Depth hierarchy, not a flat 1px box. */
-    background-image: linear-gradient(rgb(255 255 255 / 0.025), transparent 40%);
+    @apply rounded-2xl border border-border/80 bg-surface p-5;
+    background-image: linear-gradient(180deg, rgb(255 255 255 / 0.035), transparent 46%);
     box-shadow: var(--shadow-card);
   }
   .stat-label {
-    @apply text-xs font-medium uppercase tracking-[0.14em] text-muted;
+    @apply text-[11px] font-medium tracking-wide text-muted;
   }
   .stat-value {
     @apply mt-1 font-data text-2xl font-semibold tabular-nums tracking-tight text-fg;
@@ -249,22 +247,10 @@ textarea:focus-visible,
     flex: none;
   }
   .nav-link {
-    @apply relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg;
+    @apply relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-muted transition-colors duration-200 hover:bg-surface-2 hover:text-fg;
   }
   .nav-link-active {
-    @apply bg-brand-soft/60 text-fg;
-  }
-  /* Active rail: a short brand bar tucked against the sidebar edge. */
-  .nav-link-active::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 50%;
-    height: 1.1rem;
-    width: 3px;
-    transform: translateY(-50%);
-    border-radius: 0 3px 3px 0;
-    background: rgb(var(--brand-rgb));
+    @apply bg-brand-soft/70 text-fg;
   }
   .nav-link-active svg {
     color: rgb(var(--brand-rgb));
@@ -376,6 +362,16 @@ textarea:focus-visible,
   }
 }
 
+/* Page entrance. Ends visible even if the animation is interrupted. Reduced
+   motion below drops it. Replaces a JS fade that could stick at opacity 0. */
+.page-in {
+  animation: rr-page-in var(--dur-base) var(--ease-out) both;
+}
+@keyframes rr-page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
 /* Onboarding step + tailoring entrance (CSP-safe CSS, no JS animation lib) */
 @keyframes rr-onb-in {
   from { opacity: 0; transform: translateY(10px); }
@@ -384,7 +380,7 @@ textarea:focus-visible,
 .onb-step { animation: rr-onb-in 0.34s cubic-bezier(0.23, 1, 0.32, 1) both; }
 .onb-fade { animation: rr-onb-in 0.26s cubic-bezier(0.23, 1, 0.32, 1) both; }
 @media (prefers-reduced-motion: reduce) {
-  .onb-step, .onb-fade { animation: none; }
+  .onb-step, .onb-fade, .page-in { animation: none; }
 }
 
 /* Entrance animations */

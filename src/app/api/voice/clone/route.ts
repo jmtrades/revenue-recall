@@ -9,14 +9,15 @@ import {
   elevenConfigured,
   elevenSelection,
   parseElevenSelection,
+  renameElevenVoice,
 } from "@/lib/voice/eleven";
+import { MAX_CLONE_SAMPLES, validateCloneRequest } from "@/lib/voice/clone-request";
 import { getOrgSettings, updateOrgSettings } from "@/lib/org";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB per sample
-const MAX_FILES = 5;
 
 /**
  * Create an ElevenLabs Instant Voice Clone from uploaded/recorded audio. Heavily
@@ -43,20 +44,39 @@ export const POST = withGuard(async (req: Request) => {
   }
   const name = String(form.get("name") ?? "").trim().slice(0, 80);
   const description = String(form.get("description") ?? "").trim().slice(0, 500);
-  if (!name) return NextResponse.json({ error: "Give your voice a name." }, { status: 400 });
-
+  const consent = form.get("consent") === "yes" || form.get("consent") === "true";
   const files = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
-  if (!files.length) return NextResponse.json({ error: "Add at least one audio sample." }, { status: 400 });
-  if (files.length > MAX_FILES) return NextResponse.json({ error: `Up to ${MAX_FILES} samples.` }, { status: 400 });
-  for (const f of files) {
-    if (f.size > MAX_FILE_BYTES) return NextResponse.json({ error: "Each sample must be under 10 MB." }, { status: 400 });
-  }
+  const problem = validateCloneRequest({
+    name,
+    fileCount: files.length,
+    consent,
+    tooLarge: files.some((f) => f.size > MAX_FILE_BYTES),
+  });
+  if (problem) return NextResponse.json({ error: problem }, { status: 400 });
+  if (files.length > MAX_CLONE_SAMPLES) return NextResponse.json({ error: `Up to ${MAX_CLONE_SAMPLES} samples.` }, { status: 400 });
 
   try {
     const voice = await cloneElevenVoice({ name, description: description || undefined, files });
     return NextResponse.json({ id: voice.id, name: voice.name, voiceId: elevenSelection(voice.id) });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Cloning failed" }, { status: 502 });
+  }
+});
+
+/** Rename one of the org's cloned voices. */
+export const PATCH = withGuard(async (req: Request) => {
+  if (!elevenConfigured()) return NextResponse.json({ error: "Not configured." }, { status: 503 });
+  const denied = await requireRole("owner", "admin");
+  if (denied) return denied;
+  const body = await req.json().catch(() => null) as { voiceId?: string; name?: string } | null;
+  const id = parseElevenSelection(body?.voiceId?.startsWith("eleven:") ? body.voiceId : body?.voiceId ? elevenSelection(body.voiceId) : "");
+  const name = (body?.name ?? "").trim().slice(0, 80);
+  if (!id || !name) return NextResponse.json({ error: "Need a voice id and a name." }, { status: 400 });
+  try {
+    await renameElevenVoice(id, name);
+    return NextResponse.json({ ok: true, name });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Rename failed" }, { status: 502 });
   }
 });
 

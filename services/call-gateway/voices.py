@@ -28,7 +28,13 @@ HOUSE_TO_ELEVEN = {
     "bm_daniel": "onwK4e9ZLuTAKqWW03F9",  # Daniel
 }
 
-DEFAULT_HOUSE = "af_heart"
+DEFAULT_HOUSE = "af_jessica"
+# Library voices the free tier answers with HTTP 402. Rachel and Aria are the
+# common ones; a configured fallback that lands on either is replaced with Jessica.
+LIBRARY_VOICE_BLOCKED = {
+    "21m00Tcm4TlvDq8ikWAM",  # Rachel
+    "9BWtsMINqrJLrRacOk9x",  # Aria
+}
 # Gender/accent-aware default within the mapped set — an unmapped house voice
 # still resolves to a voice of the SAME group, never a mismatched one.
 _GROUP_DEFAULT = {"am": "am_adam", "bf": "bf_emma", "bm": "bm_george"}
@@ -37,6 +43,8 @@ _GROUP_DEFAULT = {"am": "am_adam", "bf": "bf_emma", "bm": "bm_george"}
 def eleven_voice(voice_id=None, fallback=None):
     """Resolve a house voice id (or 'eleven:<id>' clone, or None) to an ElevenLabs
     voice id. `fallback` is the operator's configured default (ELEVENLABS_VOICE_ID)."""
+    if fallback in LIBRARY_VOICE_BLOCKED:
+        fallback = None
     default = fallback or HOUSE_TO_ELEVEN[DEFAULT_HOUSE]
     if not voice_id:
         return default

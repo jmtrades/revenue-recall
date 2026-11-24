@@ -1,24 +1,11 @@
-"use client";
-
-import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 
 /**
- * Per-navigation page transition for the whole app shell. A template re-mounts
- * on every route change (unlike a layout), so each page gets a short, consistent
- * fade-rise entrance — the app feels composed instead of snapping between
- * screens. Static under prefers-reduced-motion.
+ * Per-navigation entrance for the signed-in app. A template re-mounts on every
+ * route change (unlike a layout). The entrance is CSS, not a JS animation that
+ * starts at opacity 0: if the animation never ticks, the page is still visible.
+ * Reduced motion is handled in globals.css.
  */
 export default function AppTemplate({ children }: { children: ReactNode }) {
-  const reduced = useReducedMotion();
-  if (reduced) return <>{children}</>;
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
-    >
-      {children}
-    </motion.div>
-  );
+  return <div className="page-in">{children}</div>;
 }

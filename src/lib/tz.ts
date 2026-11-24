@@ -28,6 +28,17 @@ export function dayInZone(now: Date, tz?: string): string {
   }
 }
 
+/** Weekday in a zone, 0 = Sunday … 1 = Monday. Falls back to UTC. */
+export function weekdayInZone(now: Date, tz?: string): number {
+  try {
+    const wd = new Intl.DateTimeFormat("en-US", { timeZone: tz || "UTC", weekday: "short" }).format(now);
+    const idx = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(wd);
+    return idx >= 0 ? idx : now.getUTCDay();
+  } catch {
+    return now.getUTCDay();
+  }
+}
+
 /** True when `tz` is a usable IANA zone (so we can validate user input / fall back). */
 export function isValidTimeZone(tz: string): boolean {
   if (!tz) return false;

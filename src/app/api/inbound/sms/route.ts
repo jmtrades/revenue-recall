@@ -66,7 +66,13 @@ export async function POST(req: Request) {
   }
 
   try {
-    const run = () => handleInbound("sms", from, body);
+    const run = async () => {
+      await handleInbound("sms", from, body);
+      // Any reply from a webinar registrant stops the recovery sequence; STOP
+      // opts them out of every concurrent session. Never throws.
+      const { onWebinarInboundSms } = await import("@/lib/webinar/engine");
+      await onWebinarInboundSms(orgParam, from, body);
+    };
     if (orgParam) await runWithOrg(orgParam, run);
     else await run();
   } catch {

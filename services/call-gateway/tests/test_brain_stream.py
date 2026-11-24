@@ -67,6 +67,9 @@ class _FakeClient:
 
 
 async def _collect(deltas):
+    # The live path is skipped when no key is set. These tests fake the client,
+    # so they opt into that path explicitly.
+    brain.ANTHROPIC_API_KEY = "test-key"
     brain._get_async_client = lambda: _FakeClient(deltas)
     out = []
     async for s in brain.stream_lines([{"role": "prospect", "text": "hi"}]):
@@ -87,6 +90,19 @@ class TestStreamLines(unittest.TestCase):
 
     def test_empty_stream_yields_nothing(self):
         self.assertEqual(asyncio.run(_collect([])), [])
+
+    def test_missing_key_speaks_a_script_instead_of_calling_the_model(self):
+        brain.ANTHROPIC_API_KEY = ""
+
+        async def _run():
+            out = []
+            async for s in brain.stream_lines([{"role": "prospect", "text": "who is this"}]):
+                out.append(s)
+            return out
+
+        lines = asyncio.run(_run())
+        self.assertEqual(len(lines), 1)
+        self.assertIn("replay", lines[0].lower())
 
 
 if __name__ == "__main__":

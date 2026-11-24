@@ -256,12 +256,10 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
           ]
             .filter(Boolean)
             .join(" ");
-          // Most dials hit voicemail — leave a short, AI-disclosed message (with
-          // one easy reason to call back) instead of silence. Template-based, so
-          // it adds no AI cost; the gateway drops it only when AMD flags a machine.
-          const vmFirst = (name || "there").split(" ")[0];
-          const vmSender = voice?.senderName?.trim() || org.name || "the team";
-          const callVoicemail = `Hi ${vmFirst}, this is an AI assistant reaching out on behalf of ${vmSender}${t.opp.title ? ` about ${t.opp.title}` : ""}. Give us a quick call back whenever it's easy — thanks!`;
+          // Most dials hit voicemail — leave a short spoken message instead of
+          // silence. The gateway drops it only when AMD flags a machine.
+          const { voicemailScript } = await import("@/lib/voice/voicemail");
+          const callVoicemail = voicemailScript({ contactName: name, repName: voice?.senderName, dealTitle: t.opp.title });
           // Sign per-call meta exactly like the manual dialer so the gateway's
           // transcript post-back to /api/calls/log attaches to THIS deal/contact
           // (and the right org) — without it, completed autopilot calls leave no
@@ -270,10 +268,11 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
           if (t.opp.contactId) callMeta.contactId = t.opp.contactId;
           if (t.opp.id) callMeta.dealId = t.opp.id;
           if (org.id) callMeta.orgId = org.id;
+          const { callVoiceProfile } = await import("@/lib/voice/tts");
           const res = await placeCall(to, {
             from: org.callerId,
             context: callContext,
-            voiceId: org.ttsVoiceId ?? undefined,
+            ...callVoiceProfile(org.ttsVoiceId),
             voicemail: callVoicemail,
             meta: Object.keys(callMeta).length ? signCallMeta(callMeta) : undefined,
           });
@@ -332,11 +331,24 @@ export async function runTask(task: AgentTask): Promise<AgentRun> {
             });
             // Attribute autopilot work on an at-risk deal so won-back ROI counts it.
             if (t.reason) await recordRecallTouch({ dealId: t.opp.id, contactId: t.opp.contactId, channel, source: "autopilot", industry: org.industryId });
-            void recordSent({ orgId: org.id, contactId: t.opp.contactId, dealId: t.opp.id, channel });
+            void recordSent({ orgId: org.id, contactId: t.opp.contactId, dealId: t.opp.id, channel, actor: "ai" });
           }
         }
       }
-      if (result === "drafted" || result === "queued") drafted += 1;
+      if (result === "drafted" || result === "queued") {
+        drafted += 1;
+        const { captureRoi } = await import("@/lib/roi/capture");
+        const hour = new Date().toISOString().slice(0, 13);
+        void captureRoi({
+          dedupeKey: `ai-draft:${t.opp.id}:${channel}:${hour}`,
+          name: "ai.action",
+          channel: channel === "call" ? "call" : channel === "sms" ? "sms" : "email",
+          contactId: t.opp.contactId,
+          dealId: t.opp.id,
+          actor: "ai",
+          orgId: org.id,
+        });
+      }
 
       // Review-mode email/SMS drafts become approval-inbox items. Tag the ones
       // working an at-risk (recall-scored) deal so the approve route attributes a

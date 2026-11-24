@@ -77,6 +77,7 @@ export default async function DashboardPage() {
       <PageHeader
         title={greeting}
         subtitle={o.recallSummary.itemCount > 0 ? "Here's where your revenue stands — and what's slipping out of the pipeline." : "Your pipeline is well tended — here's where things stand today."}
+        action={<Link href="/results" className="text-sm font-medium text-brand hover:underline">Results</Link>}
       />
       {sampleData && <RemoveSampleDataBanner />}
       {!setup.complete && <ActivationChecklist data={setup} />}

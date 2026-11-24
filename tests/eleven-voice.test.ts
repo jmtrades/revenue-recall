@@ -123,7 +123,7 @@ describe("providerVoice — eleven selection passthrough", () => {
 
   it("falls back to the provider default for non-ElevenLabs backends", () => {
     // Other providers can't speak an ElevenLabs voice id → their default voice.
-    expect(providerVoice("openai", "eleven:realVoiceId")).toBe(OPENAI_VOICES.af_heart);
+    expect(providerVoice("openai", "eleven:realVoiceId")).toBe(OPENAI_VOICES.af_jessica);
   });
 
   it("leaves house-voice mapping untouched", () => {

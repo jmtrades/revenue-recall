@@ -167,6 +167,27 @@ export function VoiceLibrary() {
     }
   }
 
+  async function rename(id: string) {
+    const name = window.prompt("New name for this voice");
+    if (!name?.trim()) return;
+    setBusy(id);
+    setError(null);
+    try {
+      const res = await fetch("/api/voice/clone", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voiceId: sel(id), name: name.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Rename failed");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Rename failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function remove(id: string) {
     if (!confirm("Delete this cloned voice? This can't be undone.")) return;
     setBusy(id);
@@ -193,16 +214,17 @@ export function VoiceLibrary() {
       reason === "not_entitled"
         ? "Live AI voice is on paid plans — connect billing, or set BILLING_ENFORCE=false to use it now."
         : reason === "error"
-          ? `The premium voice service key is set but the connection was rejected${error ? `: ${error}` : ""}. Double-check ELEVENLABS_API_KEY in Vercel is a valid key, then redeploy.`
-          : "The premium voice service isn't connected. Add ELEVENLABS_API_KEY in Vercel (and ELEVENLABS_AGENT_ID for the live agent), then redeploy.";
+          ? `The premium voice service key is set but the connection was rejected${error ? `: ${error}` : ""}. Double-check ELEVENLABS_API_KEY on the host is a valid key, then restart.`
+          : "The premium voice service isn't connected. Add ELEVENLABS_API_KEY on the host (and ELEVENLABS_AGENT_ID for the live agent), then restart.";
     return (
-      <div className="mt-5 space-y-2 border-t border-border pt-4">
+      <div className="mt-5 space-y-3 border-t border-border pt-4">
         <p className="text-sm font-medium text-fg">Read-aloud voice</p>
         <VoiceDisabledNotice
           title="Voice not connected"
           message={msg}
           link={{ href: "https://elevenlabs.io/app/settings/api-keys", label: "Get a voice API key →" }}
         />
+        <CloneVoice onCloned={load} />
       </div>
     );
   }
@@ -260,6 +282,7 @@ export function VoiceLibrary() {
           onChoose={choose}
           onPreview={preview}
           onRemove={remove}
+          onRename={rename}
           sel={sel}
         />
       )}
@@ -288,6 +311,7 @@ function VoiceSection({
   onChoose,
   onPreview,
   onRemove,
+  onRename,
   sel,
 }: {
   title: string;
@@ -298,6 +322,7 @@ function VoiceSection({
   onChoose: (id: string) => void;
   onPreview: (v: Voice) => void;
   onRemove?: (id: string) => void;
+  onRename?: (id: string) => void;
   sel: (id: string) => string;
 }) {
   if (!voices.length) return null;
@@ -326,6 +351,16 @@ function VoiceSection({
                   {busy === v.id ? "Saving…" : v.description}
                 </span>
               </button>
+              {onRename && (
+                <button
+                  onClick={() => onRename(v.id)}
+                  disabled={busy !== null}
+                  aria-label={`Rename ${v.name}`}
+                  className="grid w-8 flex-none place-items-center border-l border-border text-xs text-muted hover:text-fg disabled:opacity-50"
+                >
+                  Aa
+                </button>
+              )}
               {onRemove && (
                 <button
                   onClick={() => onRemove(v.id)}
@@ -537,7 +572,8 @@ function BrowseLibrary({ onAdded, defaultOpen = false }: { onAdded: () => void; 
 function CloneVoice({ onCloned }: { onCloned: () => void }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [consent, setConsent] = useState(false);
   const [recorded, setRecorded] = useState<Blob | null>(null);
   const [recording, setRecording] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -567,28 +603,30 @@ function CloneVoice({ onCloned }: { onCloned: () => void }) {
       recRef.current = rec;
       rec.start();
       setRecording(true);
-      setFile(null);
+      setFiles([]);
     } catch {
       setError("Couldn't access the microphone.");
     }
   }
 
   async function submit() {
-    const sample = recorded
-      ? new File([recorded], "recording.webm", { type: recorded.type || "audio/webm" })
-      : file;
+    const samples = recorded
+      ? [new File([recorded], "recording.webm", { type: recorded.type || "audio/webm" }), ...files]
+      : files;
+    if (!consent) return setError("Confirm the speaker agreed to this clone.");
     if (!name.trim()) return setError("Give your voice a name.");
-    if (!sample) return setError("Record or upload an audio sample.");
+    if (!samples.length) return setError("Record or upload an audio sample.");
     setBusy(true); setError(null); setStatus(null);
     try {
       const form = new FormData();
       form.append("name", name.trim());
-      form.append("files", sample, sample.name);
+      form.append("consent", "yes");
+      for (const sample of samples.slice(0, 25)) form.append("files", sample, sample.name);
       const res = await fetch("/api/voice/clone", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Cloning failed");
-      setStatus("Voice cloned — it's now in your library below.");
-      setName(""); setFile(null); setRecorded(null);
+      setStatus("Voice cloned. Play it from the library to hear a test line.");
+      setName(""); setFiles([]); setRecorded(null); setConsent(false);
       onCloned();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Cloning failed");
@@ -617,7 +655,7 @@ function CloneVoice({ onCloned }: { onCloned: () => void }) {
         <button onClick={() => setOpen(false)} className="text-xs text-muted hover:text-fg">Close</button>
       </div>
       <p className="mt-1 text-xs text-muted">
-        Record ~30 seconds of clear speech (or upload a clip) and we&apos;ll create a private voice that sounds like you. Only clone a voice you have the right to use.
+        Record or upload 1 to 25 clips of the same speaker. We send them to Instant Voice Cloning and keep the voice id on this workspace.
       </p>
       <div className="mt-2 space-y-2">
         <input className={input} aria-label="Voice name" placeholder="Voice name (e.g. Sam — my voice)" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
@@ -636,14 +674,19 @@ function CloneVoice({ onCloned }: { onCloned: () => void }) {
             <input
               type="file"
               accept="audio/*"
+              multiple
               className="hidden"
-              onChange={(e) => { setFile(e.target.files?.[0] ?? null); setRecorded(null); }}
+              onChange={(e) => { setFiles(Array.from(e.target.files ?? []).slice(0, 25)); setRecorded(null); }}
             />
           </label>
-          {(recorded || file) && (
-            <span className="text-xs text-success">{recorded ? "Recording ready" : file?.name}</span>
+          {(recorded || files.length > 0) && (
+            <span className="text-xs text-success">{recorded ? "Recording ready" : `${files.length} file${files.length === 1 ? "" : "s"}`}</span>
           )}
         </div>
+        <label className="flex items-start gap-2 text-xs text-body">
+          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" />
+          The speaker agreed to this clone, and I have the right to use their voice.
+        </label>
         <div className="flex items-center gap-3">
           <button
             onClick={submit}

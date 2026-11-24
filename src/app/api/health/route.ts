@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { getConfig } from "@/lib/config";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { freeDbEnabled } from "@/lib/free/db";
 import { isAiConfigured } from "@/lib/ai/client";
 import { channelStatus } from "@/lib/comms";
 import { ttsAvailable } from "@/lib/voice/tts";
 import { convaiConfigured, convaiAgentId, convaiReason } from "@/lib/voice/convai";
 import { elevenConfigured } from "@/lib/voice/eleven";
 import { launchStatus } from "@/lib/launch";
+import { webinarArmed } from "@/lib/webinar/config";
+import { installSecret } from "@/lib/webinar/install";
+import { platformStatus } from "@/lib/webinar/platforms";
 import { isAdminRequest } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +21,7 @@ export async function GET(req: Request) {
   const ch = channelStatus();
 
   const capabilities = {
-    database: isSupabaseConfigured() ? "supabase" : "in-memory",
+    database: isSupabaseConfigured() ? "supabase" : freeDbEnabled() ? "sqlite" : "in-memory",
     ai: isAiConfigured() ? "live" : "templates",
     auth: cfg.authRequired ? "required" : "optional",
     email: ch.email.live,
@@ -26,6 +30,8 @@ export async function GET(req: Request) {
     // ElevenLabs surfaces: hosted read-aloud TTS, and the live two-way agent.
     voiceHosted: ttsAvailable(),
     voiceAgent: convaiConfigured(),
+    webinar: webinarArmed(),
+    webinarPlatforms: platformStatus(installSecret()).map((p) => ({ id: p.id, armed: p.armed, detection: p.detection })),
   };
 
   // Voice connection detail — public (no session) so an operator can confirm the

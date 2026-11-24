@@ -81,6 +81,15 @@ export interface VoiceCall {
    *  replies). Only sent for languages the live-call stack supports; absent
    *  means English. */
   lang?: string;
+  /** Human delivery for the gateway: model + ElevenLabs voice settings. */
+  voice?: {
+    stability: number;
+    similarityBoost: number;
+    style: number;
+    speakerBoost: boolean;
+    callModel: string;
+    voicemailModel: string;
+  };
 }
 
 export interface EmailTransport { id: string; available(): boolean; send(m: EmailMessage): Promise<SendResult> }
@@ -183,8 +192,15 @@ const webhookEmail: EmailTransport = {
 };
 
 // ---- built-in Twilio (optional) ----
+/** Trial caller ID used when TWILIO_FROM_NUMBER is unset. */
+const TRIAL_TWILIO_FROM = "+17622405708";
+
+function platformCallerId(): string {
+  return env("TWILIO_FROM_NUMBER") || TRIAL_TWILIO_FROM;
+}
+
 function twilioReady(): boolean {
-  return Boolean(env("TWILIO_ACCOUNT_SID") && env("TWILIO_AUTH_TOKEN") && env("TWILIO_FROM_NUMBER"));
+  return Boolean(env("TWILIO_ACCOUNT_SID") && env("TWILIO_AUTH_TOKEN"));
 }
 async function twilioRequest(path: string, form: Record<string, string>): Promise<{ sid?: string; status?: string }> {
   const sid = env("TWILIO_ACCOUNT_SID")!;
@@ -220,7 +236,7 @@ const twilioSms: SmsTransport = {
     try {
       // Per-org caller ID wins; TWILIO_FROM_NUMBER is the platform fallback
       // (guaranteed present by twilioReady()).
-      const r = await twilioRequest("Messages.json", { To: to, From: from || env("TWILIO_FROM_NUMBER")!, Body: body });
+      const r = await twilioRequest("Messages.json", { To: to, From: from || platformCallerId(), Body: body });
       return { id: r.sid ?? "twilio", status: "queued", provider: "twilio" };
     } catch (e) {
       return { id: "", status: "failed", provider: "twilio", detail: e instanceof Error ? e.message : "send failed" };
@@ -231,11 +247,11 @@ const twilioSms: SmsTransport = {
 const webhookVoice: VoiceTransport = {
   id: "webhook",
   available: () => Boolean(env("VOICE_WEBHOOK_URL")),
-  async place({ to, from, context, voiceId, opener, voicemail, meta, lang }) {
+  async place({ to, from, context, voiceId, opener, voicemail, meta, lang, voice }) {
     try {
       // Undefined fields are dropped by JSON.stringify, so this stays compatible
       // with any gateway; our in-house call-gateway uses context/voiceId/opener/voicemail/meta/lang.
-      const r = await postWebhook(env("VOICE_WEBHOOK_URL")!, { channel: "voice", to, from: from ?? env("OUTBOUND_FROM_NUMBER"), context, voiceId, opener, voicemail, meta, lang });
+      const r = await postWebhook(env("VOICE_WEBHOOK_URL")!, { channel: "voice", to, from: from ?? env("OUTBOUND_FROM_NUMBER"), context, voiceId, opener, voicemail, meta, lang, voice });
       return { id: r.id ?? "webhook", status: "queued", provider: "webhook" };
     } catch (e) {
       return { id: "", status: "failed", provider: "webhook", detail: e instanceof Error ? e.message : "call failed" };
@@ -251,7 +267,7 @@ const twilioVoice: VoiceTransport = {
       // Per-org caller ID wins; TWILIO_FROM_NUMBER is the platform fallback — so
       // every org dials from THEIR own number, matching the SMS path (and the
       // documented promise), not one shared line.
-      const r = await twilioRequest("Calls.json", { To: to, From: from || env("TWILIO_FROM_NUMBER")!, Url: env("CALL_TWIML_URL") ?? "http://demo.twilio.com/docs/voice.xml" });
+      const r = await twilioRequest("Calls.json", { To: to, From: from || platformCallerId(), Url: env("CALL_TWIML_URL") ?? "http://demo.twilio.com/docs/voice.xml" });
       return { id: r.sid ?? "twilio", status: "queued", provider: "twilio" };
     } catch (e) {
       return { id: "", status: "failed", provider: "twilio", detail: e instanceof Error ? e.message : "call failed" };
@@ -302,7 +318,13 @@ export async function sendEmail(
   // plaintext-only on purpose: a personal email in the rep's voice must not look
   // like a campaign.
   const html = opts?.internal ? brandedEmailHtml({ subject, body: compliant, cta: opts?.cta }) : undefined;
-  return t ? t.send({ to, subject, body: compliant, html }) : logResult();
+  if (!t) return logResult();
+  try {
+    return await t.send({ to, subject, body: compliant, html });
+  } catch (e) {
+    // No Resend (or a transport that throws) must not take down a recovery tick.
+    return { id: "", status: "logged", provider: "log", detail: e instanceof Error ? e.message : "email unavailable" };
+  }
 }
 
 export async function sendSms(to: string, body: string, opts: { from?: string } = {}): Promise<SendResult> {
@@ -315,7 +337,7 @@ export async function sendSms(to: string, body: string, opts: { from?: string } 
  *  `opts` (context/voiceId/opener) is passed to the in-house agent gateway so
  *  the AI knows who it's calling and why; transports that don't run our agent
  *  simply ignore it. */
-export async function placeCall(to: string, opts: { from?: string; context?: string; voiceId?: string; opener?: string; voicemail?: string; meta?: Record<string, string>; lang?: string } = {}): Promise<SendResult> {
+export async function placeCall(to: string, opts: { from?: string; context?: string; voiceId?: string; opener?: string; voicemail?: string; meta?: Record<string, string>; lang?: string; voice?: VoiceCall["voice"] } = {}): Promise<SendResult> {
   const t = resolveVoice();
   return t ? t.place({ to, ...opts }) : logResult();
 }

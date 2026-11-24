@@ -14,6 +14,7 @@ import type {
 } from "@/lib/crm/types";
 import { seedDataset, type Dataset } from "@/lib/data/seed";
 import { getConfig } from "@/lib/config";
+import { freeDbEnabled } from "@/lib/free/db";
 
 /**
  * Built-in CRM. Backs users who have no external CRM at all. Data lives in a
@@ -21,14 +22,12 @@ import { getConfig } from "@/lib/config";
  * is fully functional out of the box. Swapping to a Supabase-backed store later
  * means re-implementing this same interface — nothing upstream changes.
  *
- * Optional disk persistence: set BUILTIN_PERSIST=true to write the store through
- * to a JSON file (BUILTIN_PERSIST_DIR, default ./.data) so demo edits survive
- * process restarts on local/self-hosted node deploys. Off by default — the store
- * is then purely in-memory and reseeds fresh each boot (the demo's default, and
- * what the test suite relies on). Production persistence is Supabase.
+ * Disk persistence: on for the free SQLite host (so a restart keeps the
+ * pipeline), and whenever BUILTIN_PERSIST=true. Off in tests and when
+ * BUILTIN_PERSIST=false. Supabase, when configured, is a different provider.
  */
 
-const PERSIST = process.env.BUILTIN_PERSIST === "true";
+const PERSIST = process.env.BUILTIN_PERSIST === "true" || (process.env.BUILTIN_PERSIST !== "false" && freeDbEnabled());
 const PERSIST_DIR = process.env.BUILTIN_PERSIST_DIR || path.join(process.cwd(), ".data");
 
 let store: Dataset | null = null;
