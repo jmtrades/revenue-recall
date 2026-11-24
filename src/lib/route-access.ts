@@ -37,6 +37,7 @@ export const PUBLIC_API = [
   "/api/help/chat", // in-product help assistant — no tenant data; self-guards same-origin + rate limit
   "/api/health",
   "/api/webinar/events", // webinar provider webhooks — HMAC / shared secret
+  "/api/webinar/preview", // dry-run of a drop-off — same shared secret, never dials
   "/api/webinar/tick", // minute recovery tick — CRON_SECRET
   "/api/webinar/status", // operator status — ADMIN_TOKEN or CRON_SECRET
   "/api/webinar/beacon", // presence beacon from a page the org controls

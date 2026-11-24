@@ -26,6 +26,7 @@ describe("CSRF guard — which requests must prove same-origin", () => {
       "/api/inbound/email",
       "/api/calls/log", // gateway COMMS_WEBHOOK_TOKEN
       "/api/webinar/events", // webinar HMAC
+      "/api/webinar/preview", // dry-run, shared secret, never dials
       "/api/webinar/tick", // CRON_SECRET
       "/api/webinar/beacon", // presence snippet, cross-origin by design
       "/api/v1/leads", // public API key
