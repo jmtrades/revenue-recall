@@ -151,10 +151,15 @@ async function persist(orgId: string, row: PresenceRow): Promise<void> {
   });
 }
 
-/** The snippet hosts paste on a page they control. It does not run inside Zoom, YouTube, or StreamYard. */
-export function beaconScript(): string {
+/** The snippet hosts paste on a page they control. It does not run inside Zoom, YouTube, or StreamYard.
+ *  When the script URL carries the install token, the endpoint is filled in so the page only sets the lead. */
+export function beaconScript(defaults?: { endpoint?: string; provider?: string }): string {
+  const endpoint = JSON.stringify(defaults?.endpoint ?? "");
+  const provider = JSON.stringify(defaults?.provider ?? "beacon");
   return `(function(){
   var cfg = window.RR_WEBINAR || {};
+  if (!cfg.endpoint && ${endpoint}) cfg.endpoint = ${endpoint};
+  if (!cfg.provider) cfg.provider = ${provider};
   if (!cfg.endpoint || !cfg.sessionId) return;
   var hiddenTimer = null;
   function send(type){

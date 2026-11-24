@@ -17,6 +17,7 @@ import { resolveProvider } from "@/lib/crm/registry";
 import { compactMoney, pct } from "@/lib/format";
 import { launchStatus } from "@/lib/launch";
 import { webinarArmed } from "@/lib/webinar/config";
+import { installSecret } from "@/lib/webinar/install";
 import { platformStatus } from "@/lib/webinar/platforms";
 import type { Activity } from "@/lib/crm/types";
 
@@ -65,7 +66,7 @@ export default async function AdminPage() {
   // System health at a glance — each feature lights up only when its key/URL is
   // set, mirroring the product's inert-without-config behavior.
   const ch = channelStatus();
-  const webinarPlatforms = platformStatus();
+  const webinarPlatforms = platformStatus(installSecret());
   const systems: { label: string; live: boolean }[] = [
     { label: "Email", live: ch.email.live },
     { label: "SMS", live: ch.sms.live },

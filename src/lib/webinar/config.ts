@@ -1,4 +1,5 @@
 import { anyWebinarArmed, WEBINAR_PLATFORMS } from "@/lib/webinar/platforms";
+import { installSecret } from "@/lib/webinar/install";
 import type { WebinarConfig } from "@/lib/webinar/types";
 
 /**
@@ -50,9 +51,9 @@ export function webinarConfig(): WebinarConfig {
   };
 }
 
-/** True when any platform secret, or the shared webhook/beacon secret, is set. */
+/** True when any platform secret, the shared webhook/beacon secret, or the generated install secret is set. */
 export function webinarArmed(): boolean {
-  return anyWebinarArmed();
+  return anyWebinarArmed(installSecret());
 }
 
 const SECRET_ENV: Record<string, string> = {
@@ -69,5 +70,5 @@ export function secretForProvider(provider: string): string | undefined {
   const specific = (process.env[SECRET_ENV[key] ?? ""] ?? "").trim();
   const generic = (process.env.WEBINAR_WEBHOOK_SECRET ?? "").trim();
   const beacon = (process.env.WEBINAR_BEACON_TOKEN ?? "").trim();
-  return specific || generic || beacon || undefined;
+  return specific || generic || beacon || installSecret() || undefined;
 }

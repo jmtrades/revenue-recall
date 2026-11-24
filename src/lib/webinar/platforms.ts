@@ -186,6 +186,15 @@ export const WEBINAR_PLATFORMS: readonly WebinarPlatform[] = [
     webhook: false,
   },
   {
+    id: "zapier",
+    label: "Zapier / Make",
+    secretEnv: "WEBINAR_WEBHOOK_SECRET",
+    detection: "generic",
+    latency: "Real-time if the Zap or Make scenario POSTs attendance.left as the person leaves. We dial in under a second after that POST. A polled Zapier trigger is only as fast as Zapier's poll.",
+    subscribe: ["attendance.left", "attendance.joined", "registrant.registered"],
+    webhook: true,
+  },
+  {
     id: "generic",
     label: "Generic leave POST",
     secretEnv: "WEBINAR_WEBHOOK_SECRET",
@@ -209,9 +218,10 @@ function envSet(name: string): boolean {
   return Boolean((process.env[name] ?? "").trim());
 }
 
-/** Per-platform armed flags. A shared webhook or beacon secret arms platforms that fall back to it. */
-export function platformStatus(): PlatformArm[] {
-  const shared = envSet("WEBINAR_WEBHOOK_SECRET") || envSet("WEBINAR_BEACON_TOKEN");
+/** Per-platform armed flags. A shared webhook or beacon secret arms platforms that fall back to it.
+ *  On the free host a generated secret counts, so detection is armed without an env var. */
+export function platformStatus(sharedSecret?: string | null): PlatformArm[] {
+  const shared = envSet("WEBINAR_WEBHOOK_SECRET") || envSet("WEBINAR_BEACON_TOKEN") || Boolean(sharedSecret && sharedSecret.trim());
   return WEBINAR_PLATFORMS.map((p) => ({
     id: p.id,
     label: p.label,
@@ -222,6 +232,6 @@ export function platformStatus(): PlatformArm[] {
   }));
 }
 
-export function anyWebinarArmed(): boolean {
-  return platformStatus().some((p) => p.armed);
+export function anyWebinarArmed(sharedSecret?: string | null): boolean {
+  return platformStatus(sharedSecret).some((p) => p.armed);
 }

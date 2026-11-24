@@ -9,6 +9,7 @@ import { convaiConfigured, convaiAgentId, convaiReason } from "@/lib/voice/conva
 import { elevenConfigured } from "@/lib/voice/eleven";
 import { launchStatus } from "@/lib/launch";
 import { webinarArmed } from "@/lib/webinar/config";
+import { installSecret } from "@/lib/webinar/install";
 import { platformStatus } from "@/lib/webinar/platforms";
 import { isAdminRequest } from "@/lib/admin";
 
@@ -30,7 +31,7 @@ export async function GET(req: Request) {
     voiceHosted: ttsAvailable(),
     voiceAgent: convaiConfigured(),
     webinar: webinarArmed(),
-    webinarPlatforms: platformStatus().map((p) => ({ id: p.id, armed: p.armed, detection: p.detection })),
+    webinarPlatforms: platformStatus(installSecret()).map((p) => ({ id: p.id, armed: p.armed, detection: p.detection })),
   };
 
   // Voice connection detail — public (no session) so an operator can confirm the
