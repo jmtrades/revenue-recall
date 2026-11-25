@@ -22,5 +22,7 @@ export function integrationStatus(env: Record<string, string | undefined> = proc
     { id: "voice", label: "Call transport", ok: has("VOICE_WEBHOOK_URL") || (has("TWILIO_ACCOUNT_SID") && has("TWILIO_AUTH_TOKEN")), missing: "VOICE_WEBHOOK_URL or Twilio", test: "call" },
     { id: "email", label: "Email", ok: has("RESEND_API_KEY") || has("SENDGRID_API_KEY"), missing: "RESEND_API_KEY or SENDGRID_API_KEY", test: "email" },
     { id: "webinar", label: "Webinar webhook", ok: has("WEBINAR_WEBHOOK_SECRET") || has("ZOOM_WEBHOOK_SECRET") || has("DEMIO_WEBHOOK_SECRET") || has("GOTO_WEBHOOK_SECRET") || has("WEBINARJAM_WEBHOOK_SECRET"), missing: "WEBINAR_WEBHOOK_SECRET (or a platform secret)", test: "none" },
+    { id: "meta", label: "Instagram and Messenger", ok: has("META_APP_ID") && has("META_APP_SECRET") && (has("META_VERIFY_TOKEN") || has("IG_VERIFY_TOKEN")), missing: "META_APP_ID, META_APP_SECRET, META_VERIFY_TOKEN", test: "none" },
+    { id: "whatsapp", label: "WhatsApp", ok: has("WHATSAPP_TOKEN") && has("WHATSAPP_PHONE_NUMBER_ID"), missing: "WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID", test: "none" },
   ];
 }

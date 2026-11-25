@@ -48,6 +48,7 @@ const ROUTES = [
   "/security",
   "/docs/api",
   "/admin/ads",
+  "/admin/team",
   "/api/health",
 ];
 

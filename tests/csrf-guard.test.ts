@@ -33,6 +33,7 @@ describe("CSRF guard — which requests must prove same-origin", () => {
       "/api/forms/submit", // HMAC form token
       "/api/bookings/create", // HMAC booking token
       "/api/billing/setup", // operator ADMIN_TOKEN (curled cross-origin)
+      "/api/chat",
       "/api/ads/collect", // browser funnel events
       "/api/ads/schedule", // Calendly / Cal.com
       "/api/client-error", // public intake, rate-limited

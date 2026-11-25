@@ -38,7 +38,7 @@ export const OAUTH_PROVIDERS: Record<OAuthPlatform, OAuthProvider> = {
     platform: "instagram",
     authorizeUrl: "https://www.facebook.com/v21.0/dialog/oauth",
     tokenUrl: "https://graph.facebook.com/v21.0/oauth/access_token",
-    scopes: ["instagram_basic", "instagram_manage_messages", "pages_messaging", "pages_show_list"],
+    scopes: ["instagram_basic", "instagram_manage_messages", "instagram_manage_comments", "pages_messaging", "pages_show_list", "pages_manage_engagement", "leads_retrieval", "pages_manage_metadata"],
     clientIdEnv: "META_APP_ID",
     clientSecretEnv: "META_APP_SECRET",
   },

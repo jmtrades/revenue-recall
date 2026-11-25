@@ -10,6 +10,10 @@ import { createOutboxItem } from "@/lib/agent/store";
 import { fireSpeedToLead } from "@/lib/agent/speed-to-lead";
 import { stopEnrollmentsForContact } from "@/lib/cadence";
 import { hasOptedOut, isHardOptOut } from "@/lib/agent/guardrails";
+import { planTeamReply, recordTeamEvent } from "@/lib/agent/team";
+import { planCommentReply, sendCommentReplies } from "@/lib/social/comment-dm";
+import { trackAds } from "@/lib/ads/track";
+import { isAiConfigured } from "@/lib/ai/client";
 import { markDoNotContact } from "@/lib/opt-out";
 import { seenInboundEvent, forgetInboundEvent } from "@/lib/inbound-dedup";
 import type { Activity, Contact } from "@/lib/crm/types";
@@ -146,7 +150,25 @@ export async function ingestSocialMessages(messages: InboundSocialMessage[]): Pr
       // Draft a human-voiced reply and send it back on the SAME platform (auto
       // when REPLY_AUTOPILOT=true), or queue it to Approvals — so social is
       // two-way like email/SMS, not a one-way log. Suppressed entirely on opt-out.
-      replied = optedOut || !m.text.trim() ? false : await autoReply(contact, platform, m.text);
+      const skipAuto = m.kind === "comment" || m.kind === "lead" || m.kind === "mention";
+      if (m.kind === "comment" && m.commentId && !optedOut) {
+        const plan = planCommentReply(m.text);
+        if (plan.match) {
+          const token = process.env.META_PAGE_ACCESS_TOKEN || process.env.IG_TOKEN || process.env.MESSENGER_PAGE_TOKEN;
+          await sendCommentReplies({ commentId: m.commentId, publicReply: plan.publicReply, privateReply: plan.privateReply, token }).catch(() => "failed");
+        }
+      }
+      if (m.kind === "lead" && created) {
+        await trackAds({
+          name: "Lead",
+          eventId: m.externalMessageId,
+          personName: contact.name,
+          consent: true,
+          attribution: { first: null, last: { source: "meta", medium: "lead_ad", campaign: "lead-ad", content: "", term: "", fbclid: "", gclid: "", ttclid: "", referrer: "", landing: "/admin/ads", at: m.at } },
+        }).catch(() => undefined);
+        recordTeamEvent({ at: m.at, role: "sdr", outcome: "reply", channel: platform });
+      }
+      replied = optedOut || skipAuto || !m.text.trim() ? false : await autoReply(contact, platform, m.text, m.at);
     } catch {
       logged = false;
       // Processing threw after we recorded the dedup key — un-record it so the
@@ -170,11 +192,22 @@ function cap(s: string): string {
  * Mirrors the email/SMS inbound behavior so every channel is genuinely two-way.
  * Best-effort: a reply failure never breaks ingestion of the message itself.
  */
-async function autoReply(contact: Contact, platform: SocialPlatform, incoming: string): Promise<"sent" | "queued" | false> {
+async function autoReply(contact: Contact, platform: SocialPlatform, incoming: string, at?: string): Promise<"sent" | "queued" | false> {
   try {
+    if (contact.attributes?.aiPaused === "true") return false;
+    const plan = planTeamReply({
+      text: incoming,
+      channel: platform,
+      seed: contact.id,
+      paused: false,
+      bookingUrl: typeof contact.attributes?.bookingUrl === "string" ? contact.attributes.bookingUrl : undefined,
+    });
+    if (plan.optOut || plan.paused) return false;
     const [voice, org] = await Promise.all([getActiveVoice(), getOrgSettings()]);
     const industry = getIndustry(org.industryId);
-    const reply = await draftReply({
+    let body = plan.body;
+    if (isAiConfigured()) {
+      const reply = await draftReply({
       channel: "sms", // social DMs are short-form; reuse the SMS register
       contactName: contact.name,
       company: contact.company,
@@ -185,24 +218,28 @@ async function autoReply(contact: Contact, platform: SocialPlatform, incoming: s
       voice,
       language: contactPreferredLanguage(contact.attributes, org.language),
     });
+      if (reply.body.trim()) body = reply.body;
+    }
 
-    if (process.env.REPLY_AUTOPILOT === "true" && reply.body.trim()) {
-      const res = await sendReply({ contact, channel: platform, body: reply.body });
+    if (process.env.REPLY_AUTOPILOT === "true" && body.trim()) {
+      const res = await sendReply({ contact, channel: platform, body, lastInboundAt: at });
       if (res.status !== "failed") {
         const provider = (await resolveProvider());
         await provider.logActivity({
           contactId: contact.id,
           kind: "note",
-          summary: `[${platformTag(platform)}] ${reply.body}`,
+          summary: `[${platformTag(platform)}] ${body}`,
           direction: "outbound",
           occurredAt: new Date().toISOString(),
         });
+        recordTeamEvent({ at: new Date().toISOString(), role: plan.role, outcome: plan.role === "setter" ? "booked" : "reply", channel: platform });
         return "sent";
       }
     }
 
     // Default: queue the drafted reply to Approvals for one-click send.
-    await createOutboxItem({ contactId: contact.id, channel: platform, body: reply.body, source: reply.source });
+    await createOutboxItem({ contactId: contact.id, channel: platform, body, source: isAiConfigured() ? "ai" : "template" });
+    recordTeamEvent({ at: new Date().toISOString(), role: plan.role, outcome: "reply", channel: platform });
     return "queued";
   } catch {
     return false;

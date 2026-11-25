@@ -471,7 +471,7 @@ export async function onWebinarCallOutcome(input: {
     dedupeKey: `call:${input.registrantId}:${input.stepId ?? "na"}:${klass}:${input.outcome ?? ""}`,
     provider: "call",
     type: klass === "opt_out" ? "outcome.opt_out" : "outcome.call",
-    occurredAt: new Date().toISOString(),
+    occurredAt: activePorts().now().toISOString(),
     session: { id: reg.sessionId },
     registrant: { email: reg.email, phone: reg.phone, id: reg.providerRegistrantId },
     callOutcome: input.outcome,
@@ -490,11 +490,12 @@ export async function onWebinarInboundSms(orgId: string | null, from: string, bo
     for (const reg of regs) {
       if (seen.has(reg.id) || reg.state === "opted_out" || reg.state === "booked") continue;
       seen.add(reg.id);
+      const at = activePorts().now();
       await ingestWebinarEvent(org, {
-        dedupeKey: `sms:${reg.id}:${hashKey([body])}:${Math.floor(Date.now() / 60_000)}`,
+        dedupeKey: `sms:${reg.id}:${hashKey([body])}:${Math.floor(at.getTime() / 60_000)}`,
         provider: "sms",
         type: "outcome.sms",
-        occurredAt: new Date().toISOString(),
+        occurredAt: at.toISOString(),
         session: { id: reg.sessionId },
         registrant: { email: reg.email, phone: reg.phone },
         message: body,

@@ -37,6 +37,8 @@ export interface OutboundSocialMessage {
   mediaUrls?: string[];
   /** Optional reply-to (thread/message id) where the platform threads. */
   replyToId?: string;
+  /** ISO time of their last inbound message, so Meta sends stay inside policy. */
+  lastInboundAt?: string;
 }
 
 export interface InboundSocialMessage {
@@ -47,6 +49,10 @@ export interface InboundSocialMessage {
   /** The account/page/number that received it (multi-account aware). */
   toAccountId?: string;
   text: string;
+  /** dm is the default. Comments, story replies, mentions, and lead ads are explicit. */
+  kind?: "dm" | "story_reply" | "mention" | "comment" | "lead";
+  /** Present on comment and mention events so a private reply can target it. */
+  commentId?: string;
   mediaUrls?: string[];
   /** ISO timestamp the platform reported, else receipt time. */
   at: string;
