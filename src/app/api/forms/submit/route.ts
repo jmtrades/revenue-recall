@@ -5,6 +5,8 @@ import { verifyFormToken } from "@/lib/forms";
 import { runWithOrg } from "@/lib/supabase/org-context";
 import { captureLead } from "@/lib/leads-capture";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
+import { attributionNote, resolveAttribution } from "@/lib/ads/touch";
+import { trackAds } from "@/lib/ads/track";
 
 export const dynamic = "force-dynamic";
 
@@ -70,23 +72,37 @@ export const POST = withGuard(async (req: Request) => {
     return NextResponse.redirect(formUrl(req, org, token, "error=1"), 303);
   }
 
+  const attr = resolveAttribution(undefined, req.headers.get("cookie"));
+  const ad = attributionNote(attr);
   await runWithOrg(org, () =>
     captureLead({
       name,
       email: email || undefined,
       phone: phone || undefined,
       company: cap(fields.company, 200) || undefined,
-      notes: cap(fields.message, 2000) || undefined,
-      source: "Web form",
+      notes: [cap(fields.message, 2000), ad].filter(Boolean).join("\n") || undefined,
+      source: ad ? `Web form · ${ad.replace(/^Ad: /, "")}` : "Web form",
     }),
   );
+  const tracked = await trackAds({ name: "Lead", attribution: attr, email, phone, personName: name, consent: true, page: req.headers.get("referer") ?? undefined }).catch(() => null);
 
-  return done(req, wantsJson, org, token);
+  return done(req, wantsJson, org, token, tracked?.eventId);
 });
 
-function done(req: Request, wantsJson: boolean, org: string, token: string): Response {
-  if (wantsJson) return NextResponse.json({ ok: true });
-  return NextResponse.redirect(formUrl(req, org, token, "sent=1"), 303);
+function done(req: Request, wantsJson: boolean, org: string, token: string, eventId?: string): Response {
+  if (wantsJson) {
+    const res = NextResponse.json({ ok: true, eventId });
+    stampPixel(res, eventId);
+    return res;
+  }
+  const res = NextResponse.redirect(formUrl(req, org, token, "sent=1"), 303);
+  stampPixel(res, eventId);
+  return res;
+}
+
+function stampPixel(res: NextResponse, eventId?: string) {
+  if (!eventId) return;
+  res.cookies.set("rr_ads_pixel", `Lead:${eventId}`, { path: "/", maxAge: 120, sameSite: "lax" });
 }
 
 /**

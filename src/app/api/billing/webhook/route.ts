@@ -6,6 +6,7 @@ import { isPlanId } from "@/lib/billing/plans";
 import { addUsageCredits } from "@/lib/ai/usage";
 import { maybeGrantReferralReward } from "@/lib/referrals-server";
 import { logError, errMessage } from "@/lib/log";
+import { trackAds } from "@/lib/ads/track";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,16 @@ export async function POST(req: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const meta = (obj.metadata as Record<string, unknown>) ?? {};
+        const details = (obj.customer_details as { email?: string } | undefined) ?? {};
+        const cents = Number(obj.amount_total);
+        await trackAds({
+          name: "Purchase",
+          eventId: `purchase_${String(obj.id ?? event.id ?? "")}`,
+          email: details.email || (typeof obj.customer_email === "string" ? obj.customer_email : undefined),
+          value: Number.isFinite(cents) ? cents / 100 : undefined,
+          currency: typeof obj.currency === "string" ? obj.currency : "USD",
+          consent: true,
+        }).catch(() => {});
         // One-time usage top-up → credit units for the current month, not a
         // plan change. The unit decides which pool: AI messages (source
         // "topup") or talk minutes (source "voice_topup" — the meters filter

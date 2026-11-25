@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SignalWave } from "@/components/RecallOrbit";
 import { DEMO_LINES } from "@/lib/voice/demo-lines";
+import { trackInBrowser } from "@/components/ads/browser";
 
 type Status = "idle" | "loading" | "speaking";
 
@@ -66,6 +67,14 @@ export function VoiceDemo({ industryId }: { industryId?: string }) {
     setUnavailable(false);
     setStatus("loading");
     try {
+      try {
+        if (!sessionStorage.getItem("rr_heard")) {
+          sessionStorage.setItem("rr_heard", "1");
+          void trackInBrowser("Contact");
+        }
+      } catch {
+        void trackInBrowser("Contact");
+      }
       const res = await fetch(`/api/voice/preview?line=${i}`);
       if (!res.ok) {
         setUnavailable(true);

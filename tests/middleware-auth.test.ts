@@ -25,6 +25,8 @@ describe("middleware auth-gate allowlist (real isPublicRoute)", () => {
       "/api/client-error",
       "/api/help/chat", // in-product help assistant — usable logged-out (marketing site)
       "/api/health",
+      "/api/ads/collect",
+      "/api/ads/schedule",
       "/api/webinar/events",
       "/api/webinar/preview",
       "/api/webinar/tick",

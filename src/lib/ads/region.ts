@@ -1,0 +1,61 @@
+/**
+ * UK, EU, and EEA time zones. Used only to decide whether the cookie banner
+ * must appear before advertising tags load. A visitor outside this set is not
+ * shown the banner.
+ */
+const EU_UK_TIMEZONES = new Set([
+  "Europe/London",
+  "Europe/Belfast",
+  "Europe/Guernsey",
+  "Europe/Isle_of_Man",
+  "Europe/Jersey",
+  "Europe/Dublin",
+  "Europe/Lisbon",
+  "Atlantic/Madeira",
+  "Atlantic/Canary",
+  "Atlantic/Azores",
+  "Atlantic/Faroe",
+  "Atlantic/Reykjavik",
+  "Europe/Madrid",
+  "Europe/Paris",
+  "Europe/Brussels",
+  "Europe/Amsterdam",
+  "Europe/Luxembourg",
+  "Europe/Berlin",
+  "Europe/Vienna",
+  "Europe/Zurich",
+  "Europe/Rome",
+  "Europe/Vatican",
+  "Europe/San_Marino",
+  "Europe/Malta",
+  "Europe/Prague",
+  "Europe/Bratislava",
+  "Europe/Budapest",
+  "Europe/Warsaw",
+  "Europe/Stockholm",
+  "Europe/Oslo",
+  "Europe/Copenhagen",
+  "Europe/Helsinki",
+  "Europe/Mariehamn",
+  "Europe/Tallinn",
+  "Europe/Riga",
+  "Europe/Vilnius",
+  "Europe/Athens",
+  "Europe/Bucharest",
+  "Europe/Sofia",
+  "Europe/Nicosia",
+  "Europe/Zagreb",
+  "Europe/Ljubljana",
+  "Europe/Belgrade",
+  "Europe/Podgorica",
+  "Europe/Sarajevo",
+  "Europe/Skopje",
+  "Europe/Tirane",
+  "Europe/Andorra",
+  "Europe/Monaco",
+  "Europe/Gibraltar",
+]);
+
+export function isEuUkTimezone(timeZone: string | null | undefined): boolean {
+  return Boolean(timeZone && EU_UK_TIMEZONES.has(timeZone));
+}

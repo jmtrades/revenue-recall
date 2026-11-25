@@ -5,6 +5,8 @@ import { verifyBookingToken } from "@/lib/meetings/token";
 import { runWithOrg } from "@/lib/supabase/org-context";
 import { bookMeeting, BookingError } from "@/lib/meetings/book";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
+import { attributionNote, resolveAttribution } from "@/lib/ads/touch";
+import { trackAds } from "@/lib/ads/track";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,7 @@ const Body = z.object({
   email: z.string().trim().max(200).optional(),
   phone: z.string().trim().max(40).optional(),
   notes: z.string().trim().max(2000).optional(),
+  attribution: z.unknown().optional(),
   // Honeypot — real users never fill this.
   website: z.string().max(200).optional(),
 });
@@ -33,7 +36,7 @@ export const POST = withGuard(async (req: Request) => {
   }
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Missing booking details." }, { status: 400 });
-  const { org, token, website, slug, start, name, email, phone, notes } = parsed.data;
+  const { org, token, website, slug, start, name, email, phone, notes, attribution } = parsed.data;
 
   if (!verifyBookingToken(org, token)) {
     return NextResponse.json({ error: "This booking link is invalid or expired." }, { status: 401 });
@@ -45,9 +48,14 @@ export const POST = withGuard(async (req: Request) => {
     return NextResponse.json({ error: "Provide an email or phone so we can confirm." }, { status: 400 });
   }
 
+  const attr = resolveAttribution(attribution, req.headers.get("cookie"));
+  const ad = attributionNote(attr);
   try {
-    const res = await runWithOrg(org, () => bookMeeting({ slug, startIso: start, name, email, phone, notes }));
-    return NextResponse.json({ ok: true, booking: { id: res.bookingId, startsAt: res.startsAt, endsAt: res.endsAt, meeting: res.meetingName } }, { status: 201 });
+    const res = await runWithOrg(org, () => bookMeeting({ slug, startIso: start, name, email, phone, notes: [notes, ad].filter(Boolean).join("\n") || undefined }));
+    const tracked = await trackAds({ name: "Schedule", eventId: `schedule_${res.bookingId}`, attribution: attr, email, phone, personName: name, consent: true }).catch(() => null);
+    const out = NextResponse.json({ ok: true, eventId: tracked?.eventId, booking: { id: res.bookingId, startsAt: res.startsAt, endsAt: res.endsAt, meeting: res.meetingName } }, { status: 201 });
+    if (tracked?.eventId) out.cookies.set("rr_ads_pixel", `Schedule:${tracked.eventId}`, { path: "/", maxAge: 120, sameSite: "lax" });
+    return out;
   } catch (e) {
     if (e instanceof BookingError) return NextResponse.json({ error: e.message }, { status: 409 });
     return NextResponse.json({ error: "We couldn't complete that booking. Please try again." }, { status: 500 });
