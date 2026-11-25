@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AdsRuntime } from "@/components/ads/AdsRuntime";
+import { WebChat } from "@/components/WebChat";
 import { CookieConsent } from "@/components/CookieConsent";
 import { ClientErrorReporter } from "@/components/ClientErrorReporter";
 import { HelpWidget } from "@/components/HelpWidget";
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             Purchase: process.env.GOOGLE_ADS_LABEL_PURCHASE ?? "",
           }}
         />
+        <WebChat />
         <HelpWidget />
         <CookieConsent />
         <ClientErrorReporter />

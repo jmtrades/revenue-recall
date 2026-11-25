@@ -28,6 +28,8 @@ export interface OutboundReply {
   subject?: string;
   /** Explicit destination; when omitted we resolve it from the contact. */
   to?: string;
+  /** When their last message arrived, so Meta can pick RESPONSE vs human_agent. */
+  lastInboundAt?: string;
 }
 
 export interface OutboundResult {
@@ -61,7 +63,7 @@ export function resolveAddress(contact: Contact, channel: OutboundChannel, overr
 }
 
 export async function sendReply(reply: OutboundReply): Promise<OutboundResult> {
-  const { contact, channel, body, subject, to } = reply;
+  const { contact, channel, body, subject, to, lastInboundAt } = reply;
   const address = resolveAddress(contact, channel, to);
   if (!address) {
     return { status: "failed", provider: channel, id: "", detail: `No ${channel} address on contact` };
@@ -91,6 +93,6 @@ export async function sendReply(reply: OutboundReply): Promise<OutboundResult> {
   if (!social) {
     return { status: "failed", provider: channel, id: "", detail: `${channel} is not connected` };
   }
-  const r = await social.send({ to: address, text: body });
+  const r = await social.send({ to: address, text: body, lastInboundAt });
   return { status: r.status, provider: r.platform, id: r.id, detail: r.detail };
 }

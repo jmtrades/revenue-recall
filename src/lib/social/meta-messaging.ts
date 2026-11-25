@@ -10,6 +10,7 @@ import type {
 import { verifyMetaSignature } from "@/lib/social/whatsapp";
 import { resolveSocialCreds } from "@/lib/social/creds";
 import { fetchWithRetry } from "@/lib/crm/net";
+import { metaSendMode } from "@/lib/social/meta-window";
 
 /**
  * Instagram DMs + Facebook Messenger — both are Meta's Messenger Platform with
@@ -34,6 +35,15 @@ const KEYS: Record<"instagram" | "messenger", { token: string; secret: string; v
   messenger: { token: "MESSENGER_PAGE_TOKEN", secret: "MESSENGER_APP_SECRET", verify: "MESSENGER_VERIFY_TOKEN", label: "Messenger" },
 };
 
+function alias(primary?: string, ...fallbacks: string[]): string | undefined {
+  if (primary) return primary;
+  for (const name of fallbacks) {
+    const v = env(name);
+    if (v) return v;
+  }
+  return undefined;
+}
+
 export function metaMessagingChannel(platform: "instagram" | "messenger"): SocialChannel {
   const k = KEYS[platform];
   // Logical cred names → env vars, for resolveSocialCreds (per-org → env).
@@ -46,20 +56,22 @@ export function metaMessagingChannel(platform: "instagram" | "messenger"): Socia
       return {
         platform,
         label: k.label,
-        connected: Boolean(env(k.token)),
-        hint: `Set ${k.token} (Meta page/IG access token) to message on ${k.label}.`,
+        connected: Boolean(alias(env(k.token), "META_PAGE_ACCESS_TOKEN")),
+        hint: `Set ${k.token} or META_PAGE_ACCESS_TOKEN, plus META_APP_SECRET and META_VERIFY_TOKEN, to message on ${k.label}.`,
       };
     },
 
     async send(msg: OutboundSocialMessage): Promise<SocialSendResult> {
-      const { token: tk } = await resolveSocialCreds(platform as SocialPlatform, credKeys);
+      const { token: resolved } = await resolveSocialCreds(platform as SocialPlatform, credKeys);
+      const tk = alias(resolved, "META_PAGE_ACCESS_TOKEN", k.token);
       if (!tk) return { id: "", status: "logged", platform, detail: "not connected" };
+      const mode = metaSendMode(msg.lastInboundAt);
       try {
         // retries:0 on a send (avoid double-send); still gets the hang timeout.
         const res = await fetchWithRetry(`${GRAPH}/me/messages?access_token=${encodeURIComponent(tk)}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recipient: { id: msg.to }, message: { text: msg.text }, messaging_type: "RESPONSE" }),
+          body: JSON.stringify({ recipient: { id: msg.to }, message: { text: msg.text }, ...mode }),
         }, { retries: 0 });
         const json = (await res.json().catch(() => ({}))) as { message_id?: string; error?: { message?: string } };
         if (!res.ok) throw new Error(json.error?.message ?? `${k.label} ${res.status}`);
@@ -71,14 +83,16 @@ export function metaMessagingChannel(platform: "instagram" | "messenger"): Socia
 
     async verifyChallenge(params: URLSearchParams): Promise<string | null> {
       const { verifyToken } = await resolveSocialCreds(platform as SocialPlatform, credKeys);
-      if (params.get("hub.mode") === "subscribe" && verifyToken && params.get("hub.verify_token") === verifyToken) {
+      const token = alias(verifyToken, "META_VERIFY_TOKEN", k.verify);
+      if (params.get("hub.mode") === "subscribe" && token && params.get("hub.verify_token") === token) {
         return params.get("hub.challenge");
       }
       return null;
     },
 
     async parseWebhook(req: WebhookEnvelope): Promise<InboundSocialMessage[]> {
-      const { appSecret } = await resolveSocialCreds(platform as SocialPlatform, credKeys);
+      const { appSecret: resolvedSecret } = await resolveSocialCreds(platform as SocialPlatform, credKeys);
+      const appSecret = alias(resolvedSecret, "META_APP_SECRET", k.secret);
       // Fail closed in production when no app secret is configured (otherwise a
       // forged webhook is ingested into the resolved tenant's inbox).
       if (!appSecret) {
@@ -96,16 +110,50 @@ export function metaMessagingChannel(platform: "instagram" | "messenger"): Socia
       for (const entry of body.entry ?? []) {
         for (const ev of entry.messaging ?? []) {
           // Skip echoes (messages we sent) and non-text events.
-          if (ev.message?.is_echo || !ev.message?.text || !ev.sender?.id) continue;
+          if (ev.message?.is_echo || !ev.sender?.id) continue;
+          const story = ev.message?.reply_to?.story?.id;
+          const text = ev.message?.text || (story ? "Replied to your story" : "");
+          if (!text) continue;
           out.push({
             platform,
-            externalMessageId: ev.message.mid ?? `${ev.sender.id}:${ev.timestamp ?? Date.now()}`,
+            kind: story ? "story_reply" : "dm",
+            externalMessageId: ev.message?.mid ?? `${ev.sender.id}:${ev.timestamp ?? Date.now()}`,
             from: { externalId: ev.sender.id },
-            toAccountId: ev.recipient?.id,
-            text: ev.message.text,
+            toAccountId: ev.recipient?.id ?? entry.id,
+            text,
             at: ev.timestamp ? new Date(ev.timestamp).toISOString() : new Date().toISOString(),
             raw: body,
           });
+        }
+        for (const change of entry.changes ?? []) {
+          if (change.field === "comments" || change.field === "mentions") {
+            const from = change.value?.from?.id;
+            const id = change.value?.id || change.value?.comment_id;
+            if (!from && !id) continue;
+            out.push({
+              platform,
+              kind: change.field === "mentions" ? "mention" : "comment",
+              commentId: id,
+              externalMessageId: id ?? `${from}:${change.value?.created_time ?? Date.now()}`,
+              from: { externalId: from || id || "unknown", handle: change.value?.from?.username },
+              toAccountId: entry.id,
+              text: change.value?.text || (change.field === "mentions" ? "Mentioned you" : ""),
+              at: new Date().toISOString(),
+              raw: body,
+            });
+          }
+          if (change.field === "leadgen" && change.value?.leadgen_id) {
+            out.push({
+              platform,
+              kind: "lead",
+              externalMessageId: `leadgen:${change.value.leadgen_id}`,
+              from: { externalId: change.value.leadgen_id, name: "Meta lead" },
+              toAccountId: change.value.page_id ?? entry.id,
+              text: "New instant-form lead",
+              at: change.value.created_time ? new Date(Number(change.value.created_time) * 1000).toISOString() : new Date().toISOString(),
+              raw: change.value,
+            });
+          }
         }
       }
       return out;
@@ -117,8 +165,20 @@ interface MetaMsgEvent {
   sender?: { id?: string };
   recipient?: { id?: string };
   timestamp?: number;
-  message?: { mid?: string; text?: string; is_echo?: boolean };
+  message?: { mid?: string; text?: string; is_echo?: boolean; reply_to?: { story?: { id?: string } } };
+}
+interface MetaChange {
+  field?: string;
+  value?: {
+    id?: string;
+    comment_id?: string;
+    text?: string;
+    from?: { id?: string; username?: string };
+    leadgen_id?: string;
+    page_id?: string;
+    created_time?: number;
+  };
 }
 interface MetaMsgWebhook {
-  entry?: { messaging?: MetaMsgEvent[] }[];
+  entry?: { id?: string; messaging?: MetaMsgEvent[]; changes?: MetaChange[] }[];
 }
