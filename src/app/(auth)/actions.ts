@@ -10,6 +10,9 @@ import { distributedRateLimit } from "@/lib/ratelimit";
 import { inviteOnlyEnabled } from "@/lib/config";
 import { hasPendingInvite } from "@/lib/invites-server";
 import { anyOrgExists } from "@/lib/supabase/provision";
+import { cookies } from "next/headers";
+import { attributionFromCookie } from "@/lib/ads/touch";
+import { trackAds } from "@/lib/ads/track";
 
 export interface AuthState {
   error?: string;
@@ -34,6 +37,17 @@ export async function signIn(_prev: AuthState, formData: FormData): Promise<Auth
   const { error } = await sb.auth.signInWithPassword({ email, password });
   if (error) return { error: error.message };
   redirect(safeNext(formData.get("next")));
+}
+
+async function rememberSignupLead(email: string, name: string) {
+  try {
+    const jar = await cookies();
+    const attr = attributionFromCookie(jar.getAll().map((c) => `${c.name}=${c.value}`).join("; "));
+    const tracked = await trackAds({ name: "Lead", attribution: attr, email, personName: name, consent: true, page: "/signup" });
+    jar.set("rr_ads_pixel", `Lead:${tracked.eventId}`, { path: "/", maxAge: 120, sameSite: "lax" });
+  } catch {
+    /* a tracking miss must not block signup */
+  }
 }
 
 export async function signUp(_prev: AuthState, formData: FormData): Promise<AuthState> {
@@ -74,6 +88,7 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
     if (createErr && !/registered|already|exists/i.test(createErr.message)) return { error: createErr.message };
     const { error: signInErr } = await sb.auth.signInWithPassword({ email, password });
     if (signInErr) return { error: createErr ? "An account with this email already exists — try signing in." : signInErr.message };
+    await rememberSignupLead(email, name);
     redirect("/onboarding"); // redirect() throws — keep outside any try
   }
 
@@ -109,11 +124,16 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
           signedIn = false;
         }
       }
-      if (signedIn) redirect("/onboarding"); // redirect() throws — must be outside the try
+      if (signedIn) {
+        await rememberSignupLead(email, name);
+        redirect("/onboarding"); // redirect() throws — must be outside the try
+      }
     }
+    await rememberSignupLead(email, name);
     return { message: "Check your email to confirm your account, then sign in." };
   }
   // Org is provisioned lazily on first authenticated request.
+  await rememberSignupLead(email, name);
   redirect("/onboarding");
 }
 

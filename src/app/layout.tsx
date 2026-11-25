@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { AdsRuntime } from "@/components/ads/AdsRuntime";
 import { CookieConsent } from "@/components/CookieConsent";
 import { ClientErrorReporter } from "@/components/ClientErrorReporter";
 import { HelpWidget } from "@/components/HelpWidget";
@@ -32,6 +33,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${sans.variable} ${display.variable} ${data.variable}`}>
       <body className="min-h-screen font-sans antialiased">
         {children}
+        <AdsRuntime
+          metaPixelId={process.env.META_PIXEL_ID ?? ""}
+          ga4Id={process.env.GA4_ID ?? ""}
+          googleAdsId={process.env.GOOGLE_ADS_ID ?? ""}
+          labels={{
+            Lead: process.env.GOOGLE_ADS_LABEL_LEAD ?? "",
+            Contact: process.env.GOOGLE_ADS_LABEL_CONTACT ?? "",
+            Schedule: process.env.GOOGLE_ADS_LABEL_SCHEDULE ?? "",
+            Purchase: process.env.GOOGLE_ADS_LABEL_PURCHASE ?? "",
+          }}
+        />
         <HelpWidget />
         <CookieConsent />
         <ClientErrorReporter />

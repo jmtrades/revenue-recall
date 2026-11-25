@@ -36,6 +36,8 @@ export const PUBLIC_API = [
   "/api/voice/preview", // public landing voice demo — fixed lines only, rate-limited, cached
   "/api/help/chat", // in-product help assistant — no tenant data; self-guards same-origin + rate limit
   "/api/health",
+  "/api/ads/collect", // browser funnel events — no session, rate-limited
+  "/api/ads/schedule", // Calendly / Cal.com booking webhook
   "/api/webinar/events", // webinar provider webhooks — HMAC / shared secret
   "/api/webinar/preview", // dry-run of a drop-off — same shared secret, never dials
   "/api/webinar/tick", // minute recovery tick — CRON_SECRET

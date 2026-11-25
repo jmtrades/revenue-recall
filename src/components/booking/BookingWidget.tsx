@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { fill, type ProspectStrings } from "@/lib/i18n/prospect";
 import type { BookableSlot } from "@/lib/meetings/types";
+import { readAttributionClient } from "@/components/ads/browser";
 
 interface MeetingOption {
   slug: string;
@@ -66,6 +67,7 @@ export function BookingWidget({ org, token, brand, meeting, others, slots, s }: 
           email: String(data.get("email") ?? "").trim(),
           phone: String(data.get("phone") ?? "").trim(),
           notes: String(data.get("notes") ?? "").trim(),
+          attribution: readAttributionClient(),
           website: String(data.get("website") ?? ""),
         }),
       });

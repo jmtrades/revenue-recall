@@ -47,6 +47,7 @@ const ROUTES = [
   "/terms",
   "/security",
   "/docs/api",
+  "/admin/ads",
   "/api/health",
 ];
 

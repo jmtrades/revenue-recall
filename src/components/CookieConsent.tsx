@@ -2,8 +2,18 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { isEuUkTimezone } from "@/lib/ads/region";
 
 const KEY = "rr_cookie_consent";
+
+function needsBanner(): boolean {
+  try {
+    if (localStorage.getItem(KEY)) return false;
+    return isEuUkTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Minimal, dependency-free cookie-consent banner. Essential cookies (auth/session)
@@ -15,11 +25,7 @@ export function CookieConsent() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    try {
-      if (!localStorage.getItem(KEY)) setShow(true);
-    } catch {
-      /* private mode / no storage → just don't nag */
-    }
+    if (needsBanner()) setShow(true);
   }, []);
 
   function decide(choice: "accepted" | "essential") {
@@ -29,6 +35,7 @@ export function CookieConsent() {
       /* ignore */
     }
     setShow(false);
+    window.dispatchEvent(new Event("rr-ads-consent"));
   }
 
   if (!show) return null;
@@ -40,7 +47,7 @@ export function CookieConsent() {
       className="fixed inset-x-3 bottom-3 z-[60] mx-auto max-w-2xl rounded-xl border border-border bg-surface/95 p-4 shadow-lg backdrop-blur sm:flex sm:items-center sm:gap-4"
     >
       <p className="text-sm text-muted">
-        We use essential cookies to run the app, and — with your OK — analytics to make it better. See our{" "}
+        We use essential cookies to run the app. With your OK we also measure ad visits from the UK and EU. See our{" "}
         <Link href="/privacy" className="text-brand hover:underline">Privacy Policy</Link>.
       </p>
       <div className="mt-3 flex shrink-0 gap-2 sm:mt-0">

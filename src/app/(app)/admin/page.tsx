@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageHeader, Stat, Card } from "@/components/ui";
 import { MembersList } from "@/components/MembersList";
@@ -98,7 +99,7 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Admin" subtitle="Your owner control panel — team, access, and system status in one place." />
+      <PageHeader title="Admin" subtitle="Your owner control panel — team, access, and system status in one place." action={<Link href="/admin/ads" className="text-sm font-medium text-brand hover:underline">Ad costs</Link>} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Workspace" value={org.name} icon="building" />
