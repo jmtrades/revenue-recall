@@ -51,6 +51,12 @@ interface SqlDb {
 let singleton: FreeStore | null | undefined;
 let backend: "postgres" | "sqlite" | "json" | "in-memory" = "in-memory";
 let lastDatabaseError = "";
+let flushPromise: Promise<void> = Promise.resolve();
+
+/** Wait until queued Postgres writes have been sent. */
+export function flushRemoteWrites(): Promise<void> {
+  return flushPromise;
+}
 
 export function databaseError(): string {
   return lastDatabaseError;
@@ -375,7 +381,10 @@ async function finishHydrate(client: { query: (sql: string, params?: unknown[]) 
   );
   let chain = Promise.resolve();
   const enqueue = (sql: string, params: unknown[]) => {
-    chain = chain.then(() => client.query(sql, params)).then(() => undefined).catch(() => undefined);
+    chain = chain.then(() => client.query(sql, params)).then(() => undefined).catch((err: unknown) => {
+      lastDatabaseError = (err instanceof Error ? err.message : "write failed").replace(/postgres(?:ql)?:\/\/\S+/gi, "postgres://***");
+    });
+    flushPromise = chain;
   };
   const docRows = new Map<string, unknown>();
   for (const row of docs.rows) {
@@ -424,6 +433,8 @@ async function finishHydrate(client: { query: (sql: string, params?: unknown[]) 
 export function getFreeDb(): FreeStore | null {
   if (!freeDbEnabled()) return null;
   if (singleton !== undefined) return singleton;
+  // Opening the file while DATABASE_URL is set would fork writes away from Postgres.
+  if (process.env.DATABASE_URL) return null;
   try {
     singleton = openFreeStore(freeDbPath());
     backend = sqliteAvailable() ? "sqlite" : "json";
