@@ -52,10 +52,18 @@ let singleton: FreeStore | null | undefined;
 let backend: "postgres" | "sqlite" | "json" | "in-memory" = "in-memory";
 let lastDatabaseError = "";
 let flushPromise: Promise<void> = Promise.resolve();
+let refreshDocs: () => Promise<void> = async () => {};
 
 /** Wait until queued Postgres writes have been sent. */
 export function flushRemoteWrites(): Promise<void> {
   return flushPromise;
+}
+
+/** Re-read documents from Postgres. Route handlers and pages can each hold a
+ *  copy of this module, so a write in one is invisible to the other until the
+ *  reader loads the rows again. */
+export function refreshRemoteDocs(): Promise<void> {
+  return refreshDocs();
 }
 
 export function databaseError(): string {
@@ -426,6 +434,16 @@ async function finishHydrate(client: { query: (sql: string, params?: unknown[]) 
       void client.end();
     },
   };
+  refreshDocs = async () => {
+    const latest = await client.query("select org_id, kind, doc from free_docs");
+    for (const row of latest.rows) {
+      try {
+        docRows.set(`${row.org_id}\0${row.kind}`, JSON.parse(String(row.doc)));
+      } catch {
+        /* skip a corrupt document */
+      }
+    }
+  };
   backend = "postgres";
 }
 
@@ -453,4 +471,5 @@ export function __closeFreeDbForTests(): void {
   }
   singleton = undefined;
   backend = "in-memory";
+  refreshDocs = async () => {};
 }

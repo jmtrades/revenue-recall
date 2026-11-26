@@ -5,6 +5,7 @@ import { safeEqual } from "@/lib/safe-compare";
 import { parseScheduleEvent } from "@/lib/offers/schedule";
 import { blockedEmail } from "@/lib/offers/catalog";
 import { trackAds } from "@/lib/ads/track";
+import { flushRemoteWrites, hydrateRemoteStore } from "@/lib/free/db";
 import { enrollNoShowRecovery } from "@/lib/offers/noshow";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export const POST = withGuard(async (req: Request) => {
     const provided = url.searchParams.get("token") || (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
     if (!provided || !safeEqual(provided, expected)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  await hydrateRemoteStore().catch(() => undefined);
   const body = await req.json().catch(() => null);
   const booking = parseScheduleEvent(body);
   if (!booking) return NextResponse.json({ ok: true, ignored: "not_a_booking" });
@@ -40,6 +42,7 @@ export const POST = withGuard(async (req: Request) => {
       scheduleKind: "no_show",
     });
     await enrollNoShowRecovery({ email: booking.email, phone: booking.phone, name: booking.name }).catch(() => undefined);
+    await flushRemoteWrites();
     return NextResponse.json({ ...result, kind: "no_show" });
   }
   const result = await trackAds({
@@ -52,5 +55,6 @@ export const POST = withGuard(async (req: Request) => {
     offer: "build-call",
     scheduleKind: "booked",
   });
+  await flushRemoteWrites();
   return NextResponse.json(result);
 });
