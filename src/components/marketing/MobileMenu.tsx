@@ -23,7 +23,8 @@ import { useFocusTrap } from "@/lib/useFocusTrap";
 const LINKS = [
   { href: "/#features", label: "Features" },
   { href: "/#how", label: "How it works" },
-  { href: "/#industries", label: "Industries" },
+  { href: "/webinar-leak", label: "Leak calculator" },
+  { href: "/#industries", label: "Who it's for" },
   { href: "/#who", label: "Who it's for" },
   { href: "/#integrations", label: "Integrations" },
   { href: "/#pricing", label: "Pricing" },

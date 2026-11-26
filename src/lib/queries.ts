@@ -572,6 +572,8 @@ export interface InboxThread {
   lastAt: string;
   snippet: string;
   unread: boolean;
+  /** True when a person has paused the AI on this contact. */
+  aiPaused: boolean;
   messages: InboxMessage[];
   /** The contact's primary deal, if they have one (contact-only DMs won't). */
   deal?: InboxDeal;
@@ -613,6 +615,7 @@ function buildInboxThread(contact: Contact, acts: Activity[], deal?: InboxDeal):
     lastAt: last.occurredAt,
     snippet: lastParsed.body,
     unread: last.direction === "inbound",
+    aiPaused: contact.attributes?.aiPaused === "true",
     messages,
     deal,
   };

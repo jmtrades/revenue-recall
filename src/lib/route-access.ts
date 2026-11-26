@@ -37,6 +37,8 @@ export const PUBLIC_API = [
   "/api/help/chat", // in-product help assistant — no tenant data; self-guards same-origin + rate limit
   "/api/health",
   "/api/chat", // public site chat — rate-limited, no secrets
+  "/api/webinar-leak", // calculator lead capture — rate-limited
+  "/api/journeys/preview", // dry-run report — never dials or writes ads
   "/api/ads/collect", // browser funnel events — no session, rate-limited
   "/api/ads/schedule", // Calendly / Cal.com booking webhook
   "/api/webinar/events", // webinar provider webhooks — HMAC / shared secret

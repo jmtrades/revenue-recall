@@ -23,7 +23,10 @@ export const POST = withGuard(async (req: Request) => {
   if (isHardOptOut(message)) {
     return NextResponse.json({ ok: true, paused: true, reply: "You're opted out. I won't message you again." });
   }
-  const plan = planTeamReply({ text: message, channel: "web", seed: sessionId, bookingUrl: process.env.BOOKING_URL });
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
+  const proto = req.headers.get("x-forwarded-proto") || "https";
+  const bookingUrl = process.env.BOOKING_URL || (host ? `${proto}://${host}/book/local` : "/book/local");
+  const plan = planTeamReply({ text: message, channel: "web", seed: sessionId, bookingUrl });
   let reply = plan.body;
   if (isAiConfigured() && !plan.paused) {
     const drafted = await draftReply({

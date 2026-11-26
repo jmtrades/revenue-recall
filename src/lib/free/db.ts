@@ -216,6 +216,95 @@ export function openFreeStore(file: string): FreeStore {
   return sqliteAvailable() ? openSqlite(file) : openJson(file);
 }
 
+/**
+ * When DATABASE_URL is set, the file store is a cache in front of Postgres.
+ * Render's free disk is wiped on restart. The database is not.
+ * Writes update memory immediately and commit in order on the connection.
+ */
+export async function hydrateRemoteStore(): Promise<void> {
+  const url = process.env.DATABASE_URL;
+  if (!url || !freeDbEnabled()) return;
+  const { Client } = await import("pg");
+  const client = new Client({
+    connectionString: url,
+    ssl: url.includes("render.com") ? { rejectUnauthorized: false } : undefined,
+  });
+  await client.connect();
+  await client.query(`
+    create table if not exists analytics_events (
+      org_id text not null,
+      dedupe_key text not null,
+      name text not null,
+      occurred_at text not null,
+      channel text,
+      contact_id text,
+      deal_id text,
+      lead_id text,
+      campaign_id text,
+      sequence_id text,
+      step_id text,
+      revenue double precision,
+      cost double precision,
+      actor text,
+      primary key (org_id, dedupe_key)
+    );
+    create table if not exists free_docs (
+      org_id text not null,
+      kind text not null,
+      doc text not null,
+      primary key (org_id, kind)
+    );
+  `);
+  const docs = await client.query<{ org_id: string; kind: string; doc: string }>("select org_id, kind, doc from free_docs");
+  const analytics = await client.query<Record<string, unknown>>(
+    "select org_id, dedupe_key, name, occurred_at, channel, contact_id, deal_id, lead_id, campaign_id, sequence_id, step_id, revenue, cost, actor from analytics_events order by occurred_at asc limit 20000",
+  );
+  let chain = Promise.resolve();
+  const enqueue = (sql: string, params: unknown[]) => {
+    chain = chain.then(() => client.query(sql, params)).then(() => undefined).catch(() => undefined);
+  };
+  const docRows = new Map<string, unknown>();
+  for (const row of docs.rows) {
+    try {
+      docRows.set(`${row.org_id}\0${row.kind}`, JSON.parse(row.doc));
+    } catch {
+      /* skip a corrupt document */
+    }
+  }
+  const events = analytics.rows.map((r) => ({ orgId: String(r.org_id), ...mapSqlRow(r) }));
+  singleton = {
+    writeAnalytics(orgId, row) {
+      if (events.some((a) => a.orgId === orgId && a.dedupeKey === row.dedupeKey)) return;
+      events.push({ ...row, orgId });
+      enqueue(
+        `insert into analytics_events (
+          org_id, dedupe_key, name, occurred_at, channel, contact_id, deal_id, lead_id,
+          campaign_id, sequence_id, step_id, revenue, cost, actor
+        ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        on conflict (org_id, dedupe_key) do nothing`,
+        [orgId, row.dedupeKey, row.name, row.occurredAt, row.channel ?? null, row.contactId ?? null, row.dealId ?? null, row.leadId ?? null, row.campaignId ?? null, row.sequenceId ?? null, row.stepId ?? null, row.revenue ?? null, row.cost ?? null, row.actor ?? null],
+      );
+    },
+    readAnalytics(orgId) {
+      return events.filter((a) => a.orgId === orgId).slice(0, 5000);
+    },
+    writeDoc(orgId, kind, doc) {
+      docRows.set(`${orgId}\0${kind}`, doc);
+      enqueue(
+        `insert into free_docs (org_id, kind, doc) values ($1, $2, $3)
+         on conflict (org_id, kind) do update set doc = excluded.doc`,
+        [orgId, kind, JSON.stringify(doc)],
+      );
+    },
+    readDoc(orgId, kind) {
+      return (docRows.get(`${orgId}\0${kind}`) as never) ?? null;
+    },
+    close() {
+      void client.end();
+    },
+  };
+}
+
 /** The process database, or null when the free file store is off. */
 export function getFreeDb(): FreeStore | null {
   if (!freeDbEnabled()) return null;

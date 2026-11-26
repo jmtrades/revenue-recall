@@ -17,10 +17,10 @@ const data = Geist_Mono({ subsets: ["latin"], variable: "--font-data", display: 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Revenue Recall — Autonomous outbound that runs your whole sales operation",
+    default: "Revenue Recall — Webinar drop-off recovery for coaches and consultants",
     template: "%s · Revenue Recall",
   },
-  description: "An autonomous AI sales force that recovers the revenue you're losing — works every deal across email, SMS, and the phone, for any industry, with any CRM or none.",
+  description: "Webinar drop-off recovery and an omnichannel AI sales team for high-ticket coaches, consultants, and course creators.",
 };
 
 export const viewport: Viewport = {

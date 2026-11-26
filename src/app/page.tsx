@@ -9,17 +9,16 @@ import { BrandLogos } from "@/components/marketing/BrandLogos";
 import { VoiceDemo } from "@/components/marketing/VoiceDemo";
 import { Icon, type IconName } from "@/components/icons";
 import { Reveal, Stagger, StaggerItem, ScaleIn } from "@/components/motion/Motion";
-import { INDUSTRIES } from "@/lib/industries";
 import { SITE_URL } from "@/lib/site";
 
 const DESCRIPTION =
-  "Revenue Recall is an autonomous AI sales force. It runs your outbound end to end — finds the deals slipping away, works them across email, SMS, and the phone, follows up until they reply, and recovers the revenue you're losing. Every industry. Any CRM, or none.";
+  "Revenue Recall recovers high-ticket webinar drop-offs for coaches, consultants, and course creators. When someone leaves before the pitch, the AI sales team follows up by phone, text, email, and social — and keeps one thread per lead.";
 
 export const metadata = {
-  title: "Revenue Recall — Autonomous outbound that runs your whole sales operation",
+  title: "Revenue Recall — Webinar drop-off recovery for coaches and consultants",
   description: DESCRIPTION,
   openGraph: {
-    title: "Revenue Recall — Put your entire sales operation on autopilot",
+    title: "Revenue Recall — The phone rings when they leave the webinar",
     description: DESCRIPTION,
     type: "website",
     siteName: "Revenue Recall",
@@ -62,60 +61,49 @@ const JSON_LD = {
 
 // What it actually DOES — the whole motion, not a writing assistant.
 const PILLARS: { icon: IconName; title: string; body: string }[] = [
-  { icon: "autopilot", title: "Runs outbound with no human in the loop", body: "It decides who to contact and when, writes in your voice, sends, calls, and follows up until they reply — then logs it all. Set it to draft-for-approval, schedule it, or hand it the wheel completely." },
-  { icon: "recall", title: "Recovers revenue you've already lost", body: "The Recall engine scores every deal going cold, stalled, or marked lost-but-winnable, ranks them by recoverable dollars, and works them back to life. This is the money sitting in your CRM that no one's touching." },
-  { icon: "dialer", title: "Every channel — email, SMS, and the phone", body: "Not just email. It sends texts, runs a power dialer with AI call prep and live talk-tracks, leaves voicemails, and books the next step — across the channels your buyers actually respond on." },
-  { icon: "layers", title: "Tuned to every industry", body: "Real estate, mortgage, insurance, SaaS, agencies, auto, home services — and anything else. Pipelines, terminology, objections, and playbooks that match how your world actually sells, out of the box." },
+  { icon: "autopilot", title: "The phone rings when they leave", body: "A registrant who drops before the pitch is worked immediately: a call, then a text, then an email. You can review every line, or let the team send it." },
+  { icon: "recall", title: "One thread for every channel", body: "Instagram, Messenger, WhatsApp, SMS, email, and the site chat land on the same lead. The next reply knows what they already said." },
+  { icon: "dialer", title: "A sales team with roles", body: "Speed-to-lead, setting the call, closer assist, drop-off recovery, and reactivation. Each one handles the objection in front of it and hands the lead to a person when you pause the AI." },
+  { icon: "layers", title: "Built for the webinar offer", body: "High-ticket coaches, consultants, and course creators. The language is the enrollment conversation, not a generic outbound script." },
   { icon: "database", title: "Works with any CRM — or none", body: "Plugs into Salesforce, HubSpot, Close, or Pipedrive on day one, or runs on the built-in CRM if you have none. Switch backends without losing a thing." },
   { icon: "reports", title: "Reports what it recovered", body: "Not vanity metrics — recovered revenue, won-back deals, and per-rep performance. You see exactly what the system put back on the board, and what's still at risk." },
 ];
 
 const STEPS = [
-  { n: "01", title: "Connect or start fresh", body: "Plug in your CRM or spin up the built-in one. It maps your pipeline, contacts, and history in minutes and learns your voice." },
-  { n: "02", title: "It goes to work", body: "The engine finds what's slipping, prioritizes by recoverable revenue, and starts working deals across email, SMS, and the phone — on the autonomy level you set." },
-  { n: "03", title: "You collect the wins", body: "Replies, booked meetings, and re-engaged deals land back in your pipeline. Everything's logged. You approve, close, and watch recovered revenue climb." },
+  { n: "01", title: "Point the webinar at it", body: "Paste the webhook or the beacon. Zoom, WebinarJam, GoTo, Demio, and the rest are already armed. A leave becomes a lead in the same second the event arrives." },
+  { n: "02", title: "The team works the drop-off", body: "The recovery role calls, texts, and emails. The setter books the call. Instagram, ads, and the site chat join the same thread." },
+  { n: "03", title: "You see the money", body: "Booked calls and sales stay attached to the ad that started them, so cost per call and return on spend are on one page." },
 ];
 
 const METRICS = [
-  { stat: "24/7", label: "works every deal around the clock — no human in the loop required" },
-  { stat: "Every", label: "cold and lost deal gets the second touch almost no team ever sends" },
-  { stat: "1", label: "system replacing the SDR, the dialer, the sequencer, and the CRM busywork" },
+  { stat: "Seconds", label: "from a leave event to the recovery call being queued" },
+  { stat: "One", label: "thread per lead, across the phone, text, email, and social" },
+  { stat: "Five", label: "roles: speed-to-lead, setter, closer assist, recovery, reactivation" },
 ];
 
-// Line-icon per industry id (keyed to src/lib/industries ids).
-const INDUSTRY_ICONS: Record<string, IconName> = {
-  real_estate: "home",
-  mortgage: "database",
-  insurance: "shield",
-  saas: "layers",
-  agency: "briefcase",
-  auto: "car",
-  home_services: "wrench",
-};
-
-// Who it's for — the SAME engine, right-sized for a team of one or a team of
+// Who it's for — coaches, consultants, and course creators.
 // thousands. Proves the product spans solo operators through the enterprise.
 const AUDIENCES: { scale: string; icon: IconName; title: string; body: string; points: string[] }[] = [
   {
     scale: "For one",
     icon: "autopilot",
-    title: "Solo operators & founders",
-    body: "You're the founder, the closer, and the follow-up. Revenue Recall is the SDR, the dialer, and the sequencer you can't afford to hire — working your pipeline around the clock while you build everything else.",
-    points: ["Live in 2 minutes — no CRM required", "Every lead gets an instant, human follow-up", "Books meetings while you sleep"],
+    title: "High-ticket coaches",
+    body: "You run the webinar. The people who leave before the pitch are the ones who needed the next conversation. The recovery team starts it while you are still on the call.",
+    points: ["Leave, no-show, and replay on one timeline", "Books the strategy call in the thread", "STOP, quiet hours, and an AI pause"],
   },
   {
     scale: "For a team",
     icon: "leads",
-    title: "Growing teams",
-    body: "Give every rep an autonomous teammate that prospects, dials, and follows up — so a team of three covers the ground of fifteen, and not a single deal slips through the cracks.",
-    points: ["Shared inbox, approvals & guardrails", "Per-rep performance you can actually see", "Plugs into the CRM you already use"],
+    title: "Consultants",
+    body: "A webinar that fills the calendar only works if the no-shows get a human follow-up. The setter asks for the call. You take the ones that are qualified.",
+    points: ["BANT and fit scored from the thread", "One inbox for DM, SMS, and email", "Spend tied to booked calls and sales"],
   },
   {
     scale: "For the enterprise",
     icon: "building",
-    title: "Enterprise & big business",
-    body: "Roll out one consistent, on-brand outbound motion across every rep and region — with the governance, controls, and reporting leadership needs to trust it at scale.",
-    points: ["Any CRM — Salesforce, HubSpot & more", "Quiet hours, opt-outs & daily caps built in", "Recovered-revenue reporting by rep & team"],
+    title: "Course creators",
+    body: "The offer is on the webinar. The leak is everyone who registered and never saw it. The calculator prices that leak from your own show rate and close rate.",
+    points: ["Public leak calculator for the ad", "Instant-form leads from Meta land here", "No invented stats or testimonials"],
   },
 ];
 
@@ -123,10 +111,10 @@ const FAQ = [
   { q: "How is this different from ChatGPT or Claude?", a: "Those give you words. Revenue Recall does the work. It decides who to reach and when, writes in your voice, sends across email/SMS/phone, follows up until they reply, logs everything, and tells you what revenue it recovered. A writing assistant hands you a draft and stops — this runs the entire motion." },
   { q: "Is it really autonomous?", a: "As autonomous as you want. Review mode drafts everything for one-click approval. Scheduled mode runs on a cadence. Full autopilot works your pipeline end-to-end — sending, calling, and following up — with guardrails for quiet hours, opt-outs, and daily caps so it stays safe and on-brand." },
   { q: "Does it really do calls, not just email?", a: "Yes. It runs a power dialer with AI call prep and live talk-tracks, handles objections, leaves natural voicemails, and logs outcomes and sentiment automatically. Email, SMS, and voice — the full outbound stack." },
-  { q: "Which industries does it support?", a: "Real estate, mortgage, insurance, SaaS, agencies, automotive, home services — each with tuned pipelines, terminology, objections, and playbooks. Plus a universal template for anything else. It sells like someone who knows your business." },
+  { q: "Who is it for?", a: "High-ticket coaches, consultants, and course creators who run webinars. The public site and the ad destination are built for that offer. Other pipelines still exist in the product if you already use one." },
   { q: "Do I need a CRM?", a: "No. It ships with a built-in CRM, so you can start in minutes with nothing. Already on Salesforce, HubSpot, Close, or Pipedrive? It plugs in and runs on top — no migration." },
   { q: "Will the outreach sound like a robot?", a: "No. You teach it your voice in one step (describe yourself or paste a few real messages) and every email, text, and call reads like you wrote it. It's engineered to be indistinguishable from a great human rep." },
-  { q: "How fast can I be live?", a: "Two minutes. Sign up, pick your industry, connect a CRM or start fresh — your pipeline, sequences, and autonomous outbound are ready immediately." },
+  { q: "How fast can I be live?", a: "Paste the webinar webhook or the beacon, and the next leave is a lead. The leak calculator at /webinar-leak is the page to send ad traffic to." },
 ];
 
 // FAQPage structured data — makes the Q&A below eligible for Google's FAQ rich
@@ -182,12 +170,12 @@ export default function LandingPage() {
         <RecallOrbit size={560} aria-hidden className="pointer-events-none absolute -right-16 -top-12 hidden opacity-60 lg:block" />
         <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-8 px-5 pb-12 pt-10 sm:gap-12 sm:pb-20 sm:pt-14 lg:grid-cols-2 lg:items-center lg:pb-28 lg:pt-20">
           <div className="min-w-0 animate-fade-up">
-            <span className="eyebrow">Autonomous outbound · every industry, any size</span>
+            <span className="eyebrow">Webinar drop-off recovery · coaches, consultants, courses</span>
             <h1 className="display-hero mt-5 text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.02em] sm:text-[3.5rem] sm:leading-[0.98] lg:text-[4.25rem]">
-              Put your entire sales operation <span className="gradient-text">on autopilot.</span>
+              Someone just left before the pitch. <span className="gradient-text">Their phone is already ringing.</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-body">
-              An AI sales force that <strong className="font-semibold text-fg">runs your outbound end to end</strong> — finds the deals slipping away, works them by email, text, and phone until they reply, and wins back the revenue you&apos;re losing. Any industry. Any CRM, or none.
+              An AI sales team for high-ticket webinars. It catches the drop-off, works the lead across phone, text, email, and social, and keeps <strong className="font-semibold text-fg">one thread</strong> so the setter can book the call.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link href="/signup" className="cta group inline-flex items-center gap-2 rounded-full bg-brand-strong py-2 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand-strong/90">
@@ -196,8 +184,8 @@ export default function LandingPage() {
                   <Arrow />
                 </span>
               </Link>
-              <Link href="#how" className="cta inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-5 py-2.5 text-sm font-semibold text-fg transition-colors hover:bg-surface-2">
-                See how it works
+              <Link href="/webinar-leak" className="cta inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-5 py-2.5 text-sm font-semibold text-fg transition-colors hover:bg-surface-2">
+                Price the leak
                 <Arrow className="text-muted" />
               </Link>
             </div>
@@ -205,7 +193,7 @@ export default function LandingPage() {
             <div className="mt-10 pt-6">
               <div className="hairline" />
               <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Runs closing teams in</p>
-              <p className="mt-2 text-sm text-body">Real estate · SaaS · Insurance · Mortgage · Agencies · Auto · Home services</p>
+              <p className="mt-2 text-sm text-body">Coaches · Consultants · Course creators</p>
             </div>
           </div>
           <div className="min-w-0 animate-fade-up [animation-delay:120ms]">
@@ -404,34 +392,31 @@ export default function LandingPage() {
       {/* Industries */}
       <section id="industries" className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
         <Reveal className="mx-auto max-w-2xl text-center">
-          <span className="eyebrow">Tuned to your world</span>
-          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">Built for every industry</h2>
-          <p className="mt-4 text-muted">It knows the terminology, the objections, and the way deals actually close in your business — out of the box.</p>
+          <span className="eyebrow">Who it is for</span>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">The webinar offer</h2>
+          <p className="mt-4 text-muted">Coaches, consultants, and course creators. The enrollment conversation is the default. Other businesses can still pick a pipeline in the product.</p>
         </Reveal>
-        <Stagger className="mx-auto mt-12 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {INDUSTRIES.filter((i) => i.id !== "generic").map((i) => (
-            <StaggerItem key={i.id} className="raised lift group flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 hover:border-brand/40">
-              <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-brand-soft text-brand ring-1 ring-inset ring-brand/20 transition-transform duration-200 ease-out group-hover:scale-105">
-                <Icon name={INDUSTRY_ICONS[i.id] ?? "layers"} size={18} />
-              </span>
-              <span className="text-sm font-semibold text-fg">{i.label}</span>
+        <Stagger className="mx-auto mt-12 grid max-w-5xl gap-3 sm:grid-cols-3">
+          {[
+            ["Coaches", "The room, the pitch, and the people who left it."],
+            ["Consultants", "The webinar that should have booked the working session."],
+            ["Course creators", "Registrants who never saw the offer."],
+          ].map(([title, body]) => (
+            <StaggerItem key={title} className="raised rounded-2xl border border-border bg-surface px-5 py-4">
+              <p className="text-sm font-semibold text-fg">{title}</p>
+              <p className="mt-1 text-sm text-muted">{body}</p>
             </StaggerItem>
           ))}
-          <StaggerItem className="flex items-center gap-3 rounded-2xl border border-dashed border-border px-4 py-3.5">
-            <span className="grid h-9 w-9 flex-none place-items-center rounded-xl border border-dashed border-border text-muted">
-              <Icon name="plus" size={16} />
-            </span>
-            <span className="text-sm font-medium text-muted">Your vertical</span>
-          </StaggerItem>
         </Stagger>
+        <p className="mt-6 text-center text-sm"><Link href="/webinar-leak" className="text-brand hover:underline">Open the leak calculator</Link></p>
       </section>
 
       {/* Who it's for — solo operators through the enterprise */}
       <section id="who" className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
         <Reveal className="mx-auto max-w-2xl text-center">
           <span className="eyebrow">Who it&rsquo;s for</span>
-          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">From solo founders to the enterprise</h2>
-          <p className="mt-4 text-muted">The same autonomous engine — right-sized whether you&rsquo;re a team of one or a team of thousands. It scales the moment you do.</p>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">One motion for the webinar business</h2>
+          <p className="mt-4 text-muted">The same recovery, whether you teach, consult, or sell a course. The ad destination is the leak calculator.</p>
         </Reveal>
         <Stagger className="mt-12 grid gap-5 md:grid-cols-3">
           {AUDIENCES.map((a) => (

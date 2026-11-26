@@ -19,6 +19,7 @@ const ROUTES = [
   "/login",
   "/signup",
   "/pricing",
+  "/webinar-leak",
   "/audit",
   "/status",
   "/onboarding",
