@@ -22,6 +22,7 @@ import { complianceConfig, emailDomainVerified, smsA2pRegistered } from "@/lib/c
 import { outsideCourtesyWindow } from "@/lib/calls/local-time";
 import { batchActivities } from "@/lib/crm/activities";
 import { unsubscribeUrl } from "@/lib/unsubscribe";
+import { getFreeDb } from "@/lib/free/db";
 import {  } from "@/lib/sequences";
 import { resolveSequence } from "@/lib/sequences-store";
 import { recordRecallTouch } from "@/lib/recall/events";
@@ -97,10 +98,26 @@ async function orgId(): Promise<string> {
 
 // ---- in-memory fallback (demo) ----
 const memEnrollments: Enrollment[] = [];
+let enrollmentsLoaded = false;
+
+function enrollments(): Enrollment[] {
+  if (!enrollmentsLoaded && !isSupabaseConfigured()) {
+    enrollmentsLoaded = true;
+    const saved = getFreeDb()?.readDoc<Enrollment[]>("local", "enrollments");
+    if (saved) memEnrollments.push(...saved);
+  }
+  return memEnrollments;
+}
+
+function rememberEnrollments(): void {
+  if (isSupabaseConfigured()) return;
+  getFreeDb()?.writeDoc("local", "enrollments", memEnrollments);
+}
 
 /** Test-only: clear in-memory enrollments so suites don't leak state. */
 export function __resetEnrollmentsForTests(): void {
   memEnrollments.length = 0;
+  enrollmentsLoaded = true;
 }
 
 function mapEnrollment(r: Record<string, unknown>): Enrollment {
@@ -118,7 +135,7 @@ function mapEnrollment(r: Record<string, unknown>): Enrollment {
 }
 
 async function listActiveEnrollments(): Promise<Enrollment[]> {
-  if (!isSupabaseConfigured()) return memEnrollments.filter((e) => e.status === "active");
+  if (!isSupabaseConfigured()) return enrollments().filter((e) => e.status === "active");
   const client = getSupabase()!;
   const { data, error } = await client
     .from("sequence_enrollments")
@@ -131,7 +148,7 @@ async function listActiveEnrollments(): Promise<Enrollment[]> {
 
 export async function listEnrollments(status?: EnrollmentStatus, limit = 200): Promise<Enrollment[]> {
   if (!isSupabaseConfigured()) {
-    const all = status ? memEnrollments.filter((e) => e.status === status) : memEnrollments;
+    const all = status ? enrollments().filter((e) => e.status === status) : enrollments();
     return all.slice(0, limit);
   }
   const client = getSupabase()!;
@@ -145,7 +162,8 @@ export async function listEnrollments(status?: EnrollmentStatus, limit = 200): P
 async function insertEnrollment(e: Omit<Enrollment, "id">): Promise<Enrollment> {
   if (!isSupabaseConfigured()) {
     const row: Enrollment = { ...e, id: `se_${Date.now()}_${Math.random().toString(36).slice(2, 6)}` };
-    memEnrollments.unshift(row);
+    enrollments().unshift(row);
+    rememberEnrollments();
     return row;
   }
   const client = getSupabase()!;
@@ -170,8 +188,9 @@ async function insertEnrollment(e: Omit<Enrollment, "id">): Promise<Enrollment> 
 
 async function updateEnrollment(id: string, patch: Partial<Enrollment>): Promise<void> {
   if (!isSupabaseConfigured()) {
-    const e = memEnrollments.find((x) => x.id === id);
+    const e = enrollments().find((x) => x.id === id);
     if (e) Object.assign(e, patch);
+    rememberEnrollments();
     return;
   }
   const update: Record<string, unknown> = {};

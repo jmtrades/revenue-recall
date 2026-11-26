@@ -24,11 +24,17 @@ export function launchStatus(): LaunchStatus {
   const ch = channelStatus();
 
   const blockers: string[] = [];
+  const warnings: string[] = [];
   if (!isSupabaseConfigured() && !freeDbEnabled()) blockers.push("No database connected — the free SQLite file is off (FREE_DB=0) and no Supabase project is set.");
-  if (!cfg.authRequired) blockers.push("Auth is optional — connect a database so every user gets a private workspace, or set NEXT_PUBLIC_AUTH_REQUIRED=true.");
+  if (!cfg.authRequired) {
+    const msg = "Auth is optional — this host is one workspace. Accounts need Supabase, or set NEXT_PUBLIC_AUTH_REQUIRED=true once a sign-in backend exists.";
+    // A single free workspace with its own database is not a multi-tenant leak.
+    // Missing sign-in stays visible, and it does not block the product.
+    if (freeDbEnabled() || process.env.DATABASE_URL) warnings.push(msg);
+    else blockers.push("Auth is optional — connect a database so every user gets a private workspace, or set NEXT_PUBLIC_AUTH_REQUIRED=true.");
+  }
   if (isSupabaseConfigured() && !process.env.SUPABASE_SERVICE_ROLE_KEY) blockers.push("Database connected without a service-role key — new accounts can't be provisioned (set SUPABASE_SERVICE_ROLE_KEY).");
 
-  const warnings: string[] = [];
   if (!ch.email.live && !ch.sms.live && !ch.voice.live) warnings.push("No sending channel connected — connect email (Resend) or SMS/voice (Twilio) so outreach can actually send.");
   else if (!ch.email.live) warnings.push("Email sending is off — connect Resend so signup, invite, and outreach emails actually send.");
   // CAN-SPAM requires a physical postal address in commercial email. The footer

@@ -14,7 +14,7 @@ import type {
 } from "@/lib/crm/types";
 import { seedDataset, type Dataset } from "@/lib/data/seed";
 import { getConfig } from "@/lib/config";
-import { freeDbEnabled } from "@/lib/free/db";
+import { freeDbEnabled, getFreeDb } from "@/lib/free/db";
 
 /**
  * Built-in CRM. Backs users who have no external CRM at all. Data lives in a
@@ -27,8 +27,11 @@ import { freeDbEnabled } from "@/lib/free/db";
  * BUILTIN_PERSIST=false. Supabase, when configured, is a different provider.
  */
 
-const PERSIST = process.env.BUILTIN_PERSIST === "true" || (process.env.BUILTIN_PERSIST !== "false" && freeDbEnabled());
 const PERSIST_DIR = process.env.BUILTIN_PERSIST_DIR || path.join(process.cwd(), ".data");
+
+function persistEnabled(): boolean {
+  return process.env.BUILTIN_PERSIST === "true" || (process.env.BUILTIN_PERSIST !== "false" && freeDbEnabled());
+}
 
 let store: Dataset | null = null;
 let storeIndustry: string | null = null;
@@ -46,23 +49,42 @@ function fileFor(industry: string): string {
   return path.join(PERSIST_DIR, `builtin-${industry}.json`);
 }
 
+function crmKind(industry: string): string {
+  return `crm:${industry}`;
+}
+
 function load(industry: string): Dataset | null {
-  if (!PERSIST) return null;
+  if (!persistEnabled()) return null;
+  const db = getFreeDb();
+  const saved = db?.readDoc<Dataset>("local", crmKind(industry));
+  if (saved) return saved;
   try {
-    return JSON.parse(fs.readFileSync(fileFor(industry), "utf-8")) as Dataset;
+    const fromFile = JSON.parse(fs.readFileSync(fileFor(industry), "utf-8")) as Dataset;
+    db?.writeDoc("local", crmKind(industry), fromFile);
+    return fromFile;
   } catch {
     return null;
   }
 }
 
 function persist(): void {
-  if (!PERSIST || !store || !storeIndustry) return;
+  if (!persistEnabled() || !store || !storeIndustry) return;
+  const db = getFreeDb();
+  if (db) {
+    db.writeDoc("local", crmKind(storeIndustry), store);
+    return;
+  }
   try {
     fs.mkdirSync(PERSIST_DIR, { recursive: true });
     fs.writeFileSync(fileFor(storeIndustry), JSON.stringify(store));
   } catch {
     // best-effort: a read-only/ephemeral FS just falls back to in-memory.
   }
+}
+
+export function __resetBuiltinForTests(): void {
+  store = null;
+  storeIndustry = null;
 }
 
 function db(): Dataset {

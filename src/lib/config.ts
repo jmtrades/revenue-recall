@@ -53,7 +53,7 @@ export function inviteOnlyEnabled(): boolean {
 
 export function getConfig(): AppConfig {
   return {
-    industryId: process.env.NEXT_PUBLIC_INDUSTRY ?? "real_estate",
+    industryId: process.env.NEXT_PUBLIC_INDUSTRY ?? "education",
     // "auto" → Supabase when configured, else the built-in store. Override with
     // an explicit provider id (builtin | supabase | close | …).
     providerId: process.env.CRM_PROVIDER ?? "auto",

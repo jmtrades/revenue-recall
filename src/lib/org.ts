@@ -8,6 +8,7 @@ import { defaultNotificationPrefs, mergeNotificationPrefs, type NotificationPref
 import { defaultTheme, mergeTheme, type Theme } from "@/lib/theme";
 import { mergeVoiceSettings, DEFAULT_VOICE_SETTINGS, type VoiceSettings } from "@/lib/voice/voice-settings";
 import { isValidTimeZone } from "@/lib/tz";
+import { getFreeDb } from "@/lib/free/db";
 
 export { NOTIFICATION_OPTIONS, defaultNotificationPrefs, mergeNotificationPrefs, type NotificationPrefs } from "@/lib/notifications";
 
@@ -85,9 +86,17 @@ function envFallback(): OrgSettings {
   };
 }
 
+const ORG_KIND = "org-settings";
+
+function readLocal(): OrgSettings {
+  const saved = getFreeDb()?.readDoc<OrgSettings>("local", ORG_KIND);
+  if (!saved) return envFallback();
+  return { ...envFallback(), ...saved, persisted: true };
+}
+
 async function read(): Promise<OrgSettings> {
   const client = getSupabase();
-  if (!client) return envFallback();
+  if (!client) return readLocal();
   try {
     const orgId = await resolveActiveOrgId();
     if (!orgId) return envFallback();
@@ -152,7 +161,41 @@ export async function updateOrgSettings(patch: {
   sendingPaused?: boolean;
 }): Promise<OrgSettings> {
   const client = getSupabase();
-  if (!client) throw new Error("Settings are read-only without a database.");
+  if (!client) return updateLocal(patch);
+  const saved = await updateRemote(client, patch);
+  return saved;
+}
+
+async function updateLocal(patch: Parameters<typeof updateOrgSettings>[0]): Promise<OrgSettings> {
+  const db = getFreeDb();
+  if (!db) throw new Error("Settings are read-only without a database.");
+  const current = readLocal();
+  const next: OrgSettings = { ...current, persisted: true };
+  if (patch.name !== undefined) next.name = patch.name;
+  if (patch.industryId !== undefined) {
+    next.industryId = patch.industryId;
+    next.currency = getIndustry(patch.industryId).currency;
+  }
+  if (patch.language !== undefined) next.language = patch.language;
+  if (patch.monthlyQuota !== undefined) next.monthlyQuota = patch.monthlyQuota;
+  if (patch.notificationPrefs !== undefined) next.notificationPrefs = mergeNotificationPrefs(patch.notificationPrefs);
+  if (patch.theme !== undefined) next.theme = mergeTheme({ ...current.theme, ...patch.theme });
+  if (patch.compliance !== undefined) next.compliance = mergeCompliance({ ...current.compliance, ...patch.compliance });
+  if (patch.callerId !== undefined) next.callerId = patch.callerId.trim() || undefined;
+  if (patch.voiceId !== undefined) next.voiceId = patch.voiceId.trim() || undefined;
+  if (patch.ttsVoiceId !== undefined) next.ttsVoiceId = patch.ttsVoiceId.trim() || undefined;
+  if (patch.voiceSettings !== undefined) next.voiceSettings = mergeVoiceSettings({ ...current.voiceSettings, ...patch.voiceSettings });
+  if (patch.automations !== undefined) next.automations = patch.automations;
+  if (patch.timezone !== undefined) {
+    const tz = patch.timezone.trim();
+    next.timezone = tz && isValidTimeZone(tz) ? tz : "";
+  }
+  if (patch.sendingPaused !== undefined) next.sendingPaused = patch.sendingPaused;
+  db.writeDoc("local", ORG_KIND, next);
+  return next;
+}
+
+async function updateRemote(client: NonNullable<ReturnType<typeof getSupabase>>, patch: Parameters<typeof updateOrgSettings>[0]): Promise<OrgSettings> {
   const orgId = await resolveActiveOrgId();
   if (!orgId) throw new Error("No active org.");
   const update: Record<string, unknown> = {};

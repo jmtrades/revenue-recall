@@ -2,6 +2,7 @@ import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getActiveOrgId } from "@/lib/supabase/tenant";
 import { encryptSecret, decryptSecret, encryptionAvailable } from "@/lib/crypto";
+import { getFreeDb } from "@/lib/free/db";
 
 /**
  * Per-org connection store. Holds the credentials an org enters to connect their
@@ -36,10 +37,26 @@ export interface SaveConnectionInput {
 }
 
 const mem = new Map<string, Connection>(); // key: `${orgId}:${provider}`
+let connLoaded = false;
+
+function connections(): Map<string, Connection> {
+  if (!connLoaded && !isSupabaseConfigured()) {
+    connLoaded = true;
+    const saved = getFreeDb()?.readDoc<Connection[]>("local", "connections");
+    if (saved) for (const row of saved) mem.set(`${row.orgId}:${row.provider}`, row);
+  }
+  return mem;
+}
+
+function rememberConnections(): void {
+  if (isSupabaseConfigured()) return;
+  getFreeDb()?.writeDoc("local", "connections", [...mem.values()]);
+}
 
 /** Test-only: clear the in-memory connections. */
 export function __resetConnectionsForTests(): void {
   mem.clear();
+  connLoaded = false;
 }
 
 async function currentOrgId(): Promise<string | null> {
@@ -77,7 +94,7 @@ export async function saveConnection(input: SaveConnectionInput): Promise<void> 
   const config = input.config ?? {};
 
   if (!isSupabaseConfigured()) {
-    mem.set(`${orgId}:${input.provider}`, {
+    connections().set(`${orgId}:${input.provider}`, {
       orgId,
       kind: input.kind,
       provider: input.provider,
@@ -86,6 +103,7 @@ export async function saveConnection(input: SaveConnectionInput): Promise<void> 
       config,
       connected: true,
     });
+    rememberConnections();
     return;
   }
   const { error } = await getSupabase()!
@@ -110,7 +128,7 @@ export async function saveConnection(input: SaveConnectionInput): Promise<void> 
 export async function getConnection(provider: string): Promise<Connection | null> {
   const orgId = await currentOrgId();
   if (!orgId) return null;
-  if (!isSupabaseConfigured()) return mem.get(`${orgId}:${provider}`) ?? null;
+  if (!isSupabaseConfigured()) return connections().get(`${orgId}:${provider}`) ?? null;
 
   const { data } = await getSupabase()!
     .from("connections")
@@ -127,7 +145,8 @@ export async function deleteConnection(provider: string): Promise<void> {
   const orgId = await currentOrgId();
   if (!orgId) return;
   if (!isSupabaseConfigured()) {
-    mem.delete(`${orgId}:${provider}`);
+    connections().delete(`${orgId}:${provider}`);
+    rememberConnections();
     return;
   }
   await getSupabase()!.from("connections").delete().eq("org_id", orgId).eq("provider", provider);
@@ -137,7 +156,7 @@ export async function deleteConnection(provider: string): Promise<void> {
 export async function listConnections(): Promise<Connection[]> {
   const orgId = await currentOrgId();
   if (!orgId) return [];
-  if (!isSupabaseConfigured()) return [...mem.values()].filter((c) => c.orgId === orgId);
+  if (!isSupabaseConfigured()) return [...connections().values()].filter((c) => c.orgId === orgId);
   const { data } = await getSupabase()!.from("connections").select("*").eq("org_id", orgId);
   return ((data as Record<string, unknown>[]) ?? []).map(rowToConnection);
 }
@@ -150,7 +169,7 @@ export async function listConnections(): Promise<Connection[]> {
 export async function findOrgIdByAccount(provider: string, accountRef: string | undefined): Promise<string | null> {
   if (!accountRef) return null;
   if (!isSupabaseConfigured()) {
-    const hit = [...mem.values()].find((c) => c.provider === provider && c.accountRef === accountRef);
+    const hit = [...connections().values()].find((c) => c.provider === provider && c.accountRef === accountRef);
     return hit?.orgId ?? null;
   }
   const { data } = await getSupabase()!

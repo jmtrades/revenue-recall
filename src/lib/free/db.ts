@@ -49,6 +49,70 @@ interface SqlDb {
 }
 
 let singleton: FreeStore | null | undefined;
+let backend: "postgres" | "sqlite" | "json" | "in-memory" = "in-memory";
+
+/** What is actually serving durable reads and writes. */
+export function databaseBackend(): "postgres" | "sqlite" | "json" | "in-memory" {
+  if (!freeDbEnabled()) return "in-memory";
+  if (backend === "postgres") return "postgres";
+  return sqliteAvailable() ? "sqlite" : "json";
+}
+
+export interface LocalSnapshot {
+  docs: { orgId: string; kind: string; doc: unknown }[];
+  analytics: (AnalyticsRow & { orgId: string })[];
+}
+
+/** One-time copy of the on-disk SQLite or JSON store, plus builtin CRM files. */
+export function readLocalSnapshot(dir: string): LocalSnapshot {
+  const docs: LocalSnapshot["docs"] = [];
+  const analytics: LocalSnapshot["analytics"] = [];
+  const sqliteFile = path.join(dir, "revenue-recall.sqlite");
+  const jsonFile = path.join(dir, "revenue-recall.json");
+  if (fs.existsSync(sqliteFile) && sqliteAvailable()) {
+    const { DatabaseSync } = require("node:sqlite") as { DatabaseSync: new (file: string) => SqlDb };
+    const db = new DatabaseSync(sqliteFile);
+    try {
+      const docRows = db.prepare("select org_id, kind, doc from free_docs").all() as { org_id: string; kind: string; doc: string }[];
+      for (const row of docRows) {
+        try {
+          docs.push({ orgId: row.org_id, kind: row.kind, doc: JSON.parse(row.doc) });
+        } catch {
+          /* skip a corrupt document */
+        }
+      }
+      const events = db.prepare(
+        `select org_id, dedupe_key, name, occurred_at, channel, contact_id, deal_id, lead_id,
+                campaign_id, sequence_id, step_id, revenue, cost, actor
+         from analytics_events`,
+      ).all() as Record<string, unknown>[];
+      for (const row of events) analytics.push({ orgId: String(row.org_id), ...mapSqlRow(row) });
+    } catch {
+      /* a fresh file may not have the tables yet */
+    }
+    db.close();
+  } else if (fs.existsSync(jsonFile)) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(jsonFile, "utf8")) as JsonShape;
+      for (const row of parsed.docs ?? []) docs.push({ orgId: row.orgId, kind: row.kind, doc: row.doc });
+      for (const row of parsed.analytics ?? []) analytics.push(row);
+    } catch {
+      /* ignore a corrupt json store */
+    }
+  }
+  if (fs.existsSync(dir)) {
+    for (const name of fs.readdirSync(dir)) {
+      const match = /^builtin-(.+)\.json$/.exec(name);
+      if (!match) continue;
+      try {
+        docs.push({ orgId: "local", kind: `crm:${match[1]}`, doc: JSON.parse(fs.readFileSync(path.join(dir, name), "utf8")) });
+      } catch {
+        /* skip a corrupt CRM file */
+      }
+    }
+  }
+  return { docs, analytics };
+}
 
 export function freeDbEnabled(): boolean {
   if (process.env.FREE_DB === "0") return false;
@@ -255,6 +319,32 @@ export async function hydrateRemoteStore(): Promise<void> {
       primary key (org_id, kind)
     );
   `);
+  const have = new Set(
+    (await client.query<{ org_id: string; kind: string }>("select org_id, kind from free_docs")).rows.map((r) => `${r.org_id}\0${r.kind}`),
+  );
+  const snap = readLocalSnapshot(path.dirname(freeDbPath()));
+  for (const doc of snap.docs) {
+    const key = `${doc.orgId}\0${doc.kind}`;
+    if (have.has(key)) continue;
+    await client.query(
+      `insert into free_docs (org_id, kind, doc) values ($1, $2, $3) on conflict (org_id, kind) do nothing`,
+      [doc.orgId, doc.kind, JSON.stringify(doc.doc)],
+    );
+    have.add(key);
+  }
+  const eventCount = await client.query<{ n: number }>("select count(*)::int as n from analytics_events");
+  if (Number(eventCount.rows[0]?.n ?? 0) === 0) {
+    for (const row of snap.analytics) {
+      await client.query(
+        `insert into analytics_events (
+          org_id, dedupe_key, name, occurred_at, channel, contact_id, deal_id, lead_id,
+          campaign_id, sequence_id, step_id, revenue, cost, actor
+        ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        on conflict (org_id, dedupe_key) do nothing`,
+        [row.orgId, row.dedupeKey, row.name, row.occurredAt, row.channel ?? null, row.contactId ?? null, row.dealId ?? null, row.leadId ?? null, row.campaignId ?? null, row.sequenceId ?? null, row.stepId ?? null, row.revenue ?? null, row.cost ?? null, row.actor ?? null],
+      );
+    }
+  }
   const docs = await client.query<{ org_id: string; kind: string; doc: string }>("select org_id, kind, doc from free_docs");
   const analytics = await client.query<Record<string, unknown>>(
     "select org_id, dedupe_key, name, occurred_at, channel, contact_id, deal_id, lead_id, campaign_id, sequence_id, step_id, revenue, cost, actor from analytics_events order by occurred_at asc limit 20000",
@@ -303,6 +393,7 @@ export async function hydrateRemoteStore(): Promise<void> {
       void client.end();
     },
   };
+  backend = "postgres";
 }
 
 /** The process database, or null when the free file store is off. */
@@ -311,6 +402,7 @@ export function getFreeDb(): FreeStore | null {
   if (singleton !== undefined) return singleton;
   try {
     singleton = openFreeStore(freeDbPath());
+    backend = sqliteAvailable() ? "sqlite" : "json";
   } catch {
     singleton = null;
   }
@@ -325,4 +417,5 @@ export function __closeFreeDbForTests(): void {
     /* already closed */
   }
   singleton = undefined;
+  backend = "in-memory";
 }

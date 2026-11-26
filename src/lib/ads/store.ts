@@ -89,6 +89,14 @@ export function putEvent(event: StoredEvent): { duplicate: boolean } {
   return { duplicate: false };
 }
 
+export function deleteSpend(id: string): boolean {
+  const ledger = load();
+  const next = ledger.spend.filter((row) => row.id !== id);
+  if (next.length === ledger.spend.length) return false;
+  save({ ...ledger, spend: next });
+  return true;
+}
+
 export function putSpend(row: SpendRow): void {
   const ledger = load();
   const idx = ledger.spend.findIndex((s) => s.date === row.date && s.campaign === row.campaign && s.source === row.source);

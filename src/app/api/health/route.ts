@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getConfig } from "@/lib/config";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
-import { freeDbEnabled } from "@/lib/free/db";
+import { databaseBackend } from "@/lib/free/db";
 import { isAiConfigured } from "@/lib/ai/client";
 import { channelStatus } from "@/lib/comms";
 import { ttsAvailable } from "@/lib/voice/tts";
@@ -21,7 +21,7 @@ export async function GET(req: Request) {
   const ch = channelStatus();
 
   const capabilities = {
-    database: isSupabaseConfigured() ? "supabase" : freeDbEnabled() ? "sqlite" : "in-memory",
+    database: isSupabaseConfigured() ? "supabase" : databaseBackend(),
     ai: isAiConfigured() ? "live" : "templates",
     auth: cfg.authRequired ? "required" : "optional",
     email: ch.email.live,

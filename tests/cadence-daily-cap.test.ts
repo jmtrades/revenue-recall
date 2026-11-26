@@ -8,6 +8,7 @@ beforeEach(() => {
   delete process.env.ANTHROPIC_API_KEY;
   delete process.env.AGENT_QUIET_START_UTC;
   delete process.env.AGENT_QUIET_END_UTC;
+  process.env.NEXT_PUBLIC_INDUSTRY = "real_estate";
   process.env.SEQUENCE_AUTOPILOT = "true";
   process.env.AGENT_DAILY_SEND_CAP = "1";
   // This test is about the send CAP, not the send-compliance gate (covered in
@@ -17,6 +18,7 @@ beforeEach(() => {
   process.env.EMAIL_DOMAIN_VERIFIED = "true";
 });
 afterEach(() => {
+  delete process.env.NEXT_PUBLIC_INDUSTRY;
   delete process.env.SEQUENCE_AUTOPILOT;
   delete process.env.AGENT_DAILY_SEND_CAP;
   delete process.env.COMPLIANCE_ADDRESS;
