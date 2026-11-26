@@ -50,6 +50,11 @@ interface SqlDb {
 
 let singleton: FreeStore | null | undefined;
 let backend: "postgres" | "sqlite" | "json" | "in-memory" = "in-memory";
+let lastDatabaseError = "";
+
+export function databaseError(): string {
+  return lastDatabaseError;
+}
 
 /** What is actually serving durable reads and writes. */
 export function databaseBackend(): "postgres" | "sqlite" | "json" | "in-memory" {
@@ -288,12 +293,31 @@ export function openFreeStore(file: string): FreeStore {
 export async function hydrateRemoteStore(): Promise<void> {
   const url = process.env.DATABASE_URL;
   if (!url || !freeDbEnabled()) return;
+  if (backend === "postgres") return;
   const { Client } = await import("pg");
   const client = new Client({
     connectionString: url,
-    ssl: url.includes("render.com") ? { rejectUnauthorized: false } : undefined,
+    connectionTimeoutMillis: 8000,
+    ssl: url.includes("render.com") || url.includes("sslmode=require") ? { rejectUnauthorized: false } : undefined,
   });
-  await client.connect();
+  try {
+    await client.connect();
+  } catch (first) {
+    await client.end().catch(() => undefined);
+    const retry = new Client({ connectionString: url, connectionTimeoutMillis: 8000, ssl: { rejectUnauthorized: false } });
+    try {
+      await retry.connect();
+      return finishHydrate(retry);
+    } catch (second) {
+      await retry.end().catch(() => undefined);
+      lastDatabaseError = [first, second].map((err) => (err instanceof Error ? err.message : "connect failed")).join(" | ").replace(/postgres(?:ql)?:\/\/\S+/gi, "postgres://***");
+      throw second;
+    }
+  }
+  return finishHydrate(client);
+}
+
+async function finishHydrate(client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: any[] }>; end: () => Promise<void> }): Promise<void> {
   await client.query(`
     create table if not exists analytics_events (
       org_id text not null,
@@ -320,7 +344,7 @@ export async function hydrateRemoteStore(): Promise<void> {
     );
   `);
   const have = new Set(
-    (await client.query<{ org_id: string; kind: string }>("select org_id, kind from free_docs")).rows.map((r) => `${r.org_id}\0${r.kind}`),
+    (await client.query("select org_id, kind from free_docs")).rows.map((r) => `${r.org_id}\0${r.kind}`),
   );
   const snap = readLocalSnapshot(path.dirname(freeDbPath()));
   for (const doc of snap.docs) {
@@ -332,7 +356,7 @@ export async function hydrateRemoteStore(): Promise<void> {
     );
     have.add(key);
   }
-  const eventCount = await client.query<{ n: number }>("select count(*)::int as n from analytics_events");
+  const eventCount = await client.query("select count(*)::int as n from analytics_events");
   if (Number(eventCount.rows[0]?.n ?? 0) === 0) {
     for (const row of snap.analytics) {
       await client.query(
@@ -345,8 +369,8 @@ export async function hydrateRemoteStore(): Promise<void> {
       );
     }
   }
-  const docs = await client.query<{ org_id: string; kind: string; doc: string }>("select org_id, kind, doc from free_docs");
-  const analytics = await client.query<Record<string, unknown>>(
+  const docs = await client.query("select org_id, kind, doc from free_docs");
+  const analytics = await client.query(
     "select org_id, dedupe_key, name, occurred_at, channel, contact_id, deal_id, lead_id, campaign_id, sequence_id, step_id, revenue, cost, actor from analytics_events order by occurred_at asc limit 20000",
   );
   let chain = Promise.resolve();
@@ -356,7 +380,7 @@ export async function hydrateRemoteStore(): Promise<void> {
   const docRows = new Map<string, unknown>();
   for (const row of docs.rows) {
     try {
-      docRows.set(`${row.org_id}\0${row.kind}`, JSON.parse(row.doc));
+      docRows.set(`${row.org_id}\0${row.kind}`, JSON.parse(String(row.doc)));
     } catch {
       /* skip a corrupt document */
     }
