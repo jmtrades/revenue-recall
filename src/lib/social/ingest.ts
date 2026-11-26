@@ -22,6 +22,7 @@ import { placeCall, sendEmail, sendSms } from "@/lib/comms";
 import { isAiConfigured } from "@/lib/ai/client";
 import { markDoNotContact } from "@/lib/opt-out";
 import { seenInboundEvent, forgetInboundEvent } from "@/lib/inbound-dedup";
+import { hydrateRemoteStore } from "@/lib/free/db";
 import type { Activity, Contact } from "@/lib/crm/types";
 import type { InboundSocialMessage, SocialPlatform } from "@/lib/social/types";
 
@@ -69,6 +70,7 @@ export interface SocialIngestResult {
 }
 
 export async function ingestSocialMessages(messages: InboundSocialMessage[]): Promise<SocialIngestResult[]> {
+  await hydrateRemoteStore().catch(() => undefined);
   const provider = (await resolveProvider());
   const writable = provider.info().capabilities.write;
   const contacts = await provider.listContacts().catch(() => [] as Contact[]);

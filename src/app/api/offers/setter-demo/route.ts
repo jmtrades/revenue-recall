@@ -11,13 +11,14 @@ import { triageLead } from "@/lib/offers/triage";
 import { saveSetterRun } from "@/lib/offers/store";
 import { placeCall, sendEmail, sendSms } from "@/lib/comms";
 import { fireSpeedToLead } from "@/lib/agent/speed-to-lead";
-import { flushRemoteWrites } from "@/lib/free/db";
+import { flushRemoteWrites, hydrateRemoteStore } from "@/lib/free/db";
 
 export const dynamic = "force-dynamic";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const POST = withGuard(async (req: Request) => {
+  await hydrateRemoteStore().catch(() => undefined);
   if (!rateLimit(clientKey(req, "setter-demo"), 20, 60_000).ok) {
     return NextResponse.json({ error: "Too many submissions. Wait a moment." }, { status: 429 });
   }

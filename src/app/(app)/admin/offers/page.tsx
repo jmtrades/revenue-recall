@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageHeader, Card } from "@/components/ui";
 import { listCampaigns, listSetterRuns } from "@/lib/offers/store";
-import { hydrateRemoteStore } from "@/lib/free/db";
+import { hydrateRemoteStore, refreshRemoteDocs } from "@/lib/free/db";
 import { getSessionRole } from "@/lib/authz";
 import { isAuthRequired } from "@/lib/config";
 import { ApproveButton } from "@/components/offers/ApproveButton";
@@ -14,6 +14,7 @@ export default async function OffersAdminPage() {
   const role = await getSessionRole();
   if (isAuthRequired() && role !== "owner" && role !== "admin") redirect("/dashboard");
   await hydrateRemoteStore().catch(() => undefined);
+  await refreshRemoteDocs().catch(() => undefined);
   const runs = listSetterRuns();
   const campaigns = listCampaigns();
   return (

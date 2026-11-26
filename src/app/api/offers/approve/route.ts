@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { withGuard } from "@/lib/api/guard";
 import { requireRole } from "@/lib/authz";
 import { approveCampaign } from "@/lib/offers/store";
-import { flushRemoteWrites } from "@/lib/free/db";
+import { flushRemoteWrites, hydrateRemoteStore } from "@/lib/free/db";
 
 export const dynamic = "force-dynamic";
 
 /** Marks a reactivation campaign approved. It still does not send. */
 export const POST = withGuard(async (req: Request) => {
+  await hydrateRemoteStore().catch(() => undefined);
   const denied = await requireRole("owner", "admin");
   if (denied) return denied;
   const body = (await req.json().catch(() => null)) as { id?: string } | null;

@@ -6,13 +6,14 @@ import { dedupeLeads, estimateReactivation, parseLeadList } from "@/lib/offers/r
 import { saveCampaign } from "@/lib/offers/store";
 import { trackAds } from "@/lib/ads/track";
 import { resolveAttribution } from "@/lib/ads/touch";
-import { flushRemoteWrites } from "@/lib/free/db";
+import { flushRemoteWrites, hydrateRemoteStore } from "@/lib/free/db";
 
 export const dynamic = "force-dynamic";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const POST = withGuard(async (req: Request) => {
+  await hydrateRemoteStore().catch(() => undefined);
   if (!rateLimit(clientKey(req, "reactivation"), 10, 60_000).ok) {
     return NextResponse.json({ error: "Too many submissions. Wait a moment." }, { status: 429 });
   }

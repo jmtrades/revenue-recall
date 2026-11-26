@@ -4,6 +4,7 @@ import { setBookingStatus, getBooking } from "@/lib/meetings/store";
 import { resolveProvider } from "@/lib/crm/registry";
 import { emitWebhook } from "@/lib/webhooks-out";
 import { trackAds } from "@/lib/ads/track";
+import { flushRemoteWrites, hydrateRemoteStore } from "@/lib/free/db";
 import { enrollNoShowRecovery } from "@/lib/offers/noshow";
 import { blockedEmail } from "@/lib/offers/catalog";
 import { writeRateLimit } from "@/lib/ratelimit";
@@ -28,6 +29,7 @@ export const POST = withGuard(async (req: Request) => {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   const { id, status } = parsed.data;
+  await hydrateRemoteStore().catch(() => undefined);
   try {
     const booking = await getBooking(id);
     if (!booking) return NextResponse.json({ error: "Booking not found" }, { status: 404 });
@@ -57,6 +59,7 @@ export const POST = withGuard(async (req: Request) => {
     if (status === "no_show") {
       await enrollNoShowRecovery({ email: booking.inviteeEmail, phone: booking.inviteePhone, name: booking.inviteeName, contactId: booking.contactId ?? undefined }).catch(() => undefined);
     }
+    if (status === "no_show" || status === "completed") await flushRemoteWrites();
     return NextResponse.json({ ok: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Failed";

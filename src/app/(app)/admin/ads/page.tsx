@@ -6,7 +6,7 @@ import { AdsTools } from "@/components/ads/AdsTools";
 import { adsConfig } from "@/lib/ads/forward";
 import { adsReport, rangeBounds } from "@/lib/ads/rollup";
 import { listAds } from "@/lib/ads/store";
-import { hydrateRemoteStore } from "@/lib/free/db";
+import { hydrateRemoteStore, refreshRemoteDocs } from "@/lib/free/db";
 import { getSessionRole } from "@/lib/authz";
 import { isAuthRequired } from "@/lib/config";
 
@@ -26,6 +26,7 @@ export default async function AdsAdminPage(props: { searchParams: Promise<{ rang
   if (isAuthRequired() && role !== "owner" && role !== "admin") redirect("/dashboard");
 
   await hydrateRemoteStore().catch(() => undefined);
+  await refreshRemoteDocs().catch(() => undefined);
   const range = (await props.searchParams).range || "30";
   const bounds = rangeBounds(range === "7" || range === "90" || range === "all" ? range : "30");
   const { events, spend } = listAds();
