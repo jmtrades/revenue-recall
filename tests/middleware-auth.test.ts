@@ -27,6 +27,8 @@ describe("middleware auth-gate allowlist (real isPublicRoute)", () => {
       "/api/health",
       "/api/chat",
       "/api/webinar-leak",
+      "/api/offers/setter-demo",
+      "/api/offers/reactivation",
       "/api/journeys/preview",
       "/api/ads/collect",
       "/api/ads/schedule",

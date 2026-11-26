@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { withGuard } from "@/lib/api/guard";
 import { rateLimit, clientKey } from "@/lib/ratelimit";
 import { safeEqual } from "@/lib/safe-compare";
-import { parseScheduleWebhook } from "@/lib/ads/forward";
+import { parseScheduleEvent } from "@/lib/offers/schedule";
+import { blockedEmail } from "@/lib/offers/catalog";
 import { trackAds } from "@/lib/ads/track";
+import { enrollNoShowRecovery } from "@/lib/offers/noshow";
 
 export const dynamic = "force-dynamic";
 
@@ -23,8 +25,23 @@ export const POST = withGuard(async (req: Request) => {
     if (!provided || !safeEqual(provided, expected)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const body = await req.json().catch(() => null);
-  const booking = parseScheduleWebhook(body);
+  const booking = parseScheduleEvent(body);
   if (!booking) return NextResponse.json({ ok: true, ignored: "not_a_booking" });
+  if (blockedEmail(booking.email)) return NextResponse.json({ ok: true, ignored: "blocked_inbox", sends: 0 });
+  if (booking.kind === "no_show") {
+    const result = await trackAds({
+      name: "Schedule",
+      eventId: `noshow_${(booking.email || "guest").slice(0, 40)}_${(booking.start || "").slice(0, 20)}`,
+      email: booking.email,
+      phone: booking.phone,
+      personName: booking.name,
+      consent: true,
+      offer: "build-call",
+      scheduleKind: "no_show",
+    });
+    await enrollNoShowRecovery({ email: booking.email, phone: booking.phone, name: booking.name }).catch(() => undefined);
+    return NextResponse.json({ ...result, kind: "no_show" });
+  }
   const result = await trackAds({
     name: "Schedule",
     eventId: `schedule_${(booking.email || booking.start || "guest").slice(0, 40)}_${(booking.start || "").slice(0, 20)}`,
@@ -32,6 +49,8 @@ export const POST = withGuard(async (req: Request) => {
     phone: booking.phone,
     personName: booking.name,
     consent: true,
+    offer: "build-call",
+    scheduleKind: "booked",
   });
   return NextResponse.json(result);
 });

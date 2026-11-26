@@ -35,6 +35,8 @@ describe("CSRF guard — which requests must prove same-origin", () => {
       "/api/billing/setup", // operator ADMIN_TOKEN (curled cross-origin)
       "/api/chat",
       "/api/webinar-leak",
+      "/api/offers/setter-demo",
+      "/api/offers/reactivation",
       "/api/journeys/preview",
       "/api/ads/collect", // browser funnel events
       "/api/ads/schedule", // Calendly / Cal.com

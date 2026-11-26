@@ -10,7 +10,7 @@
 // linked from the marketing footer and the signup consent line, and a
 // login-gated privacy policy is a compliance problem. (/reset/update is NOT
 // here — it needs the short recovery session the email link establishes.)
-export const PUBLIC_PAGES = new Set(["/", "/login", "/signup", "/reset", "/pricing", "/audit", "/privacy", "/terms", "/security", "/status"]);
+export const PUBLIC_PAGES = new Set(["/", "/login", "/signup", "/reset", "/pricing", "/audit", "/privacy", "/terms", "/security", "/status", "/setter-demo", "/reactivation-audit", "/build-call", "/webinar-leak"]);
 
 // Machine-to-machine API endpoints that authenticate by their OWN secret
 // (Stripe signature, CRON_SECRET, INBOUND_TOKEN, COMMS_WEBHOOK_TOKEN,
@@ -38,6 +38,8 @@ export const PUBLIC_API = [
   "/api/health",
   "/api/chat", // public site chat — rate-limited, no secrets
   "/api/webinar-leak", // calculator lead capture — rate-limited
+  "/api/offers/setter-demo",
+  "/api/offers/reactivation",
   "/api/journeys/preview", // dry-run report — never dials or writes ads
   "/api/ads/collect", // browser funnel events — no session, rate-limited
   "/api/ads/schedule", // Calendly / Cal.com booking webhook
