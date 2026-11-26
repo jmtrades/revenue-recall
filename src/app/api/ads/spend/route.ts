@@ -2,14 +2,21 @@ import { NextResponse } from "next/server";
 import { withGuard } from "@/lib/api/guard";
 import { requireRole } from "@/lib/authz";
 import { parseSpendCsv } from "@/lib/ads/csv";
-import { deleteSpend, putSpend } from "@/lib/ads/store";
+import { deleteSpend, listAds, putSpend } from "@/lib/ads/store";
+import { flushRemoteWrites, hydrateRemoteStore } from "@/lib/free/db";
 
 export const dynamic = "force-dynamic";
 
 /** Manual spend or a CSV. Owner/admin when sign-in is on; open on the free demo host. */
+export const GET = withGuard(async () => {
+  await hydrateRemoteStore().catch(() => undefined);
+  return NextResponse.json({ spend: listAds().spend });
+});
+
 export const POST = withGuard(async (req: Request) => {
   const denied = await requireRole("owner", "admin");
   if (denied) return denied;
+  await hydrateRemoteStore().catch(() => undefined);
   const body = (await req.json().catch(() => null)) as { csv?: string; date?: string; source?: string; campaign?: string; amount?: number; currency?: string } | null;
   if (!body) return NextResponse.json({ error: "Missing body" }, { status: 400 });
 
@@ -33,6 +40,7 @@ export const POST = withGuard(async (req: Request) => {
     amount,
     currency: (body.currency || "USD").toUpperCase().slice(0, 8),
   });
+  await flushRemoteWrites();
   return NextResponse.json({ ok: true, saved: 1 });
 });
 
@@ -41,5 +49,8 @@ export const DELETE = withGuard(async (req: Request) => {
   if (denied) return denied;
   const id = new URL(req.url).searchParams.get("id") ?? "";
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
-  return NextResponse.json({ ok: deleteSpend(id) });
+  await hydrateRemoteStore().catch(() => undefined);
+  const ok = deleteSpend(id);
+  await flushRemoteWrites();
+  return NextResponse.json({ ok });
 });
