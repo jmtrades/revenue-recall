@@ -43,6 +43,7 @@ export function InboxView({
   const [optimistic, setOptimistic] = useState<Record<string, InboxMessage[]>>({});
   // Per-deal recall-enrollment feedback ("Enrolling…" / result), keyed by dealId.
   const [enrolling, setEnrolling] = useState<string | null>(null);
+  const [paused, setPaused] = useState<Record<string, boolean>>({});
   const [enrollMsg, setEnrollMsg] = useState<{ dealId: string; ok: boolean; text: string } | null>(null);
   const router = useRouter();
 
@@ -168,7 +169,7 @@ export function InboxView({
           <div className="grid flex-1 place-items-center text-sm text-muted">Select a conversation</div>
         ) : (
           <>
-            <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">
                 <Avatar name={active.contactName} size={36} />
                 <div className="min-w-0">
@@ -178,6 +179,21 @@ export function InboxView({
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <ChannelBadge channel={active.channel} />
+                <button
+                  type="button"
+                  className="rounded-full border border-border px-3 py-1 text-xs font-medium text-fg"
+                  onClick={async () => {
+                    const next = !(paused[active.contactId] ?? active.aiPaused);
+                    setPaused((prev) => ({ ...prev, [active.contactId]: next }));
+                    await fetch("/api/agent/pause", {
+                      method: "POST",
+                      headers: { "content-type": "application/json" },
+                      body: JSON.stringify({ contactId: active.contactId, paused: next }),
+                    });
+                  }}
+                >
+                  {(paused[active.contactId] ?? active.aiPaused) ? "AI paused" : "Pause AI"}
+                </button>
                 <Link href={`/leads/${active.contactId}`} className="shrink-0 text-sm text-brand hover:underline">View contact →</Link>
               </div>
             </div>

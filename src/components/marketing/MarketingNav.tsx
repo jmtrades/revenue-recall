@@ -20,7 +20,7 @@ function ArrowRight({ className = "" }: { className?: string }) {
 const NAV_LINKS = [
   { id: "features", label: "Features" },
   { id: "how", label: "How it works" },
-  { id: "industries", label: "Industries" },
+  { id: "industries", label: "Who it's for" },
   { id: "who", label: "Who it’s for" },
   { id: "integrations", label: "Integrations" },
   { id: "pricing", label: "Pricing" },

@@ -197,7 +197,9 @@ function normalizeZoom(body: unknown, now: Date): CanonicalEvent[] {
           : {
               id,
               email,
+              phone: str(participant.phone) ?? str(participant.phone_number),
               name: str(participant.user_name) ?? ([str(participant.first_name), str(participant.last_name)].filter(Boolean).join(" ") || undefined),
+              consent: consentOf(participant.consent),
             },
     },
   ];
@@ -228,6 +230,7 @@ function normalizeDemio(body: unknown, now: Date): CanonicalEvent[] {
         email,
         name: str(body.name) && !str(body.webinar_name) ? str(body.name) : str(body.registrant_name),
         phone: str(body.phone),
+        consent: consentOf(body.consent),
       },
     },
   ];
@@ -260,6 +263,7 @@ function normalizeWebinarJam(body: unknown, now: Date): CanonicalEvent[] {
         email,
         phone,
         name: [str(body.first_name), str(body.last_name)].filter(Boolean).join(" ") || str(body.name),
+        consent: consentOf(body.consent),
       },
     },
   ];
@@ -288,7 +292,9 @@ function normalizeGoto(body: unknown, now: Date): CanonicalEvent[] {
       registrant: {
         id: str(body.registrantKey),
         email,
+        phone: str(body.phone),
         name: [str(body.firstName), str(body.lastName)].filter(Boolean).join(" ") || undefined,
+        consent: consentOf(body.consent),
       },
     },
   ];
@@ -313,7 +319,7 @@ function normalizeLivestorm(body: unknown, now: Date): CanonicalEvent[] {
   else if (event === "session.started") type = "session.upsert";
   else if (event === "session.ended") type = "session.upsert";
   else if (event === "people.attended") type = "attendance.joined";
-  else return [];
+  else return normalizeGeneric(body, now, "livestorm");
   const phase: WebinarPhase | undefined = event === "session.ended" || event === "people.not_attended" || event === "people.attended" ? "ended" : event === "session.started" ? "live" : undefined;
   return [
     {
@@ -349,7 +355,7 @@ function normalizeWebinarGeek(body: unknown, now: Date): CanonicalEvent[] {
       type,
       occurredAt,
       session: { id: sessionId, phase: type === "attendance.left" || type === "attendance.joined" ? "live" : undefined },
-      registrant: { email, name: [str(entity.first_name), str(entity.last_name)].filter(Boolean).join(" ") || str(entity.name), phone: str(entity.phone) },
+      registrant: { email, name: [str(entity.first_name), str(entity.last_name)].filter(Boolean).join(" ") || str(entity.name), phone: str(entity.phone), consent: consentOf(entity.consent) ?? consentOf(body.consent) },
     },
   ];
 }
