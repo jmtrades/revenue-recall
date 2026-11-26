@@ -9,7 +9,7 @@
      Resolved through --brand-dark/--brand-light source vars so the per-org
      accent (inlined on #app-shell by accentVars) follows the active theme —
      the fallbacks keep marketing (no inline vars) on the house green. */
-  --brand-rgb: var(--brand-dark, 16 163 112);
+  --brand-rgb: var(--brand-dark, 24 184 130);
   /* AA-safe variant used ONLY behind white button text (emerald-700): white on
      --brand is ~3.8:1 (fails WCAG AA for normal text); on this it's ~5.5:1. The
      lighter --brand stays the brand color for chips, accents, borders, glows. */
@@ -113,7 +113,7 @@
   --muted-rgb: 150 157 150;
   --fg-rgb: 255 255 255;
   --body-rgb: 224 228 224;
-  --brand-rgb: var(--brand-dark, 16 163 112);
+  --brand-rgb: var(--brand-dark, 24 184 130);
   --brand-soft-rgb: var(--brand-soft-dark, 11 47 34);
   --success-rgb: 52 211 153;
   --warn-rgb: 251 191 36;

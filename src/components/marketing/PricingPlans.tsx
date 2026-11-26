@@ -26,11 +26,11 @@ export function PricingPlans() {
               {/* The active pill GLIDES between options (shared layout). */}
               {cycle === c &&
                 (reduced ? (
-                  <span className="absolute inset-0 rounded-full bg-brand shadow-[inset_0_1px_0_0_rgb(255_255_255/0.2)]" aria-hidden />
+                  <span className="absolute inset-0 rounded-full bg-brand-strong shadow-[inset_0_1px_0_0_rgb(255_255_255/0.2)]" aria-hidden />
                 ) : (
                   <motion.span
                     layoutId="rr-cycle-pill"
-                    className="absolute inset-0 rounded-full bg-brand shadow-[inset_0_1px_0_0_rgb(255_255_255/0.2)]"
+                    className="absolute inset-0 rounded-full bg-brand-strong shadow-[inset_0_1px_0_0_rgb(255_255_255/0.2)]"
                     transition={{ type: "spring", stiffness: 400, damping: 32 }}
                     aria-hidden
                   />
@@ -38,7 +38,7 @@ export function PricingPlans() {
               <span className="relative z-10 inline-flex items-center gap-2">
                 {c}
                 {c === "annual" && (
-                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${cycle === "annual" ? "bg-white/20 text-white" : "bg-success/15 text-success"}`}>
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${cycle === "annual" ? "bg-white text-brand-strong" : "bg-success/15 text-success"}`}>
                     −17%
                   </span>
                 )}
