@@ -2,6 +2,7 @@ import { getSupabase } from "@/lib/supabase/client";
 import { resolveActiveOrgId } from "@/lib/supabase/active-org";
 import { getSessionUser } from "@/lib/auth";
 import { getSequence, sequencesFor, type Sequence, type SequenceStep, type SeqChannel } from "@/lib/sequences";
+import { getFreeDb } from "@/lib/free/db";
 
 /**
  * Org-authored sequences — the write side the preset cadences never had.
@@ -40,10 +41,18 @@ function toSequence(r: Row): Sequence {
   return { id: r.id, name: r.name, goal: r.description ?? "", industries: ["*"], steps: toSteps(r.steps) };
 }
 
+function localSequences(): Sequence[] {
+  return getFreeDb()?.readDoc<Sequence[]>("local", "custom-sequences") ?? [];
+}
+
+function saveLocalSequences(rows: Sequence[]): void {
+  getFreeDb()?.writeDoc("local", "custom-sequences", rows);
+}
+
 /** The org's own sequences (newest first). Never throws. */
 export async function listCustomSequences(): Promise<Sequence[]> {
   const client = getSupabase();
-  if (!client) return [];
+  if (!client) return localSequences();
   const orgId = await resolveActiveOrgId().catch(() => null);
   if (!orgId) return [];
   const { data, error } = await client
@@ -61,7 +70,7 @@ export async function resolveSequence(id: string): Promise<Sequence | undefined>
   const preset = getSequence(id);
   if (preset) return preset;
   const client = getSupabase();
-  if (!client) return undefined;
+  if (!client) return localSequences().find((s) => s.id === id);
   const orgId = await resolveActiveOrgId().catch(() => null);
   if (!orgId) return undefined;
   const { data } = await client.from("custom_sequences").select("id,name,description,steps").eq("org_id", orgId).eq("id", id).maybeSingle();
@@ -76,7 +85,10 @@ export async function allSequencesFor(industryId: string): Promise<Sequence[]> {
 
 async function ctx() {
   const client = getSupabase();
-  if (!client) throw new Error("Custom sequences require a database.");
+  if (!client) {
+    if (!getFreeDb()) throw new Error("Custom sequences require a database.");
+    return { client: null, orgId: "local", userId: null };
+  }
   const orgId = await resolveActiveOrgId();
   if (!orgId) throw new Error("No active org.");
   const user = await getSessionUser().catch(() => null);
@@ -91,6 +103,11 @@ function normalizeSteps(steps: CustomSequenceInput["steps"]): SequenceStep[] {
 
 export async function createCustomSequence(input: CustomSequenceInput): Promise<Sequence> {
   const { client, orgId, userId } = await ctx();
+  if (!client) {
+    const row: Sequence = { id: `seq_${Date.now().toString(36)}`, name: input.name, goal: input.goal ?? "", industries: ["*"], steps: normalizeSteps(input.steps) };
+    saveLocalSequences([row, ...localSequences()]);
+    return row;
+  }
   const { data, error } = await client
     .from("custom_sequences")
     .insert({ org_id: orgId, name: input.name, description: input.goal || null, steps: normalizeSteps(input.steps), created_by: userId })
@@ -102,6 +119,15 @@ export async function createCustomSequence(input: CustomSequenceInput): Promise<
 
 export async function updateCustomSequence(id: string, patch: Partial<CustomSequenceInput>): Promise<void> {
   const { client, orgId } = await ctx();
+  if (!client) {
+    saveLocalSequences(localSequences().map((row) => row.id === id ? {
+      ...row,
+      name: patch.name ?? row.name,
+      goal: patch.goal ?? row.goal,
+      steps: patch.steps ? normalizeSteps(patch.steps) : row.steps,
+    } : row));
+    return;
+  }
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.name !== undefined) update.name = patch.name;
   if (patch.goal !== undefined) update.description = patch.goal || null;
@@ -112,6 +138,10 @@ export async function updateCustomSequence(id: string, patch: Partial<CustomSequ
 
 export async function deleteCustomSequence(id: string): Promise<void> {
   const { client, orgId } = await ctx();
+  if (!client) {
+    saveLocalSequences(localSequences().filter((row) => row.id !== id));
+    return;
+  }
   const { error } = await client.from("custom_sequences").delete().eq("id", id).eq("org_id", orgId);
   if (error) throw new Error(error.message);
 }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { withGuard } from "@/lib/api/guard";
 import { requireRole } from "@/lib/authz";
 import { parseSpendCsv } from "@/lib/ads/csv";
-import { putSpend } from "@/lib/ads/store";
+import { deleteSpend, putSpend } from "@/lib/ads/store";
 
 export const dynamic = "force-dynamic";
 
@@ -34,4 +34,12 @@ export const POST = withGuard(async (req: Request) => {
     currency: (body.currency || "USD").toUpperCase().slice(0, 8),
   });
   return NextResponse.json({ ok: true, saved: 1 });
+});
+
+export const DELETE = withGuard(async (req: Request) => {
+  const denied = await requireRole("owner", "admin");
+  if (denied) return denied;
+  const id = new URL(req.url).searchParams.get("id") ?? "";
+  if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+  return NextResponse.json({ ok: deleteSpend(id) });
 });
