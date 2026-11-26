@@ -22,6 +22,9 @@ export interface TrackInput {
   /** Browser said the visitor accepted advertising cookies. */
   consent?: boolean;
   test?: boolean;
+  offer?: string;
+  qualified?: boolean;
+  scheduleKind?: "booked" | "show" | "no_show";
 }
 
 export interface TrackResult {
@@ -61,6 +64,9 @@ export async function trackAds(input: TrackInput): Promise<TrackResult> {
     value: input.value,
     currency: input.currency?.toUpperCase(),
     test: input.test,
+    offer: input.offer,
+    qualified: input.qualified,
+    scheduleKind: input.scheduleKind,
   };
   const saved = putEvent(row);
   if (saved.duplicate) return { ok: true, eventId, duplicate: true, forwarded: { meta: "skipped", ga4: "skipped" } };

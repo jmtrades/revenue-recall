@@ -13,6 +13,12 @@ import { hasOptedOut, isHardOptOut } from "@/lib/agent/guardrails";
 import { planTeamReply, recordTeamEvent } from "@/lib/agent/team";
 import { planCommentReply, sendCommentReplies } from "@/lib/social/comment-dm";
 import { trackAds } from "@/lib/ads/track";
+import { mapLeadgen } from "@/lib/offers/leadgen";
+import { OFFERS } from "@/lib/offers/catalog";
+import { triageLead } from "@/lib/offers/triage";
+import { planSetterOutreach, setterMessage } from "@/lib/offers/setter";
+import { saveSetterRun } from "@/lib/offers/store";
+import { placeCall, sendEmail, sendSms } from "@/lib/comms";
 import { isAiConfigured } from "@/lib/ai/client";
 import { markDoNotContact } from "@/lib/opt-out";
 import { seenInboundEvent, forgetInboundEvent } from "@/lib/inbound-dedup";
@@ -159,13 +165,53 @@ export async function ingestSocialMessages(messages: InboundSocialMessage[]): Pr
         }
       }
       if (m.kind === "lead" && created) {
+        const fields = mapLeadgen(m.raw);
+        const offer = fields ? OFFERS[fields.offer] : OFFERS["setter-demo"];
+        const triage = triageLead({ text: `${fields?.business ?? ""} ${fields?.name ?? contact.name}`, monthlyRevenue: fields?.monthlyRevenue });
+        if (fields && provider.updateContact) {
+          await provider.updateContact(contact.id, {
+            name: fields.name || contact.name,
+            company: fields.business || contact.company,
+            attributes: { ...contact.attributes, offer: offer.id, triage: triage.band },
+          }).catch(() => contact);
+        }
         await trackAds({
           name: "Lead",
           eventId: m.externalMessageId,
-          personName: contact.name,
+          personName: fields?.name || contact.name,
+          email: fields?.email,
+          phone: fields?.phone,
           consent: true,
-          attribution: { first: null, last: { source: "meta", medium: "lead_ad", campaign: "lead-ad", content: "", term: "", fbclid: "", gclid: "", ttclid: "", referrer: "", landing: "/admin/ads", at: m.at } },
+          offer: offer.id,
+          qualified: triage.qualified,
+          attribution: { first: null, last: { source: "meta", medium: "lead_ad", campaign: offer.id, content: offer.id, term: "", fbclid: "", gclid: "", ttclid: "", referrer: "", landing: offer.path, at: m.at } },
         }).catch(() => undefined);
+        if (offer.id === "setter-demo") {
+          const plan = planSetterOutreach({
+            email: fields?.email,
+            phone: fields?.phone,
+            voiceReady: Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
+          });
+          const copy = setterMessage(fields?.name || contact.name, plan.bookingUrl);
+          if (plan.call === "sent" && fields?.phone) {
+            await placeCall(fields.phone, { opener: copy.opener, context: "Meta lead ad setter demo", meta: { offer: offer.id } }).catch(() => undefined);
+          }
+          if (plan.sms === "sent" && fields?.phone) await sendSms(fields.phone, copy.sms).catch(() => undefined);
+          if (plan.email === "sent" && fields?.email) await sendEmail(fields.email, copy.emailSubject, copy.emailBody).catch(() => undefined);
+          saveSetterRun({
+            id: m.externalMessageId || contact.id,
+            at: m.at,
+            name: fields?.name || contact.name,
+            email: fields?.email || "",
+            phone: fields?.phone || "",
+            business: fields?.business || "",
+            triage: triage.band,
+            call: plan.call,
+            sms: plan.sms,
+            emailStatus: plan.email,
+            reason: plan.reason,
+          });
+        }
         recordTeamEvent({ at: m.at, role: "sdr", outcome: "reply", channel: platform });
       }
       replied = optedOut || skipAuto || !m.text.trim() ? false : await autoReply(contact, platform, m.text, m.at);

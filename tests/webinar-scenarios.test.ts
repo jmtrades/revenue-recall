@@ -232,7 +232,8 @@ const scenarios: Record<ScenarioId, () => Promise<void>> = {
     const left = await ingestWebinarEvent(ORG, ev({ type: "attendance.left", dedupeKey: "leave" }));
     await onWebinarCallOutcome({ orgId: ORG, registrantId: left.registrantId!, stepId: "leave-call-1", outcome: "no-answer" });
     expect(rec.sms).toHaveLength(1);
-    expect(rec.sms[0].body).toContain("https://join.example/room");
+    expect(rec.sms[0].body.toLowerCase()).toContain("replay");
+    expect(rec.sms[0].body).not.toContain("https://join.example/room");
   },
 
   async S11_voicemail_script_on_first_call_only() {
@@ -391,7 +392,8 @@ const scenarios: Record<ScenarioId, () => Promise<void>> = {
     const res = await ingestWebinarEvent(ORG, ev({ type: "attendance.left", dedupeKey: "leave", registrant: { ...sam, consent: { call: false, sms: false, email: true } } }));
     expect(rec.calls).toHaveLength(0);
     expect(rec.emails).toHaveLength(1);
-    expect(rec.emails[0].body).toContain("https://join.example/room");
+    expect(rec.emails[0].body.toLowerCase()).toContain("replay");
+    expect(rec.emails[0].body).not.toContain("https://join.example/room");
     expect(res.dispatched.some((d) => d.channel === "call" && d.detail === "no_consent")).toBe(true);
   },
 

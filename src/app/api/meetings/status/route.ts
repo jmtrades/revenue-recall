@@ -3,6 +3,9 @@ import { z } from "zod";
 import { setBookingStatus, getBooking } from "@/lib/meetings/store";
 import { resolveProvider } from "@/lib/crm/registry";
 import { emitWebhook } from "@/lib/webhooks-out";
+import { trackAds } from "@/lib/ads/track";
+import { enrollNoShowRecovery } from "@/lib/offers/noshow";
+import { blockedEmail } from "@/lib/offers/catalog";
 import { writeRateLimit } from "@/lib/ratelimit";
 import { withGuard } from "@/lib/api/guard";
 
@@ -38,6 +41,21 @@ export const POST = withGuard(async (req: Request) => {
     // Emit a lifecycle webhook for a real outcome change (not a reopen).
     if (status !== "confirmed") {
       await emitWebhook(`meeting.${status === "no_show" ? "no_show" : status}`, { bookingId: id, contactId: booking.contactId, dealId: booking.dealId, name: booking.inviteeName, meeting: booking.meetingName, startsAt: booking.startsAt, by: "rep" }).catch(() => undefined);
+    }
+    if ((status === "no_show" || status === "completed") && !blockedEmail(booking.inviteeEmail)) {
+      await trackAds({
+        name: "Schedule",
+        eventId: `meeting_${status}_${id}`,
+        email: booking.inviteeEmail,
+        phone: booking.inviteePhone,
+        personName: booking.inviteeName,
+        consent: true,
+        offer: "build-call",
+        scheduleKind: status === "no_show" ? "no_show" : "show",
+      }).catch(() => undefined);
+    }
+    if (status === "no_show") {
+      await enrollNoShowRecovery({ email: booking.inviteeEmail, phone: booking.inviteePhone, name: booking.inviteeName, contactId: booking.contactId ?? undefined }).catch(() => undefined);
     }
     return NextResponse.json({ ok: true });
   } catch (e) {

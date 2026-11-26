@@ -24,6 +24,11 @@ export interface StoredEvent {
   value?: number;
   currency?: string;
   test?: boolean;
+  /** Which ad offer this event belongs to, when the visit didn't carry a campaign. */
+  offer?: string;
+  qualified?: boolean;
+  /** Booked calls can later be marked showed or no-show. */
+  scheduleKind?: "booked" | "show" | "no_show";
 }
 
 export interface SpendRow {

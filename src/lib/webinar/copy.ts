@@ -18,7 +18,7 @@ function title(session: WebinarSession | undefined): string {
 export function callOpener(reg: WebinarRegistrant, session: WebinarSession | undefined, purpose: ActionPurpose): string {
   const who = first(reg.name);
   if (reg.state === "pitch_drop" || purpose === "rejoin") {
-    return `Hey ${who} — yeah, you just dropped off ${title(session)}. Want me to text you the link to hop back in?`;
+    return `Hey ${who} — you just left ${title(session)}. I can send the replay, or we can do a quick call. Which do you want?`;
   }
   if (purpose === "replay") {
     return `Hey ${who}, we missed you at ${title(session)}. I can text the replay if now's a bad time.`;
@@ -50,7 +50,7 @@ export function smsBody(reg: WebinarRegistrant, session: WebinarSession | undefi
   if (purpose === "followup") {
     return `Hey ${who}, thanks for being at ${title(session)}. If you want to talk it through, reply here and I'll set it up.`;
   }
-  return `Hey ${who}, you dropped off ${title(session)}. One tap to rejoin:${url}`.trim();
+  return `Hey ${who}, you left ${title(session)}. I can send the replay, or we can do a quick call — reply with whichever is easier.`;
 }
 
 export function emailContent(reg: WebinarRegistrant, session: WebinarSession | undefined, purpose: ActionPurpose): { subject: string; body: string } {
@@ -70,7 +70,7 @@ export function emailContent(reg: WebinarRegistrant, session: WebinarSession | u
   if (purpose === "followup") {
     return { subject: `After ${t}`, body: `Hey ${who},\n\nThanks for being at ${t}. If you want to talk it through, reply with a time that works.\n\n${line}` };
   }
-  return { subject: `You dropped off ${t}`, body: `Hey ${who},\n\nYou left ${t} a moment ago. You can pick up where you left off.\n\n${line}` };
+  return { subject: `You dropped off ${t}`, body: `Hey ${who},\n\nYou left ${t} a moment ago. I can send the replay, or we can do a quick call — reply with whichever is easier.` };
 }
 
 export function callContext(reg: WebinarRegistrant, session: WebinarSession | undefined, purpose: ActionPurpose): string {

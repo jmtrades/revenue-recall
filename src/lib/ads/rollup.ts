@@ -21,6 +21,11 @@ export interface AdsSlice {
   sales: number;
   revenue: number;
   spend: number;
+  qualified?: number;
+  shows?: number;
+  noShows?: number;
+  showRate?: number | null;
+  costPerQualified?: number | null;
 }
 
 export interface AdsReport {
@@ -28,6 +33,7 @@ export interface AdsReport {
   bySource: AdsSlice[];
   byCampaign: AdsSlice[];
   byAd: AdsSlice[];
+  byOffer: AdsSlice[];
 }
 
 function inRange(iso: string, from: string | null, to: string | null): boolean {
@@ -62,7 +68,7 @@ export function adsReport(events: StoredEvent[], spend: SpendRow[], from: string
 
   const totals = finish({
     leads: live.filter((e) => e.name === "Lead").length,
-    bookings: live.filter((e) => e.name === "Schedule").length,
+    bookings: live.filter((e) => e.name === "Schedule" && e.scheduleKind !== "no_show" && e.scheduleKind !== "show").length,
     sales: live.filter((e) => e.name === "Purchase").length,
     revenue: live.filter((e) => e.name === "Purchase").reduce((sum, e) => sum + (e.value ?? 0), 0),
     spend: counted.reduce((sum, s) => sum + s.amount, 0),
@@ -85,14 +91,21 @@ export function adsReport(events: StoredEvent[], spend: SpendRow[], from: string
     for (const e of live) {
       const row = slice(pick(e) || "(not set)");
       if (e.name === "Lead") row.leads += 1;
-      if (e.name === "Schedule") row.bookings += 1;
+      if (e.qualified) row.qualified = (row.qualified ?? 0) + 1;
+      if (e.name === "Schedule" && e.scheduleKind !== "no_show" && e.scheduleKind !== "show") row.bookings += 1;
+      if (e.scheduleKind === "show") row.shows = (row.shows ?? 0) + 1;
+      if (e.scheduleKind === "no_show") row.noShows = (row.noShows ?? 0) + 1;
       if (e.name === "Purchase") {
         row.sales += 1;
         row.revenue += e.value ?? 0;
       }
     }
     for (const s of counted) slice(spendPick(s) || "(not set)").spend += s.amount;
-    return [...buckets.values()].filter((r) => r.leads || r.bookings || r.sales || r.spend).sort((a, b) => b.spend - a.spend || b.leads - a.leads || a.key.localeCompare(b.key));
+    return [...buckets.values()].filter((r) => r.leads || r.bookings || r.sales || r.spend || r.qualified || r.shows || r.noShows).map((row) => ({
+      ...row,
+      showRate: row.bookings ? (row.shows ?? 0) / row.bookings : null,
+      costPerQualified: row.qualified ? row.spend / row.qualified : null,
+    })).sort((a, b) => b.spend - a.spend || b.leads - a.leads || a.key.localeCompare(b.key));
   };
 
   return {
@@ -100,6 +113,7 @@ export function adsReport(events: StoredEvent[], spend: SpendRow[], from: string
     bySource: groups((e) => e.source, (s) => s.source),
     byCampaign: groups((e) => e.campaign, (s) => s.campaign),
     byAd: groups((e) => e.content, () => ""),
+    byOffer: groups((e) => e.offer || e.campaign, (s) => s.campaign),
   };
 }
 

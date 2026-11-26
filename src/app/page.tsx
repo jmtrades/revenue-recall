@@ -170,23 +170,31 @@ export default function LandingPage() {
         <RecallOrbit size={560} aria-hidden className="pointer-events-none absolute -right-16 -top-12 hidden opacity-60 lg:block" />
         <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-8 px-5 pb-12 pt-10 sm:gap-12 sm:pb-20 sm:pt-14 lg:grid-cols-2 lg:items-center lg:pb-28 lg:pt-20">
           <div className="min-w-0 animate-fade-up">
-            <span className="eyebrow">Webinar drop-off recovery · coaches, consultants, courses</span>
+            <span className="eyebrow">AI appointment-setting team · coaches, consultants, courses</span>
             <h1 className="display-hero mt-5 text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.02em] sm:text-[3.5rem] sm:leading-[0.98] lg:text-[4.25rem]">
-              Someone just left before the pitch. <span className="gradient-text">Their phone is already ringing.</span>
+              An AI team that <span className="gradient-text">sets the appointment.</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-body">
-              An AI sales team for high-ticket webinars. It catches the drop-off, works the lead across phone, text, email, and social, and keeps <strong className="font-semibold text-fg">one thread</strong> so the setter can book the call.
+              Five jobs, one thread: speed to lead, follow-up, triage, no-show recovery, and reactivation of old leads. Built for coaches, consultants, and course creators.
             </p>
+            <ul className="mt-4 grid gap-1 text-sm text-body sm:grid-cols-2">
+              {["Speed to lead", "Follow-up", "Triage", "No-show recovery", "Reactivation"].map((job) => (
+                <li key={job}>{job}</li>
+              ))}
+            </ul>
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link href="/signup" className="cta group inline-flex items-center gap-2 rounded-full bg-brand-strong py-2 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand-strong/90">
-                Start free — no card
+              <Link href="/setter-demo" className="cta group inline-flex items-center gap-2 rounded-full bg-brand-strong py-2 pl-5 pr-2 text-sm font-semibold text-white hover:bg-brand-strong/90">
+                Call me in 60 seconds
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20 transition-transform duration-200 ease-out group-hover:translate-x-0.5">
                   <Arrow />
                 </span>
               </Link>
-              <Link href="/webinar-leak" className="cta inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-5 py-2.5 text-sm font-semibold text-fg transition-colors hover:bg-surface-2">
-                Price the leak
+              <Link href="/build-call" className="cta inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-5 py-2.5 text-sm font-semibold text-fg transition-colors hover:bg-surface-2">
+                Book a 15-min build
                 <Arrow className="text-muted" />
+              </Link>
+              <Link href="/reactivation-audit" className="text-sm font-semibold text-brand hover:underline">
+                Audit dead leads
               </Link>
             </div>
             <p className="mt-3 text-xs text-muted">Live in 2 minutes · See the revenue you&apos;re losing before you pay · Cancel anytime</p>

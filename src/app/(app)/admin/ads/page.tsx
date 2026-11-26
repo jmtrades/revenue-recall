@@ -70,6 +70,9 @@ export default async function AdsAdminPage(props: { searchParams: Promise<{ rang
         <Stat label="ROAS" value={report.totals.roas == null ? "—" : `${report.totals.roas.toFixed(2)}×`} hint="Revenue ÷ spend" />
       </div>
 
+      <Card className="mt-6" title="By offer">
+        <SliceTable rows={report.byOffer} currency={report.totals.currency} detail />
+      </Card>
       <Card className="mt-6" title="By campaign">
         <SliceTable rows={report.byCampaign} currency={report.totals.currency} />
       </Card>
@@ -94,7 +97,7 @@ export default async function AdsAdminPage(props: { searchParams: Promise<{ rang
   );
 }
 
-function SliceTable({ rows, currency }: { rows: { key: string; leads: number; bookings: number; sales: number; revenue: number; spend: number }[]; currency: string }) {
+function SliceTable({ rows, currency, detail = false }: { rows: { key: string; leads: number; bookings: number; sales: number; revenue: number; spend: number; qualified?: number; showRate?: number | null; costPerQualified?: number | null }[]; currency: string; detail?: boolean }) {
   if (!rows.length) return <p className="text-sm text-muted">Nothing in this range yet.</p>;
   return (
     <div className="overflow-x-auto">
@@ -103,9 +106,12 @@ function SliceTable({ rows, currency }: { rows: { key: string; leads: number; bo
           <tr>
             <th className="py-2 pr-3 font-medium">Name</th>
             <th className="py-2 pr-3 font-medium">Leads</th>
+            {detail ? <th className="py-2 pr-3 font-medium">Qualified</th> : null}
             <th className="py-2 pr-3 font-medium">Booked</th>
+            {detail ? <th className="py-2 pr-3 font-medium">Show rate</th> : null}
             <th className="py-2 pr-3 font-medium">Sales</th>
-            <th className="py-2 font-medium">Spend</th>
+            <th className="py-2 pr-3 font-medium">Spend</th>
+            {detail ? <th className="py-2 font-medium">Cost / qualified</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -113,9 +119,12 @@ function SliceTable({ rows, currency }: { rows: { key: string; leads: number; bo
             <tr key={row.key} className="border-t border-border">
               <td className="py-2 pr-3 text-fg">{row.key}</td>
               <td className="py-2 pr-3 tabular-nums">{row.leads}</td>
+              {detail ? <td className="py-2 pr-3 tabular-nums">{row.qualified ?? 0}</td> : null}
               <td className="py-2 pr-3 tabular-nums">{row.bookings}</td>
+              {detail ? <td className="py-2 pr-3 tabular-nums">{row.showRate == null ? "—" : `${Math.round(row.showRate * 100)}%`}</td> : null}
               <td className="py-2 pr-3 tabular-nums">{row.sales}</td>
-              <td className="py-2 tabular-nums">{row.spend ? money(row.spend, currency) : "—"}</td>
+              <td className="py-2 pr-3 tabular-nums">{row.spend ? money(row.spend, currency) : "—"}</td>
+              {detail ? <td className="py-2 tabular-nums">{money(row.costPerQualified ?? null, currency)}</td> : null}
             </tr>
           ))}
         </tbody>

@@ -132,6 +132,11 @@ function firePixels(name: AdsEventName, eventId: string, value?: number, currenc
   }
 }
 
+/** Browser half of a server event. Same event id dedupes Meta Pixel and CAPI. */
+export function fireBrowserEvent(name: AdsEventName, eventId: string) {
+  firePixels(name, eventId);
+}
+
 export async function trackInBrowser(name: AdsEventName, extra: { value?: number; currency?: string; email?: string; phone?: string; personName?: string } = {}) {
   captureVisit();
   const eventId = crypto.randomUUID();

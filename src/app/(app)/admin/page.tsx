@@ -102,7 +102,7 @@ export default async function AdminPage() {
       <PageHeader
         title="Admin"
         subtitle="Your owner control panel — team, access, and system status in one place."
-        action={<span className="flex gap-3"><Link href="/admin/ads" className="text-sm font-medium text-brand hover:underline">Ad costs</Link><Link href="/admin/team" className="text-sm font-medium text-brand hover:underline">Sales team</Link></span>}
+        action={<span className="flex gap-3"><Link href="/admin/offers" className="text-sm font-medium text-brand hover:underline">Offers</Link><Link href="/admin/ads" className="text-sm font-medium text-brand hover:underline">Ad costs</Link><Link href="/admin/team" className="text-sm font-medium text-brand hover:underline">Sales team</Link></span>}
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

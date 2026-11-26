@@ -42,6 +42,17 @@ export const SEQUENCES: Sequence[] = [
     ],
   },
   {
+    id: "no_show_rebook",
+    name: "No-show rebook",
+    goal: "A booked call was missed. Offer one new time and the booking link.",
+    industries: ["*"],
+    steps: [
+      { day: 0, channel: "sms", subject: "Missed you", body: "They missed the build call. One sentence, one new time, and the booking link. Reply STOP ends it." },
+      { day: 0, channel: "email", subject: "new time", body: "Short note: the call was missed, here is one link to pick another 15 minutes." },
+      { day: 1, channel: "call", subject: "Rebook", body: "One call to offer a new time. If they don't answer, stop after the voicemail." },
+    ],
+  },
+  {
     id: "new_lead",
     name: "New Lead Speed-to-Lead",
     goal: "Reach a fresh inbound lead within minutes and book the next step.",
