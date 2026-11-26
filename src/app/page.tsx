@@ -349,7 +349,8 @@ export default function LandingPage() {
               <div className="flex items-center justify-between">
                 <span className={`pill ${i === 2 ? "bg-brand-soft text-brand" : "bg-surface-2 text-muted"}`}>{s.tag}</span>
                 {/* escalating autonomy level — visualizes "you set the leash" */}
-                <span className="flex items-center gap-1" aria-label={`Autonomy level ${i + 1} of 3`}>
+                <span className="flex items-center gap-1">
+                  <span className="sr-only">Autonomy level {i + 1} of 3</span>
                   {[0, 1, 2].map((j) => (
                     <span key={j} className={`h-1.5 w-5 rounded-full ${j <= i ? "bg-brand" : "bg-border"}`} />
                   ))}
