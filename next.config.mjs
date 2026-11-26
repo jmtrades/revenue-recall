@@ -61,6 +61,9 @@ const formHeaders = securityHeaders
 
 const nextConfig = {
   reactStrictMode: true,
+  // pg must stay a real Node module. Bundling it makes the Postgres connect fail
+  // at runtime and the app silently keeps the JSON file.
+  serverExternalPackages: ["pg"],
   poweredByHeader: false,
   async redirects() {
     return [

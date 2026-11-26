@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getConfig } from "@/lib/config";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
-import { databaseBackend } from "@/lib/free/db";
+import { databaseBackend, databaseError, hydrateRemoteStore } from "@/lib/free/db";
 import { isAiConfigured } from "@/lib/ai/client";
 import { channelStatus } from "@/lib/comms";
 import { ttsAvailable } from "@/lib/voice/tts";
@@ -17,11 +17,16 @@ export const dynamic = "force-dynamic";
 
 /** Liveness + capability probe for uptime checks and ops dashboards. */
 export async function GET(req: Request) {
+  if (process.env.DATABASE_URL) {
+    await hydrateRemoteStore().catch(() => undefined);
+  }
   const cfg = getConfig();
   const ch = channelStatus();
 
   const capabilities = {
     database: isSupabaseConfigured() ? "supabase" : databaseBackend(),
+    databaseUrl: Boolean(process.env.DATABASE_URL),
+    databaseError: databaseError() || undefined,
     ai: isAiConfigured() ? "live" : "templates",
     auth: cfg.authRequired ? "required" : "optional",
     email: ch.email.live,
